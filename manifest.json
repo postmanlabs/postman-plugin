@@ -126,13 +126,13 @@
     {
       "name": "spec-authoring",
       "plugin": "postman",
-      "description": "Authors and validates an OpenAPI/AsyncAPI specification tracked in Postman's Spec Hub — a plain spec file, or a git-native multi-file spec directory. Use when the user asks to \"write/update this OpenAPI spec,\" \"lint this spec,\" \"check the spec against our governance rules,\" or \"is this spec ready for an AI agent to consume.\" Covers `postman spec`. Never routes to `postman api` — see bootstrap's Critical Rule 7 on the deprecated API Builder. Depends on bootstrap for the spec path and workspace id (governance rulesets come from the workspace).",
+      "description": "Authors and validates an OpenAPI/AsyncAPI specification tracked in Postman's Spec Hub — a plain spec file, or a git-native multi-file spec directory. Use when the user asks to \"write/update this OpenAPI spec,\" \"lint this spec,\" \"check the spec against our governance rules,\" or \"is this spec ready for an AI agent to consume.\" Covers `postman spec`. Never routes to `postman api` — see bootstrap's Rules on the deprecated API Builder. Depends on bootstrap for the spec path and workspace id (governance rulesets come from the workspace).",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/spec-authoring/SKILL.md",
-          "bytes": 3318,
-          "sha256": "7e30d8e17a03e9298944e7c468036315eb1ff7850d743e27d58f89764fa9afad"
+          "bytes": 3298,
+          "sha256": "2cc51bcc819e3e88b7bcaed76e6d08151d1e9954727f9c42edc4ba08bf6f2fff"
         }
       ]
     }

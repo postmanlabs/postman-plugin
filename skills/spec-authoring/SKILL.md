@@ -1,6 +1,6 @@
 ---
 name: spec-authoring
-description: Authors and validates an OpenAPI/AsyncAPI specification tracked in Postman's Spec Hub — a plain spec file, or a git-native multi-file spec directory. Use when the user asks to "write/update this OpenAPI spec," "lint this spec," "check the spec against our governance rules," or "is this spec ready for an AI agent to consume." Covers `postman spec`. Never routes to `postman api` — see bootstrap's Critical Rule 7 on the deprecated API Builder. Depends on bootstrap for the spec path and workspace id (governance rulesets come from the workspace).
+description: Authors and validates an OpenAPI/AsyncAPI specification tracked in Postman's Spec Hub — a plain spec file, or a git-native multi-file spec directory. Use when the user asks to "write/update this OpenAPI spec," "lint this spec," "check the spec against our governance rules," or "is this spec ready for an AI agent to consume." Covers `postman spec`. Never routes to `postman api` — see bootstrap's Rules on the deprecated API Builder. Depends on bootstrap for the spec path and workspace id (governance rulesets come from the workspace).
 ---
 
 # Spec Authoring
@@ -40,8 +40,8 @@ it still runs without warning.
 
 1. **`api lint`/`api publish` are the deprecated Builder-era commands.**
    `spec lint` is the correct verb for a git-native spec. See bootstrap's
-   Critical Rule 7 for the full reasoning — don't re-derive it here, and
-   don't route new spec work to `postman api`.
+   Rules for the full reasoning — don't re-derive it here, and don't route
+   new spec work to `postman api`.
 2. **A lint run without `--workspace-id` proves syntax, not governance.**
    Say explicitly which one was checked before calling a spec "compliant."
 3. **Fix the spec, not the generated artifact.** SDK generation, mock
