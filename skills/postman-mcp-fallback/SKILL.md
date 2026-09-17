@@ -1,6 +1,6 @@
 ---
 name: postman-mcp-fallback
-description: Falls back to Postman's own MCP server when the CLI cannot be used, and is the reference for using that surface once connected. Use when the user explicitly asks to connect an agent to Postman's MCP tools, to pick a toolset, or to judge an MCP result such as a `getCollection` response or a `createMock` default. For agent-initiated routing it is gated to two cases — bootstrap has genuinely exhausted its CLI resolution ladder, or the CLI simply has no verb for the task at all (confirmed via `-h`, e.g. creating a Monitor) — and a `postman` binary missing from PATH is never on its own a qualifying reason, because bootstrap installs the CLI itself. Covers Postman's API as MCP tools, not the repo-local CLI workflow the other skills drive.
+description: Falls back to Postman's own MCP server when the CLI cannot be used, and is the reference for using that surface once connected. Use when the user explicitly asks to connect an agent to Postman's MCP tools, to pick a toolset, or to judge an MCP result such as a `getCollection` response or a `createMock` default. For agent-initiated routing it is gated to two cases — bootstrap attempted a CLI install and that install actually failed, or the CLI simply has no verb for the task at all (confirmed via `-h`, e.g. creating a Monitor) — and a `postman` binary missing from PATH is never on its own a qualifying reason, because bootstrap installs the CLI itself. Covers Postman's API as MCP tools, not the repo-local CLI workflow the other skills drive.
 ---
 
 # Fall Back to Postman's MCP Server
@@ -12,9 +12,9 @@ exposes the Postman API itself as MCP tools:
 create, read, update, and delete workspaces, collections, environments,
 specs, mocks, and monitors; run a collection; generate client code; search
 the org's API catalog. This is a different integration point from the rest
-of this plugin. `bootstrap`, `mocking`, `ci`, `monitoring`, and
-`api-documentation` all wrap the Postman CLI inside a repo's local
-workflow. This skill governs calling Postman's tools directly once its MCP
+of this plugin. `bootstrap`, `api-mocking`, `api-testing`, `api-monitoring`,
+`spec-authoring`, `performance-testing` and `api-discovery` all wrap the
+Postman CLI inside a repo's local workflow. This skill governs calling Postman's tools directly once its MCP
 server is connected — a different surface, with its own toolset choice, its
 own auth model, and defaults that don't match the CLI's.
 
@@ -47,19 +47,19 @@ Transport is chosen the same way, at connection time, not per call:
 1. **This surface is the fallback, not a peer. Reach for it only when the
    CLI genuinely can't do the job, not because installing it was
    inconvenient.** A missing `postman` on `PATH` is not a qualifying
-   reason — bootstrap installs the CLI into the plugin's own data
-   directory, and routing here to avoid that install defeats the point of
-   the plugin. Two kinds of reason qualify: bootstrap's CLI ladder is
-   genuinely exhausted (no shell, no Node, or a hosted session where the
-   install can't happen), or the CLI simply has no verb for the task —
-   confirmed by reading `-h`, not assumed (creating or scheduling a
-   Monitor is like this: no CLI verb exists for it, but this server's
-   `full` toolset does). First confirm this surface actually covers the
-   gap, from this file's own Overview and toolset table — it doesn't cover
-   everything the CLI can't do. Publishing docs externally, for one
-   (`api-documentation`'s Critical Rule 1), has no tool here either: that
-   gap routes to a human publishing from the Postman app, not to MCP. Once
-   confirmed, say which of the two reasons above applies.
+   reason — bootstrap installs the CLI with `npm install -g postman-cli`,
+   or a platform installer, and routing here to avoid that install defeats
+   the point of the plugin. Two kinds of reason qualify: bootstrap attempted
+   an install and it actually failed (no shell, no Node, no write access, or
+   a hosted session where the install can't happen), or the CLI simply has
+   no verb for the task — confirmed by reading `-h`, not assumed (creating
+   or scheduling a Monitor is like this: no CLI verb exists for it, but this
+   server's `full` toolset does). First confirm this surface actually covers
+   the gap, from this file's own Overview and toolset table — it doesn't
+   cover everything the CLI can't do. Publishing docs externally, for one,
+   has no tool here either: that gap routes to a human publishing from the
+   Postman app, not to MCP. Once confirmed, say which of the two reasons
+   above applies.
 2. **Default to `minimal`; only step up when the task needs it.** See the
    table above — don't reach for `full` "to be safe."
 3. **Fetch the `postman://instructions` resource before answering anything
@@ -81,7 +81,7 @@ Transport is chosen the same way, at connection time, not per call:
    otherwise.** `createMock`'s `private` parameter defaults to `false` —
    "public and can receive requests from anyone and anywhere." There is no
    local-mock option on this surface at all — that's the CLI, via the
-   `mocking` skill. Get explicit consent, or pass `private: true`, before
+   `api-mocking` skill. Get explicit consent, or pass `private: true`, before
    calling `createMock` or `publishMock`.
 7. **`getCollection` returns a lightweight map, not the full collection,
    unless asked.** The default response is metadata plus recursive item
