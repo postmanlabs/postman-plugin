@@ -20,24 +20,34 @@ different command than running.
 
 ### Local file vs deployed artifact
 
-`run` and `trigger` execute different things and are not fallbacks for each
-other.
+`run` and `trigger` are not two ways to execute one flow. Postman Flows has
+two Native Git modes, and they are isolated from each other:
+
+- **Cloud View** (the default) syncs flows to Postman Cloud, which is what
+  makes them shareable and **deployable** — so Cloud View is the only side
+  `deploy`, `trigger`, `update`, `list-runs` and `get-run` ever address.
+- **Local View** stores flows as JSON in a local Git repo, updated as they are
+  edited. Those flows **cannot be shared or deployed**, have no snapshots, and
+  are isolated from the flows in Cloud View.
 
 | | `flows run <path>` | `flows trigger <flowId>` |
 | --- | --- | --- |
-| Executes | a file on this machine | the cloud-deployed flow, via its webhook |
-| Sees | the working tree, including unpushed edits | whatever was last deployed |
+| Executes | a flow JSON file on this machine | the cloud-deployed flow, via its webhook |
 | Returns | status, output, test results, exit code | Run ID + HTTP status + response body |
+| Observability | own stdout, `--output`, `--reporters` | `get-run`, per block |
 | Environment file | `-e/--environment` | not supported |
 
-`run` reads the file directly, so it exercises an edit before it is pushed and
-exits nonzero on failure — which is what lets a CI job gate on it. `trigger`
-goes through the real webhook URL, so it exercises the deployed path
-end-to-end, including its auth and trigger configuration, and registers a
-cloud run that `get-run` can later explain block by block.
+`run` exits nonzero on failure, which is what lets a CI job gate on it.
+`trigger` goes through the real webhook URL, so it exercises the deployed path
+end-to-end — auth and trigger configuration included — and registers a cloud
+run that `get-run` can explain block by block.
 
-Flow files live at `postman/flows/*.json` — part of the git-native workspace
-layout `postman init` scaffolds, populated by `postman workspace pull`.
+`postman init` scaffolds `postman/flows/`, and Postman's `flows run` examples
+use that path. Note what puts files there: the Git-connected Flows experience
+is **desktop-app only**, so `postman/flows/*.json` is written by the desktop
+app's Local View, not by the CLI — `workspace push`/`pull` sync collections,
+environments, specs and mocks, and have no flows handling. Don't tell a user
+to `workspace pull` to obtain a flow file.
 
 ### What deploying buys, and what it requires
 
@@ -46,10 +56,10 @@ is what makes it reachable by schedules, webhooks, third-party apps, and other
 APIs — the flow stops being something a human opens and becomes callable
 infrastructure.
 
-Two preconditions live on the canvas, not in the CLI: the Start block must be
-configured with an API request trigger, and the canvas must have a Response
-block. A flow missing either is not deployable no matter which flags are
-passed, and no CLI command can add them.
+Three preconditions sit outside the CLI, so no flag or retry satisfies them:
+the flow must be in Cloud View, its Start block must be configured with an API
+request trigger, and its canvas must have a Response block. Check these before
+re-running a failed deploy with different arguments.
 
 `--path` is a suffix appended to a generated base URL, not a full URL.
 
@@ -177,9 +187,9 @@ Run session-abc123 — failed
 
 ## Anti-patterns
 
-1. **Don't substitute `run` for `trigger` when a flow isn't deployed.** They
-   execute different artifacts; running the file locally does not verify the
-   deployed path the caller actually hits.
+1. **Don't substitute `run` for `trigger` when a flow isn't deployed.** A
+   green local run says nothing about the deployed path a caller hits, and a
+   Local View flow cannot be deployed at all.
 2. **Don't hunt for a different workspace id when access is denied across
    every workspace you try.** A blanket denial points at the credential's
    scope or the plan, not at the id.
