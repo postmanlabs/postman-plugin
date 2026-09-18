@@ -41,8 +41,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-flows/SKILL.md",
-          "bytes": 10132,
-          "sha256": "2074630ae6b109d1bbd6cb92947f345412472a186661dca24e7d54e3d94bf601"
+          "bytes": 10167,
+          "sha256": "1e07d40b08afad6629bb1e1296c2d00479e96832dbcfe1d892eb05b538f091c8"
         },
         {
           "target": "reference/flow_cli_flags.md",

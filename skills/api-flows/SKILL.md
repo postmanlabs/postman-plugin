@@ -45,9 +45,9 @@ run that `get-run` can explain block by block.
 `postman init` scaffolds `postman/flows/`, and Postman's `flows run` examples
 use that path. Note what puts files there: the Git-connected Flows experience
 is **desktop-app only**, so `postman/flows/*.json` is written by the desktop
-app's Local View, not by the CLI — `workspace push`/`pull` sync collections,
-environments, specs and mocks, and have no flows handling. Don't tell a user
-to `workspace pull` to obtain a flow file.
+app's Local View, not by the CLI — `workspace push`/`pull` carry no flows
+handling whatever else they sync. Don't tell a user to `workspace pull` to
+obtain a flow file.
 
 ### What deploying buys, and what it requires
 
@@ -124,9 +124,10 @@ postman flows run postman/flows/checkout.json -i amount=4200
 postman flows trigger <flowId> -i amount=4200
 ```
 
-`run` is documented as Enterprise-only, so check that before building a
-workflow on the local path — on other plans, `trigger` against a deployed flow
-is the available route.
+`run` is documented as Enterprise-only, so check the plan before building a
+workflow on the local path. Where the flow is already in Cloud View, `trigger`
+covers the gap; a Local View flow has no such fallback, since it cannot be
+deployed.
 
 `-n/--dry-run` on `trigger` prints the resolved URL and payload without
 sending — worth reaching for when a flow writes to real systems, since a
