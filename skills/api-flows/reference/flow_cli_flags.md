@@ -39,7 +39,7 @@ form when composing a command from more than one table.
 
 | Flag | Notes |
 | --- | --- |
-| `-p, --path <path>` | **Required**, though `-h` does not mark it so — omitting it exits 1. A suffix appended to a generated base URL, e.g. `/my-trigger`. |
+| `-p, --path <path>` | **Required** — `-h` carries no `(required)` annotation, but omitting it exits 1. A suffix appended to a generated base URL, e.g. `/my-trigger`. |
 | `-t, --timeout <timeout>` | HTTP session timeout, **5000ms–60000ms**, default `"10000ms"`. Value carries units — `5000ms`, not `5000`. |
 | `-a, --auth` | Boolean switch. Enables auth on the trigger. Default off. |
 

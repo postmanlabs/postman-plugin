@@ -7,12 +7,16 @@ description: Runs, deploys, and debugs Postman Flows from the command line — e
 
 ## Overview
 
-A flow is a graph of blocks, not a script. That single fact drives everything
-here: it has two independent execution paths (a file on disk, or a deployed
-cloud artifact), and its HTTP response tells you about one block rather than
-the whole graph — so debugging needs a different command than running.
+Listing flows, running them, deploying them so they become callable, and
+tracing a failed run to the block that caused it — all through
+`postman flows`.
 
 ## Core knowledge
+
+A flow is a graph of blocks, not a script. That single fact drives the rest of
+this skill: a flow has two independent execution paths, and its HTTP response
+describes one block rather than the whole graph, so debugging takes a
+different command than running.
 
 ### Local file vs deployed artifact
 
@@ -110,6 +114,10 @@ postman flows run postman/flows/checkout.json -i amount=4200
 postman flows trigger <flowId> -i amount=4200
 ```
 
+`run` is documented as Enterprise-only, so check that before building a
+workflow on the local path — on other plans, `trigger` against a deployed flow
+is the available route.
+
 `-n/--dry-run` on `trigger` prints the resolved URL and payload without
 sending — worth reaching for when a flow writes to real systems, since a
 trigger is not a read-only probe. For CI, `--output json` and `--reporters
@@ -172,8 +180,9 @@ Run session-abc123 — failed
 1. **Don't substitute `run` for `trigger` when a flow isn't deployed.** They
    execute different artifacts; running the file locally does not verify the
    deployed path the caller actually hits.
-2. **Don't hunt for a different workspace id after an access-denied.** Check
-   the credential's scope and the plan instead.
+2. **Don't hunt for a different workspace id when access is denied across
+   every workspace you try.** A blanket denial points at the credential's
+   scope or the plan, not at the id.
 3. **Don't pass `-x/--suppress-exit-code` in CI.** It makes a failed flow
    report success to the pipeline, which removes the only thing gating it.
 4. **Don't put reusable inputs on the command line.** A payload that matters

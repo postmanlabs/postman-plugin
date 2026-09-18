@@ -41,14 +41,14 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-flows/SKILL.md",
-          "bytes": 9072,
-          "sha256": "4e0f370c6b59861cb32cc2e53788b4c0c5e980461b7b13fbe63b805fd67ffb7d"
+          "bytes": 9421,
+          "sha256": "ac05aadc2a0fd613b1842f1e3a3d419e7e81cc1112793a0f85a75d255de1502c"
         },
         {
           "target": "reference/flow_cli_flags.md",
           "source": "skills/api-flows/reference/flow_cli_flags.md",
-          "bytes": 5591,
-          "sha256": "42b35aed9c0a609356261682ba7117fd2a58b73f1f7ef349f10077c28eaa367c"
+          "bytes": 5603,
+          "sha256": "36cfbb3ca5799deeb5419824d1327bc9f178f6eb1755e29b578e1d2d9f15ed08"
         }
       ]
     },
