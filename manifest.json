@@ -47,8 +47,8 @@
         {
           "target": "reference/flow_cli_flags.md",
           "source": "skills/api-flows/reference/flow_cli_flags.md",
-          "bytes": 5626,
-          "sha256": "7082d10bb6a0b6db2cfbc03dad4cdc053ceb1a5da9fa1b13412879b21942417f"
+          "bytes": 5616,
+          "sha256": "94bb1431e3f5312fbd7e6b5f63ddfa52424aa41415ebf10df8d8323d958c1932"
         }
       ]
     },

@@ -1,6 +1,6 @@
 # Flows CLI Flags
 
-Captured from `postman flows <subcommand> -h` and verified unchanged on CLI
+Captured from `postman flows <subcommand> -h` and verified on CLI
 **1.58.0**. Live `-h` output is authoritative over this file — re-run it if
 the installed CLI is newer, since `flows` is an actively changing surface.
 
