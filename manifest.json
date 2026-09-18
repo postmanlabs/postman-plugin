@@ -36,19 +36,19 @@
     {
       "name": "api-flows",
       "plugin": "postman",
-      "description": "Lists, runs, deploys, and debugs Postman Flows from the command line — resolving a flow name to its ID, triggering a deployed flow with inputs, running a flow file locally, deploying one so it becomes triggerable, and tracing a failed run to the block that broke. Use when the user asks \"what flows do I have,\" \"run the Checkout flow,\" \"deploy this flow,\" \"why did that flow run fail,\" or names a flow and an action. Covers `postman flows list`, `trigger`, `run`, `deploy`, `update`, `list-runs`, and `get-run`. Depends on bootstrap for anything cloud-bound; only `flows run` against a local file works without it.",
+      "description": "Runs, deploys, and debugs Postman Flows from the command line — executing a flow file locally, triggering a deployed flow over its webhook, deploying one so it becomes callable, and tracing a failed run to the block that broke. Use when the user names a flow and an action (\"run the Checkout flow\", \"deploy this flow\", \"why did that flow run fail\", \"what flows do I have\"). Covers `postman flows list`, `run`, `trigger`, `deploy`, `update`, `list-runs`, and `get-run`.",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/api-flows/SKILL.md",
-          "bytes": 10798,
-          "sha256": "753f53f2379cd43b199ea939dbb2f0f77474edebd2bd6a28b907f0f8c4418676"
+          "bytes": 9072,
+          "sha256": "4e0f370c6b59861cb32cc2e53788b4c0c5e980461b7b13fbe63b805fd67ffb7d"
         },
         {
           "target": "reference/flow_cli_flags.md",
           "source": "skills/api-flows/reference/flow_cli_flags.md",
-          "bytes": 4973,
-          "sha256": "afd1c9095b7cd0f903451ab584af2c8f00b2f0781f8787cc6db9f2f4df6f92fc"
+          "bytes": 5591,
+          "sha256": "42b35aed9c0a609356261682ba7117fd2a58b73f1f7ef349f10077c28eaa367c"
         }
       ]
     },

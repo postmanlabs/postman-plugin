@@ -17,7 +17,7 @@ form when composing a command from more than one table.
 
 | Flag | Notes |
 | --- | --- |
-| `-w, --workspace <workspaceId>` | No default. Required in practice — ask the user rather than guessing. |
+| `-w, --workspace <workspaceId>` | **Required** — the CLI exits 1 with `required option '-w, --workspace <workspaceId>' not specified`. |
 | `-f, --filter <pattern>` | Name prefix **or** regex, e.g. `--filter "^Test.*"`. |
 | `-s, --sort <criteria>` | `name` or `updated`. Default `updated`. |
 | `-p, --paginate` | Page through all flows. |
@@ -39,7 +39,7 @@ form when composing a command from more than one table.
 
 | Flag | Notes |
 | --- | --- |
-| `-p, --path <path>` | URL path for the trigger, e.g. `/my-trigger`. |
+| `-p, --path <path>` | **Required**, though `-h` does not mark it so — omitting it exits 1. A suffix appended to a generated base URL, e.g. `/my-trigger`. |
 | `-t, --timeout <timeout>` | HTTP session timeout, **5000ms–60000ms**, default `"10000ms"`. Value carries units — `5000ms`, not `5000`. |
 | `-a, --auth` | Boolean switch. Enables auth on the trigger. Default off. |
 
@@ -53,13 +53,19 @@ takes `on|off`.
 | `-t, --trigger <on\|off>` | Enable/disable the trigger. Takes an explicit value. |
 | `-a, --auth <on\|off>` | Enable/disable authentication on the trigger. Takes an explicit value. |
 
+**At least one of the two is required**: a bare `flows update <flowId>` exits 1
+with `Invalid command parameters: trigger: At least one option is required:
+--trigger or --auth`.
+
 Both are mutating and confirmation-gated. `--auth off` strips authentication
 from a live trigger — never run it as a convenience.
 
 ## `flows run <path>`
 
-Runs a flow **file** locally. Inputs work as on `trigger`; the rest is
-execution and reporting.
+Runs a flow **file** locally — documented as available on Postman **Enterprise**
+plans, and requires `postman login`. Inputs work as on `trigger`; the rest is
+execution and reporting. Takes the path positionally; a bad path fails with
+`Error: Flow file not found: <path>` and exit 1.
 
 | Flag | Notes |
 | --- | --- |
@@ -92,7 +98,7 @@ the CLI's own help — confirm against live `-h` before relying on them.
 
 | Flag | Notes |
 | --- | --- |
-| `-w, --workspace <workspaceId>` | The workspace to look in. |
+| `-w, --workspace <workspaceId>` | **Required**, same as on `list`. |
 | `-f, --flow <flowId>` | Filter sessions to one flow. |
 | `-r, --range <range>` | Time range, e.g. `30m`, `2h`, `3d`. **Default `1h`** — widen it before concluding a run is missing. |
 
@@ -100,6 +106,6 @@ the CLI's own help — confirm against live `-h` before relying on them.
 
 | Flag | Notes |
 | --- | --- |
-| `-r, --run-id <runId>` | The `x-run-id` a trigger reported, e.g. `session-abc123`. |
+| `-r, --run-id <runId>` | **Required.** The id `trigger` or `list-runs` reported. Shapes vary across Postman's own material (`session-abc123`, `main/1a123ab1`) — pass it verbatim rather than reformatting. |
 | `-l, --logs` | Detailed event log. Off by default. |
 | `--filter <blockId>` | Repeatable. Matches a block ID **prefix**, not an exact id. |
