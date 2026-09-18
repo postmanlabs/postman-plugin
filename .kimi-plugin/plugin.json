@@ -1,6 +1,6 @@
 {
   "name": "postman",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Work with Postman from your agent: bootstrap a repo's Postman setup, mock an API before it's implemented, run collection and governance checks in CI, monitor a live endpoint, deploy and debug Postman Flows, and publish generated API documentation.",
   "keywords": ["postman", "api", "mocking", "monitoring", "ci", "documentation", "flows"],
   "homepage": "https://www.postmanlabs.com/skills/",
@@ -17,8 +17,8 @@
       "url": "https://mcp.postman.com/${POSTMAN_MCP_MODE:-minimal}",
       "headers": {
         "X-Source": "postman-skills-plugin",
-        "X-Plugin-Version": "1.0.0",
-        "User-Agent": "postman-skills-plugin/1.0.0"
+        "X-Plugin-Version": "2.0.0",
+        "User-Agent": "postman-skills-plugin/2.0.0"
       }
     }
   },

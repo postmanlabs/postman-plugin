@@ -43,15 +43,65 @@ Cursor or Kimi Code:
 npx plugins add postmanlabs/postman-plugin
 ```
 
+## Data sent to Postman
+
+Some Postman CLI commands these skills run report events and results to Postman
+by default. Each has its own opt-out flag — they are not spelled the same, so
+copy the one for the command you're running:
+
+| Command | Sent by default | Opt out with |
+| --- | --- | --- |
+| `postman application test` | Run results upload to Postman after each run | `--report-events=false` |
+| `postman runner start` | Runner analytics | `--no-report-events` |
+| `postman flows run` | Flow run analytics | `--no-report-events` |
+
+Separately, the Kimi manifest and `.mcp.json` configure the hosted Postman MCP
+server at `mcp.postman.com`, so MCP tool calls made through that route reach
+Postman too. The Claude Code and Cursor routes ship skills only.
+
 ## Changing a skill
 
 1. Edit the file under `skills/<skill>/`.
 2. Run `node scripts/build-manifest.js`.
-3. Commit both. CI runs `--check` and fails if you forget step 2.
+3. Bump the version — see [Releasing](#releasing).
+4. Commit all of it. CI runs `--check` and fails if you forget step 2.
 
 Step 2 is not optional — `manifest.json` carries a `sha256` per file, and a
 stale manifest silently drifts from what the files actually contain instead
 of failing loudly.
+
+## Releasing
+
+`.claude-plugin/plugin.json` declares a `version`, and that string is the only
+thing `claude plugin update` compares. An install is cached at a version-keyed
+path, so a release that changes files without changing the version reports
+"already at the latest version" and delivers nothing. Bump it on every release
+that users should receive — this repo has shipped empty updates for exactly
+this reason before.
+
+The version lives in three places and they move together:
+
+```
+.claude-plugin/plugin.json    version
+.cursor-plugin/plugin.json    version
+.kimi-plugin/plugin.json      version, X-Plugin-Version, User-Agent
+```
+
+`.mcp.json` carries the same string in its `X-Plugin-Version` and `User-Agent`
+headers. `marketplace.json` deliberately declares no version — it would
+override `plugin.json` and give the repo a second source of truth.
+
+Semantic versioning: a breaking change to a skill's contract is major, a new
+skill is minor, and a wording or bug fix is patch.
+
+TODO: none of this is enforced. Nothing fails a PR that changes `skills/`
+without bumping the version, and nothing catches the six strings drifting
+apart — `.kimi-plugin/plugin.json` sat at 1.0.0 while three other surfaces
+said 2.0.0. Worth adding to `validate.yml`: a sync check across all six
+spots, a PR gate requiring a semver-greater version when shipped files
+change, and a `scripts/bump-version.js` so the bump is one command instead
+of six edits. `claude plugin validate .` would also catch manifest schema
+errors the current JSON.parse loop cannot.
 
 ## Adding a skill
 
@@ -72,3 +122,7 @@ remove what turns up, then run the manifest script.
 table of that repository's spec path, collections directory, CLI version, and
 workspace id. Anything that consumes a skill without substituting it should leave
 the marker alone rather than guess.
+
+## License
+
+Apache-2.0 — see [LICENSE](LICENSE).
