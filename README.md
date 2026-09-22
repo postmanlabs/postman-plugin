@@ -11,7 +11,7 @@ directory rather than copying files into itself:
 | Claude Code plugin | `/plugin marketplace add postmanlabs/postman-plugin` clones this repo | Claude's plugin dir |
 | Cursor plugin | `.cursor-plugin/plugin.json` points at this repo's `skills/` dir | Cursor's plugin dir |
 | Kimi Code plugin | `.kimi-plugin/plugin.json` points at the same `skills/` dir, and bundles the Postman MCP server | Kimi's plugin dir |
-| Codex plugin | `codex plugin marketplace add postmanlabs/postman-plugin` clones this repo and reads `.agents/plugins/marketplace.json`; `.codex-plugin/plugin.json` is the manifest it installs | Codex's plugin store |
+| Codex plugin | `codex plugin marketplace add postmanlabs/postman-plugin` clones this repo and reads `.agents/plugins/marketplace.json`; the portable `plugin.json` + `mcp.json` are the manifests it installs | Codex's plugin store |
 
 The Postman CLI also has its own path for installing these skills, but it's
 still being redesigned — don't treat it as settled or document it here until
@@ -25,58 +25,78 @@ it lands.
 .cursor-plugin/plugin.json        the Cursor plugin manifest
 .kimi-plugin/plugin.json          the Kimi Code plugin manifest
 .agents/plugins/marketplace.json  the marketplace Codex adds
-.codex-plugin/plugin.json         the Codex plugin manifest
+plugin.json                       the portable Agent Plugins manifest Codex loads
+mcp.json                          the portable Agent Plugins MCP config
+.codex-plugin/plugin.json         Codex's overlay on plugin.json — listing metadata only
 skills/<name>/SKILL.md            one skill per directory — see skills/ for the current list
 manifest.json                     generated index of the skill files
 scripts/build-manifest.js         regenerates it
 ```
 
-Codex is the one route whose two files do not live in the same directory.
-Codex looks for a plugin manifest at `.codex-plugin/plugin.json`,
-`.claude-plugin/plugin.json`, then `.cursor-plugin/plugin.json` — but it looks
-for a *marketplace* manifest at `.agents/plugins/marketplace.json`,
-`.agents/plugins/api_marketplace.json`, `.claude-plugin/marketplace.json`,
-then `.cursor-plugin/marketplace.json`. There is no
-`.codex-plugin/marketplace.json` in that list, so putting one there would
-silently do nothing and Codex would fall through to Claude's catalog instead.
+### The Codex route, and why it uses three files
 
-Two more things Codex does by itself, so the manifest stays quiet about them:
+Codex is the one route that doesn't keep its files in a single directory, and
+it's worth knowing why before moving any of them.
 
-- `skills/` and `hooks/hooks.json` are Codex's own default component paths.
-  `.codex-plugin/plugin.json` restates `skills` for legibility but deliberately
-  declares no `hooks` key — Codex's plugin validator rejects `hooks` as a
-  manifest field, and it finds `hooks/hooks.json` without being told.
+**The marketplace file is not under `.codex-plugin/`.** Codex looks for a
+marketplace manifest at `.agents/plugins/marketplace.json`,
+`.agents/plugins/api_marketplace.json`, `.claude-plugin/marketplace.json`, then
+`.cursor-plugin/marketplace.json`. There is no `.codex-plugin/marketplace.json`
+in that list, so putting one there would silently do nothing and Codex would
+fall through to Claude's catalog instead.
+
+**The plugin manifest is the portable one, in the repo root.** Codex has two
+plugin formats. It picks the portable [Agent
+Plugins](https://github.com/agentplugins/agent-plugins-spec) format when a
+root-level `plugin.json` carries an `agent-plugins.org` `$schema`, and its own
+legacy format otherwise (`.codex-plugin/plugin.json`,
+`.claude-plugin/plugin.json`, `.cursor-plugin/plugin.json`, in that order). This
+repo ships the portable manifest, so in Agent Plugins mode Codex **hardcodes**
+two component paths and ignores whatever a manifest says about them:
+
+- skills come from `./skills`
+- MCP servers come from `./mcp.json`
+
+`mcp.json` is a different filename from the `.mcp.json` the other three routes
+share, so both coexist with no collision and no duplicate server.
+
+`.codex-plugin/plugin.json` survives as Codex's *overlay* on the portable
+manifest. It contributes only the listing metadata (`interface`) plus the
+`apps`/`hooks` paths — its `skills` and `mcpServers` keys are inert in this mode.
+Without it, Codex would derive a default listing from the portable fields and
+file the plugin under category `Other`.
+
+Pin `$schema` to **1.0.0**. The spec has a 1.1.0, but Codex accepts only
+`https://agent-plugins.org/schemas/1.0.0/…` and rejects anything else outright
+with `unsupported Agent Plugins schema`.
+
+### Why `mcp.json` restates the server instead of reusing `.mcp.json`
+
+Beyond the filename being fixed, two things in the shared `.mcp.json` would not
+have survived, and neither fails loudly:
+
+- `"url": "https://mcp.postman.com/${POSTMAN_MCP_MODE:-mcp}"` — the Agent
+  Plugins spec forbids clients from expanding placeholders or environment
+  variables in `url` or headers, so the server would be configured with a
+  literal `${POSTMAN_MCP_MODE:-mcp}` and fail at connect time, well after a
+  clean install. `mcp.json` pins the URL to the value the placeholder resolved
+  to.
+- `"type": "http"` — the portable format's HTTP transport is `streamable-http`,
+  and its server objects are closed, so `http` is not a spelling it accepts.
+
+`mcp.json` also drops the `User-Agent` header the other routes send. `User-Agent`
+is on Codex's client-owned header list and is stripped silently, so carrying it
+would only be misleading; `X-Source` and `X-Plugin-Version` are sent normally.
+
+Two things that need no per-host handling at all:
+
+- `hooks/hooks.json` is Codex's default hooks path, and no manifest declares it —
+  Codex's plugin validator rejects `hooks` as a manifest field and finds the file
+  on its own.
 - `hooks/hooks.json` expands `${CLAUDE_PLUGIN_ROOT}`. Codex sets that variable
-  alongside its own `PLUGIN_ROOT` for compatibility with existing plugins, so
-  the shared hooks file works on both hosts unchanged. Don't "fix" it to a
+  alongside its own `PLUGIN_ROOT` for compatibility with existing plugins, so the
+  shared hooks file works on both hosts unchanged. Don't "fix" it to a
   Codex-specific variable.
-
-### Why Codex declares its MCP server inline instead of using `.mcp.json`
-
-`.codex-plugin/plugin.json` is the one manifest that does *not* point at the
-shared `.mcp.json`. Two things in that file don't survive Codex's plugin MCP
-parser, and neither fails loudly:
-
-- `"url": "https://mcp.postman.com/${POSTMAN_MCP_MODE:-mcp}"` — Codex does no
-  shell-style variable expansion here, so the server would be configured with a
-  literal `${POSTMAN_MCP_MODE:-mcp}` in its URL and fail at connect time, well
-  after a clean install.
-- `"headers"` — Codex's field is `http_headers`, and unknown keys are dropped
-  silently rather than rejected, so `X-Source` and the version headers would
-  just never be sent.
-
-So Codex gets a static inline declaration pinned to `https://mcp.postman.com/mcp`
-(the default the placeholder resolves to) with the headers under `http_headers`.
-An inline `mcpServers` object replaces default `.mcp.json` discovery rather than
-adding to it, so there's exactly one `postman` server, and the shared file stays
-as-is for Claude Code, Cursor, and Kimi.
-
-Do **not** "fix" this by adding an Agent Plugins `$schema` to `.mcp.json` or
-switching its `type` to `streamable-http`. Those belong to Codex's Agent Plugins
-format, which it selects only for a **root-level** `plugin.json` carrying an
-`agent-plugins.org` schema URI. This repo has no such file, so Codex parses in
-legacy mode, where `type: "http"` is explicitly accepted and a `$schema` key in
-`.mcp.json` is rejected outright by Codex's own plugin validator.
 
 ## Installing
 

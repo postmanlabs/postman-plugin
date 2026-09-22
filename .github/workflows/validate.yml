@@ -24,9 +24,30 @@ jobs:
 
       - name: Manifests are valid JSON
         run: |
-          for file in .claude-plugin/marketplace.json .claude-plugin/plugin.json .cursor-plugin/plugin.json .kimi-plugin/plugin.json .codex-plugin/plugin.json .agents/plugins/marketplace.json manifest.json; do
+          for file in .claude-plugin/marketplace.json .claude-plugin/plugin.json .cursor-plugin/plugin.json .kimi-plugin/plugin.json .codex-plugin/plugin.json .agents/plugins/marketplace.json plugin.json mcp.json manifest.json; do
             node -e "JSON.parse(require('fs').readFileSync('$file','utf8'))" && echo "ok $file"
           done
+
+      # Codex supports exactly one Agent Plugins version and rejects a manifest
+      # that targets any other with `unsupported Agent Plugins schema`, which
+      # disables the plugin rather than degrading it. The spec already has a
+      # 1.1.0, so a well-meaning bump here is a realistic way to break the Codex
+      # route, and it would not show up in any other check.
+      - name: Codex manifests target the Agent Plugins version Codex supports
+        run: |
+          status=0
+          check () {
+            actual=$(node -e "process.stdout.write(String(JSON.parse(require('fs').readFileSync('$1','utf8'))['\$schema']))")
+            if [ "$actual" != "$2" ]; then
+              echo "::error file=$1::\$schema is '$actual', expected '$2'"
+              status=1
+            else
+              echo "ok $1"
+            fi
+          }
+          check plugin.json https://agent-plugins.org/schemas/1.0.0/plugin.schema.json
+          check mcp.json https://agent-plugins.org/schemas/1.0.0/mcp.schema.json
+          exit $status
 
       - name: Every skill has frontmatter Claude Code can load
         run: |
