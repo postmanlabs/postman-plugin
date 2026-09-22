@@ -42,15 +42,41 @@ silently do nothing and Codex would fall through to Claude's catalog instead.
 
 Two more things Codex does by itself, so the manifest stays quiet about them:
 
-- `skills/`, `.mcp.json`, and `hooks/hooks.json` are Codex's own default
-  component paths. `.codex-plugin/plugin.json` restates `skills` and
-  `mcpServers` for legibility but deliberately declares no `hooks` key —
-  Codex's plugin validator rejects `hooks` as a manifest field, and it finds
-  `hooks/hooks.json` without being told.
+- `skills/` and `hooks/hooks.json` are Codex's own default component paths.
+  `.codex-plugin/plugin.json` restates `skills` for legibility but deliberately
+  declares no `hooks` key — Codex's plugin validator rejects `hooks` as a
+  manifest field, and it finds `hooks/hooks.json` without being told.
 - `hooks/hooks.json` expands `${CLAUDE_PLUGIN_ROOT}`. Codex sets that variable
   alongside its own `PLUGIN_ROOT` for compatibility with existing plugins, so
   the shared hooks file works on both hosts unchanged. Don't "fix" it to a
   Codex-specific variable.
+
+### Why Codex declares its MCP server inline instead of using `.mcp.json`
+
+`.codex-plugin/plugin.json` is the one manifest that does *not* point at the
+shared `.mcp.json`. Two things in that file don't survive Codex's plugin MCP
+parser, and neither fails loudly:
+
+- `"url": "https://mcp.postman.com/${POSTMAN_MCP_MODE:-mcp}"` — Codex does no
+  shell-style variable expansion here, so the server would be configured with a
+  literal `${POSTMAN_MCP_MODE:-mcp}` in its URL and fail at connect time, well
+  after a clean install.
+- `"headers"` — Codex's field is `http_headers`, and unknown keys are dropped
+  silently rather than rejected, so `X-Source` and the version headers would
+  just never be sent.
+
+So Codex gets a static inline declaration pinned to `https://mcp.postman.com/mcp`
+(the default the placeholder resolves to) with the headers under `http_headers`.
+An inline `mcpServers` object replaces default `.mcp.json` discovery rather than
+adding to it, so there's exactly one `postman` server, and the shared file stays
+as-is for Claude Code, Cursor, and Kimi.
+
+Do **not** "fix" this by adding an Agent Plugins `$schema` to `.mcp.json` or
+switching its `type` to `streamable-http`. Those belong to Codex's Agent Plugins
+format, which it selects only for a **root-level** `plugin.json` carrying an
+`agent-plugins.org` schema URI. This repo has no such file, so Codex parses in
+legacy mode, where `type: "http"` is explicitly accepted and a `$schema` key in
+`.mcp.json` is rejected outright by Codex's own plugin validator.
 
 ## Installing
 
