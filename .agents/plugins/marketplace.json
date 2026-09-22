@@ -1,0 +1,20 @@
+{
+  "name": "postman",
+  "interface": {
+    "displayName": "Postman"
+  },
+  "plugins": [
+    {
+      "name": "postman",
+      "source": {
+        "source": "local",
+        "path": "./"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}

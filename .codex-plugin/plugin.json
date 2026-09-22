@@ -1,0 +1,31 @@
+{
+  "name": "postman",
+  "version": "2.0.0",
+  "description": "Work with Postman from your agent: bootstrap a repo's Postman setup, mock an API before it's implemented, run collection and governance checks in CI, monitor a live endpoint, deploy and debug Postman Flows, and publish generated API documentation.",
+  "author": {
+    "name": "Postman",
+    "url": "https://github.com/postmanlabs"
+  },
+  "homepage": "https://www.postmanlabs.com/skills/",
+  "repository": "https://github.com/postmanlabs/postman-plugin",
+  "license": "Apache-2.0",
+  "keywords": ["postman", "api", "mocking", "monitoring", "ci", "documentation", "ai-readiness", "flows"],
+  "skills": "./skills",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Postman",
+    "shortDescription": "Bootstrap, mock, test, monitor, document, and automate APIs with Postman.",
+    "longDescription": "Postman's skills for coding agents. Bootstrap a repository's Postman setup, mock an API before it's implemented, run collection and governance checks in CI, monitor a deployed endpoint, deploy and debug Postman Flows, and publish generated API documentation — driven through the Postman CLI, with the Postman MCP server bundled for the parts that have no CLI surface.",
+    "developerName": "Postman",
+    "category": "Developer Tools",
+    "capabilities": ["Interactive", "Write"],
+    "websiteURL": "https://www.postmanlabs.com/skills/",
+    "privacyPolicyURL": "https://www.postman.com/legal/privacy-policy/",
+    "termsOfServiceURL": "https://www.postman.com/legal/terms/",
+    "defaultPrompt": [
+      "Set up Postman in this repo.",
+      "Mock this API so the frontend can start.",
+      "Add Postman contract checks to CI."
+    ]
+  }
+}

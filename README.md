@@ -11,6 +11,7 @@ directory rather than copying files into itself:
 | Claude Code plugin | `/plugin marketplace add postmanlabs/postman-plugin` clones this repo | Claude's plugin dir |
 | Cursor plugin | `.cursor-plugin/plugin.json` points at this repo's `skills/` dir | Cursor's plugin dir |
 | Kimi Code plugin | `.kimi-plugin/plugin.json` points at the same `skills/` dir, and bundles the Postman MCP server | Kimi's plugin dir |
+| Codex plugin | `codex plugin marketplace add postmanlabs/postman-plugin` clones this repo and reads `.agents/plugins/marketplace.json`; `.codex-plugin/plugin.json` is the manifest it installs | Codex's plugin store |
 
 The Postman CLI also has its own path for installing these skills, but it's
 still being redesigned — don't treat it as settled or document it here until
@@ -23,10 +24,33 @@ it lands.
 .claude-plugin/plugin.json        the Claude Code plugin manifest
 .cursor-plugin/plugin.json        the Cursor plugin manifest
 .kimi-plugin/plugin.json          the Kimi Code plugin manifest
+.agents/plugins/marketplace.json  the marketplace Codex adds
+.codex-plugin/plugin.json         the Codex plugin manifest
 skills/<name>/SKILL.md            one skill per directory — see skills/ for the current list
 manifest.json                     generated index of the skill files
 scripts/build-manifest.js         regenerates it
 ```
+
+Codex is the one route whose two files do not live in the same directory.
+Codex looks for a plugin manifest at `.codex-plugin/plugin.json`,
+`.claude-plugin/plugin.json`, then `.cursor-plugin/plugin.json` — but it looks
+for a *marketplace* manifest at `.agents/plugins/marketplace.json`,
+`.agents/plugins/api_marketplace.json`, `.claude-plugin/marketplace.json`,
+then `.cursor-plugin/marketplace.json`. There is no
+`.codex-plugin/marketplace.json` in that list, so putting one there would
+silently do nothing and Codex would fall through to Claude's catalog instead.
+
+Two more things Codex does by itself, so the manifest stays quiet about them:
+
+- `skills/`, `.mcp.json`, and `hooks/hooks.json` are Codex's own default
+  component paths. `.codex-plugin/plugin.json` restates `skills` and
+  `mcpServers` for legibility but deliberately declares no `hooks` key —
+  Codex's plugin validator rejects `hooks` as a manifest field, and it finds
+  `hooks/hooks.json` without being told.
+- `hooks/hooks.json` expands `${CLAUDE_PLUGIN_ROOT}`. Codex sets that variable
+  alongside its own `PLUGIN_ROOT` for compatibility with existing plugins, so
+  the shared hooks file works on both hosts unchanged. Don't "fix" it to a
+  Codex-specific variable.
 
 ## Installing
 
@@ -41,6 +65,13 @@ Cursor or Kimi Code:
 
 ```
 npx plugins add postmanlabs/postman-plugin
+```
+
+Codex:
+
+```
+codex plugin marketplace add postmanlabs/postman-plugin
+codex plugin add postman@postman
 ```
 
 ## Changing a skill

@@ -24,7 +24,7 @@ jobs:
 
       - name: Manifests are valid JSON
         run: |
-          for file in .claude-plugin/marketplace.json .claude-plugin/plugin.json .cursor-plugin/plugin.json .kimi-plugin/plugin.json manifest.json; do
+          for file in .claude-plugin/marketplace.json .claude-plugin/plugin.json .cursor-plugin/plugin.json .kimi-plugin/plugin.json .codex-plugin/plugin.json .agents/plugins/marketplace.json manifest.json; do
             node -e "JSON.parse(require('fs').readFileSync('$file','utf8'))" && echo "ok $file"
           done
 
