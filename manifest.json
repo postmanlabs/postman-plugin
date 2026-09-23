@@ -73,8 +73,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-monitoring/SKILL.md",
-          "bytes": 7805,
-          "sha256": "c1f4b6f1194fbedfeb0a8d8d443ccc5b80e8cd4f641b95f5d3867af6bc7c3033"
+          "bytes": 7933,
+          "sha256": "12b40a591fe39a6844edce23a72c1cc11d9eed63fe929a0d0e92e12e1c3b8b12"
         }
       ]
     },
@@ -86,8 +86,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-testing/SKILL.md",
-          "bytes": 4545,
-          "sha256": "7419daa5c0f8fea327c11f4ba790f4d3bb77bc80311f33283a7407b9c2311e36"
+          "bytes": 4818,
+          "sha256": "80028156f3fc62cd3b2f02ddf49004ed3f5c2fa1beff48dbf74c20e3a995f920"
         }
       ]
     },
@@ -99,8 +99,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/bootstrap/SKILL.md",
-          "bytes": 6752,
-          "sha256": "b41a2bf1cb676ace4075dba270e00a092df77732f9f4accb7c4e61d80fed4220"
+          "bytes": 6845,
+          "sha256": "4d765864ee8c8b2b08242b717aeb763375e6fb300bac92d655dfae67f37cce12"
         },
         {
           "target": "reference/cli_installation.md",
@@ -118,8 +118,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/ci-integration/SKILL.md",
-          "bytes": 6282,
-          "sha256": "5133310bc4a81b49192987cc6568fbfc46f7b12fe8fa50fc42a5ee26bb21d4c0"
+          "bytes": 6441,
+          "sha256": "dbe1ca43dc416d74335ed7600023a63cd2e13b53e48f52d6b06b19734e999de0"
         }
       ]
     },
@@ -145,13 +145,13 @@
     {
       "name": "performance-testing",
       "plugin": "postman",
-      "description": "Load-tests a collection with concurrent virtual users, a chosen load profile, and pass/fail thresholds on latency or error rate — run locally or on Postman's cloud runners. Use when the user asks to \"load test this API,\" \"run a performance test,\" \"check how this holds up under load,\" or \"benchmark this collection.\" Covers `postman performance run`. This generates real traffic against a real target — confirm the target and scale before running, the same way any action with effects outside this session gets confirmed.",
+      "description": "Load-tests a collection with concurrent virtual users, a chosen load profile, and pass/fail thresholds on latency or error rate — run locally or on Postman's cloud runners. Use when the user asks to \"load test this API,\" \"run a performance test,\" \"check how this holds up under load,\" or \"benchmark this collection.\" Covers `postman performance run`. Not for page-load or Core Web Vitals (LCP, INP, CLS, Lighthouse, PageSpeed) — that is the `website-performance` skill. This generates real traffic against a real target — confirm the target and scale before running, the same way any action with effects outside this session gets confirmed.",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/performance-testing/SKILL.md",
-          "bytes": 4226,
-          "sha256": "41da742e5cf847c86353518a666122e6bbced2d756ade1f09023004fda54215c"
+          "bytes": 4784,
+          "sha256": "37de87cade0134886151e328b26598f2ce7dd33430fe009a8ccda30c39666bcc"
         }
       ]
     },
@@ -219,6 +219,19 @@
           "source": "skills/postman-mcp-server/references/test.md",
           "bytes": 3332,
           "sha256": "ed840f6ea3039cafe0e3f6ac3f26e8b9a91271ec37dba20260cd2feb5e71eb3e"
+        }
+      ]
+    },
+    {
+      "name": "website-performance",
+      "plugin": "postman",
+      "description": "Makes pages load and respond faster by measuring Core Web Vitals first, then cutting image, JavaScript, CSS, font, cache, and server bottlenecks. Use when the user asks to \"optimize website performance,\" \"improve LCP / INP / CLS,\" \"fix PageSpeed / Lighthouse,\" \"speed up this page,\" \"reduce layout shift,\" or \"optimize images and fonts.\" Not for API load testing or `postman performance run` — that is the `performance-testing` skill.",
+      "files": [
+        {
+          "target": "SKILL.md",
+          "source": "skills/website-performance/SKILL.md",
+          "bytes": 7666,
+          "sha256": "df52359b9a4f04a6817aa6987191cb53b9c25001a412c2b46331042cd0ac8bc8"
         }
       ]
     }
