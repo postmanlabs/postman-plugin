@@ -119,7 +119,7 @@ variable, so the command tries every vendor token it knows in order and falls
 back to `.` for vendors that set the hook's cwd to the plugin root:
 
 ```bash
-for r in "${CLAUDE_PLUGIN_ROOT}" "${CURSOR_PLUGIN_ROOT}" "${KIMI_PLUGIN_ROOT}" "${PLUGIN_ROOT}" .; do
+set +u; for r in "${CLAUDE_PLUGIN_ROOT}" "${CURSOR_PLUGIN_ROOT}" "${KIMI_PLUGIN_ROOT}" "${PLUGIN_ROOT}" .; do
   f="$r/hooks/session-start-context.md"; [ -r "$f" ] && { cat "$f"; exit 0; }
 done
 echo "postman-plugin: ... no plugin-root variable resolved (tried ...)" >&2; exit 1

@@ -28,22 +28,48 @@ for the vendors that set cwd to the plugin root. That works whether a vendor
 substitutes the token textually or merely exports the variable, because the
 command runs through `bash` either way.
 
-Three properties carry the design, and all three are easy to destroy while
+Four properties carry the design, and all four are easy to destroy while
 tidying:
 
+- **`set +u` stays at the front.** Naming four variables when one is set is a
+  `nounset` violation, so under `-u` the command aborts before reading
+  anything — and the single-variable `cat` it replaced did not, making this a
+  regression rather than an inherited limit. Measured: without `set +u` the
+  chain fails under `-u` and `-eu` in bash, sh, zsh, dash and ksh, and `-u`
+  also swallows the loud failure below. With it, all five pass on both paths.
 - **`${CLAUDE_PLUGIN_ROOT}` stays first and stays spelled with bare braces.**
   Vendors that substitute textually match that exact token;
   `${CLAUDE_PLUGIN_ROOT:-}` or `${CLAUDE_PLUGIN_ROOT-}` does not, so a shell
   default silently disables the substitution and leaves the hook depending on
-  the environment variable instead. The price is that the command is not
-  `set -u`-safe — no vendor documents running hook commands with `-u`, and the
-  failure is the loud one below, so this is the right side of the trade.
+  the environment variable instead. `set +u` is what makes the bare form safe,
+  so the two travel together — keep one without the other and the problem is
+  back.
 - **The list is ordered most- to least-supported.** `${PLUGIN_ROOT}` is the
   Agent Plugins standard name and still belongs *last*: fewer clients expand it
   than expand `${CLAUDE_PLUGIN_ROOT}`, and Cursor explicitly does not, so
   promoting it to "the standard one" is a regression.
 - **The loop ends on stderr with a non-zero exit.** Without the guard an
-  unresolved root becomes `cat "/hooks/session-start-context.md"`.
+  unresolved root becomes `cat "/hooks/session-start-context.md"`. Verified
+  through Claude Code: a plugin with the markdown removed reports
+  `exit_code: 1, outcome: "error"` and the message in `stderr`.
+
+## Which shell, and which OS
+
+Claude Code runs a hook's `command` through `sh -c` on macOS and Linux, and on
+Windows through Git Bash if installed or PowerShell if not. The `shell` field is
+real and takes `"bash"` or `"powershell"`; this repo sets `"bash"`, which is
+what keeps Windows on Git Bash. It is ignored if `args` is ever added, since
+`args` switches to exec form and spawns the binary with no shell at all.
+
+The command therefore has to be POSIX-safe rather than bash-specific. Measured
+working in bash, sh, zsh, dash and ksh — dash matters most, being `/bin/sh` on
+Debian and Ubuntu. Untested: busybox `ash`, and Windows itself.
+
+One Windows caveat, before someone "fixes" it: a Windows box with no Git Bash
+cannot run a shell-form hook at all, and no amount of POSIX tidiness changes
+that. It is a pre-existing limit rather than something the vendor chain
+introduced — the `cat` one-liner needed a POSIX shell just as much. Supporting
+it means a separate PowerShell command to keep in step with this one.
 
 ## Some routes never look for the file
 

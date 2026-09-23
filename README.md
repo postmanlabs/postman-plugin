@@ -163,22 +163,28 @@ falls back to `.` for vendors that set the hook's working directory to the
 plugin root:
 
 ```bash
-for r in "${CLAUDE_PLUGIN_ROOT}" "${CURSOR_PLUGIN_ROOT}" "${KIMI_PLUGIN_ROOT}" "${PLUGIN_ROOT}" .; do
+set +u; for r in "${CLAUDE_PLUGIN_ROOT}" "${CURSOR_PLUGIN_ROOT}" "${KIMI_PLUGIN_ROOT}" "${PLUGIN_ROOT}" .; do
   f="$r/hooks/session-start-context.md"; [ -r "$f" ] && { cat "$f"; exit 0; }
 done
 echo "postman-plugin: ... no plugin-root variable resolved (tried ...)" >&2; exit 1
 ```
 
 That works whether a vendor substitutes the token textually or merely exports
-the variable, because the command runs through `bash` either way. Three things
+the variable, because the command runs through `bash` either way. Four things
 about it are load-bearing:
 
+- **`set +u` comes first.** Naming four variables when only one is set is a
+  `nounset` violation, so a vendor that runs hook commands with `-u` would
+  abort the command before it read anything — and the single-variable version
+  this replaced had no such problem, which makes it a regression rather than a
+  pre-existing limitation. `set +u` neutralises it in every shell tested
+  (bash, sh, zsh) under `-u` and `-eu`, and it also preserves the loud failure
+  below, which `-u` otherwise swallows.
 - **`${CLAUDE_PLUGIN_ROOT}` is first and spelled with bare braces.** Vendors
   that substitute textually match that exact token —
   `${CLAUDE_PLUGIN_ROOT:-}` does not match, so a shell default silently
-  disables the substitution. The price is that the command is not
-  `set -u`-safe; no vendor runs hook commands with `-u`, and the failure is
-  the loud one below.
+  disables the substitution. `set +u` is what makes the bare form safe, so the
+  two go together: do not drop one and keep the other.
 - **`${PLUGIN_ROOT}` is last despite being the standard name.** Fewer clients
   expand it, and Cursor explicitly does not. Promoting it is a regression.
 - **The loop ends on stderr with a non-zero exit.** Without the guard an
