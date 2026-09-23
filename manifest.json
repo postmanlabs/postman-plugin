@@ -156,6 +156,19 @@
       ]
     },
     {
+      "name": "datasets",
+      "plugin": "postman",
+      "description": "Turns CSV/JSON files and live databases into one queryable SQL surface, then drives collection runs from it — one iteration per row — or exposes it to scripts as `pm.datasets()`. Use when the user asks to \"run this collection against my test data,\" \"drive iterations from a CSV/database,\" \"query my data with SQL,\" \"join data across sources,\" or \"use a Postman dataset.\" Covers `postman dataset` and the `--iteration-data-dataset`/`--dataset` flags on `collection run`. Needs nothing from bootstrap for file-backed datasets, which work fully offline; database-backed sources need `postman login` and a paid plan even when the dataset is a local file.",
+      "files": [
+        {
+          "target": "SKILL.md",
+          "source": "skills/datasets/SKILL.md",
+          "bytes": 10440,
+          "sha256": "61a750474fae80184f2c9b4de9fe3e3fa10404df788aee59f9d32f0f78159322"
+        }
+      ]
+    },
+    {
       "name": "flows",
       "plugin": "postman",
       "description": "Runs, deploys, and debugs Postman Flows from the command line — executing a flow file locally, triggering a deployed flow over its webhook, deploying one so it becomes callable, and tracing a failed run to the block that broke. Use when the user names a flow and an action (\"run the Checkout flow\", \"deploy this flow\", \"why did that flow run fail\", \"what flows do I have\"). Covers `postman flows list`, `run`, `trigger`, `deploy`, `update`, `list-runs`, and `get-run`.",
