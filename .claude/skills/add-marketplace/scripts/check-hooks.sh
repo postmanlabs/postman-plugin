@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+# Exercise hooks/hooks.json's SessionStart command. Nothing in CI or the
+# pre-commit hook reads hooks/, so this is the only automated check there is.
+#
+# Run from the repo root:
+#   .claude/skills/add-marketplace/scripts/check-hooks.sh
+#   .claude/skills/add-marketplace/scripts/check-hooks.sh KIMI_PLUGIN_ROOT ...
+#   .claude/skills/add-marketplace/scripts/check-hooks.sh none
+#
+# Each named variable is checked on its own, from an empty directory, so the
+# chain's `.` fallback cannot rescue a token that does not actually resolve.
+# Pass the new vendor's variable when adding a route.
+#
+# Pass `none` for a vendor that has no plugin-root variable and should not gain
+# one - a config-only route (opencode) resolves paths against the project root,
+# and there is no token to add to the chain. Naming a variable that does not
+# exist reports a FAIL that reads like a regression when the answer is "not
+# applicable"; `none` says that out loud and still checks the shared chain.
+set -uo pipefail
+
+repo=$PWD
+[ -r "$repo/hooks/hooks.json" ] || { echo "run me from the repo root" >&2; exit 2; }
+
+cmd=$(node -p 'JSON.parse(require("fs").readFileSync("hooks/hooks.json","utf8")).hooks.SessionStart[0].hooks[0].command')
+status=0
+
+# Every root variable the chain knows about, so each check starts from nothing.
+clear_env=(env -u CLAUDE_PLUGIN_ROOT -u CURSOR_PLUGIN_ROOT -u KIMI_PLUGIN_ROOT -u PLUGIN_ROOT)
+
+check_resolves() {
+  local var=$1 out rc
+  out=$(cd "$(mktemp -d)" && "${clear_env[@]}" "$var=$repo" bash -c "$cmd" 2>&1) && rc=0 || rc=$?
+  if [ "$rc" -eq 0 ] && [ -n "$out" ]; then
+    echo "ok   \$$var resolves the plugin root"
+  else
+    echo "FAIL \$$var does not resolve — the hook prints nothing and that route loses its mandate"
+    printf '%s\n' "${out:-<no output>}" | sed 's/^/       /'
+    status=1
+  fi
+}
+
+check_resolves CLAUDE_PLUGIN_ROOT
+
+for var in ${1+"$@"}; do
+  # `none` is an answer, not a variable: this vendor has no plugin root and the
+  # chain is not supposed to grow a token for it.
+  if [ "$var" = none ]; then
+    echo "n/a  this vendor has no plugin-root variable - paths resolve against the project root"
+    continue
+  fi
+  check_resolves "$var"
+done
+
+# With no root variable set the hook must fail loudly rather than
+# cat "/hooks/session-start-context.md" and leave no trace.
+out=$(cd "$(mktemp -d)" && "${clear_env[@]}" bash -c "$cmd" 2>&1) && rc=0 || rc=$?
+if [ "$rc" -ne 0 ] && [ -n "$out" ]; then
+  echo "ok   no root variable -> exit $rc with a message"
+else
+  echo "FAIL no root variable -> exit $rc, output: ${out:-<none>} (want non-zero + a message)"
+  status=1
+fi
+
+exit $status
