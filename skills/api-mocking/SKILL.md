@@ -5,35 +5,21 @@ description: Stands up a fake backend that behaves like a real API — from a co
 
 # API Mocking
 
-## Scope
-
-This skill is the **Postman CLI** (`postman mock`) runbook for **Code Mocks** —
-the code-based mock product. Three things, one model:
-
-- **Local mock** — a Code Mock as files in your repo (`postman/mocks/NAME/`:
-  `config.yaml` + `default.js`). Authored and run on your machine; the `id`
-  lives in `config.yaml`.
-- **Code Mock (cloud)** — the same definition stored in a workspace after
-  `push` (or `generate -w`). Not a URL by itself; its cloud id usually matches
-  the local `config.yaml` `id`.
-- **Mock Server** — the *deployment* of a Code Mock: the durable
-  `https://SLUG.mock.<team>.postman.dev` URL, created by `deploy`. Its
-  `mockServerId` is a different value, used only by `mock log`.
-
-Flow: local folder ──`push`──▶ Code Mock ──`deploy`──▶ Mock Server.
-
-Out of scope: the postman-app UI (Local Mode sidebar, Agent Mode mock tools,
-Simulations) and the older **classic/collection mocks** that serve saved
-collection examples from a `*.mock.pstmn.io` URL — a different product with a
-different model (see the MCP `createMock` flow, not this skill).
-
 ## Overview
+
+This skill covers the Postman CLI (`postman mock`) for **Code Mocks** — the
+code-based mock product. It is not the postman-app UI (Local Mode sidebar,
+Agent Mode tools, Simulations), nor the older classic/collection mocks that
+serve saved collection examples from a `*.mock.pstmn.io` URL — that's a
+different product (the MCP `createMock` flow), not this skill.
 
 A **local** mock is two files on disk: `config.yaml` (name, port, scenarios) and
 `default.js` — a plain Node HTTP server, and the mock itself, not a wrapper
 around one. Generating, inspecting, running, and calling a local mock work for
 a logged-out guest. Only sharing it — pushing to the cloud and deploying a
-durable URL — needs `postman login`.
+durable URL — needs `postman login`. The progression is one model in three
+places: local folder ──`push`──▶ Code Mock (cloud definition) ──`deploy`──▶
+Mock Server (the reachable URL).
 
 Default path: write a local folder, then `mock push` later if something other
 than you needs to hit it over the network (a teammate, CI elsewhere, a webhook

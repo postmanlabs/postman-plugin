@@ -60,8 +60,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-mocking/SKILL.md",
-          "bytes": 9524,
-          "sha256": "8bc2ccaf0421f6e198df5dda0dfa371e58568c0fea0459d5f3a686f6ca5967c2"
+          "bytes": 8955,
+          "sha256": "6ce9c0cd72953bc947f183ec682793c47a0a8bf59331261f595870bbc53946fe"
         }
       ]
     },
