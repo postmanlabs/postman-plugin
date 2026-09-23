@@ -33,7 +33,9 @@ and a cloud dataset are separate things you create separately.
   datasource in *its own SQL dialect* — which is the only thing that works
   for JDBC sources, and what you want for dialect-specific SQL
   (`now() - interval '1 day'`). `dataset query -s` and
-  `dataset view create -s` take the same reference.
+  `dataset view create -s` take the same reference. They are different
+  execution paths, not fallbacks for each other — adding or dropping
+  `--source` to make a failing query work changes what the query *means*.
 - **Local does not mean free, and the plan gate keys off source type, not
   dataset location.** CSV/JSON sources run fully offline, logged out. Any
   *database* source — including one inside a purely local YAML — forces
@@ -137,12 +139,6 @@ and a cloud dataset are separate things you create separately.
 
 ## Anti-patterns
 
-- **Don't copy `source_users` out of the help text.** It is the single most
-  likely reason a first query fails.
-- **Don't reach for `--source` to fix a federated query, or drop it to fix a
-  JDBC one.** They are different execution paths, not fallbacks for each
-  other. Dialect-specific SQL and JDBC need `--source`; cross-source joins
-  cannot use it.
 - **Don't add a database source to make a demo "more realistic."** It
   converts a zero-setup offline dataset into one that needs login, a paid
   plan, network reachability, and (for JDBC/SQL Server) Enterprise. Use CSV
