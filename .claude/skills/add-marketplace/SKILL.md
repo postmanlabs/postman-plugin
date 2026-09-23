@@ -93,10 +93,17 @@ repository, license, keywords), the *structure* from Step 0. A config-only route
 carries pointers, not plugin metadata, so most of those values have nowhere to
 go and that is correct — do not invent keys to hold them.
 
-Pick the starting `version` deliberately. Routes version independently — this
-repo treats differing versions across routes as correct, not drift — so a new
-route starts at whatever is honest for it, usually the current version of the
-skill set it ships.
+**A new route starts at `1.0.0`.** Not `0.1.0`, and not whatever the other
+routes happen to be on. Routes version independently — this repo treats
+differing versions across routes as correct rather than drift — so the new
+route's number says nothing about theirs and has no reason to match. `1.0.0`
+because the route ships the whole skill set on day one: there is no partial
+first release to signal with a `0.x`, and inheriting a number like `2.0.1`
+implies two major versions of history the route does not have.
+
+That version has to appear in every place the route carries it — the manifest
+`version`, plus `X-Plugin-Version` and `User-Agent` in Step 2. A config-only
+route with no `version` key carries it in the two header strings alone.
 
 ## Step 2 — The MCP config
 
@@ -232,7 +239,7 @@ node .claude/hooks/validate-manifests.js && echo "manifests consistent"
 
 # No other route's version may move. Expect ONLY your own route's files here -
 # scope it by file, not by grepping the diff text, since an added
-# `"version": "0.1.0"` line names no vendor and slips a text filter.
+# `"version": "1.0.0"` line names no vendor and slips a text filter.
 git diff --name-only main -- '*plugin.json' 'mcp.*.json'
 ```
 
@@ -269,10 +276,10 @@ covers what each of those checks and — more usefully — what none of them do.
 - **Never bump another route's version.** Adding a marketplace changes nothing
   that the existing routes ship, so their `version`, `X-Plugin-Version` and
   `User-Agent` strings must come out of your diff untouched. A new route sets
-  its own starting version (Step 1) and that is the only version this work
-  touches. If you find yourself editing `.claude-plugin/plugin.json`'s version
-  to add a route, stop — you are about to spend a release on every other route
-  for a change none of them contain.
+  its own starting version — `1.0.0`, per Step 1 — and that is the only version
+  this work touches. If you find yourself editing the version in
+  `.claude-plugin/plugin.json` to add a route, stop: you are about to spend a
+  release on every other route for a change none of them contain.
 - **Do not run `node scripts/build-manifest.js` expecting a diff** *from the
   route itself*. `manifest.json` indexes the skill *files* and takes `plugin`
   from `.claude-plugin/plugin.json`'s name; adding a route changes neither. So
