@@ -16,6 +16,7 @@
   "license": "Apache-2.0",
   "author": {
     "name": "Postman",
+    "email": "postman-plugins@postman.com",
     "url": "https://github.com/postmanlabs"
   },
   "skills": [
