@@ -22,11 +22,24 @@ jobs:
       - name: Manifest is in sync with the skill files
         run: node scripts/build-manifest.js --check
 
-      - name: Manifests are valid JSON
+      - name: Every JSON file parses
         run: |
-          for file in .claude-plugin/marketplace.json .claude-plugin/plugin.json .cursor-plugin/plugin.json .kimi-plugin/plugin.json mcp.claude-code.json mcp.cursor.json manifest.json; do
-            node -e "JSON.parse(require('fs').readFileSync('$file','utf8'))" && echo "ok $file"
+          # `cmd && echo` inside a loop does not trip `bash -e`, so collect failures explicitly.
+          status=0
+          for file in $(git ls-files '*.json'); do
+            if node -e "JSON.parse(require('fs').readFileSync('$file','utf8'))"; then
+              echo "ok $file"
+            else
+              echo "::error file=$file::invalid JSON"; status=1
+            fi
           done
+          exit $status
+
+      # SchemaStore's Claude Code schemas check structure and types but accept
+      # invalid plugin names and unknown keys; Claude Code's own validator catches
+      # those, so both run.
+      - name: Claude Code accepts the marketplace and plugin manifests
+        run: npx -y @anthropic-ai/claude-code plugin validate .
 
       - name: Every skill has frontmatter Claude Code can load
         run: |
@@ -37,3 +50,42 @@ jobs:
             grep -qE '^description:' "$skill" || { echo "::error file=$skill::frontmatter has no description"; status=1; }
           done
           exit $status
+
+  # One check per official schema. Schemas are fetched from the vendor's source
+  # on every run, so a vendor tightening its schema fails CI here rather than
+  # at marketplace review. Files with no published schema (.kimi-plugin/plugin.json,
+  # mcp.*.json, manifest.json) are covered by the parse and manifest steps above.
+  schema:
+    name: Schema / ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Claude Code marketplace
+            file: .claude-plugin/marketplace.json
+            schema: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/claude-code-marketplace.json
+            spec: draft7
+          - name: Claude Code plugin
+            file: .claude-plugin/plugin.json
+            schema: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/claude-code-plugin-manifest.json
+            spec: draft7
+          - name: Cursor plugin
+            file: .cursor-plugin/plugin.json
+            schema: https://raw.githubusercontent.com/cursor/plugins/main/schemas/plugin.schema.json
+            spec: draft7
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Fetch schema
+        run: curl -fsSL "${{ matrix.schema }}" -o "$RUNNER_TEMP/schema.json"
+
+      - name: Validate ${{ matrix.file }}
+        run: |
+          npx -y -p ajv-cli@5 -p ajv-formats@3 ajv validate \
+            --spec=${{ matrix.spec }} -c ajv-formats --strict=false --all-errors \
+            -s "$RUNNER_TEMP/schema.json" -d "${{ matrix.file }}"
