@@ -3,6 +3,7 @@
   "skills": {
     "paths": ["./skills"]
   },
+  "instructions": ["./hooks/session-start-context.md"],
   "mcp": {
     "postman": {
       "type": "remote",

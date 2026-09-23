@@ -24,6 +24,19 @@ the project root and scanned for `**/SKILL.md`, exactly like the other routes'
 skills pointers. Note that it is in opencode's config *schema* but not in its
 prose docs — read the schema, not the docs page, when changing it.
 
+opencode also supports **no hooks of any kind** — there is nothing
+hook-, event- or session-shaped anywhere in its config schema, and its hook
+equivalent is a JS plugin module, which this repo deliberately does not ship. So
+`hooks/hooks.json` never fires on this route. What stands in for it is
+`instructions`, opencode's rules-file mechanism: it points at the same
+`hooks/session-start-context.md` the hook injects everywhere else, so the
+session-start mandate still lands without a second copy of the markdown. It is
+not a hook — it is always-on context rather than a `SessionStart` event — but
+the effect on the session is the one that matters.
+
+Both `skills.paths` and `instructions` are resolved against the project root, so
+a user who copies `opencode.json` into their own project has to repoint both.
+
 The Postman CLI also has its own path for installing these skills, but it's
 still being redesigned — don't treat it as settled or document it here until
 it lands.
@@ -35,7 +48,7 @@ it lands.
 .claude-plugin/plugin.json        the Claude Code plugin manifest
 .cursor-plugin/plugin.json        the Cursor plugin manifest
 .kimi-plugin/plugin.json          the Kimi Code plugin manifest — carries its MCP block inline
-opencode.json                     opencode's project config — skills pointer and MCP block, both inline
+opencode.json                     opencode's project config — skills pointer, instructions pointer and MCP block, all inline
 mcp.claude-code.json              Claude Code's MCP config
 mcp.cursor.json                   Cursor's MCP config
 skills/<name>/SKILL.md            one skill per directory — see skills/ for the current list
@@ -68,13 +81,17 @@ git clone https://github.com/postmanlabs/postman-plugin
 cd postman-plugin && opencode
 ```
 
-or copy that file into your own project and repoint `skills.paths` at the
-clone's `skills/` directory (the path is resolved against the project root, and
+or copy that file into your own project and repoint both `skills.paths` and
+`instructions` at the clone (paths are resolved against the project root, and
 `~/` is expanded):
 
 ```
-"skills": { "paths": ["~/src/postman-plugin/skills"] }
+"skills": { "paths": ["~/src/postman-plugin/skills"] },
+"instructions": ["~/src/postman-plugin/hooks/session-start-context.md"]
 ```
+
+Repointing `skills.paths` alone gets the skills but drops the session-start
+mandate, which is the failure that reads as if nothing were installed.
 
 ## Data sent to Postman
 
