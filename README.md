@@ -3,14 +3,26 @@
 Postman's skills for coding agents.
 
 The skill files in this repository are the single source of truth for every
-plugin route below — each tool's manifest points back at the same `skills/`
-directory rather than copying files into itself:
+plugin route below — each route's manifest or config points back at the same
+`skills/` directory rather than copying files into itself:
 
 | Route | How it gets the files | MCP config it reads | Reports itself as |
 | --- | --- | --- | --- |
 | Claude Code plugin | `/plugin marketplace add postmanlabs/postman-plugin` clones this repo | `mcp.claude-code.json` | `postman-claude-code-plugin` |
 | Cursor plugin | `.cursor-plugin/plugin.json` points at this repo's `skills/` dir | `mcp.cursor.json` | `postman-cursor-plugin` |
 | Kimi Code plugin | `.kimi-plugin/plugin.json` points at the same `skills/` dir | `mcpServers` in `.kimi-plugin/plugin.json` | `postman-kimi-plugin` |
+| opencode | `opencode.json` points `skills.paths` at the same `skills/` dir | `mcp` in `opencode.json` | `postman-opencode-plugin` |
+
+opencode is the odd one out: it has no plugin-manifest format at all. Its
+plugins are npm modules loaded from a `plugin` array, and its skills are found
+by scanning directories, so there is nothing that clones this repo and reads a
+manifest from it. What it does have is a project config — `opencode.json` at a
+repo root — whose `skills.paths` takes a list of directories to scan and whose
+`mcp` block configures servers inline. That is the whole route. It is a real
+pointer rather than a workaround: `skills.paths` entries are resolved against
+the project root and scanned for `**/SKILL.md`, exactly like the other routes'
+skills pointers. Note that it is in opencode's config *schema* but not in its
+prose docs — read the schema, not the docs page, when changing it.
 
 The Postman CLI also has its own path for installing these skills, but it's
 still being redesigned — don't treat it as settled or document it here until
@@ -23,6 +35,7 @@ it lands.
 .claude-plugin/plugin.json        the Claude Code plugin manifest
 .cursor-plugin/plugin.json        the Cursor plugin manifest
 .kimi-plugin/plugin.json          the Kimi Code plugin manifest — carries its MCP block inline
+opencode.json                     opencode's project config — skills pointer and MCP block, both inline
 mcp.claude-code.json              Claude Code's MCP config
 mcp.cursor.json                   Cursor's MCP config
 skills/<name>/SKILL.md            one skill per directory — see skills/ for the current list
@@ -43,6 +56,24 @@ Cursor or Kimi Code:
 
 ```
 npx plugins add postmanlabs/postman-plugin
+```
+
+opencode has no install command for a repo of skills — `opencode plugin` takes
+an npm module, not a git repo. It reads `opencode.json` from the project root
+instead, so either run opencode from inside a clone of this repo, where the
+checked-in `opencode.json` already applies:
+
+```
+git clone https://github.com/postmanlabs/postman-plugin
+cd postman-plugin && opencode
+```
+
+or copy that file into your own project and repoint `skills.paths` at the
+clone's `skills/` directory (the path is resolved against the project root, and
+`~/` is expanded):
+
+```
+"skills": { "paths": ["~/src/postman-plugin/skills"] }
 ```
 
 ## Data sent to Postman
@@ -103,8 +134,8 @@ too — see [The MCP server config](#the-mcp-server-config). None of the CLI
 flags above apply to that traffic; declining it means not installing the MCP
 server.
 
-All three configs name their endpoint outright — `/mcp` for Claude Code and
-Cursor, `/minimal` for Kimi. Don't reintroduce a `${POSTMAN_MCP_MODE:-...}`
+Every config names its endpoint outright — `/mcp` for Claude Code and Cursor,
+`/minimal` for Kimi Code and opencode. Don't reintroduce a `${POSTMAN_MCP_MODE:-...}`
 placeholder to express the default: no route expands `${...}` inside an MCP URL,
 so the whole segment ships literally and the request never reaches the intended
 mode. `claude plugin list --json` reports the registered URL with the
@@ -122,6 +153,7 @@ traffic can be attributed to the agent it came from:
 mcp.claude-code.json        <- .claude-plugin/plugin.json  "mcpServers": "./mcp.claude-code.json"
 mcp.cursor.json             <- .cursor-plugin/plugin.json  "mcpServers": "./mcp.cursor.json"
 .kimi-plugin/plugin.json       inline — Kimi documents no path form
+opencode.json                  inline under "mcp" — opencode's schema admits no path form
 ```
 
 Maintained by hand, and they are not interchangeable copies. Three things
@@ -136,9 +168,9 @@ three:
   route the manifest `version` and both header strings must agree, and nothing
   enforces that either — a mismatch is accepted at runtime and the traffic is
   filed under a version that was never cut.
-- **The URL's mode segment** (`mcp` vs Kimi's `minimal`) selects a different
-  tool surface. Unifying it changes which tools Kimi users get — a product
-  decision, not a tidy-up.
+- **The URL's mode segment** (`/mcp` vs `/minimal`) selects a different tool
+  surface. Unifying it changes which tools the `/minimal` routes (Kimi Code,
+  opencode) get — a product decision, not a tidy-up.
 
 There is no generator, deliberately: a tool whose job is to keep these
 identical is wrong once versions are per-route.
@@ -151,13 +183,14 @@ identical is wrong once versions are per-route.
    independently — differing versions across routes are correct, not drift —
    so a bump means the three strings that one route owns: `version` in its
    manifest, plus `X-Plugin-Version` and `User-Agent` in its MCP config (for
-   Kimi all three live in the manifest). Nothing verifies this, so check the
-   route's three strings against each other before you commit. Don't skip the
-   bump itself either: `claude plugin update` compares only that string against a
-   version-keyed cache, so a release that changes files without bumping it
-   reports "already at the latest version" and delivers nothing. Semver here is
-   major for a breaking change to a skill's contract, minor for a new skill,
-   patch for wording or a bug fix.
+   Kimi all three live in the manifest; opencode's config schema admits no
+   `version` key at all, so that route owns only the two header strings).
+   Nothing verifies this, so check the route's strings against each other
+   before you commit. Don't skip the bump itself either: `claude plugin update`
+   compares only that string against a version-keyed cache, so a release that
+   changes files without bumping it reports "already at the latest version" and
+   delivers nothing. Semver here is major for a breaking change to a skill's
+   contract, minor for a new skill, patch for wording or a bug fix.
 4. Commit all of it. CI runs `--check` and fails if you forget step 2.
 
 `marketplace.json` deliberately declares no version — it would override
