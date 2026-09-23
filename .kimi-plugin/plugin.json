@@ -25,6 +25,7 @@
     "postman": {
       "transport": "http",
       "url": "https://mcp.postman.com/minimal",
+      "auth": "oauth",
       "headers": {
         "X-Source": "postman-kimi-plugin",
         "X-Plugin-Version": "2.0.0",

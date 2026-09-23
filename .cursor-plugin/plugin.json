@@ -4,8 +4,7 @@
   "version": "2.0.0",
   "description": "Work with Postman from your agent: bootstrap a repo's Postman setup, mock an API before it's implemented, run collection and governance checks in CI, monitor a live endpoint, deploy and debug Postman Flows, and publish generated API documentation.",
   "author": {
-    "name": "Postman",
-    "url": "https://github.com/postmanlabs"
+    "name": "Postman"
   },
   "homepage": "https://www.postmanlabs.com/skills/",
   "repository": "https://github.com/postmanlabs/postman-plugin",
@@ -20,6 +19,5 @@
     "flows"
   ],
   "skills": "skills",
-  "version": "2.0.0",
   "mcpServers": "./mcp.cursor.json"
 }
