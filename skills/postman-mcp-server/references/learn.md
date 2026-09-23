@@ -13,10 +13,10 @@ Use this to learn *about Postman itself* — not to search the user's own collec
 
 This command uses `searchLearningCenter`, which the Postman MCP Server exposes only in **Full mode**.
 
-The mode is fixed by the endpoint in each route's MCP config, not by the environment. The Claude Code and Cursor routes point at `https://mcp.postman.com/mcp`, so the tool is present. The Kimi route points at `https://mcp.postman.com/minimal`, so it is not. **`POSTMAN_MCP_MODE` is not read on any of these routes** — never tell the user to set or unset it to change the tool set.
+The mode is fixed by the endpoint in each route's MCP config, not by the environment. A route pinned to `https://mcp.postman.com/mcp` has the tool; a route pinned to `https://mcp.postman.com/minimal` does not. Read it off the route's own MCP config rather than inferring it from the agent's name — which endpoint an agent gets is a per-route product decision, and new routes are added. **`POSTMAN_MCP_MODE` is not read on any route** — never tell the user to set or unset it to change the tool set.
 
 - If MCP tools aren't available at all, tell the user: "Run `/postman:setup` to configure the Postman MCP Server."
-- If `searchLearningCenter` is missing, call `getEnabledTools` to confirm the active tool set, then split on the route. On Kimi it is absent by design and the user cannot change it from the client: say the Learning Center tool isn't part of that route's tool set and point them at https://learning.postman.com to search directly. On Claude Code or Cursor its absence is not a mode problem — the server isn't connected as configured: "Run `/postman:setup` to configure the Postman MCP Server."
+- If `searchLearningCenter` is missing, call `getEnabledTools` to confirm the active tool set, then split on which endpoint the route is pinned to. On a `/minimal` route it is absent by design and the user cannot change it from the client: say the Learning Center tool isn't part of that route's tool set and point them at https://learning.postman.com to search directly. On a `/mcp` route its absence is not a mode problem — the server isn't connected as configured: "Run `/postman:setup` to configure the Postman MCP Server."
 
 Do not answer a "how do I..." question from memory when the tool is unavailable. Cite only URLs the tool returned, or send the user to the Learning Center.
 
@@ -68,6 +68,6 @@ To create a mock server in Postman:
 ## Error Handling
 
 - **MCP not configured:** "Run `/postman:setup` to configure the Postman MCP Server."
-- **`searchLearningCenter` unavailable:** Confirm with `getEnabledTools`. Expected on the Kimi route, which is pinned to the `minimal` endpoint — say the tool isn't in that route's tool set and point the user at https://learning.postman.com. On Claude Code or Cursor: "Run `/postman:setup` to configure the Postman MCP Server."
+- **`searchLearningCenter` unavailable:** Confirm with `getEnabledTools`. Expected on any route pinned to the `minimal` endpoint — say the tool isn't in that route's tool set and point the user at https://learning.postman.com. On a `/mcp` route: "Run `/postman:setup` to configure the Postman MCP Server."
 - **401 Unauthorized:** "Your Postman API key was rejected. Generate a new one at https://go.postman.co/settings/me/api-keys and run `/postman:setup`."
 - **No results:** "Nothing matched in the Learning Center. Try rephrasing with the Postman feature name, or ask about a more specific step."
