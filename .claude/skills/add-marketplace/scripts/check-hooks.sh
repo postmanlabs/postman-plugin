@@ -11,11 +11,9 @@
 # chain's `.` fallback cannot rescue a token that does not actually resolve.
 # Pass the new vendor's variable when adding a route.
 #
-# Pass `none` for a vendor that has no plugin-root variable and should not gain
-# one - a config-only route (opencode) resolves paths against the project root,
-# and there is no token to add to the chain. Naming a variable that does not
-# exist reports a FAIL that reads like a regression when the answer is "not
-# applicable"; `none` says that out loud and still checks the shared chain.
+# Pass `none` for a config-only vendor: it resolves paths against the project
+# root, so it has no token to add to the chain. Naming a variable that does not
+# exist would report a FAIL that reads like a regression.
 set -uo pipefail
 
 repo=$PWD

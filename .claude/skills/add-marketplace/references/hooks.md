@@ -68,13 +68,12 @@ relative to the root it provides. Never a copy of the markdown.
 ## What to establish for a new vendor
 
 1. Whether it supports hooks at all — and if not, **whether it has a
-   context-injection mechanism instead**. Do not stop at "no hooks" and record
-   it as a limitation: that was this reference's advice and it was wrong, and
-   following it would have shipped opencode as a route whose skills load and
-   whose agent never mentions Postman. opencode has nothing hook-, event- or
-   session-shaped anywhere in its config schema (`experimental` included), but
-   it does have `instructions`, its rules-file mechanism — an array of paths or
-   globs whose contents go to the model:
+   context-injection mechanism instead**. "No hooks" is not the end of the
+   enquiry; stopping there ships a route whose skills load and whose agent never
+   mentions Postman. opencode has nothing hook-, event- or session-shaped
+   anywhere in its config schema (`experimental` included), but it does have
+   `instructions`, its rules-file mechanism — an array of paths or globs whose
+   contents go to the model:
 
    ```json
    "instructions": ["./hooks/session-start-context.md"]
@@ -83,8 +82,7 @@ relative to the root it provides. Never a copy of the markdown.
    Same shared markdown, no copy, and no plugin-root variable needed because it
    resolves against the project root. It is always-on context rather than a
    `SessionStart` event, so the mechanism differs, but the effect on the session
-   is the one that matters. Record a limitation only after looking for this and
-   finding nothing.
+   is the one that matters. Record a limitation only after finding nothing.
 2. The **event name** for session start. Claude spells it `SessionStart`.
    Codex spells it the same way — verified: its `HooksFile` is
    `{description?, hooks: {…}}` with PascalCase event keys
@@ -120,8 +118,7 @@ plugin through its Agent Plugins loader, which has no hooks component, so
 goes dead — including the ones that work today.
 
 **The trigger is the filename.** A config-only vendor's own root file is not
-affected and is usually its only possible route shape: `opencode.json` is a
-different name in a different namespace, it is in neither
+affected, and is usually its only possible route shape: `opencode.json` is a
+different name in a different namespace, in neither
 `DISCOVERABLE_PLUGIN_MANIFEST_PATHS` nor the Agent Plugins set, so Codex never
-loads it and it cannot reroute anything. Do not let this section talk a
-config-only route out of existing.
+loads it and it cannot reroute anything.

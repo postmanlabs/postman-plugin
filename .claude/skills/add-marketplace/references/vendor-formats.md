@@ -2,8 +2,8 @@
 
 Reference for Step 0. These routes disagree on every structural key, because
 each vendor specified its own — so this table is a record of what was verified
-per vendor, never a template to copy from. Note that the disagreement now
-extends to whether a vendor has a manifest at all.
+per vendor, never a template to copy from. The disagreement extends to whether a
+vendor has a manifest at all.
 
 | | Claude Code | Cursor | Kimi Code | Codex | opencode |
 | --- | --- | --- | --- | --- | --- |

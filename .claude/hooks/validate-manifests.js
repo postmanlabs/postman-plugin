@@ -12,17 +12,20 @@ const fs = require('fs'),
     path = require('path'),
     { execFileSync } = require('child_process');
 
-// A route reads its MCP headers under exactly one of these. The other spelling
-// is dropped without an error, leaving the traffic unattributed.
-const HEADER_KEY_BY_MANIFEST_DIR = { '.codex-plugin': 'http_headers' },
-    DEFAULT_HEADER_KEY = 'headers',
+// Each of these keys is read by one set of vendors and ignored without an error
+// by the rest, so the wrong spelling leaves a route that loads, connects and
+// reports nothing. Both spellings are checked for so that failure is loud.
+const SERVER_KEYS = ['mcpServers', 'mcp'],
+    HEADER_KEYS = ['headers', 'http_headers'],
+    DEFAULT_ROUTE_KEYS = { serverKey: 'mcpServers', headerKey: 'headers' },
+
+    // Per-route deviations from DEFAULT_ROUTE_KEYS.
+    ROUTE_KEYS_BY_MANIFEST_DIR = { '.codex-plugin': { headerKey: 'http_headers' } },
     MANIFEST_DIR_PATTERN = /^\..+-plugin$/,
 
     // Routes with no manifest for MANIFEST_DIR_PATTERN to match. A route in
     // neither set is never checked, which looks exactly like passing.
-    CONFIG_ONLY_ROUTES = [
-        { file: 'opencode.json', serverKey: 'mcp', ignoredServerKey: 'mcpServers', headerKey: 'headers' }
-    ];
+    CONFIG_ONLY_ROUTES = [{ file: 'opencode.json', keys: { serverKey: 'mcp' } }];
 
 const ROOT = repoRootOrExit();
 
@@ -76,67 +79,53 @@ function manifestIsInSyncWithSkillFiles () {
 function manifestRoutesAgreeWithTheirMcpConfig () {
     for (const dir of manifestRouteDirs()) {
         const manifestRel = `${dir}/plugin.json`,
-            manifest = readJson(manifestRel),
-            version = manifest.version;
+            manifest = readJson(manifestRel);
 
-        // The marketplace route declares no version on purpose, and a route may
-        // legitimately ship no MCP server at all.
-        if (!version || !manifest.mcpServers) {
-            continue;
-        }
-
-        const resolved = resolveMcpServers(manifest.mcpServers, manifestRel);
-
-        if (!resolved) {
-            continue;
-        }
-
-        const headerKey = HEADER_KEY_BY_MANIFEST_DIR[dir] || DEFAULT_HEADER_KEY,
-            ignoredHeaderKey = headerKey === DEFAULT_HEADER_KEY ? 'http_headers' : DEFAULT_HEADER_KEY;
-
-        for (const [name, server] of Object.entries(resolved.servers || {})) {
-            const at = `${resolved.where} (${name})`,
-                headers = server[headerKey] || {},
-                source = recordSource(headers, at);
-
-            if (server[ignoredHeaderKey]) {
-                errors.push(`${at}: headers are under \`${ignoredHeaderKey}\`, but this route reads \`${headerKey}\` - the block is silently ignored and the traffic arrives unattributed`);
-            }
-
-            if (headers['X-Plugin-Version'] !== version) {
-                errors.push(`${at}: X-Plugin-Version is ${headers['X-Plugin-Version'] || '(unset)'} but ${manifestRel} declares version ${version}`);
-            }
-
-            if (source) {
-                checkUserAgent(headers, at, source, version);
-            }
-        }
+        checkRoute(manifest, manifestRel, routeKeys(ROUTE_KEYS_BY_MANIFEST_DIR[dir]), manifest.version);
     }
 }
 
 function configOnlyRoutesCarryTheirOwnAttribution () {
     for (const route of CONFIG_ONLY_ROUTES.filter((r) => exists(r.file))) {
-        const cfg = readJson(route.file);
+        checkRoute(readJson(route.file), route.file, routeKeys(route.keys), null);
+    }
+}
 
-        if (cfg[route.ignoredServerKey]) {
-            errors.push(`${route.file}: MCP servers are under \`${route.ignoredServerKey}\`, but this route reads \`${route.serverKey}\` - the block is ignored and no server is configured`);
+function routeKeys (overrides) {
+    return Object.assign({}, DEFAULT_ROUTE_KEYS, overrides);
+}
+
+/** `manifestVersion` is null for a route whose format carries no version key:
+ *  with no field to compare against, the headers are checked against each other. */
+function checkRoute (config, where, keys, manifestVersion) {
+    const found = mcpServersOf(config, where, keys.serverKey);
+
+    if (!found) {
+        return;
+    }
+
+    const ignoredHeaderKey = theOtherKey(HEADER_KEYS, keys.headerKey);
+
+    for (const [name, server] of Object.entries(found.servers)) {
+        const at = `${found.where} (${name})`,
+            headers = server[keys.headerKey] || {},
+            declared = headers['X-Plugin-Version'],
+            source = recordSource(headers, at),
+            version = manifestVersion || declared;
+
+        if (server[ignoredHeaderKey]) {
+            errors.push(`${at}: headers are under \`${ignoredHeaderKey}\`, but this route reads \`${keys.headerKey}\` - the block is silently ignored and the traffic arrives unattributed`);
         }
 
-        for (const [name, server] of Object.entries(cfg[route.serverKey] || {})) {
-            const at = `${route.file} (${name})`,
-                headers = server[route.headerKey] || {},
-                source = recordSource(headers, at),
-                version = headers['X-Plugin-Version'];
+        if (!version) {
+            errors.push(`${at}: no X-Plugin-Version header, and ${where} declares no version either - this route's traffic is filed under no version at all`);
+        }
+        else if (declared !== version) {
+            errors.push(`${at}: X-Plugin-Version is ${declared || '(unset)'} but ${where} declares version ${version}`);
+        }
 
-            // No manifest field to compare against, so the two header strings
-            // are only checked against each other.
-            if (!version) {
-                errors.push(`${at}: no X-Plugin-Version header - this route carries the version nowhere else, so the traffic is filed under none`);
-            }
-
-            if (source && version) {
-                checkUserAgent(headers, at, source, version);
-            }
+        if (source && version && headers['User-Agent'] !== `${source}/${version}`) {
+            errors.push(`${at}: User-Agent is ${headers['User-Agent'] || '(unset)'}, expected ${source}/${version}`);
         }
     }
 }
@@ -164,27 +153,64 @@ function recordSource (headers, at) {
     return source;
 }
 
-function checkUserAgent (headers, at, source, version) {
-    if (headers['User-Agent'] !== `${source}/${version}`) {
-        errors.push(`${at}: User-Agent is ${headers['User-Agent'] || '(unset)'}, expected ${source}/${version}`);
+/** This route's MCP servers and the file holding them - inline, or the file the
+ *  manifest points at - or null when it declares none. The wrong key is what
+ *  this looks hardest for: with no servers to iterate, every later check passes
+ *  by doing nothing. */
+function mcpServersOf (config, where, serverKey) {
+    const ignored = theOtherKey(SERVER_KEYS, serverKey),
+        declared = config[serverKey];
+
+    if (declared === undefined) {
+        if (config[ignored]) {
+            errors.push(wrongServerKey(where, serverKey, ignored));
+        }
+
+        // Otherwise the route ships no MCP server, which is allowed.
+        return null;
     }
-}
 
-/** `mcpServers` is an inline object, or a path relative to the repo root. */
-function resolveMcpServers (mcpServers, manifestRel) {
-    if (typeof mcpServers !== 'string') {
-        return { servers: mcpServers, where: manifestRel };
-    }
+    const found = typeof declared === 'string' ?
+        externalMcpServers(declared, where, serverKey, ignored) :
+        { servers: declared, where };
 
-    const where = mcpServers.replace(/^\.\//, '');
-
-    if (!exists(where)) {
-        errors.push(`${manifestRel}: mcpServers points at ${where}, which does not exist`);
+    if (found && !Object.keys(found.servers).length) {
+        errors.push(`${found.where}: \`${serverKey}\` is empty - this route configures no MCP server`);
 
         return null;
     }
 
-    return { servers: readJson(where).mcpServers, where };
+    return found;
+}
+
+function externalMcpServers (declaredPath, where, serverKey, ignored) {
+    const file = declaredPath.replace(/^\.\//, '');
+
+    if (!exists(file)) {
+        errors.push(`${where}: ${serverKey} points at ${file}, which does not exist`);
+
+        return null;
+    }
+
+    const external = readJson(file);
+
+    if (external[serverKey] === undefined) {
+        errors.push(external[ignored] ?
+            wrongServerKey(file, serverKey, ignored) :
+            `${file}: no \`${serverKey}\` block, but ${where} points here for one`);
+
+        return null;
+    }
+
+    return { servers: external[serverKey], where: file };
+}
+
+function wrongServerKey (where, serverKey, ignored) {
+    return `${where}: MCP servers are under \`${ignored}\`, but this route reads \`${serverKey}\` - the block is silently ignored and no server is configured`;
+}
+
+function theOtherKey (pair, key) {
+    return pair[0] === key ? pair[1] : pair[0];
 }
 
 function manifestRouteDirs () {
