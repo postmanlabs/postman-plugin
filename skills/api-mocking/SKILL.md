@@ -5,6 +5,28 @@ description: Stands up a fake backend that behaves like a real API — from a co
 
 # API Mocking
 
+## Scope
+
+This skill is the **Postman CLI** (`postman mock`) runbook for **Code Mocks** —
+the code-based mock product. Three things, one model:
+
+- **Local mock** — a Code Mock as files in your repo (`postman/mocks/NAME/`:
+  `config.yaml` + `default.js`). Authored and run on your machine; the `id`
+  lives in `config.yaml`.
+- **Code Mock (cloud)** — the same definition stored in a workspace after
+  `push` (or `generate -w`). Not a URL by itself; its cloud id usually matches
+  the local `config.yaml` `id`.
+- **Mock Server** — the *deployment* of a Code Mock: the durable
+  `https://SLUG.mock.<team>.postman.dev` URL, created by `deploy`. Its
+  `mockServerId` is a different value, used only by `mock log`.
+
+Flow: local folder ──`push`──▶ Code Mock ──`deploy`──▶ Mock Server.
+
+Out of scope: the postman-app UI (Local Mode sidebar, Agent Mode mock tools,
+Simulations) and the older **classic/collection mocks** that serve saved
+collection examples from a `*.mock.pstmn.io` URL — a different product with a
+different model (see the MCP `createMock` flow, not this skill).
+
 ## Overview
 
 A **local** mock is two files on disk: `config.yaml` (name, port, scenarios) and
