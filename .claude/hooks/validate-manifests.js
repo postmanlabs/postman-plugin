@@ -1,30 +1,10 @@
 #!/usr/bin/env node
 /**
- * PreToolUse guard: refuse a `git commit` while the vendor manifests disagree.
+ * PreToolUse guard: refuses a `git commit` while the vendor routes disagree.
+ * Silent when consistent; exits 2 with the reason when not.
  *
- * Wired from .claude/settings.local.json with `if: "Bash(git commit*)"`, so it
- * only spawns on a commit. Silent when everything is consistent; on a problem it
- * writes to stderr and exits 2, which blocks the commit and hands the reason
- * back to Claude.
- *
- * The first two checks mirror CI's `manifest` job, just locally and without the
- * network. The rest are the ones CI cannot do cheaply and the README asks you to
- * "verify by eye": per-route version agreement, X-Source uniqueness, and that
- * each route spells its header and MCP keys the way that vendor deserializes
- * them. Every one of those is a silent failure at runtime - the traffic is
- * accepted and filed under a version that was never cut, two routes collapse
- * into one telemetry bucket, or a misspelled key is dropped and the requests go
- * out unattributed while the server still connects.
- *
- * Routes come in two shapes and both must be covered. Manifest routes are found
- * by globbing `.*-plugin/plugin.json`. Config-only routes (opencode) have no
- * manifest at all and match no such glob, so they are listed explicitly in
- * CONFIG_ONLY_ROUTES - a route that is in neither is invisible here, which
- * looks exactly like passing.
- *
- * Deliberately does NOT fetch vendor schemas. That needs network and an npx
- * download per run, which is too slow for a pre-commit gate; CI's `schema` job
- * owns it.
+ * Vendor key spellings and per-route invariants are documented in
+ * .claude/skills/add-marketplace/references/validation.md.
  */
 'use strict';
 
@@ -32,191 +12,224 @@ const fs = require('fs'),
     path = require('path'),
     { execFileSync } = require('child_process');
 
-let ROOT;
+// A route reads its MCP headers under exactly one of these. The other spelling
+// is dropped without an error, leaving the traffic unattributed.
+const HEADER_KEY_BY_MANIFEST_DIR = { '.codex-plugin': 'http_headers' },
+    DEFAULT_HEADER_KEY = 'headers',
+    MANIFEST_DIR_PATTERN = /^\..+-plugin$/,
 
-try {
-    ROOT = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
-}
-catch (e) {
-    // Not a git repo - nothing to guard.
-    process.exit(0);
-}
+    // Routes with no manifest for MANIFEST_DIR_PATTERN to match. A route in
+    // neither set is never checked, which looks exactly like passing.
+    CONFIG_ONLY_ROUTES = [
+        { file: 'opencode.json', serverKey: 'mcp', ignoredServerKey: 'mcpServers', headerKey: 'headers' }
+    ];
 
-// Only guard this repository. A `git commit` anywhere else is none of our business.
-if (!fs.existsSync(path.join(ROOT, 'scripts', 'build-manifest.js'))) {
+const ROOT = repoRootOrExit();
+
+if (!isThisRepo()) {
     process.exit(0);
 }
 
 const errors = [],
-    readJson = (rel) => JSON.parse(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
+    sources = new Map();
 
-// 1. Every tracked JSON parses. Run first - the checks below read these files,
-//    and a parse error there would surface as a confusing crash instead.
-let tracked = [];
-
-try {
-    tracked = execFileSync('git', ['ls-files', '*.json'], { cwd: ROOT, encoding: 'utf8' })
-        .split('\n')
-        .filter(Boolean);
-}
-catch (e) {
-    // Fall through with an empty list rather than blocking on a git hiccup.
-}
-
-for (const file of tracked) {
-    try {
-        readJson(file);
-    }
-    catch (e) {
-        errors.push(`${file}: invalid JSON - ${e.message}`);
-    }
-}
+// Every later check reads files this one validates, so a parse error stops here
+// rather than surfacing as a crash inside the next check.
+everyTrackedJsonParses();
 
 if (errors.length) {
     report();
 }
 
-// 2. manifest.json is in sync with the skill files.
-try {
-    execFileSync('node', [path.join(ROOT, 'scripts', 'build-manifest.js'), '--check'], {
-        cwd: ROOT,
-        stdio: ['ignore', 'ignore', 'pipe']
-    });
-}
-catch (e) {
-    errors.push('manifest.json is stale. Run `node scripts/build-manifest.js` and stage the result.');
-}
-
-// 3. Per-route version agreement and X-Source uniqueness.
-const sources = new Map();
-
-for (const dir of fs.readdirSync(ROOT).filter((d) => /^\..+-plugin$/.test(d)).sort()) {
-    const manifestRel = `${dir}/plugin.json`;
-
-    if (!fs.existsSync(path.join(ROOT, manifestRel))) {
-        continue;
-    }
-
-    const manifest = readJson(manifestRel),
-        version = manifest.version;
-
-    // The marketplace route declares no version on purpose, and a route may
-    // legitimately ship no MCP server at all.
-    if (!version || !manifest.mcpServers) {
-        continue;
-    }
-
-    // `mcpServers` is either a path relative to the plugin root (the repo root,
-    // not the manifest's own directory) or an inline object.
-    let block = manifest.mcpServers,
-        where = manifestRel;
-
-    if (typeof block === 'string') {
-        where = block.replace(/^\.\//, '');
-
-        if (!fs.existsSync(path.join(ROOT, where))) {
-            errors.push(`${manifestRel}: mcpServers points at ${where}, which does not exist`);
-            continue;
-        }
-
-        block = readJson(where).mcpServers;
-    }
-
-    // Vendors disagree on the spelling, and the wrong one is not an error at
-    // runtime - it is silently dropped, so the server still connects and every
-    // request goes out unattributed. Claude Code, Cursor and Kimi read `headers`;
-    // Codex deserializes into its own `RawMcpServerConfig`, which has only
-    // `http_headers` and carries `#[schemars(deny_unknown_fields)]` - schemars,
-    // for schema generation, not serde - so serde ignores anything else.
-    const headerKey = dir === '.codex-plugin' ? 'http_headers' : 'headers',
-        otherKey = headerKey === 'headers' ? 'http_headers' : 'headers';
-
-    for (const [name, server] of Object.entries(block || {})) {
-        const headers = server[headerKey] || {},
-            source = headers['X-Source'],
-            at = `${where} (${name})`;
-
-        if (server[otherKey]) {
-            errors.push(`${at}: headers are under \`${otherKey}\`, but this route reads \`${headerKey}\` - the block is silently ignored and the traffic arrives unattributed`);
-        }
-
-        if (!source) {
-            errors.push(`${at}: no X-Source header - this route's MCP traffic cannot be attributed to it`);
-        }
-        else {
-            sources.set(source, (sources.get(source) || []).concat(at));
-        }
-
-        if (headers['X-Plugin-Version'] !== version) {
-            errors.push(`${at}: X-Plugin-Version is ${headers['X-Plugin-Version'] || '(unset)'} but ${manifestRel} declares version ${version}`);
-        }
-
-        if (source && headers['User-Agent'] !== `${source}/${version}`) {
-            errors.push(`${at}: User-Agent is ${headers['User-Agent'] || '(unset)'}, expected ${source}/${version}`);
-        }
-    }
-}
-
-// 3b. Config-only routes, which the glob above cannot see. opencode has no
-//     plugin manifest at all: its route is the project config at the repo root,
-//     the `mcp` block is always inline, and there is no `version` key anywhere -
-//     the config schema is `additionalProperties: false`, so one cannot be
-//     added. That leaves two invariants: X-Source presence and uniqueness, and
-//     agreement between the two header strings, since no manifest field exists
-//     to compare either of them against.
-//
-//     Patch contributed by the session that added the opencode route (PR #29),
-//     which could not land it itself - this file is untracked and outside that
-//     branch.
-const CONFIG_ONLY_ROUTES = [
-    { file: 'opencode.json', serverKey: 'mcp', wrongServerKey: 'mcpServers', headerKey: 'headers' }
-];
-
-for (const route of CONFIG_ONLY_ROUTES) {
-    if (!fs.existsSync(path.join(ROOT, route.file))) {
-        continue;
-    }
-
-    const cfg = readJson(route.file);
-
-    if (cfg[route.wrongServerKey]) {
-        errors.push(`${route.file}: MCP servers are under \`${route.wrongServerKey}\`, but this route reads \`${route.serverKey}\` - the block is ignored and no server is configured`);
-    }
-
-    for (const [name, server] of Object.entries(cfg[route.serverKey] || {})) {
-        const headers = server[route.headerKey] || {},
-            source = headers['X-Source'],
-            version = headers['X-Plugin-Version'],
-            at = `${route.file} (${name})`;
-
-        if (!source) {
-            errors.push(`${at}: no X-Source header - this route's MCP traffic cannot be attributed to it`);
-        }
-        else {
-            sources.set(source, (sources.get(source) || []).concat(at));
-        }
-
-        // No manifest `version` to check against, by construction, so the two
-        // header strings are only checked against each other.
-        if (!version) {
-            errors.push(`${at}: no X-Plugin-Version header - this route carries the version nowhere else, so the traffic is filed under none`);
-        }
-
-        if (source && version && headers['User-Agent'] !== `${source}/${version}`) {
-            errors.push(`${at}: User-Agent is ${headers['User-Agent'] || '(unset)'}, expected ${source}/${version}`);
-        }
-    }
-}
-
-for (const [source, routes] of sources) {
-    if (routes.length > 1) {
-        errors.push(`X-Source "${source}" is reused by ${routes.join(' and ')} - each route needs its own, or their telemetry collapses into one bucket`);
-    }
-}
+// These accumulate, so one commit surfaces every problem at once. Uniqueness
+// runs last because the route checks are what populate `sources`.
+manifestIsInSyncWithSkillFiles();
+manifestRoutesAgreeWithTheirMcpConfig();
+configOnlyRoutesCarryTheirOwnAttribution();
+noTwoRoutesShareAnXSource();
 
 report();
 
-/** Writes any errors to stderr and exits 2 to block the commit, else exits 0 silently. */
+function everyTrackedJsonParses () {
+    for (const file of trackedJsonFiles()) {
+        try {
+            readJson(file);
+        }
+        catch (e) {
+            errors.push(`${file}: invalid JSON - ${e.message}`);
+        }
+    }
+}
+
+function manifestIsInSyncWithSkillFiles () {
+    try {
+        execFileSync('node', [path.join(ROOT, 'scripts', 'build-manifest.js'), '--check'], {
+            cwd: ROOT,
+            stdio: ['ignore', 'ignore', 'pipe']
+        });
+    }
+    catch (e) {
+        errors.push('manifest.json is stale. Run `node scripts/build-manifest.js` and stage the result.');
+    }
+}
+
+function manifestRoutesAgreeWithTheirMcpConfig () {
+    for (const dir of manifestRouteDirs()) {
+        const manifestRel = `${dir}/plugin.json`,
+            manifest = readJson(manifestRel),
+            version = manifest.version;
+
+        // The marketplace route declares no version on purpose, and a route may
+        // legitimately ship no MCP server at all.
+        if (!version || !manifest.mcpServers) {
+            continue;
+        }
+
+        const resolved = resolveMcpServers(manifest.mcpServers, manifestRel);
+
+        if (!resolved) {
+            continue;
+        }
+
+        const headerKey = HEADER_KEY_BY_MANIFEST_DIR[dir] || DEFAULT_HEADER_KEY,
+            ignoredHeaderKey = headerKey === DEFAULT_HEADER_KEY ? 'http_headers' : DEFAULT_HEADER_KEY;
+
+        for (const [name, server] of Object.entries(resolved.servers || {})) {
+            const at = `${resolved.where} (${name})`,
+                headers = server[headerKey] || {},
+                source = recordSource(headers, at);
+
+            if (server[ignoredHeaderKey]) {
+                errors.push(`${at}: headers are under \`${ignoredHeaderKey}\`, but this route reads \`${headerKey}\` - the block is silently ignored and the traffic arrives unattributed`);
+            }
+
+            if (headers['X-Plugin-Version'] !== version) {
+                errors.push(`${at}: X-Plugin-Version is ${headers['X-Plugin-Version'] || '(unset)'} but ${manifestRel} declares version ${version}`);
+            }
+
+            if (source) {
+                checkUserAgent(headers, at, source, version);
+            }
+        }
+    }
+}
+
+function configOnlyRoutesCarryTheirOwnAttribution () {
+    for (const route of CONFIG_ONLY_ROUTES.filter((r) => exists(r.file))) {
+        const cfg = readJson(route.file);
+
+        if (cfg[route.ignoredServerKey]) {
+            errors.push(`${route.file}: MCP servers are under \`${route.ignoredServerKey}\`, but this route reads \`${route.serverKey}\` - the block is ignored and no server is configured`);
+        }
+
+        for (const [name, server] of Object.entries(cfg[route.serverKey] || {})) {
+            const at = `${route.file} (${name})`,
+                headers = server[route.headerKey] || {},
+                source = recordSource(headers, at),
+                version = headers['X-Plugin-Version'];
+
+            // No manifest field to compare against, so the two header strings
+            // are only checked against each other.
+            if (!version) {
+                errors.push(`${at}: no X-Plugin-Version header - this route carries the version nowhere else, so the traffic is filed under none`);
+            }
+
+            if (source && version) {
+                checkUserAgent(headers, at, source, version);
+            }
+        }
+    }
+}
+
+function noTwoRoutesShareAnXSource () {
+    for (const [source, routes] of sources) {
+        if (routes.length > 1) {
+            errors.push(`X-Source "${source}" is reused by ${routes.join(' and ')} - each route needs its own, or their telemetry collapses into one bucket`);
+        }
+    }
+}
+
+/** Returns the X-Source and remembers where it was claimed, or null if absent. */
+function recordSource (headers, at) {
+    const source = headers['X-Source'];
+
+    if (!source) {
+        errors.push(`${at}: no X-Source header - this route's MCP traffic cannot be attributed to it`);
+
+        return null;
+    }
+
+    sources.set(source, (sources.get(source) || []).concat(at));
+
+    return source;
+}
+
+function checkUserAgent (headers, at, source, version) {
+    if (headers['User-Agent'] !== `${source}/${version}`) {
+        errors.push(`${at}: User-Agent is ${headers['User-Agent'] || '(unset)'}, expected ${source}/${version}`);
+    }
+}
+
+/** `mcpServers` is an inline object, or a path relative to the repo root. */
+function resolveMcpServers (mcpServers, manifestRel) {
+    if (typeof mcpServers !== 'string') {
+        return { servers: mcpServers, where: manifestRel };
+    }
+
+    const where = mcpServers.replace(/^\.\//, '');
+
+    if (!exists(where)) {
+        errors.push(`${manifestRel}: mcpServers points at ${where}, which does not exist`);
+
+        return null;
+    }
+
+    return { servers: readJson(where).mcpServers, where };
+}
+
+function manifestRouteDirs () {
+    return fs.readdirSync(ROOT)
+        .filter((d) => MANIFEST_DIR_PATTERN.test(d) && exists(`${d}/plugin.json`))
+        .sort();
+}
+
+function trackedJsonFiles () {
+    try {
+        return execFileSync('git', ['ls-files', '*.json'], { cwd: ROOT, encoding: 'utf8' })
+            .split('\n')
+            .filter(Boolean);
+    }
+    catch (e) {
+        // A git hiccup should not block the commit.
+        return [];
+    }
+}
+
+function repoRootOrExit () {
+    try {
+        return execFileSync('git', ['rev-parse', '--show-toplevel'], {
+            encoding: 'utf8',
+            stdio: ['ignore', 'pipe', 'ignore']
+        }).trim();
+    }
+    catch (e) {
+        process.exit(0);
+    }
+}
+
+/** A `git commit` in any other repository is none of our business. */
+function isThisRepo () {
+    return exists(path.join('scripts', 'build-manifest.js'));
+}
+
+function exists (rel) {
+    return fs.existsSync(path.join(ROOT, rel));
+}
+
+function readJson (rel) {
+    return JSON.parse(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
+}
+
 function report () {
     if (!errors.length) {
         process.exit(0);
