@@ -4,6 +4,7 @@
   "description": "Develop, test, manage, and distribute APIs and services. ",
   "owner": {
     "name": "Postman",
+    "email": "postman-plugins@postman.com",
     "url": "https://github.com/postmanlabs"
   },
   "plugins": [

@@ -1,24 +1,36 @@
 {
   "name": "postman",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Work with Postman from your agent: bootstrap a repo's Postman setup, mock an API before it's implemented, run collection and governance checks in CI, monitor a live endpoint, deploy and debug Postman Flows, and publish generated API documentation.",
-  "keywords": ["postman", "api", "mocking", "monitoring", "ci", "documentation", "flows"],
+  "keywords": [
+    "postman",
+    "api",
+    "mocking",
+    "monitoring",
+    "ci",
+    "documentation",
+    "flows"
+  ],
   "homepage": "https://www.postmanlabs.com/skills/",
   "repository": "https://github.com/postmanlabs/postman-plugin",
   "license": "Apache-2.0",
   "author": {
     "name": "Postman",
+    "email": "postman-plugins@postman.com",
     "url": "https://github.com/postmanlabs"
   },
-  "skills": ["./skills"],
+  "skills": [
+    "./skills"
+  ],
   "mcpServers": {
     "postman": {
       "transport": "http",
-      "url": "https://mcp.postman.com/${POSTMAN_MCP_MODE:-minimal}",
+      "url": "https://mcp.postman.com/minimal",
+      "auth": "oauth",
       "headers": {
-        "X-Source": "postman-skills-plugin",
-        "X-Plugin-Version": "1.0.0",
-        "User-Agent": "postman-skills-plugin/1.0.0"
+        "X-Source": "postman-kimi-plugin",
+        "X-Plugin-Version": "2.0.0",
+        "User-Agent": "postman-kimi-plugin/2.0.0"
       }
     }
   },
