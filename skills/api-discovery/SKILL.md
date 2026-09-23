@@ -23,10 +23,9 @@ Each discovery option serves a distinct purpose:
   *cannot* do — and integrate returns a task brief specific enough to write
   code against. It accepts both keyword and natural-language queries. Reach for
   it instead of writing a third-party integration from memory.
-- **`search`** → **finds any Postman entity** and returns its id, for tasks
-  like "update the tests in my collection and run them" or "where is the
-  documentation for our access-control API?" **`context`** is its companion:
-  once you have an id, it fetches the full detail of that one entity.
+- **`search`** → **finds any Postman entity**, for tasks like "update the tests
+  in my collection and run them" or "where is the documentation for our
+  access-control API?"
 - **`context-graph ask`** → queries a separately populated **engineering
   service graph** (built by scanning repos and traffic, not Postman content).
   It answers natural-language questions about discovered services and the
@@ -64,32 +63,24 @@ Two REST calls, both `POST`:
 Full endpoint schemas, request/response shapes, `taskBrief` fields, and error
 handling: [reference/orbit.md](reference/orbit.md).
 
-## `search` & `context`
+## `search`
 
-A pair: **`search`** finds a Postman entity and returns its id; **`context`**
-then reads the full detail of an entity you have the id for.
-
-`postman search <type> <query>` searches across `requests`, `collections`,
-`workspaces`, `flows`, `specs`, `mocks`, `environments`, or `documents`. The
-query can be a keyword or natural language, and is optional (omit it to list or
-filter a type outright). Narrow with `--ownership` and `--filter`, and add
-`-o json` for the enriched payload. An empty default-scope result is not proof
-nothing exists — retry with `--ownership all` before reporting that.
-
-`postman context <entity> get` then hydrates a single collection, request,
-folder, response, workspace, or environment by id — `context request context`
-returns the richest form, the whole request in context as Markdown.
+`postman search <type> <query>` finds any Postman entity, searching across
+`requests`, `collections`, `workspaces`, `flows`, `specs`, `mocks`,
+`environments`, or `documents`. The query can be a keyword or natural language,
+and is optional (omit it to list or filter a type outright). Narrow with
+`--ownership` and `--filter`, and add `-o json` for the enriched payload. An
+empty default-scope result is not proof nothing exists — retry with
+`--ownership all` before reporting that.
 
 ```bash
 postman search requests "where do we validate a user's email?"
 postman search collections "payments" --ownership external --filter "visibility=public"
-postman context collection get -c <collection-id>
-postman context request context -c <collection-id> -r <request-id>
 ```
 
-Use `postman search <type> -h` and `postman context <entity> -h` for more
-details — ownership modes, the `--filter` / `--filter-json` syntax, filter
-fields per type, and the exact installed-version flags.
+Use `postman search <type> -h` for more details — ownership modes, the
+`--filter` / `--filter-json` syntax, filter fields per type, and the exact
+installed-version flags.
 
 ## `context-graph`
 
@@ -105,21 +96,15 @@ The answer is generated, not retrieved verbatim — verify with a re-ask or
 narrower query before acting on it for anything consequential, the same way any
 AI-generated claim gets checked before it drives a decision.
 
-Before building a custom discovery flow out of `search`/`context` primitives,
-run `postman context instructions discovery` — Postman's own recommended
-sequence (search/context only, no `context-graph`). Other topics
-(`code-generation`, `maintenance`) are available via `postman context
-instructions <topic>`.
-
 ## After discovery: reusing what was found
 
 `dependency add <type> <nameOrId>` formally adds a collection, environment,
 or mock found in another workspace as a dependency of the current one —
-the step after `search`/`context` finds something worth reusing (e.g.,
-feeding `application test`'s contract matching), rather than copying it in
-by hand. It takes a Postman entity ID, so it only follows a `search`/
-`context` result — a `context-graph` finding names a service, not an ID;
-go find that service's collection via `search` first.
+the step after `search` finds something worth reusing (e.g., feeding
+`application test`'s contract matching), rather than copying it in by hand. It
+takes a Postman entity ID, so it only follows a `search` result — a
+`context-graph` finding names a service, not an ID; go find that service's
+collection via `search` first.
 
 ## Reference
 
@@ -128,6 +113,5 @@ go find that service's collection via `search` first.
   handling. (Docs at `https://www.buildwithorbit.ai`, REST at
   `https://api.buildwithorbit.ai`.)
 
-For `postman search` and `postman context`, run `postman search <type> -h` and
-`postman context <entity> -h` — the CLI's own help is per-type, complete, and
-always matches your installed version.
+For `postman search`, run `postman search <type> -h` — the CLI's own help is
+per-type, complete, and always matches your installed version.
