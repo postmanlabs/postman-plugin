@@ -14,11 +14,18 @@ sources (a CSV and a Postgres table) become joinable in one query, and a
 saved *view* turns a query into a named, reusable result set that a
 collection run can iterate.
 
-Local and cloud are the same commands. Every verb takes either a
-`.dataset.yaml` path or a cloud dataset id and routes accordingly; `list`
-and `create` use `-w <workspaceId>` for the cloud form. Nothing promotes a
-local dataset to the cloud — unlike `mock push`, there is no push. A local
-and a cloud dataset are separate things you create separately.
+Local and cloud are the same commands. Every verb that acts on an *existing*
+dataset — `get`, `query`, `delete`, and every `source` and `view`
+subcommand — takes either a `.dataset.yaml` path or a cloud dataset id and
+routes accordingly. Two verbs name a location instead of an existing
+dataset: `list` takes a path or directory (its cloud form is
+`-w <workspaceId>`), and `create` takes the path to write (its cloud form is
+`-w` with no path, since the id does not exist yet). `jdbc inspect` takes
+neither — it reads a driver JAR and touches no dataset at all.
+
+Nothing promotes a local dataset to the cloud — unlike `mock push`, there is
+no push. A local and a cloud dataset are separate things you create
+separately.
 
 ## Core knowledge
 
