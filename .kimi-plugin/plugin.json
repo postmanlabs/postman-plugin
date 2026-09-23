@@ -1,6 +1,6 @@
 {
   "name": "postman",
-  "version": "2.0.1",
+  "version": "2.0.0",
   "description": "Work with Postman from your agent: bootstrap a repo's Postman setup, mock an API before it's implemented, run collection and governance checks in CI, monitor a live endpoint, deploy and debug Postman Flows, and publish generated API documentation.",
   "keywords": [
     "postman",
@@ -29,8 +29,8 @@
       "auth": "oauth",
       "headers": {
         "X-Source": "postman-kimi-plugin",
-        "X-Plugin-Version": "2.0.1",
-        "User-Agent": "postman-kimi-plugin/2.0.1"
+        "X-Plugin-Version": "2.0.0",
+        "User-Agent": "postman-kimi-plugin/2.0.0"
       }
     }
   },

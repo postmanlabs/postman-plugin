@@ -112,8 +112,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/bootstrap/SKILL.md",
-          "bytes": 6731,
-          "sha256": "02b0a41ede9a90721c899b66c507a23758b76a798a254bd918272101e25c69af"
+          "bytes": 6748,
+          "sha256": "1f42b1463ca5fc1699b3716f62d24ff0df495a4e601a60c792588bebf7d4c637"
         },
         {
           "target": "reference/cli_installation.md",
@@ -207,8 +207,8 @@
         {
           "target": "references/learn.md",
           "source": "skills/postman-mcp-server/references/learn.md",
-          "bytes": 4655,
-          "sha256": "2364e1b35f3c5d02d641bd60e5d8bd4b8891b4ff2cd18a85cea7cb108b53a487"
+          "bytes": 4617,
+          "sha256": "2648bbd691048c4fdcde1d70af948c653a10f7a46a4e603c5e9836bc539059b8"
         },
         {
           "target": "references/mcp-limitations.md",

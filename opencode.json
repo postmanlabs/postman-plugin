@@ -11,8 +11,8 @@
       "enabled": true,
       "headers": {
         "X-Source": "postman-opencode-plugin",
-        "X-Plugin-Version": "2.0.1",
-        "User-Agent": "postman-opencode-plugin/2.0.1"
+        "X-Plugin-Version": "2.0.0",
+        "User-Agent": "postman-opencode-plugin/2.0.0"
       }
     }
   }

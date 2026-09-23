@@ -30,8 +30,8 @@ repo is already set up.
 - "Present" is not "current": check the version and existing links before
   setting anything up.
 - Wire up an existing repo only. Never scaffold a new API or a starter spec.
-- Write no host-specific paths — the same `skills/` directory loads on every
-  route.
+- Write no host-specific paths — one `skills/` directory loads on Claude Code,
+  Cursor and Kimi Code.
 
 ## Ask the CLI: `-h`
 
