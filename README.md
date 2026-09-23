@@ -11,6 +11,15 @@ directory rather than copying files into itself:
 | Claude Code plugin | `/plugin marketplace add postmanlabs/postman-plugin` clones this repo | `mcp.claude-code.json` | `postman-claude-code-plugin` |
 | Cursor plugin | `.cursor-plugin/plugin.json` points at this repo's `skills/` dir | `mcp.cursor.json` | `postman-cursor-plugin` |
 | Kimi Code plugin | `.kimi-plugin/plugin.json` points at the same `skills/` dir | `mcpServers` in `.kimi-plugin/plugin.json` | `postman-kimi-plugin` |
+| Codex plugin | `.codex-plugin/plugin.json` points at the same `skills/` dir | `mcp.codex.json` | `postman-codex-plugin` |
+
+Codex also reads `.claude-plugin/plugin.json` and `.cursor-plugin/plugin.json` as
+fallbacks — its `DISCOVERABLE_PLUGIN_MANIFEST_PATHS` is `.codex-plugin`,
+`.claude-plugin`, `.cursor-plugin`, in that order — so it loaded this repo even
+before it had a route of its own. That fallback is not a substitute for one:
+Codex would read `mcp.claude-code.json`, whose `headers` key Codex does not
+understand, so its traffic arrived with no `X-Source` at all. Keep
+`.codex-plugin/plugin.json` first in precedence and Codex never falls back.
 
 The Postman CLI also has its own path for installing these skills, but it's
 still being redesigned — don't treat it as settled or document it here until
@@ -23,8 +32,10 @@ it lands.
 .claude-plugin/plugin.json        the Claude Code plugin manifest
 .cursor-plugin/plugin.json        the Cursor plugin manifest
 .kimi-plugin/plugin.json          the Kimi Code plugin manifest — carries its MCP block inline
+.codex-plugin/plugin.json         the Codex plugin manifest
 mcp.claude-code.json              Claude Code's MCP config
 mcp.cursor.json                   Cursor's MCP config
+mcp.codex.json                    Codex's MCP config — spells its headers `http_headers`
 skills/<name>/SKILL.md            one skill per directory — see skills/ for the current list
 manifest.json                     generated index of the skill files
 scripts/build-manifest.js         regenerates it
@@ -44,6 +55,19 @@ Cursor or Kimi Code:
 ```
 npx plugins add postmanlabs/postman-plugin
 ```
+
+Codex:
+
+```
+codex plugin marketplace add postmanlabs/postman-plugin
+codex plugin add postman@postman
+```
+
+Codex discovers `.claude-plugin/marketplace.json` — that path is in its
+`MARKETPLACE_MANIFEST_RELATIVE_PATHS`, and it accepts that file's
+`"source": "./"` string shorthand — so there is no separate Codex marketplace
+file to maintain. The `marketplace add` step is required: only
+`~/.agents/plugins/marketplace.json` is discovered implicitly.
 
 ## Data sent to Postman
 
@@ -103,8 +127,8 @@ too — see [The MCP server config](#the-mcp-server-config). None of the CLI
 flags above apply to that traffic; declining it means not installing the MCP
 server.
 
-All three configs name their endpoint outright — `/mcp` for Claude Code and
-Cursor, `/minimal` for Kimi. Don't reintroduce a `${POSTMAN_MCP_MODE:-...}`
+Every config names its endpoint outright — `/mcp` for Claude Code, Cursor and
+Codex, `/minimal` for Kimi. Don't reintroduce a `${POSTMAN_MCP_MODE:-...}`
 placeholder to express the default: no route expands `${...}` inside an MCP URL,
 so the whole segment ships literally and the request never reaches the intended
 mode. `claude plugin list --json` reports the registered URL with the
@@ -121,12 +145,13 @@ traffic can be attributed to the agent it came from:
 ```
 mcp.claude-code.json        <- .claude-plugin/plugin.json  "mcpServers": "./mcp.claude-code.json"
 mcp.cursor.json             <- .cursor-plugin/plugin.json  "mcpServers": "./mcp.cursor.json"
+mcp.codex.json              <- .codex-plugin/plugin.json   "mcpServers": "./mcp.codex.json"
 .kimi-plugin/plugin.json       inline — Kimi documents no path form
 ```
 
-Maintained by hand, and they are not interchangeable copies. Three things
-differ per route on purpose, and copying one file over another breaks all
-three:
+Maintained by hand, and they are not interchangeable copies. Four things
+differ per route on purpose, and copying one file over another breaks them
+all:
 
 - **`X-Source` must be unique per route.** It is the dimension telemetry keys
   on, so two routes sharing a value collapse into one bucket — which reads
@@ -139,6 +164,15 @@ three:
 - **The URL's mode segment** (`mcp` vs Kimi's `minimal`) selects a different
   tool surface. Unifying it changes which tools Kimi users get — a product
   decision, not a tidy-up.
+- **The header key is `headers` everywhere except Codex**, which spells it
+  `http_headers`. Codex deserializes a plugin's MCP config into its own
+  `RawMcpServerConfig`, which has only `http_headers` and carries
+  `#[schemars(deny_unknown_fields)]` — schemars, for schema generation, not
+  serde. So serde ignores unknown keys: a `headers` block in `mcp.codex.json`
+  is dropped without an error, the server still connects, and every request
+  goes out unattributed. This is the worst failure mode in the repo, because
+  it looks exactly like success. `headers` is right for the other three;
+  don't normalize it across all four.
 
 There is no generator, deliberately: a tool whose job is to keep these
 identical is wrong once versions are per-route.
@@ -151,7 +185,8 @@ identical is wrong once versions are per-route.
    independently — differing versions across routes are correct, not drift —
    so a bump means the three strings that one route owns: `version` in its
    manifest, plus `X-Plugin-Version` and `User-Agent` in its MCP config (for
-   Kimi all three live in the manifest). Nothing verifies this, so check the
+   Kimi all three live in the manifest; for Codex the two headers sit under
+   `http_headers`, not `headers`). Nothing verifies this, so check the
    route's three strings against each other before you commit. Don't skip the
    bump itself either: `claude plugin update` compares only that string against a
    version-keyed cache, so a release that changes files without bumping it

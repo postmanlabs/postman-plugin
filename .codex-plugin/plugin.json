@@ -1,0 +1,31 @@
+{
+  "name": "postman",
+  "version": "0.1.0",
+  "description": "Work with Postman from your agent: bootstrap a repo's Postman setup, mock an API before it's implemented, run collection and governance checks in CI, monitor a live endpoint, deploy and debug Postman Flows, and publish generated API documentation.",
+  "author": {
+    "name": "Postman",
+    "email": "postman-plugins@postman.com",
+    "url": "https://github.com/postmanlabs"
+  },
+  "homepage": "https://www.postmanlabs.com/skills/",
+  "repository": "https://github.com/postmanlabs/postman-plugin",
+  "license": "Apache-2.0",
+  "keywords": [
+    "postman",
+    "api",
+    "mocking",
+    "monitoring",
+    "ci",
+    "documentation",
+    "ai-readiness",
+    "flows"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./mcp.codex.json",
+  "interface": {
+    "displayName": "Postman",
+    "shortDescription": "Bootstrap, mock, test, monitor, document, and automate APIs with Postman.",
+    "developerName": "Postman",
+    "websiteURL": "https://www.postmanlabs.com/skills/"
+  }
+}
