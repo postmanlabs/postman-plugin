@@ -14,7 +14,7 @@
   "mcpServers": {
     "postman": {
       "transport": "http",
-      "url": "https://mcp.postman.com/${POSTMAN_MCP_MODE:-minimal}",
+      "url": "https://mcp.postman.com/minimal",
       "headers": {
         "X-Source": "postman-skills-plugin",
         "X-Plugin-Version": "1.0.0",
