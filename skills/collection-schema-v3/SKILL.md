@@ -96,7 +96,7 @@ Saved examples are what `collection ai-readiness` checks for — a request
 with no examples scores worse for agent consumption even if perfectly
 valid structurally.
 
-## Environments (`postman/environments/*.yaml`)
+## Environments (`postman/environments/*.environment.yaml`)
 
 - `name` — required.
 - `values` — array of `{key, value: string, enabled, type}`.
@@ -120,7 +120,7 @@ changing one value over hand-editing the YAML. It's the same file either
 way, but it means a `secret`-type value never has to pass through your own
 output just to change it.
 
-Worked example:
+Worked example — `postman/environments/Staging.environment.yaml`:
 
 ```yaml
 name: Staging
