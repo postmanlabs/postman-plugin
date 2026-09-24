@@ -5,8 +5,8 @@
       "url": "https://mcp.postman.com/mcp",
       "http_headers": {
         "X-Source": "postman-codex-plugin",
-        "X-Plugin-Version": "1.0.0",
-        "User-Agent": "postman-codex-plugin/1.0.0"
+        "X-Plugin-Version": "1.0.1",
+        "User-Agent": "postman-codex-plugin/1.0.1"
       }
     }
   }
