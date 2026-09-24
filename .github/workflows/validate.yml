@@ -66,7 +66,11 @@ jobs:
   # One check per official schema. Schemas are fetched from the vendor's source
   # on every run, so a vendor tightening its schema fails CI here rather than
   # at marketplace review. Files with no published schema (.kimi-plugin/plugin.json,
-  # mcp.*.json, manifest.json) are covered by the `manifest` job above.
+  # .codex-plugin/plugin.json, mcp.*.json, manifest.json) are covered by the
+  # `manifest` job above. Codex documents its manifest in prose only and publishes
+  # no schema for it; the agent-plugins.org schema is not a substitute, since it
+  # describes the root-level `plugin.json` Agent Plugins format, which Codex selects
+  # by path and which .codex-plugin/plugin.json is deliberately not.
   schema:
     name: Schema / ${{ matrix.name }}
     runs-on: ubuntu-latest
