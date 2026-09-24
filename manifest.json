@@ -17,13 +17,13 @@
     {
       "name": "api-discovery",
       "plugin": "postman",
-      "description": "Finds what APIs, collections, specs, or requests already exist before building something new, and answers questions about how they relate. Use when the user asks \"does an API for X already exist,\" \"what depends on this service,\" \"what does this API do,\" or before scaffolding anything that might already have a Postman equivalent. Covers `postman search`, `postman context-graph`, and `postman context instructions discovery`. Reach for `search` when you know roughly what you're looking for by name; reach for the Context Graph when the question is about relationships, not names.",
+      "description": "Discovers existing API endpoints, contracts, and saved Postman artifacts before a software integration. Use when the user explicitly asks to search for, find, or select a public or third-party API for a capability such as SMS or payments; asks whether an external API or Postman request, collection, or spec already exists; or asks how services relate. Covers `postman search`, `postman context`, `postman context-graph`, and `postman context instructions discovery`. Do not use for market, pricing, vendor, product, or general web research unless the user also wants to select or reuse an API endpoint, contract, or saved Postman artifact.",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/api-discovery/SKILL.md",
-          "bytes": 4918,
-          "sha256": "cceca5cf3b1feab3e664ef50d3d42a0b7c5305f8e1cd744ca21b86ab27883fd9"
+          "bytes": 7127,
+          "sha256": "c3293aca57cffb3cccce0908ec3a976b101992814e33ec3649026b95571aa065"
         },
         {
           "target": "reference/search_filters.md",
@@ -86,8 +86,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-monitoring/SKILL.md",
-          "bytes": 7805,
-          "sha256": "c1f4b6f1194fbedfeb0a8d8d443ccc5b80e8cd4f641b95f5d3867af6bc7c3033"
+          "bytes": 7790,
+          "sha256": "e26e7d2a44cd844acda124a38188f5364da0aba15ad3efc70a6462d8d5e684ae"
         }
       ]
     },
