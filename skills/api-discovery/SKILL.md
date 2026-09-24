@@ -1,6 +1,6 @@
 ---
 name: api-discovery
-description: Discover and use APIs from the web, or any resource in Postman. Find and integrate public third-party APIs with Orbit, locate Postman entities (collections, workspaces, flows, requests, specs, documents, mocks) with search, and trace relationships between them with the context-graph.
+description: Discover and use APIs from the web or Postman. Find and integrate public third-party APIs with Orbit, locate Postman entities with search, and use the Context Graph to investigate dependencies, ownership, runtime behavior, and change impact across an API ecosystem.
 ---
 
 # API Discovery
@@ -26,15 +26,14 @@ Each discovery option serves a distinct purpose:
 - **`search`** → **finds any Postman entity**, for tasks like "update the tests
   in my collection and run them" or "where is the documentation for our
   access-control API?"
-- **`context-graph ask`** → queries a separately populated **engineering
-  service graph** (built by scanning repos and traffic, not Postman content).
-  It answers natural-language questions about discovered services and the
-  dependencies between them — "what depends on billing-api?" — the kind of
-  architecture question `search` can't answer, since there's no keyword for a
-  dependency edge.
+- **`context-graph ask`** → answers organization-wide relationship and impact
+  questions such as "what depends on billing-api?" or "what could this schema
+  change break?"
 
-These three methods draw on different data sources, so a miss in one says
-nothing about the others.
+These three draw on different data sources, so a miss in one is not proof of a
+miss in the others. `search` locates a known Postman resource; the Context
+Graph discovers relationships around a known starting point. Use both when a
+task needs the resource itself and its wider impact.
 
 ## Orbit — Public API Discovery
 
@@ -84,17 +83,36 @@ installed-version flags.
 
 ## `context-graph`
 
-`context-graph ask "<question>" --wait` is the one to reach for
-interactively — it blocks and prints the answer. Without `--wait`, `ask`
-returns an id immediately and `status <askId>` checks on it later (exit
-code 3 while still running) — useful for a question expected to take a
-while, or from a script polling on its own cadence. The query runs against
-the team derived from the API key; there's no workspace/team selection.
-`--max-steps` caps how much reasoning the service does per question.
+The Context Graph is a private, authenticated map of an API ecosystem. It
+reconciles Postman specifications, collections, monitors, and mocks; GitHub
+repositories, definitions, and call sites; and New Relic deployments, traffic,
+and telemetry. These become typed entities joined by sourced relationships such
+as `calls`, `depends_on`, `owned_by`, and `monitored_by`.
 
-The answer is generated, not retrieved verbatim — verify with a re-ask or
-narrower query before acting on it for anything consequential, the same way any
-AI-generated claim gets checked before it drives a decision.
+Use it before a cross-service or potentially breaking change. Name the endpoint,
+schema, service, database, deployment, or shared module being changed; the graph
+discovers the surrounding scope, including runtime callers and repositories not
+checked out locally:
+
+```bash
+postman context-graph ask "What depends on billing-api?" --wait
+postman context-graph ask "What is the likely blast radius of changing this schema?" --wait
+```
+
+Treat the result as a lead, not proof. For consequential work, verify candidates
+against source, API definitions, deployment configuration, or telemetry and
+cite that evidence. Sources are connected through Postman's Agent Context UI
+and refresh nightly; an unconnected or not-yet-ingested source makes absence
+inconclusive.
+
+`--wait` polls the asynchronous API and prints the answer. Without it, `ask`
+returns an ID for `postman context-graph status <askId>`. Use `--json` for the
+structured record; `--timeout`, `--interval`, and `--max-steps` control waiting
+and reasoning.
+
+The query runs against the team derived from the API key; there is no workspace
+or team selector. Authentication uses `--api-key`, `POSTMAN_API_KEY`, or the
+current `postman login` session, in that order.
 
 ## After discovery: reusing what was found
 
@@ -102,9 +120,9 @@ AI-generated claim gets checked before it drives a decision.
 or mock found in another workspace as a dependency of the current one —
 the step after `search` finds something worth reusing (e.g., feeding
 `application test`'s contract matching), rather than copying it in by hand. It
-takes a Postman entity ID, so it only follows a `search` result — a
-`context-graph` finding names a service, not an ID; go find that service's
-collection via `search` first.
+takes a Postman entity ID. If the Context Graph identifies a service or API to
+reuse, locate its collection with `search` first, then pass that entity ID to
+`dependency add`.
 
 ## Reference
 
