@@ -65,12 +65,14 @@ separately.
   runs one iteration per row, with each column bound as a variable
   (`{{name}}`). Both flags are required together, and the pair is mutually
   exclusive with `-d/--iteration-data`. Both are marked BETA.
-- **Logged out, the iteration-data path prints an auth error and then works
-  anyway.** `collection run --iteration-data-dataset` on a *file-backed*
-  dataset emits `No authorization data found. Please use the postman login
-  command.` and then runs the iterations correctly and exits 0. For a CSV or
-  JSON source that message is noise, not a failure — judge the run by the
-  iteration count, never by that line. (A *database* source genuinely does
+- **A logged-out `collection run` always prints an auth error, and it means
+  nothing about your dataset.** `No authorization data found. Please use the
+  postman login command.` comes from the run command itself, not the dataset
+  path — a plain `collection run` with no dataset flags prints it too. On a
+  file-backed dataset the iterations then run correctly and exit 0, so treat
+  that line as noise and judge the run by its iteration count. `dataset query`
+  never prints it, but only because it is not a collection run — not because
+  it checked anything about your sources. (A *database* source does genuinely
   need auth, and fails for real.)
 - **`--dataset <pathOrDir>` is the other consumption path** — repeatable,
   and it exposes datasets to scripts as `pm.datasets(<id>)` rather than
