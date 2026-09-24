@@ -1,0 +1,19 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "skills": {
+    "paths": ["./skills"]
+  },
+  "instructions": ["./hooks/session-start-context.md"],
+  "mcp": {
+    "postman": {
+      "type": "remote",
+      "url": "https://mcp.postman.com/minimal",
+      "enabled": true,
+      "headers": {
+        "X-Source": "postman-opencode-plugin",
+        "X-Plugin-Version": "1.0.0",
+        "User-Agent": "postman-opencode-plugin/1.0.0"
+      }
+    }
+  }
+}

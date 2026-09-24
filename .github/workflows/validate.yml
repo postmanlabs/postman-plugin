@@ -90,6 +90,14 @@ jobs:
             file: .cursor-plugin/plugin.json
             schema: https://raw.githubusercontent.com/cursor/plugins/main/schemas/plugin.schema.json
             spec: draft7
+          # opencode's config schema $refs models.dev for the model union, and ajv
+          # resolves no reference over the network - without `ref` the run fails on
+          # "can't resolve reference", not on anything about our file.
+          - name: opencode config
+            file: opencode.json
+            schema: https://opencode.ai/config.json
+            ref: https://models.dev/model-schema.json
+            spec: draft2020
     steps:
       - uses: actions/checkout@v4
 
@@ -100,8 +108,17 @@ jobs:
       - name: Fetch schema
         run: curl -fsSL "${{ matrix.schema }}" -o "$RUNNER_TEMP/schema.json"
 
+      - name: Fetch referenced schema
+        if: matrix.ref != ''
+        run: curl -fsSL "${{ matrix.ref }}" -o "$RUNNER_TEMP/ref.json"
+
       - name: Validate ${{ matrix.file }}
         run: |
-          npx -y -p ajv-cli@5 -p ajv-formats@3 ajv validate \
-            --spec=${{ matrix.spec }} -c ajv-formats --strict=false --all-errors \
-            -s "$RUNNER_TEMP/schema.json" -d "${{ matrix.file }}"
+          # An array, not a string: `-r <file>` has to arrive as two argv entries,
+          # and an unquoted string to get that would also glob and word-split.
+          args=(--spec=${{ matrix.spec }} -c ajv-formats --strict=false --all-errors
+                -s "$RUNNER_TEMP/schema.json")
+          if [ -f "$RUNNER_TEMP/ref.json" ]; then
+            args+=(-r "$RUNNER_TEMP/ref.json")
+          fi
+          npx -y -p ajv-cli@5 -p ajv-formats@3 ajv validate "${args[@]}" -d "${{ matrix.file }}"
