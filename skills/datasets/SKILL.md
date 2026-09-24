@@ -29,6 +29,17 @@ separately.
 
 ## Core knowledge
 
+- **First decide whether a dataset is needed at all — often it is not.** If the
+  user has one CSV or JSON file that is already in the shape they want to
+  iterate, and they have not asked to filter, join, aggregate or reuse a query,
+  the answer is one flag: `postman collection run <collection>
+  -d <file>`. No manifest, no `data_dir`, no view, nothing to commit. Say so
+  and stop. A dataset earns its keep only when something here is true: rows must
+  be **filtered or shaped** by SQL, data must be **joined across** files or
+  databases, the source is a **live database**, a query is worth **saving as a
+  named view** for reuse, or scripts need `pm.datasets()`. "It is a CSV" is not
+  a reason to build one; "I only want the active rows" is.
+
 - **Only CSV and JSON are file formats here.** `--format` takes
   `csv|json|mysql|postgres|sqlserver` and nothing else — there is no `.xlsx`
   reader. When someone says "my spreadsheet" or "my Excel file", the first
