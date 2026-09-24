@@ -14,28 +14,39 @@ plugin route below — each route's manifest or config points back at the same
 | opencode | `opencode.json` points `skills.paths` at the same `skills/` dir | `mcp` in `opencode.json` | `postman-opencode-plugin` |
 
 opencode is the odd one out: it has no plugin-manifest format at all. Its
-plugins are npm modules loaded from a `plugin` array, and its skills are found
-by scanning directories, so there is nothing that clones this repo and reads a
-manifest from it. What it does have is a project config — `opencode.json` at a
-repo root — whose `skills.paths` takes a list of directories to scan and whose
-`mcp` block configures servers inline. That is the whole route. It is a real
-pointer rather than a workaround: `skills.paths` entries are resolved against
-the project root and scanned for `**/SKILL.md`, exactly like the other routes'
-skills pointers. Note that it is in opencode's config *schema* but not in its
-prose docs — read the schema, not the docs page, when changing it.
+plugins are JS/TS modules — npm packages named in a `plugin` array, or local
+files under `.opencode/plugins/` — and its skills are found by scanning
+directories, so there is nothing that clones this repo and reads a manifest
+from it. What it does have is a project config — `opencode.json`, found by
+walking up to the git root — whose `skills.paths` takes a list of directories
+to scan and whose `mcp` block configures servers inline. That is the whole
+route. It is a real pointer rather than a workaround: `skills.paths` entries
+are scanned for `**/SKILL.md`, exactly like the other routes' skills pointers.
+Note that it is in opencode's config *schema* but not in its prose docs — read
+the schema, not the docs page, when changing it.
 
-opencode also supports **no hooks of any kind** — there is nothing
-hook-, event- or session-shaped anywhere in its config schema, and its hook
-equivalent is a JS plugin module, which this repo deliberately does not ship. So
-`hooks/hooks.json` never fires on this route. What stands in for it is
-`instructions`, opencode's rules-file mechanism: it points at the same
-`hooks/session-start-context.md` the hook injects everywhere else, so the
-session-start mandate still lands without a second copy of the markdown. It is
-not a hook — it is always-on context rather than a `SessionStart` event — but
-the effect on the session is the one that matters.
+opencode has **no config-level hooks** — there is nothing hook-, event- or
+session-shaped anywhere in its config schema. Its hooks live only in JS plugin
+modules, which this repo deliberately does not ship. So `hooks/hooks.json`
+never fires on this route. What stands in for it is `instructions`, opencode's
+rules-file mechanism: it points at the same `hooks/session-start-context.md`
+the hook injects everywhere else, so the session-start mandate still lands
+without a second copy of the markdown. It is not a hook — it is always-on
+context rather than a `SessionStart` event — but the effect on the session is
+the one that matters.
 
-Both `skills.paths` and `instructions` are resolved against the project root, so
-a user who copies `opencode.json` into their own project has to repoint both.
+The two pointers resolve relative paths differently, and the difference fails
+silently:
+
+- `instructions` entries are searched for from the directory opencode was
+  started in, walking up to the git root.
+- `skills.paths` entries are joined to the directory opencode was started in,
+  with no walk up. A path that does not exist only logs "skill path not found".
+
+So `./skills` holds only when opencode starts at the repo root: started from a
+subdirectory, the config and the mandate still load but every skill is dropped.
+Both expand a leading `~/`, and absolute or `~/` paths sidestep the difference
+entirely.
 
 The Postman CLI also has its own path for installing these skills, but it's
 still being redesigned — don't treat it as settled or document it here until
@@ -72,9 +83,8 @@ npx plugins add postmanlabs/postman-plugin
 ```
 
 opencode has no install command for a repo of skills — `opencode plugin` takes
-an npm module, not a git repo. It reads `opencode.json` from the project root
-instead, so either run opencode from inside a clone of this repo, where the
-checked-in `opencode.json` already applies:
+an npm module, not a git repo. Instead, either run opencode from the root of a
+clone of this repo, where the checked-in `opencode.json` already applies:
 
 ```
 git clone https://github.com/postmanlabs/postman-plugin
@@ -82,8 +92,8 @@ cd postman-plugin && opencode
 ```
 
 or copy that file into your own project and repoint both `skills.paths` and
-`instructions` at the clone (paths are resolved against the project root, and
-`~/` is expanded):
+`instructions` at the clone. Use `~/` or absolute paths, so the skills load
+whichever directory opencode starts in:
 
 ```
 "skills": { "paths": ["~/src/postman-plugin/skills"] },
@@ -92,6 +102,14 @@ or copy that file into your own project and repoint both `skills.paths` and
 
 Repointing `skills.paths` alone gets the skills but drops the session-start
 mandate, which is the failure that reads as if nothing were installed.
+
+opencode also scans `~/.config/opencode/skills/`, `~/.claude/skills/` and
+`~/.agents/skills/`, but a skill copied there arrives without the MCP block or
+the mandate — use `opencode.json`.
+
+The MCP server answers an unauthenticated request with a 401 that advertises
+OAuth, and opencode starts that flow on its own. If the browser prompt never
+appears, run `opencode mcp auth postman`.
 
 ## Data sent to Postman
 
