@@ -17,19 +17,19 @@
     {
       "name": "api-discovery",
       "plugin": "postman",
-      "description": "Discovers existing API endpoints, contracts, and saved Postman artifacts before a software integration. Use when the user explicitly asks to search for, find, or select a public or third-party API for a capability such as SMS or payments; asks whether an external API or Postman request, collection, or spec already exists; or asks how services relate. Covers `postman search`, `postman context`, `postman context-graph`, and `postman context instructions discovery`. Do not use for market, pricing, vendor, product, or general web research unless the user also wants to select or reuse an API endpoint, contract, or saved Postman artifact.",
+      "description": "Discover and use APIs from the web, or any resource in Postman. Find and integrate public third-party APIs with Orbit, locate Postman entities (collections, workspaces, flows, requests, specs, documents, mocks) with search, and trace relationships between them with the context-graph.",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/api-discovery/SKILL.md",
-          "bytes": 7127,
-          "sha256": "c3293aca57cffb3cccce0908ec3a976b101992814e33ec3649026b95571aa065"
+          "bytes": 6309,
+          "sha256": "f5ebf73ff4b07917aab04d8f35d0f2edb86a7eca554c59030e15ff453b6faf10"
         },
         {
-          "target": "reference/search_filters.md",
-          "source": "skills/api-discovery/reference/search_filters.md",
-          "bytes": 3217,
-          "sha256": "e7a1e69fa1d9b34e9518ddd093278d9f9f87fc28e4f81f50f64dad90766afbac"
+          "target": "reference/orbit.md",
+          "source": "skills/api-discovery/reference/orbit.md",
+          "bytes": 3456,
+          "sha256": "ebb7cf021880a28c771f7579e808c9d63951f3cfc83bf12eda31b948b401bf8d"
         }
       ]
     },
