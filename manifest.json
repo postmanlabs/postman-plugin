@@ -60,8 +60,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-engineer/SKILL.md",
-          "bytes": 2470,
-          "sha256": "f99d74b648c0687dd722ce71cb77b0408adb112eb028a154c0859df4de8f4241"
+          "bytes": 2397,
+          "sha256": "b8d0ef93d81478ed6b5a9b0af74652d3928615bc2af3ce82cfbe88cebafa00aa"
         }
       ]
     },
@@ -107,13 +107,13 @@
     {
       "name": "bootstrap",
       "plugin": "postman",
-      "description": "Resolves the Postman CLI, authenticates, and manages the filesystem/cloud workspace binding for a repository. Use when the user asks to set up Postman, enable filesystem workflows, authenticate, initialize, import, connect, pull, push, sync, or share a workspace — and before cloud-dependent skills only when the CLI, linked workspace, or spec path has not already been confirmed.",
+      "description": "Resolves the Postman CLI, authenticates when the task needs it, and manages the filesystem/workspace binding for a repository. Use when the user asks to set up Postman, enable filesystem workflows, authenticate, initialize, import, connect, pull, push, sync, or share a workspace — and before skills that need a linked workspace, only when the CLI, linked workspace, or spec path has not already been confirmed.",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/bootstrap/SKILL.md",
-          "bytes": 10086,
-          "sha256": "03a7350862d8f9f2098d307b268a9a0c4dfaafe9e87ca9f6322524b4827d898e"
+          "bytes": 10039,
+          "sha256": "2c34588b01be9f083777d3acd1d68331c054f21314d477e1fb5dbd0a9761cc6b"
         },
         {
           "target": "reference/cli_installation.md",

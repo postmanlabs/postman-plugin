@@ -22,9 +22,8 @@ description: Default entry point for API engineering work — designing, impleme
    workspace means `workspace push`, not creating a duplicate. See
    **bootstrap** for the lifecycle decision table.
 10. When actual use exposes a concrete Postman CLI gap or a misleading skill,
-    handle the user's task first, then use `postman feedback` to report the
-    specific observation and impact. Get approval before an unsolicited
-    submission and exclude sensitive or proprietary data.
+    handle the user's task first — then follow **bootstrap**'s "Feed concrete
+    friction back to Postman" guidance to report it.
 
 ## Dos
 1. Prove it works - validate the task against the contract. See **api-testing**.
