@@ -43,6 +43,13 @@ separately.
   `dataset view create -s` take the same reference. They are different
   execution paths, not fallbacks for each other — adding or dropping
   `--source` to make a failing query work changes what the query *means*.
+- **JDBC is the one source type that cannot federate.** A native
+  `--type mysql|postgresql|sqlserver` source *does* join against a CSV in one
+  federated query, which is the main reason to build a mixed dataset. A
+  `--type jdbc` source does not appear in the federated layer at all: query
+  it without `--source` and it fails `SQL_UNKNOWN_TABLE`, exactly as a
+  misspelled table would. So a JDBC source cannot be joined to anything —
+  if you need that join, add the database as its native type instead.
 - **Local does not mean free, and the plan gate keys off source type, not
   dataset location.** CSV/JSON sources run fully offline, logged out. Any
   *database* source — including one inside a purely local YAML — forces
@@ -110,15 +117,27 @@ separately.
 
 ## Critical rules
 
-1. **Never put a literal secret in a flag.** `--user`, `--password`, and
-   `--var` values land in `ps` output, shell history, **and in clear text in
-   the dataset YAML** (or the cloud request body). Use
-   `--var name=vault:<vaultId>/<secretId>` for a Shared Vault reference, or
-   `--vars-file -` to read a JSON object from stdin and keep secrets out of
-   argv entirely. Local Vault secrets are not supported by the CLI — Shared
-   Vault only. A literal secret written into `--url-template` is rejected
-   outright, because a literal has no `{{name}}` to route through `--var`
-   and nothing would mask it.
+1. **Secrets are only avoidable on the JDBC path, and that decides which
+   source type to use.** Any credential flag puts its value in `ps` output,
+   shell history, **and in clear text in the dataset YAML** (or the cloud
+   request body). What differs is whether there is an alternative:
+   - **JDBC (`--var`, `--prop`): yes.** Use
+     `--var name=vault:<vaultId>/<secretId>` for a Shared Vault reference, or
+     `--vars-file -` to read a JSON object from stdin and keep secrets out of
+     argv entirely. Local Vault secrets are not supported — Shared Vault
+     only. A literal secret in `--url-template` is rejected outright: a
+     literal has no `{{name}}` to route through `--var`, so nothing could
+     mask it.
+   - **Native `--type mysql|postgresql|sqlserver` (`--user`, `--password`):
+     no.** The CLI says so on every write —
+     `Secret references for database credentials are not yet supported by
+     Postman CLI.` There is no vault form of these flags. The credentials
+     land in the YAML in clear text or the source does not exist.
+
+   So when credentials must not sit in a committed file, reach for
+   `--type jdbc` with Vault refs rather than the native type for the same
+   database. Otherwise treat that YAML as a secret-bearing file and keep it
+   out of version control.
 2. **"The dataset operation failed with a server error. Please retry." is
    usually not a server error and retrying will not help.** It is the
    generic wrapper over engine errors, including your SQL being wrong.
