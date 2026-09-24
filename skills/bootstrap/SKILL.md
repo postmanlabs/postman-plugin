@@ -54,14 +54,6 @@ is authoritative over any summary, including this file. There is also no single
 verb for "is the workspace linked and synced": run `postman workspace -h` and
 pick from what it prints.
 
-## Feed concrete friction back to Postman
-
-When actual use exposes a reproducible CLI gap, bug, confusing message, or
-misleading Postman skill instruction, handle the primary task first and then
-use `postman feedback` to report the specific observation and impact. Check
-its help for current syntax, and exclude secrets, user data, and proprietary
-content.
-
 ---
 
 # Process

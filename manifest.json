@@ -17,13 +17,13 @@
     {
       "name": "api-discovery",
       "plugin": "postman",
-      "description": "Discover and use APIs from the web, or any resource in Postman. Find and integrate public third-party APIs with Orbit, locate Postman entities (collections, workspaces, flows, requests, specs, documents, mocks) with search, and trace relationships between them with the context-graph.",
+      "description": "Discover and use APIs from the web or Postman. Find and integrate public third-party APIs with Orbit, locate Postman entities with search, and use the Context Graph to investigate dependencies, ownership, runtime behavior, and change impact across an API ecosystem.",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/api-discovery/SKILL.md",
-          "bytes": 6309,
-          "sha256": "f5ebf73ff4b07917aab04d8f35d0f2edb86a7eca554c59030e15ff453b6faf10"
+          "bytes": 6709,
+          "sha256": "f4a6b5243a044538bfa969a190d566f0de5ba943deef4f4c0d20f09cb00ef7fd"
         },
         {
           "target": "reference/orbit.md",
@@ -60,8 +60,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-engineer/SKILL.md",
-          "bytes": 2397,
-          "sha256": "b8d0ef93d81478ed6b5a9b0af74652d3928615bc2af3ce82cfbe88cebafa00aa"
+          "bytes": 2402,
+          "sha256": "c46e31bc7f966b9b02f4eef8ef8f4ad1c6224003b1f71f00b7e6397e826d009f"
         }
       ]
     },
@@ -112,8 +112,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/bootstrap/SKILL.md",
-          "bytes": 10039,
-          "sha256": "2c34588b01be9f083777d3acd1d68331c054f21314d477e1fb5dbd0a9761cc6b"
+          "bytes": 9681,
+          "sha256": "f09e17d45bdca9fec95b9ca5d7ec65a08f0273a25ecfb9af176139a7428a9b1e"
         },
         {
           "target": "reference/cli_installation.md",
