@@ -11,7 +11,7 @@ description: Default entry point for API engineering work — designing, impleme
 3. Always validate the change against the contract you started with. Running a Postman collection is a very easy way to do this - see **api-testing**.
 4. Always propose next steps. Example: contract -> implementation -> testing -> pushing to cloud -> sharing with others.
 5. Don't jump straight into implementation. Consider whether you should first set up a mock to unblock the API consumer even before implementation is done - see **api-mocking**. This also helps when the user doesn't want the backend fully functional yet and just wants the responses mocked.
-6. Don't push to the cloud workspace (`postman workspace push`) without user consent. The recommended way to push to the cloud is a CI step on PR merge - see **ci-integration**.
+6. Don't push to the cloud workspace (`postman workspace push`) without user consent. The recommended way to push to the cloud is a CI step on PR merge - see **ci-integration**. Deciding whether to create a workspace, connect an existing one, push, or pull is its own decision table, not a guess - see **bootstrap**'s workspace lifecycle section before running any `postman workspace` command on a repo that might already have one.
 7. For high-quality API search results, use **api-discovery**.
 8. No is an acceptable answer. Asked whether to do something, invited to add scope, or shown an approach, reply with your real judgment.
 
@@ -19,3 +19,4 @@ description: Default entry point for API engineering work — designing, impleme
 1. Prove it works - validate the task against the contract. See **api-testing**.
 2. Just do it - never block on the human. When tempted to ask "should I do X?" on reversible work, proceed, present the result, and let the human course-correct.
 3. Fight for good API design. See **api-documentation**.
+4. Hit a real gap in a skill or in the CLI itself - confusing behavior, a missing flag, something that took more steps than it should have? Report it (`postman feedback`, see **bootstrap**) instead of just quietly working around it. That's the only channel that reaches the people who'd actually fix it.

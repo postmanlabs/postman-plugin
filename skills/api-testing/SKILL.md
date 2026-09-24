@@ -11,13 +11,20 @@ Three tools, matched to what already exists:
 
 | Have | Use |
 | --- | --- |
-| Just a URL to check | `postman request` |
+| A URL to check that isn't already saved anywhere | `postman request` |
+| That exact request already saved in a collection | run the saved copy — `postman collection run -i "<name>"` — not `postman request` |
 | A collection with `pm.test` assertions saved in it | `postman collection run` |
 | A real app (browser flow, CLI, service) whose traffic should match a collection's contract | `postman application test` |
 
 Don't reach for the heavier tool when the lighter one already answers the
 question — a one-off endpoint check doesn't need a collection, and a
-collection run doesn't need Playwright.
+collection run doesn't need Playwright. The same logic runs the other way
+too: if a collection already exists, check it (`postman/collections/` — see
+`collection-schema-v3`) before typing a request by hand. A request that's
+already saved has an already-correct method, headers, body and auth; a
+fresh `postman request` command re-derives all of that from scratch, and
+anything nontrivial in the body is now two independent copies that can
+drift apart.
 
 ## `postman request` — over curl, not instead of testing
 
@@ -30,6 +37,15 @@ code counts *failed assertions*, not just HTTP status, so a 200 with a
 failing test still exits nonzero. Useful for a quick check or a CI health
 check; not the place to accumulate assertions that should outlive one
 command — those belong saved in a collection.
+
+**Don't hand-type a payload that already exists somewhere on disk.** `--body`
+accepts `@<filepath>` exactly like `-d/--body` on curl — pass the path to an
+existing fixture, saved example, or extracted request body instead of
+retyping it as an inline `--body '{...}'` string. Retyping a payload from
+memory (or from reading it off another file) is how a "test" body quietly
+stops matching the real one, and it mangles quoting fast for anything with
+nested quotes or newlines. Inline `--body` is for a payload that's
+genuinely new and small enough to trust by eye.
 
 ## `collection run` — the assertion suite
 
@@ -75,6 +91,11 @@ that shouldn't be recorded.
    the request instead.
 4. **`--use-mock` is the way to test without a live backend** — prefer it
    over standing up ad hoc fakes or skipping tests that need a dependency.
+5. **A URL that's already a saved request is a sign to run the saved copy,
+   not to reconstruct it.** Check `postman/collections/` before reaching for
+   `postman request` at all; when a genuine one-off call does need a body
+   that already exists in a file, load it with `--body @<path>` instead of
+   retyping it inline.
 
 ## Verification
 

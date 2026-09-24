@@ -99,9 +99,41 @@ valid structurally.
 ## Environments (`postman/environments/*.yaml`)
 
 - `name` — required.
-- `values` — array of `{key, value: string, enabled, type}`. `value` must
-  be a string (same rule as collection variables); `enabled` is boolean;
-  `type` is a string, e.g. `"default"`.
+- `values` — array of `{key, value: string, enabled, type}`.
+  - `value` must be a string (same rule as collection variables).
+  - `enabled` — boolean.
+  - `type` — `"default"` or `"secret"`; optional, and behaves like
+    `"default"` when omitted. `"secret"` only masks the value in the CLI's
+    own inspection output: `postman environment get` prints `********`
+    unless you also pass `--show-secrets`. It does **not** stop the value
+    from being sent — a live `postman request` or `collection run` still
+    resolves and transmits the real value, and `--verbose`/`--debug` output
+    on either still prints it in plain text as part of the actual request.
+    Mark anything credential-shaped `type: secret` anyway (it's the
+    convention every other Postman surface expects, and it keeps a stray
+    `environment get` or a shared terminal from leaking it) — just don't
+    treat it as a substitute for keeping the secret out of the repo in the
+    first place.
+
+Prefer `postman environment var set/get/unset -e <path>` for reading or
+changing one value over hand-editing the YAML. It's the same file either
+way, but it means a `secret`-type value never has to pass through your own
+output just to change it.
+
+Worked example:
+
+```yaml
+name: Staging
+values:
+  - key: base_url
+    value: 'https://staging.api.example.com'
+    enabled: true
+    type: default
+  - key: api_key
+    value: 'sk_live_examplenotreal'
+    enabled: true
+    type: secret
+```
 
 ## YAML rules
 
@@ -201,6 +233,10 @@ variables:
    [reference/other_protocols.md](reference/other_protocols.md) — don't
    guess those schemas from the HTTP shape above, they diverge in real ways
    (e.g. gRPC's `methodDescriptor`, LLM's `userPrompts`/`systemPrompts`).
+5. **Mark credential-shaped environment values `type: secret`, but remember
+   the CLI still has to know the real value to send it.** Secret masking is
+   for `environment get`'s own display and for anyone glancing at the file
+   next to you — not for `--verbose` output or the request itself.
 
 ## Reference
 

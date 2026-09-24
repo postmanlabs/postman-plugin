@@ -1,6 +1,6 @@
 ---
 name: bootstrap
-description: Resolves the Postman CLI, authenticates, links the workspace, and records this repo's spec path, collections directory and workspace id. Use when the user asks to "set up Postman here", "connect this repo to Postman", "link this workspace", "authenticate with Postman", "postman login", or "run postman init" — and before the api-mocking, api-testing, api-monitoring, flows, performance-testing, api-discovery, or ci-integration skills only when the CLI, the linked workspace or the spec path has not already been confirmed in this session. Those skills stop and point back here if it has not completed; they never re-derive these values themselves.
+description: Resolves the Postman CLI, authenticates, links the workspace, and records this repo's spec path, collections directory and workspace id. Also owns the decision table for what to do with a workspace afterward — create vs. connect an existing one vs. push vs. pull — so read this before running any `postman workspace` command, not just at first setup. Use when the user asks to "set up Postman here", "connect this repo to Postman", "link this workspace", "authenticate with Postman", "postman login", "run postman init", "share this workspace with my team", or "connect an existing workspace" — and before the api-mocking, api-testing, api-monitoring, flows, performance-testing, api-discovery, or ci-integration skills only when the CLI, the linked workspace or the spec path has not already been confirmed in this session. Those skills stop and point back here if it has not completed; they never re-derive these values themselves.
 ---
 
 # Bootstrap Postman for This Repo
@@ -32,6 +32,12 @@ repo is already set up.
 - Wire up an existing repo only. Never scaffold a new API or a starter spec.
 - Write no host-specific paths — the same `skills/` directory loads on every
   route.
+- Hit a genuine CLI gap along the way — a missing flag, a confusing default,
+  something that took more steps than it should have? Say so instead of just
+  working around it: `postman feedback --type cli_gap --context "<command>"
+  "<what happened>"`. `--type` also takes `bug_report`, `feature_request`, and
+  `improvement_suggestion`. Nobody on the CLI team sees a workaround; this is
+  the channel that reaches them.
 
 ## Ask the CLI: `-h`
 
@@ -169,6 +175,32 @@ written but the requested workspace was not created — it does *not* mean re-ru
 - **Spec path**: <path (inferred | explicit) | none — user must create>
 - **Collections dir**: <path | none — user must create>
 ```
+
+---
+
+# Workspace Lifecycle
+
+The four steps above run once, but a workspace decision comes up again any
+time a later task touches `postman workspace`. `create` is the command
+that's easiest to reach for by reflex — it's the first verb, and it's the
+one that "just works" standalone — but it's the wrong answer whenever a
+workspace for this repo already exists somewhere, local or cloud. Check
+`.postman/resources.yaml`'s `workspace.id` (step 3) and, if still unsure,
+`postman workspace list` before picking a row below.
+
+| Situation | Command | Why |
+| --- | --- | --- |
+| "Share this workspace with my team" and `workspace.id` is already set | `postman workspace push` | The workspace already exists — sharing means getting local work into it. Who else can *see* it is a team/role setting in Postman itself, not something the CLI creates. |
+| A Postman workspace already exists (made in the UI, or turned up in `workspace list`) but this repo isn't bound to it | `postman workspace connect-git <workspaceId>`, then `postman workspace pull` | Binds the repo to the workspace that already exists and pulls its entities into the git-native `postman/` folders — the filesystem workflow the rest of this plugin reads — without pushing anything or touching the cloud copy. |
+| Nothing exists yet — no `workspace.id`, and `workspace list` doesn't show one for this project | `postman workspace create --visibility <personal\|team\|...>` | Only now is there actually nothing to reuse. |
+| Not sure what a push or pull would actually change | `postman workspace diff` | Read-only preview of both directions; run it before either. |
+
+The underlying point: getting a repo onto the filesystem workflow doesn't
+require any cloud-mutating operation at all when the workspace already
+exists — `connect-git` + `pull` is entirely one-directional (cloud → disk).
+Reaching for `create` on an already-shared workspace doesn't just fail to
+share it, it produces a second, disconnected workspace that now competes
+with the one the team actually uses.
 
 ---
 
