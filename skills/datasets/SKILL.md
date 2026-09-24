@@ -1,6 +1,6 @@
 ---
 name: datasets
-description: Turns CSV/JSON files and live databases into one queryable SQL surface, then drives collection runs from it — one iteration per row — or exposes it to scripts as `pm.datasets()`. Use when the user asks to "run this collection against my test data," "drive iterations from a CSV/database," "query my data with SQL," "join data across sources," or "use a Postman dataset." Covers `postman dataset` and the `--iteration-data-dataset`/`--dataset` flags on `collection run`. Needs nothing from bootstrap for file-backed datasets, which work fully offline; database-backed sources need `postman login` and a paid plan even when the dataset is a local file.
+description: Query CSV and JSON files, spreadsheet exports, and live databases (MySQL, PostgreSQL, SQL Server, or anything with a JDBC driver JAR) as one SQL surface; join across them; save a query as a reusable named view; then drive a collection run one iteration per row, or read rows from scripts via `pm.datasets()`. Use when the user wants to run or loop a collection over rows of test data, parameterize a run from a CSV or spreadsheet or database table, query or join data across files and tables, save a query to rerun later, point Postman at a JDBC driver, work out where database credentials get stored, or names a Postman dataset or view. Covers `postman dataset` (`source`, `view`, `query`, `jdbc`) and `--iteration-data-dataset`/`--iteration-data-view`/`--dataset` on `collection run`. File-backed datasets need no login and work offline; database sources need `postman login` and a paid plan — JDBC and SQL Server need Enterprise — even inside a local YAML file.
 ---
 
 # Datasets
@@ -29,6 +29,10 @@ separately.
 
 ## Core knowledge
 
+- **Only CSV and JSON are file formats here.** `--format` takes
+  `csv|json|mysql|postgres|sqlserver` and nothing else — there is no `.xlsx`
+  reader. When someone says "my spreadsheet" or "my Excel file", the first
+  step is exporting it to CSV; the dataset cannot read the workbook itself.
 - **A datasource's `name` is its SQL table name.** `-n users` means
   `FROM users`. **The CLI's own `-h` examples say `FROM source_users`, and
   they are wrong** — there is no prefixing logic in the code, and
