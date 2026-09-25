@@ -19,13 +19,21 @@ const SERVER_KEYS = ['mcpServers', 'mcp'],
     HEADER_KEYS = ['headers', 'http_headers'],
     DEFAULT_ROUTE_KEYS = { serverKey: 'mcpServers', headerKey: 'headers' },
 
-    // Per-route deviations from DEFAULT_ROUTE_KEYS.
-    ROUTE_KEYS_BY_MANIFEST_DIR = { '.codex-plugin': { headerKey: 'http_headers' } },
+    // Every manifest route, with its deviations from DEFAULT_ROUTE_KEYS. An
+    // unlisted `.*-plugin/` directory is reported, not checked against guesses.
+    MANIFEST_ROUTES = {
+        '.claude-plugin': {},
+        '.codex-plugin': { headerKey: 'http_headers' },
+        '.cursor-plugin': {},
+        '.kimi-plugin': {}
+    },
     MANIFEST_DIR_PATTERN = /^\..+-plugin$/,
 
-    // Routes with no manifest for MANIFEST_DIR_PATTERN to match. A route in
-    // neither set is never checked, which looks exactly like passing.
-    CONFIG_ONLY_ROUTES = [{ file: 'opencode.json', keys: { serverKey: 'mcp' } }];
+    // Routes with no manifest for MANIFEST_DIR_PATTERN to match. A route missing
+    // here is never checked, which looks exactly like passing.
+    CONFIG_ONLY_ROUTES = [{ file: 'opencode.json', keys: { serverKey: 'mcp' } }],
+
+    X_SOURCE_FORMAT = /^postman-[a-z0-9-]+-plugin$/;
 
 const ROOT = repoRootOrExit();
 
@@ -36,22 +44,32 @@ if (!isThisRepo()) {
 const errors = [],
     sources = new Map();
 
-// Every later check reads files this one validates, so a parse error stops here
-// rather than surfacing as a crash inside the next check.
-everyTrackedJsonParses();
-
-if (errors.length) {
-    report();
+try {
+    runChecks();
+}
+catch (e) {
+    // Only exit 2 blocks the commit; a crash exits 1 and lets it through.
+    errors.push(`the guard itself failed (${e.message}) - blocking rather than letting an unchecked commit through`);
 }
 
-// These accumulate, so one commit surfaces every problem at once. Uniqueness
-// runs last because the route checks are what populate `sources`.
-manifestIsInSyncWithSkillFiles();
-manifestRoutesAgreeWithTheirMcpConfig();
-configOnlyRoutesCarryTheirOwnAttribution();
-noTwoRoutesShareAnXSource();
-
 report();
+
+function runChecks () {
+    // Every later check reads files this one validates, so a parse error stops
+    // here rather than surfacing as a crash inside the next check.
+    everyTrackedJsonParses();
+
+    if (errors.length) {
+        return;
+    }
+
+    // These accumulate, so one commit surfaces every problem at once. Uniqueness
+    // runs last because the route checks are what populate `sources`.
+    manifestIsInSyncWithSkillFiles();
+    manifestRoutesAgreeWithTheirMcpConfig();
+    configOnlyRoutesCarryTheirOwnAttribution();
+    noTwoRoutesShareAnXSource();
+}
 
 function everyTrackedJsonParses () {
     for (const file of trackedJsonFiles()) {
@@ -78,10 +96,16 @@ function manifestIsInSyncWithSkillFiles () {
 
 function manifestRoutesAgreeWithTheirMcpConfig () {
     for (const dir of manifestRouteDirs()) {
-        const manifestRel = `${dir}/plugin.json`,
-            manifest = readJson(manifestRel);
+        const manifestRel = `${dir}/plugin.json`;
 
-        checkRoute(manifest, manifestRel, routeKeys(ROUTE_KEYS_BY_MANIFEST_DIR[dir]), manifest.version);
+        if (!Object.hasOwn(MANIFEST_ROUTES, dir)) {
+            errors.push(`${manifestRel}: unregistered route - add '${dir}' to MANIFEST_ROUTES in this guard, with the server and header keys this vendor reads`);
+            continue;
+        }
+
+        const manifest = readJson(manifestRel);
+
+        checkRoute(manifest, manifestRel, routeKeys(MANIFEST_ROUTES[dir]), manifest && manifest.version);
     }
 }
 
@@ -98,6 +122,12 @@ function routeKeys (overrides) {
 /** `manifestVersion` is null for a route whose format carries no version key:
  *  with no field to compare against, the headers are checked against each other. */
 function checkRoute (config, where, keys, manifestVersion) {
+    if (!isObject(config)) {
+        errors.push(`${where}: expected a JSON object`);
+
+        return;
+    }
+
     const found = mcpServersOf(config, where, keys.serverKey);
 
     if (!found) {
@@ -107,10 +137,16 @@ function checkRoute (config, where, keys, manifestVersion) {
     const ignoredHeaderKey = theOtherKey(HEADER_KEYS, keys.headerKey);
 
     for (const [name, server] of Object.entries(found.servers)) {
-        const at = `${found.where} (${name})`,
-            headers = server[keys.headerKey] || {},
+        const at = `${found.where} (${name})`;
+
+        if (!isObject(server)) {
+            errors.push(`${at}: expected a server object`);
+            continue;
+        }
+
+        const headers = isObject(server[keys.headerKey]) ? server[keys.headerKey] : {},
             declared = headers['X-Plugin-Version'],
-            source = recordSource(headers, at),
+            source = recordSource(headers, at, where),
             version = manifestVersion || declared;
 
         if (server[ignoredHeaderKey]) {
@@ -132,14 +168,15 @@ function checkRoute (config, where, keys, manifestVersion) {
 
 function noTwoRoutesShareAnXSource () {
     for (const [source, routes] of sources) {
-        if (routes.length > 1) {
-            errors.push(`X-Source "${source}" is reused by ${routes.join(' and ')} - each route needs its own, or their telemetry collapses into one bucket`);
+        if (routes.size > 1) {
+            errors.push(`X-Source "${source}" is reused by ${[...routes].join(' and ')} - each route needs its own, or their telemetry collapses into one bucket`);
         }
     }
 }
 
-/** Returns the X-Source and remembers where it was claimed, or null if absent. */
-function recordSource (headers, at) {
+/** Returns the X-Source and remembers which route claimed it, or null if absent.
+ *  Keyed by route, so two servers in one route may share their route's value. */
+function recordSource (headers, at, route) {
     const source = headers['X-Source'];
 
     if (!source) {
@@ -148,7 +185,11 @@ function recordSource (headers, at) {
         return null;
     }
 
-    sources.set(source, (sources.get(source) || []).concat(at));
+    if (!X_SOURCE_FORMAT.test(source)) {
+        errors.push(`${at}: X-Source "${source}" is not of the form postman-<vendor>-plugin`);
+    }
+
+    sources.set(source, (sources.get(source) || new Set()).add(route));
 
     return source;
 }
@@ -174,6 +215,12 @@ function mcpServersOf (config, where, serverKey) {
         externalMcpServers(declared, where, serverKey, ignored) :
         { servers: declared, where };
 
+    if (found && !isObject(found.servers)) {
+        errors.push(`${found.where}: \`${serverKey}\` must be an object of named servers`);
+
+        return null;
+    }
+
     if (found && !Object.keys(found.servers).length) {
         errors.push(`${found.where}: \`${serverKey}\` is empty - this route configures no MCP server`);
 
@@ -194,6 +241,12 @@ function externalMcpServers (declaredPath, where, serverKey, ignored) {
 
     const external = readJson(file);
 
+    if (!isObject(external)) {
+        errors.push(`${file}: expected a JSON object`);
+
+        return null;
+    }
+
     if (external[serverKey] === undefined) {
         errors.push(external[ignored] ?
             wrongServerKey(file, serverKey, ignored) :
@@ -207,6 +260,10 @@ function externalMcpServers (declaredPath, where, serverKey, ignored) {
 
 function wrongServerKey (where, serverKey, ignored) {
     return `${where}: MCP servers are under \`${ignored}\`, but this route reads \`${serverKey}\` - the block is silently ignored and no server is configured`;
+}
+
+function isObject (value) {
+    return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
 function theOtherKey (pair, key) {

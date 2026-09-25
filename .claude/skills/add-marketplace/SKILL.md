@@ -105,6 +105,10 @@ must hold. CI checks none of them; the pre-commit guard checks the first three.
 - **The URL ships literally**, with its mode segment. Never put `${...}` inside
   the URL; no route expands variables there, so the placeholder ships as-is.
 
+Register the route in `.claude/hooks/validate-manifests.js` — `MANIFEST_ROUTES`
+or `CONFIG_ONLY_ROUTES`, with the keys above — or the guard blocks the commit
+as an unregistered route (manifest) or never checks it (config-only).
+
 `/mcp` and `/minimal` expose different tool surfaces. Ask which one this vendor
 gets instead of defaulting.
 
@@ -173,15 +177,16 @@ Three things about that job are not obvious, and each one cost a debugging pass:
 - **An external `$ref` must be fetched too.** ajv resolves no reference over the
   network, so a schema that `$ref`s another fails with `can't resolve reference
   ... from id #` — an error about the *schema*, not about your file, which reads
-  like a mystery. The matrix has no field for this yet: a route that needs one
-  adds it (`ref`), a fetch step conditioned on it, and `-r` on the ajv call.
-- **Build ajv's arguments as a bash array, and branch with `if`.** `-r <file>`
-  has to arrive as two argv entries; a string built to split that way is
-  unquoted at the call site, so it globs and word-splits too, which is
-  shellcheck SC2086 and fails `actionlint` for the whole repo. And use
-  `if [ -f ... ]; then`, never `[ -f ... ] && args+=(...)` — the latter is a
-  false command under GitHub's `bash -e` when the file is absent, which aborts
-  the step.
+  like a mystery. Set the entry's `ref` to the referenced schema's URL; the job
+  already fetches it and passes `-r` (opencode's entry is the example). It
+  takes one `ref` per entry — a schema that references two needs the fetch step
+  widened.
+- **If you edit the ajv step, keep its arguments a bash array and branch with
+  `if`.** `-r <file>` has to arrive as two argv entries; a string built to split
+  that way globs and word-splits too, which is shellcheck SC2086 and fails
+  `actionlint` for the whole repo. And `[ -f ... ] && args+=(...)` is a false
+  command under GitHub's `bash -e` when the file is absent, which aborts the
+  step.
 
 Run the ajv command locally rather than waiting for CI. Where a vendor sets
 `additionalProperties: false` this check has real teeth: opencode's rejects

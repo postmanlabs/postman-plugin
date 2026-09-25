@@ -27,15 +27,16 @@ automatically once tracked. SchemaStore's Claude Code schemas accept invalid
 plugin names and unknown keys, which is why `claude plugin validate` runs
 alongside them.
 
-The matrix has no field for a schema that `$ref`s another, and ajv resolves
-nothing over the network, so a route whose schema does that has to add one
-(`ref`), a fetch step conditioned on it, and `-r` on the ajv call.
+ajv resolves nothing over the network, so a schema that `$ref`s another needs
+the entry's `ref` set to that schema's URL; the job fetches it and passes `-r`.
+One `ref` per entry — opencode's is the working example.
 
 ## The pre-commit guard
 
 `.claude/hooks/validate-manifests.js` blocks a `git commit` that would leave the
 routes disagreeing. Silent when clean; exits 2 with every problem at once when
-not.
+not. It fails closed: a crash is caught and reported with exit 2, because a
+hook that exits 1 is a non-blocking error and the commit would go through.
 
 **It only runs where someone wired it up.** It is a `PreToolUse` hook filtered
 with `if: "Bash(git commit*)"`, and it lives in `.claude/settings.local.json` —
@@ -43,13 +44,14 @@ machine-local, gitignored, and holding an absolute path. A fresh checkout
 therefore has no guard at all until that entry is added by hand. Treat it as a
 local convenience, not as an invariant the repo enforces.
 
-It discovers manifest routes by globbing `.*-plugin/plugin.json`, so a new
-**manifest** vendor is covered the moment its manifest exists. A **config-only**
-route matches no such glob and needs an entry in the guard's
-`CONFIG_ONLY_ROUTES` table — one line, giving the file and its server key.
-Without it the route drops out of the `X-Source` uniqueness check, the one
-invariant nothing else in the repo verifies. Check that a new route actually
-appears in the guard's output rather than assuming the glob caught it.
+Every route needs one line in the guard. A **manifest** route goes in
+`MANIFEST_ROUTES`, keyed by its directory, with any server or header key that
+differs from `mcpServers`/`headers`. The guard globs `.*-plugin/plugin.json` and
+blocks on any directory missing from the table, rather than checking it against
+spellings the vendor may not read. A **config-only** route matches no such glob
+and goes in `CONFIG_ONLY_ROUTES`, giving the file and its server key. Nothing
+flags a missing entry there: the route just drops out of the `X-Source`
+uniqueness check, the one invariant nothing else in the repo verifies.
 
 It checks:
 
@@ -64,7 +66,8 @@ It checks:
    `http_headers`. The wrong spelling is accepted silently at runtime and costs
    the route its attribution.
 5. Per server: `X-Plugin-Version` and `User-Agent` agree with the manifest's
-   `version`, every route declares an `X-Source`, and no two routes share one.
+   `version`, and `X-Source` is present and of the form `postman-<vendor>-plugin`.
+   No two routes share an `X-Source`; servers within one route may.
    Where the route's format carries no `version` key, the two header strings are
    checked against each other instead — a route with neither is reported, since
    its traffic is filed under no version at all.
