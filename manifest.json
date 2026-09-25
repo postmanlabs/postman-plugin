@@ -22,8 +22,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-discovery/SKILL.md",
-          "bytes": 6709,
-          "sha256": "f4a6b5243a044538bfa969a190d566f0de5ba943deef4f4c0d20f09cb00ef7fd"
+          "bytes": 7413,
+          "sha256": "e4603321a74c01fd5fee3345104bcb6e9329cce622181326554b631336124774"
         },
         {
           "target": "reference/orbit.md",
