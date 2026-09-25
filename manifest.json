@@ -162,6 +162,19 @@
       ]
     },
     {
+      "name": "datasets",
+      "plugin": "postman",
+      "description": "Query CSV and JSON files, spreadsheet exports, and live databases (MySQL, PostgreSQL, SQL Server, or anything with a JDBC driver JAR) as one SQL surface; join across them; save a query as a named view so it can be rerun without re-pasting the SQL; then drive a collection run one iteration per row — feeding it the rows a query returns instead of a hardcoded data file — or read rows from scripts via `pm.datasets()`. Use when the user wants to run or loop a collection over rows of test data, parameterize a run from a CSV or spreadsheet or database table, query or join data across files and tables, save or rerun a query without pasting it again, use a query's result rows as the input for a run in place of hardcoded JSON or a data file, point Postman at a JDBC driver, work out where database credentials get stored, or names a Postman dataset or view. Covers `postman dataset` (`source`, `view`, `query`, `jdbc`) and `--iteration-data-dataset`/`--iteration-data-view`/`--dataset` on `collection run`. File-backed datasets need no login and work offline; database sources need `postman login` and a paid plan — JDBC and SQL Server need Enterprise — even inside a local YAML file. A JDBC source is queried on its own with `--source`: it is the one source type federation cannot join across.",
+      "files": [
+        {
+          "target": "SKILL.md",
+          "source": "skills/datasets/SKILL.md",
+          "bytes": 15849,
+          "sha256": "15797061fa1fbaa61b6e993774f8932580d143f583f39c6e95e6f28d63dd5a1c"
+        }
+      ]
+    },
+    {
       "name": "flows",
       "plugin": "postman",
       "description": "Runs, deploys, and debugs Postman Flows from the command line — executing a flow file locally, triggering a deployed flow over its webhook, deploying one so it becomes callable, and tracing a failed run to the block that broke. Use when the user names a flow and an action (\"run the Checkout flow\", \"deploy this flow\", \"why did that flow run fail\", \"what flows do I have\"). Covers `postman flows list`, `run`, `trigger`, `deploy`, `update`, `list-runs`, and `get-run`.",
