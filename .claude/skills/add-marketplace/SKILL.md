@@ -250,25 +250,20 @@ covers what each of these checks and — more usefully — what none of them do.
 - **Do not copy another vendor's manifest or MCP file wholesale.** `X-Source`,
   version, header key and URL mode are deliberate per-route differences; a copy
   breaks all four at once.
-- **Never bump another route's version.** Adding a route changes nothing the
-  existing routes ship, so their `version`, `X-Plugin-Version` and `User-Agent`
-  strings must come out of your diff untouched. If you find yourself editing the
-  version in `.claude-plugin/plugin.json` to add a route, stop: you are about to
-  spend a release on every other route for a change none of them contain.
+- **Do not bump any version.** `AGENTS.md` keeps bumps to a dedicated release
+  PR. The new route's `1.0.0` is its starting value, not a bump; every other
+  route's strings come out of your diff untouched, which Step 6 checks.
 - **Do not run `node scripts/build-manifest.js` expecting a diff** *from the
   route itself*. `manifest.json` indexes the skill *files* and takes `plugin`
   from `.claude-plugin/plugin.json`'s name; adding a route changes neither. So
   if `--check` fails and you touched nothing under `skills/`, something else
   drifted — find out what.
 
-  The trap is that adding a route often makes skill *prose* stale, because files
-  under `skills/` name the routes. Fixing that wording is a skill-file change,
-  which drags in the README's "Changing a skill" step 3 and its cross-route
-  version bump — colliding head-on with the rule above. Avoid the collision
-  rather than resolving it: reword those files to key on the *property* (which
-  endpoint a route uses) rather than on route names, which both fixes the
-  staleness and stops the next route re-creating it. If a skill file genuinely
-  has to change, land it as its own change with its own bump.
+  Adding a route often makes skill *prose* stale, because files under `skills/`
+  name the routes. Reword them to key on the *property* (which endpoint a route
+  uses) rather than on route names, so the next route does not re-create the
+  staleness. That is a skill-file change: rebuild the manifest, and leave the
+  bump to the release.
 - **Do not add a `version` to `.claude-plugin/marketplace.json`.** It would
   override `plugin.json` and give that route a second source of truth.
 - **Do not write a generator for these files.** A tool whose job is to keep them
