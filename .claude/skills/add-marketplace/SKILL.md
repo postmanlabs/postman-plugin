@@ -238,7 +238,7 @@ done, rather than leaving it implied.
 `$ROUTE_FILE` is the manifest or root config from Step 1.
 
 ```bash
-actionlint .github/workflows/validate.yml
+actionlint .github/workflows/validate.yml .github/workflows/notify-marketplace-log.yml
 node -e "JSON.parse(require('fs').readFileSync('$ROUTE_FILE','utf8'))"
 npx -y @anthropic-ai/claude-code plugin validate .
 node .claude/hooks/validate-manifests.js && echo "manifests consistent"
@@ -250,9 +250,10 @@ node .claude/hooks/validate-manifests.js && echo "manifests consistent"
 # regression.
 .claude/skills/add-marketplace/scripts/check-hooks.sh <VENDOR>_PLUGIN_ROOT
 
-# The notify workflow watches the route file and can read its version. The jq
-# path is the one on this route's `report` line.
-grep -F -- "$ROUTE_FILE" .github/workflows/notify-marketplace-log.yml
+# The notify workflow both watches the route file and reports it; each needs its
+# own entry, so check them separately. The jq path is the one on the report line.
+grep -F -- "- '$ROUTE_FILE'" .github/workflows/notify-marketplace-log.yml
+grep -F -- "report $ROUTE_FILE '" .github/workflows/notify-marketplace-log.yml
 jq -r '<jq path> // empty' "$ROUTE_FILE"
 
 # No other route's version may move: only your route's files may appear here.

@@ -105,4 +105,5 @@ from its `paths` or its `report` lines ships and works; it just never tells
 version logs a `::warning` and moves on, so the job still passes. And a report
 that no listing's *Version file* matches is accepted by the webhook and posts
 nothing. All three failures are silent, which is why Step 6 checks the first two
-and Step 4 asks the PR to state the third.
+(`paths` and the `report` line separately, since either can be present without
+the other) and Step 4 asks the PR to state the third.

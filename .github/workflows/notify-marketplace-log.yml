@@ -20,7 +20,9 @@ permissions:
 jobs:
   notify:
     name: Notify
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
 
@@ -34,6 +36,7 @@ jobs:
             exit 0
           fi
 
+          failed=0
           report() {
             local file="$1" query="$2" version
             version="$(jq -r "$query // empty" "$file")"
@@ -41,10 +44,15 @@ jobs:
               echo "::warning file=$file::no version at $query"
               return
             fi
-            jq -n --arg repo "$GITHUB_REPOSITORY" --arg file "$file" \
-                  --arg version "$version" --arg url "$COMMIT_URL" \
-                  '{repo: $repo, version_file: $file, version: $version, release_url: $url}' |
-              curl -fsS -X POST "$WEBHOOK" -H 'Content-Type: application/json' --data @- >/dev/null
+            if ! jq -n --arg repo "$GITHUB_REPOSITORY" --arg file "$file" \
+                       --arg version "$version" --arg url "$COMMIT_URL" \
+                       '{repo: $repo, version_file: $file, version: $version, release_url: $url}' |
+                 curl -fsS --max-time 30 --retry 2 -X POST "$WEBHOOK" \
+                      -H 'Content-Type: application/json' --data @- >/dev/null; then
+              echo "::error file=$file::webhook POST failed for $version"
+              failed=1
+              return
+            fi
             echo "$file: $version"
           }
 
@@ -53,3 +61,4 @@ jobs:
           report .codex-plugin/plugin.json '.version'
           report .kimi-plugin/plugin.json '.version'
           report opencode.json '.mcp.postman.headers["X-Plugin-Version"]'
+          exit "$failed"
