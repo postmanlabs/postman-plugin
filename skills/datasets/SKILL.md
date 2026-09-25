@@ -43,24 +43,22 @@ them back down. Reach for those when the whole repo should move; the
   data; `-d` remains available for a one-off file and stays the lighter option
   when nothing more is wanted.
 
-- **Spreadsheets work, but `source add` cannot author one yet.** The engine
-  reads Excel and OpenDocument workbooks (`xlsx`, `xls`, `xlsb`, `ods`) as
-  well as CSV and JSON. A spreadsheet source needs one extra thing a flat file
-  does not — the worksheet to read:
+- **A spreadsheet becomes one source per worksheet, not one source.** The
+  engine reads Excel and OpenDocument workbooks (`xlsx`, `xls`, `ods`) as well
+  as CSV and JSON, and `source add --file book.xlsx` enumerates the sheets and
+  adds each as its own datasource — matching what the Postman app does. There
+  is no flag for picking a sheet, by design.
 
-  ```yaml
-  format: xlsx
-  source_options:
-    spreadsheet:
-      worksheet: People
-  ```
+  Each source is named `<--name>_<sheet>`, with anything outside
+  `[a-zA-Z0-9_]` replaced by `_` so the name is SQL-safe, and `_2`/`_3`
+  appended on collision. So `-n staff` over a workbook with People, Orders and
+  "Sales Q3 2026" gives three tables: `staff_People`, `staff_Orders`,
+  `staff_Sales_Q3_2026`. Read the names off the command's output rather than
+  predicting them — that sanitisation is where a guessed `FROM` clause breaks.
 
-  `postman dataset source add` has no flag that sets `worksheet`, so a source
-  it writes for a workbook is rejected at query time with
-  `engineCode=VALIDATION`. Until it does, either add the `source_options`
-  block to the `.dataset.yaml` by hand (verified working — the query then
-  returns rows), or export the sheet to CSV. Do not tell someone
-  `--format xlsx` alone will work; it writes a source that cannot be queried.
+  A single-sheet workbook stays one source named exactly `-n`, so the simple
+  case looks no different from a CSV.
+
 - **A datasource's `name` is its SQL table name.** `-n users` means
   `FROM users`. **The CLI's own `-h` examples say `FROM source_users`, and
   they are wrong** — there is no prefixing logic in the code, and
