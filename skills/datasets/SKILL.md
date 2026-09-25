@@ -7,9 +7,11 @@ description: Query CSV and JSON files, spreadsheet exports, and live databases (
 
 ## Overview
 
-A dataset is a `.dataset.yaml` manifest that names one or more *datasources*
-and presents them as SQL tables. It is not a data file — it is a layer over
-data files and databases, and the value is in that layer: heterogeneous
+A dataset is a Postman entity that names one or more *datasources* and
+presents them as SQL tables. It lives either in a Postman workspace or in the
+repository, and the same commands work on both. It is not a data file — it is
+a layer over data files and databases, and the value is in that layer:
+heterogeneous
 sources (a CSV and a Postgres table) become joinable in one query, and a
 saved *view* turns a query into a named, reusable result set that a
 collection run can iterate.
@@ -32,21 +34,33 @@ them back down. Reach for those when the whole repo should move; the
 
 ## Core knowledge
 
-- **First decide whether a dataset is needed at all — often it is not.** If the
-  user has one CSV or JSON file that is already in the shape they want to
-  iterate, and they have not asked to filter, join, aggregate or reuse a query,
-  the answer is one flag: `postman collection run <collection>
-  -d <file>`. No manifest, no `data_dir`, no view, nothing to commit. Say so
-  and stop. A dataset earns its keep only when something here is true: rows must
-  be **filtered or shaped** by SQL, data must be **joined across** files or
-  databases, the source is a **live database**, a query is worth **saving as a
-  named view** for reuse, or scripts need `pm.datasets()`. "It is a CSV" is not
-  a reason to build one; "I only want the active rows" is.
+- **Datasets are the current way to drive a run from data.** They supersede
+  passing a flat file with `-d`/`--iteration-data`: a dataset gives the same
+  row-per-iteration behaviour, and on top of it SQL to filter and shape rows,
+  joins across several sources, a live database instead of an export, named
+  views that can be rerun, and `pm.datasets()` access from scripts. Reach for
+  a dataset by default when someone wants to run a collection over rows of
+  data; `-d` remains available for a one-off file and stays the lighter option
+  when nothing more is wanted.
 
-- **Only CSV and JSON are file formats here.** `--format` takes
-  `csv|json|mysql|postgres|sqlserver` and nothing else — there is no `.xlsx`
-  reader. When someone says "my spreadsheet" or "my Excel file", the first
-  step is exporting it to CSV; the dataset cannot read the workbook itself.
+- **Spreadsheets work, but `source add` cannot author one yet.** The engine
+  reads Excel and OpenDocument workbooks (`xlsx`, `xls`, `xlsb`, `ods`) as
+  well as CSV and JSON. A spreadsheet source needs one extra thing a flat file
+  does not — the worksheet to read:
+
+  ```yaml
+  format: xlsx
+  source_options:
+    spreadsheet:
+      worksheet: People
+  ```
+
+  `postman dataset source add` has no flag that sets `worksheet`, so a source
+  it writes for a workbook is rejected at query time with
+  `engineCode=VALIDATION`. Until it does, either add the `source_options`
+  block to the `.dataset.yaml` by hand (verified working — the query then
+  returns rows), or export the sheet to CSV. Do not tell someone
+  `--format xlsx` alone will work; it writes a source that cannot be queried.
 - **A datasource's `name` is its SQL table name.** `-n users` means
   `FROM users`. **The CLI's own `-h` examples say `FROM source_users`, and
   they are wrong** — there is no prefixing logic in the code, and
@@ -79,7 +93,7 @@ them back down. Reach for those when the whole repo should move; the
   --iteration-data-dataset <pathOrId> --iteration-data-view <nameOrId>`
   runs one iteration per row, with each column bound as a variable
   (`{{name}}`). Both flags are required together, and the pair is mutually
-  exclusive with `-d/--iteration-data`. Both are marked BETA.
+  exclusive with `-d/--iteration-data`.
 - **A logged-out `collection run` always prints an auth error, and it means
   nothing about your dataset.** `No authorization data found. Please use the
   postman login command.` comes from the run command itself, not the dataset
