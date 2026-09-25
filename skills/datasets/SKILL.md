@@ -23,9 +23,12 @@ dataset: `list` takes a path or directory (its cloud form is
 `-w` with no path, since the id does not exist yet). `jdbc inspect` takes
 neither — it reads a driver JAR and touches no dataset at all.
 
-Nothing promotes a local dataset to the cloud — unlike `mock push`, there is
-no push. A local and a cloud dataset are separate things you create
-separately.
+There is no `dataset push` verb — but that does not mean local and cloud are
+sealed off from each other. Datasets are a workspace entity, so
+`postman workspace push` syncs them to the bound workspace along with
+collections, environments and the rest, and `postman workspace pull` brings
+them back down. Reach for those when the whole repo should move; the
+`dataset` verbs below are for working on one dataset in place.
 
 ## Core knowledge
 
