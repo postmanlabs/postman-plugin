@@ -28,7 +28,9 @@ Each discovery option serves a distinct purpose:
   access-control API?"
 - **`context-graph ask`** → answers organization-wide relationship and impact
   questions such as "what depends on billing-api?" or "what could this schema
-  change break?"
+  change break?" — including reconciliation asks like "does my collection
+  reflect all of billing-api's current endpoints?", since the graph, not the
+  checked-out repo, knows the service's live surface.
 
 These three draw on different data sources, so a miss in one is not proof of a
 miss in the others. `search` locates a known Postman resource; the Context
@@ -97,7 +99,15 @@ checked out locally:
 ```bash
 postman context-graph ask "What depends on billing-api?" --wait
 postman context-graph ask "What is the likely blast radius of changing this schema?" --wait
+postman context-graph ask "What are billing-api's current endpoints?" --wait
 ```
+
+A request to "validate this collection against the context graph" or "make
+sure the collection reflects all new/updated endpoints" is this third shape —
+ask the graph what the service's endpoints are now, then diff that answer
+against the collection yourself. Don't try to answer it by grepping the
+checked-out repo for routes instead; the repo may be behind, and the graph
+also sees deployments and repos you don't have checked out.
 
 Treat the result as a lead, not proof. For consequential work, verify candidates
 against source, API definitions, deployment configuration, or telemetry and
