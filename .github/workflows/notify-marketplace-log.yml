@@ -1,0 +1,64 @@
+# Reports every client manifest's version to the Marketplace Log Slack app
+# (postman-eng/marketplace-log), which posts to #postman-plugin-marketplaces
+# only for listings whose version file actually changed version.
+name: Notify marketplace channel
+
+on:
+  push:
+    branches: ['main']
+    paths:
+      - '.claude-plugin/plugin.json'
+      - '.cursor-plugin/plugin.json'
+      - '.codex-plugin/plugin.json'
+      - '.kimi-plugin/plugin.json'
+      - 'opencode.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    name: Notify
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Report manifest versions
+        env:
+          WEBHOOK: ${{ secrets.MARKETPLACE_LOG_WEBHOOK }}
+          COMMIT_URL: ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}
+        run: |
+          if [ -z "$WEBHOOK" ]; then
+            echo "::notice::MARKETPLACE_LOG_WEBHOOK is not set; skipping"
+            exit 0
+          fi
+
+          failed=0
+          report() {
+            local file="$1" query="$2" version
+            version="$(jq -r "$query // empty" "$file")"
+            if [ -z "$version" ]; then
+              echo "::warning file=$file::no version at $query"
+              return
+            fi
+            if ! jq -n --arg repo "$GITHUB_REPOSITORY" --arg file "$file" \
+                       --arg version "$version" --arg url "$COMMIT_URL" \
+                       '{repo: $repo, version_file: $file, version: $version, release_url: $url}' |
+                 curl -fsS --max-time 30 --retry 2 -X POST "$WEBHOOK" \
+                      -H 'Content-Type: application/json' --data @- >/dev/null; then
+              echo "::error file=$file::webhook POST failed for $version"
+              failed=1
+              return
+            fi
+            echo "$file: $version"
+          }
+
+          report .claude-plugin/plugin.json '.version'
+          report .cursor-plugin/plugin.json '.version'
+          report .codex-plugin/plugin.json '.version'
+          report .kimi-plugin/plugin.json '.version'
+          report opencode.json '.mcp.postman.headers["X-Plugin-Version"]'
+          exit "$failed"
