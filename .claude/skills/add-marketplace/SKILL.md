@@ -2,6 +2,7 @@
 name: add-marketplace
 description: Add a new vendor plugin route (marketplace) to this repo - Windsurf, Zed, Copilot, Gemini CLI, opencode, or any other agent that can be pointed at a skills directory, whether it loads a plugin manifest or only a project config. Use when asked to add, wire up, or onboard a new marketplace, vendor, plugin route, or agent target. Covers the manifest or config, the MCP config, the session-start hook, the CI schema check, and the README sections that do not update themselves.
 argument-hint: <vendor-name>
+disable-model-invocation: true
 ---
 
 # Add a vendor plugin route
