@@ -1,6 +1,6 @@
 ---
 name: datasets
-description: Query CSV and JSON files, spreadsheet exports, and live databases (MySQL, PostgreSQL, SQL Server, or anything with a JDBC driver JAR) as one SQL surface; join across them; save a query as a named view so it can be rerun without re-pasting the SQL; then drive a collection run one iteration per row — feeding it the rows a query returns instead of a hardcoded data file — or read rows from scripts via `pm.datasets()`. Use when the user wants to run or loop a collection over rows of test data, parameterize a run from a CSV or spreadsheet or database table, query or join data across files and tables, save or rerun a query without pasting it again, use a query's result rows as the input for a run in place of hardcoded JSON or a data file, point Postman at a JDBC driver, work out where database credentials get stored, or names a Postman dataset or view. Covers `postman dataset` (`source`, `view`, `query`, `jdbc`) and `--iteration-data-dataset`/`--iteration-data-view`/`--dataset` on `collection run`. File-backed datasets need no login and work offline; database sources need `postman login` and a paid plan — JDBC and SQL Server need Enterprise — even inside a local YAML file.
+description: Query CSV and JSON files, spreadsheet exports, and live databases (MySQL, PostgreSQL, SQL Server, or anything with a JDBC driver JAR) as one SQL surface; join across them; save a query as a named view so it can be rerun without re-pasting the SQL; then drive a collection run one iteration per row — feeding it the rows a query returns instead of a hardcoded data file — or read rows from scripts via `pm.datasets()`. Use when the user wants to run or loop a collection over rows of test data, parameterize a run from a CSV or spreadsheet or database table, query or join data across files and tables, save or rerun a query without pasting it again, use a query's result rows as the input for a run in place of hardcoded JSON or a data file, point Postman at a JDBC driver, work out where database credentials get stored, or names a Postman dataset or view. Covers `postman dataset` (`source`, `view`, `query`, `jdbc`) and `--iteration-data-dataset`/`--iteration-data-view`/`--dataset` on `collection run`. File-backed datasets need no login and work offline; database sources need `postman login` and a paid plan — JDBC and SQL Server need Enterprise — even inside a local YAML file. A JDBC source is queried on its own with `--source`: it is the one source type federation cannot join across.
 ---
 
 # Datasets
@@ -51,7 +51,8 @@ separately.
   passed, not the example text.
 - **Federated vs native is the central query decision.** With no `--source`,
   the query runs through a federated SQLite layer that can join across every
-  source in the dataset. With `--source <name>`, it is sent to that one
+  *federatable* source in the dataset — which is all of them except JDBC, per
+  the next rule. With `--source <name>`, it is sent to that one
   datasource in *its own SQL dialect* — which is the only thing that works
   for JDBC sources, and what you want for dialect-specific SQL
   (`now() - interval '1 day'`). `dataset query -s` and
@@ -120,13 +121,18 @@ separately.
    sniffed, so a `.txt` holding JSON needs `--format json`. For a cloud
    dataset, `--file` alone registers a *local-filesystem* source read by the
    local engine; `--upload` is what actually puts the data in the cloud.
-3. **For a database source, start from `jdbc inspect`.**
+3. **For a *JDBC* source, start from `jdbc inspect`.**
    `postman dataset jdbc inspect ./drivers/pg.jar` maps straight onto the
    `source add` flags: `suggestedUrlTemplate` → `--url-template`,
    `templateVariables` → `--var`, `connectionProperties` → `--prop`,
    `driverClass` → `--driver-class`. A second source on the same database
    reuses all of it with `--from-source <name>`. A connection test runs
-   before the write, so a source that cannot connect is never persisted.
+   before the write, so a JDBC source that cannot connect is never persisted
+   (`--no-test` opts out). A native `--type mysql|postgresql|sqlserver`
+   source needs none of this — no driver JAR, no inspect step, just
+   `--host/--port/--database/--user/--password` — and it is **not**
+   connection-tested before the write, so run `source test` yourself after
+   adding one.
 4. **Explore with ad-hoc SQL before saving anything.**
    `postman dataset query <dataset> -q "SELECT …"`. Get the query right
    here — a view is just a query you have already proven.
@@ -142,14 +148,20 @@ separately.
 ## Critical rules
 
 1. **Secrets are only avoidable on the JDBC path, and that decides which
-   source type to use.** Any credential flag puts its value in `ps` output,
-   shell history, **and in clear text in the dataset YAML** (or the cloud
-   request body). What differs is whether there is an alternative:
-   - **JDBC (`--var`, `--prop`): yes.** Use
-     `--var name=vault:<vaultId>/<secretId>` for a Shared Vault reference, or
-     `--vars-file -` to read a JSON object from stdin and keep secrets out of
-     argv entirely. Local Vault secrets are not supported — Shared Vault
-     only. A literal secret in `--url-template` is rejected outright: a
+   source type to use.** A credential passed as a **literal** lands in three
+   places: `ps` output, shell history, **and clear text in the dataset YAML**
+   (or the cloud request body). The CLI warns about exactly those three, and
+   only for literals. What differs by source type is whether there is an
+   alternative:
+   - **JDBC (`--var`, `--prop`): yes, and it avoids all three.**
+     `--var name=vault:<vaultId>/<secretId>` stores a `{$vaultId,$secretId}`
+     pointer and resolves it at query time, so the secret itself reaches none
+     of the three — only the reference travels through argv. `--vars-file`
+     reads the same values from a JSON file and `--vars-file -` from stdin,
+     which is the one way to keep a value out of `ps` and shell history; it
+     accepts vault refs too, and a *literal* passed that way still lands in
+     the YAML in clear text. Local Vault secrets are not supported — Shared
+     Vault only. A literal secret in `--url-template` is rejected outright: a
      literal has no `{{name}}` to route through `--var`, so nothing could
      mask it.
    - **Native `--type mysql|postgresql|sqlserver` (`--user`, `--password`):
@@ -197,17 +209,18 @@ separately.
   datasets. Bare `list` is the *cloud* form and errors without `-w` outside
   a Postman-managed project; pass a path or directory for local ones.
 - **Don't hand-edit `.dataset.yaml` to add a source.** `source add` runs the
-  connection test, id generation, and secret validation that a hand-edited
-  entry skips — and the resolver re-inspects every YAML precisely so a
-  hand-edited file cannot bypass the source gate.
+  connection test (JDBC), id generation, and secret validation that a
+  hand-edited entry skips — and the resolver re-inspects every YAML
+  precisely so a hand-edited file cannot bypass the source gate.
 
 ## Verification
 
 A dataset is not working because `create` and `source add` exited 0 — those
-only prove the manifest parses. Run an actual query and state the row count
-and columns you got back. For a run, state the iteration count and confirm
-it equals the view's row count; three rows producing one iteration means the
-view, not the collection, is what to look at. Say which execution path ran
-(federated or `--source` native) and whether the dataset was local or
-cloud — that determines whether the numbers reflect live data or a copied
-snapshot in `data_dir`.
+prove the manifest was written, and on the JDBC path that a connection
+opened, but never that a query returns rows. Run an actual query and state
+the row count and columns you got back. For a run, state the iteration count
+and confirm it equals the view's row count; three rows producing one
+iteration means the view, not the collection, is what to look at. Say which
+execution path ran (federated or `--source` native) and whether the dataset
+was local or cloud — that determines whether the numbers reflect live data
+or a copied snapshot in `data_dir`.

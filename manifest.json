@@ -158,13 +158,13 @@
     {
       "name": "datasets",
       "plugin": "postman",
-      "description": "Query CSV and JSON files, spreadsheet exports, and live databases (MySQL, PostgreSQL, SQL Server, or anything with a JDBC driver JAR) as one SQL surface; join across them; save a query as a named view so it can be rerun without re-pasting the SQL; then drive a collection run one iteration per row — feeding it the rows a query returns instead of a hardcoded data file — or read rows from scripts via `pm.datasets()`. Use when the user wants to run or loop a collection over rows of test data, parameterize a run from a CSV or spreadsheet or database table, query or join data across files and tables, save or rerun a query without pasting it again, use a query's result rows as the input for a run in place of hardcoded JSON or a data file, point Postman at a JDBC driver, work out where database credentials get stored, or names a Postman dataset or view. Covers `postman dataset` (`source`, `view`, `query`, `jdbc`) and `--iteration-data-dataset`/`--iteration-data-view`/`--dataset` on `collection run`. File-backed datasets need no login and work offline; database sources need `postman login` and a paid plan — JDBC and SQL Server need Enterprise — even inside a local YAML file.",
+      "description": "Query CSV and JSON files, spreadsheet exports, and live databases (MySQL, PostgreSQL, SQL Server, or anything with a JDBC driver JAR) as one SQL surface; join across them; save a query as a named view so it can be rerun without re-pasting the SQL; then drive a collection run one iteration per row — feeding it the rows a query returns instead of a hardcoded data file — or read rows from scripts via `pm.datasets()`. Use when the user wants to run or loop a collection over rows of test data, parameterize a run from a CSV or spreadsheet or database table, query or join data across files and tables, save or rerun a query without pasting it again, use a query's result rows as the input for a run in place of hardcoded JSON or a data file, point Postman at a JDBC driver, work out where database credentials get stored, or names a Postman dataset or view. Covers `postman dataset` (`source`, `view`, `query`, `jdbc`) and `--iteration-data-dataset`/`--iteration-data-view`/`--dataset` on `collection run`. File-backed datasets need no login and work offline; database sources need `postman login` and a paid plan — JDBC and SQL Server need Enterprise — even inside a local YAML file. A JDBC source is queried on its own with `--source`: it is the one source type federation cannot join across.",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/datasets/SKILL.md",
-          "bytes": 14063,
-          "sha256": "a33322794baf6fa3bf2ef16ee64cc5631033435431fb5b2d237dbe10a2ecc9aa"
+          "bytes": 15078,
+          "sha256": "a8244ea52af56486f2edd8cbb28fa7742e21d5784b9bee3af9ad951cb51d1598"
         }
       ]
     },
