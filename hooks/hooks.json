@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "set +u; for r in \"${CLAUDE_PLUGIN_ROOT}\" \"${CURSOR_PLUGIN_ROOT}\" \"${KIMI_PLUGIN_ROOT}\" \"${PLUGIN_ROOT}\" .; do f=\"$r/hooks/session-start-context.md\"; [ -r \"$f\" ] && { cat \"$f\"; exit 0; }; done; echo \"postman-plugin: SessionStart hook could not locate hooks/session-start-context.md - no plugin-root variable resolved (tried CLAUDE_PLUGIN_ROOT, CURSOR_PLUGIN_ROOT, KIMI_PLUGIN_ROOT, PLUGIN_ROOT, cwd)\" >&2; exit 1",
+            "command": "cat \"${CLAUDE_PLUGIN_ROOT}/hooks/session-start-context.md\"",
             "shell": "bash",
             "async": false
           }

@@ -74,8 +74,6 @@ mcp.claude-code.json              Claude Code's MCP config
 mcp.cursor.json                   Cursor's MCP config
 mcp.codex.json                    Codex's MCP config — spells its headers `http_headers`
 skills/<name>/SKILL.md            one skill per directory — see skills/ for the current list
-hooks/hooks.json                  the session-start hook — shared by every route
-hooks/session-start-context.md    the block it injects into a new session
 manifest.json                     generated index of the skill files
 scripts/build-manifest.js         regenerates it
 ```
@@ -245,69 +243,6 @@ all:
 
 There is no generator, deliberately: a tool whose job is to keep these
 identical is wrong once versions are per-route.
-
-## The session-start hook
-
-`hooks/hooks.json` injects `hooks/session-start-context.md` at the start of a
-session — the block that tells the agent it has the Postman plugin and points it
-at `postman:api-engineer`. Without it a route still loads the skills and the MCP
-server, but nothing routes a session into them, so the plugin reads as if it
-were not installed.
-
-One file, shared by every route, same rule as `skills/`. What makes that
-awkward is that the hook has to read a file inside the plugin, and every vendor
-names the variable holding the plugin's install path differently:
-`CLAUDE_PLUGIN_ROOT` (Claude Code, and an explicit alias in Cursor, Copilot and
-Codex), `CURSOR_PLUGIN_ROOT`, `KIMI_PLUGIN_ROOT`, `PLUGIN_ROOT` (the Agent
-Plugins standard name, and Codex's own). So the command tries them in order and
-falls back to `.` for vendors that set the hook's working directory to the
-plugin root:
-
-```bash
-set +u; for r in "${CLAUDE_PLUGIN_ROOT}" "${CURSOR_PLUGIN_ROOT}" "${KIMI_PLUGIN_ROOT}" "${PLUGIN_ROOT}" .; do
-  f="$r/hooks/session-start-context.md"; [ -r "$f" ] && { cat "$f"; exit 0; }
-done
-echo "postman-plugin: ... no plugin-root variable resolved (tried ...)" >&2; exit 1
-```
-
-That works whether a vendor substitutes the token textually or merely exports
-the variable, because the command runs through `bash` either way. Four things
-about it are load-bearing:
-
-- **`set +u` comes first.** Naming four variables when only one is set is a
-  `nounset` violation, so a vendor that runs hook commands with `-u` would
-  abort the command before it read anything — and the single-variable version
-  this replaced had no such problem, which makes it a regression rather than a
-  pre-existing limitation. `set +u` neutralises it in every shell tested
-  (bash, sh, zsh) under `-u` and `-eu`, and it also preserves the loud failure
-  below, which `-u` otherwise swallows.
-- **`${CLAUDE_PLUGIN_ROOT}` is first and spelled with bare braces.** Vendors
-  that substitute textually match that exact token —
-  `${CLAUDE_PLUGIN_ROOT:-}` does not match, so a shell default silently
-  disables the substitution. `set +u` is what makes the bare form safe, so the
-  two go together: do not drop one and keep the other.
-- **`${PLUGIN_ROOT}` is last despite being the standard name.** Fewer clients
-  expand it, and Cursor explicitly does not. Promoting it is a regression.
-- **The loop ends on stderr with a non-zero exit.** Without the guard an
-  unresolved root becomes `cat "/hooks/session-start-context.md"` and the only
-  symptom is an agent that never mentions Postman.
-
-Discovery is not uniform either, and one route is currently short: Claude Code,
-Cursor and Codex all find `hooks/hooks.json` (the latter two by falling back to
-it when the manifest declares no `hooks` key), but **Kimi has no default hooks
-file** — it reads an inline `hooks` array from the manifest, so the Kimi route
-ships without the mandate until `.kimi-plugin/plugin.json` gains one pointing at
-`hooks/session-start-context.md`.
-
-Nothing checks any of this: CI does not read `hooks/`, and neither does the
-pre-commit manifest check. Exercise the command by hand instead —
-`CLAUDE_PLUGIN_ROOT="$PWD" bash -c "$cmd"` should print the block, and running
-it outside the repo with every root variable unset should exit 1 with the
-message.
-
-Never add a root-level `plugin.json`. Codex routes any plugin carrying one
-through its Agent Plugins loader, which has no hooks support, and every hook in
-the repo goes dead.
 
 ## Changing a skill
 
