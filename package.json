@@ -1,0 +1,64 @@
+{
+  "name": "@postman/opencode-plugin",
+  "version": "1.0.0",
+  "description": "Postman skills and MCP integration for OpenCode.",
+  "type": "module",
+  "license": "Apache-2.0",
+  "author": {
+    "name": "Postman",
+    "email": "postman-plugins@postman.com",
+    "url": "https://github.com/postmanlabs"
+  },
+  "homepage": "https://www.postmanlabs.com/skills/",
+  "bugs": {
+    "url": "https://github.com/postmanlabs/postman-plugin/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/postmanlabs/postman-plugin.git"
+  },
+  "keywords": [
+    "opencode",
+    "postman",
+    "api",
+    "skills",
+    "mcp"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist/",
+    "skills/",
+    "hooks/session-start-context.md",
+    "manifest.json",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node --test test/*.test.js",
+    "test:harness": "npm run build && node scripts/test-opencode-harness.js",
+    "eval:skills": "npm run build && node scripts/eval-opencode-skills.js",
+    "eval:skills:validate": "node scripts/eval-opencode-skills.js --validate",
+    "prepack": "npm run build && node scripts/build-manifest.js --check"
+  },
+  "devDependencies": {
+    "@opencode-ai/plugin": "1.18.32",
+    "@types/node": "24.5.2",
+    "opencode-ai": "1.18.32",
+    "typescript": "5.9.2"
+  },
+  "engines": {
+    "node": ">=22",
+    "opencode": ">=1.18.32"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

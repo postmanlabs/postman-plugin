@@ -6,11 +6,9 @@
  * Vendor key spellings and per-route invariants are documented in
  * .claude/skills/add-marketplace/references/validation.md.
  */
-'use strict';
-
-const fs = require('fs'),
-    path = require('path'),
-    { execFileSync } = require('child_process');
+import fs from 'node:fs';
+import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 
 // Each of these keys is read by one set of vendors and ignored without an error
 // by the rest, so the wrong spelling leaves a route that loads, connects and
@@ -28,10 +26,6 @@ const SERVER_KEYS = ['mcpServers', 'mcp'],
         '.kimi-plugin': {}
     },
     MANIFEST_DIR_PATTERN = /^\..+-plugin$/,
-
-    // Routes with no manifest for MANIFEST_DIR_PATTERN to match. A route missing
-    // here is never checked, which looks exactly like passing.
-    CONFIG_ONLY_ROUTES = [{ file: 'opencode.json', keys: { serverKey: 'mcp' } }],
 
     X_SOURCE_FORMAT = /^postman-[a-z0-9-]+-plugin$/;
 
@@ -67,7 +61,6 @@ function runChecks () {
     // runs last because the route checks are what populate `sources`.
     manifestIsInSyncWithSkillFiles();
     manifestRoutesAgreeWithTheirMcpConfig();
-    configOnlyRoutesCarryTheirOwnAttribution();
     noTwoRoutesShareAnXSource();
 }
 
@@ -106,12 +99,6 @@ function manifestRoutesAgreeWithTheirMcpConfig () {
         const manifest = readJson(manifestRel);
 
         checkRoute(manifest, manifestRel, routeKeys(MANIFEST_ROUTES[dir]), manifest && manifest.version);
-    }
-}
-
-function configOnlyRoutesCarryTheirOwnAttribution () {
-    for (const route of CONFIG_ONLY_ROUTES.filter((r) => exists(r.file))) {
-        checkRoute(readJson(route.file), route.file, routeKeys(route.keys), null);
     }
 }
 

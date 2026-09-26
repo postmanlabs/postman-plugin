@@ -6,3 +6,6 @@ skills/.quarantine/
 # Agent worktrees. These are real git worktrees, so `git add .claude/` would
 # otherwise stage one as an embedded repository and commit a broken pointer.
 .claude/worktrees/
+dist/
+node_modules/
+evals/opencode/results/

@@ -12,7 +12,7 @@ plugin route below — each route's manifest or config points back at the same
 | Cursor plugin | `.cursor-plugin/plugin.json` points at this repo's `skills/` dir | `mcp.cursor.json` | `postman-cursor-plugin` |
 | Kimi Code plugin | `.kimi-plugin/plugin.json` points at the same `skills/` dir | `mcpServers` in `.kimi-plugin/plugin.json` | `postman-kimi-plugin` |
 | Codex plugin | `.codex-plugin/plugin.json` points at the same `skills/` dir | `mcp.codex.json` | `postman-codex-plugin` |
-| opencode | `opencode.json` points `skills.paths` at the same `skills/` dir | `mcp` in `opencode.json` | `postman-opencode-plugin` |
+| OpenCode | `@postman/opencode-plugin` adds this package's absolute `skills/` path | `config` hook in `opencode/index.ts` | `postman-opencode-plugin` |
 
 Codex also reads `.claude-plugin/plugin.json` and `.cursor-plugin/plugin.json` as
 fallbacks — its `DISCOVERABLE_PLUGIN_MANIFEST_PATHS` is `.codex-plugin`,
@@ -22,40 +22,19 @@ Codex would read `mcp.claude-code.json`, whose `headers` key Codex does not
 understand, so its traffic arrived with no `X-Source` at all. Keep
 `.codex-plugin/plugin.json` first in precedence and Codex never falls back.
 
-opencode is the odd one out: it has no plugin-manifest format at all. Its
-plugins are JS/TS modules — npm packages named in a `plugin` array, or local
-files under `.opencode/plugins/` — and its skills are found by scanning
-directories, so there is nothing that clones this repo and reads a manifest
-from it. What it does have is a project config — `opencode.json`, found by
-walking up to the git root — whose `skills.paths` takes a list of directories
-to scan and whose `mcp` block configures servers inline. That is the whole
-route. It is a real pointer rather than a workaround: `skills.paths` entries
-are scanned for `**/SKILL.md`, exactly like the other routes' skills pointers.
-Note that it is in opencode's config *schema* but not in its prose docs — read
-the schema, not the docs page, when changing it.
+OpenCode is the npm route. Its plugin `config` hook appends an absolute path to
+the package's canonical `skills/` directory and adds the hosted Postman MCP
+server without replacing user configuration. An
+`experimental.chat.system.transform` hook injects the shared
+`hooks/session-start-context.md`; at runtime it removes the `postman:` prefix
+because OpenCode's native skill IDs are un-namespaced. The content stays
+single-sourced while the vocabulary matches OpenCode.
 
-opencode has **no config-level hooks** — there is nothing hook-, event- or
-session-shaped anywhere in its config schema. Its hooks live only in JS plugin
-modules, which this repo deliberately does not ship. So `hooks/hooks.json`
-never fires on this route. What stands in for it is `instructions`, opencode's
-rules-file mechanism: it points at the same `hooks/session-start-context.md`
-the hook injects everywhere else, so the session-start mandate still lands
-without a second copy of the markdown. It is not a hook — it is always-on
-context rather than a `SessionStart` event — but the effect on the session is
-the one that matters.
-
-The two pointers resolve relative paths differently, and the difference fails
-silently:
-
-- `instructions` entries are searched for from the directory opencode was
-  started in, walking up to the git root.
-- `skills.paths` entries are joined to the directory opencode was started in,
-  with no walk up. A path that does not exist only logs "skill path not found".
-
-So `./skills` holds only when opencode starts at the repo root: started from a
-subdirectory, the config and the mandate still load but every skill is dropped.
-Both expand a leading `~/`, and absolute or `~/` paths sidestep the difference
-entirely.
+A clone uses `.opencode/plugins/postman.ts`, a tiny development adapter that
+imports the same implementation. The npm package exports the compiled module
+from `dist/index.js`. Do not put local file paths in `opencode.json`'s `plugin`
+array: OpenCode documents that array for npm package names and auto-loads local
+plugins from `.opencode/plugins/`.
 
 The Postman CLI also has its own path for installing these skills, but it's
 still being redesigned — don't treat it as settled or document it here until
@@ -69,13 +48,18 @@ it lands.
 .cursor-plugin/plugin.json        the Cursor plugin manifest
 .kimi-plugin/plugin.json          the Kimi Code plugin manifest — carries its MCP block inline
 .codex-plugin/plugin.json         the Codex plugin manifest
-opencode.json                     opencode's project config — skills pointer, instructions pointer and MCP block, all inline
+.opencode/plugins/postman.ts      OpenCode development adapter for a repository clone
+opencode/index.ts                 OpenCode npm plugin implementation
+opencode.json                     minimal project config; the development adapter is auto-loaded
 mcp.claude-code.json              Claude Code's MCP config
 mcp.cursor.json                   Cursor's MCP config
 mcp.codex.json                    Codex's MCP config — spells its headers `http_headers`
 skills/<name>/SKILL.md            one skill per directory — see skills/ for the current list
 manifest.json                     generated index of the skill files
 scripts/build-manifest.js         regenerates it
+scripts/test-opencode-harness.js  packs, installs and exercises the OpenCode plugin
+scripts/eval-opencode-skills.js   runs the OpenCode skill-routing evaluation set
+evals/opencode/cases.json         positive and negative routing cases
 ```
 
 ## Installing
@@ -106,30 +90,21 @@ Codex discovers `.claude-plugin/marketplace.json` — that path is in its
 file to maintain. The `marketplace add` step is required: only
 `~/.agents/plugins/marketplace.json` is discovered implicitly.
 
-opencode has no install command for a repo of skills — `opencode plugin` takes
-an npm module, not a git repo. Instead, either run opencode from the root of a
-clone of this repo, where the checked-in `opencode.json` already applies:
+OpenCode, after `@postman/opencode-plugin` has been published to npm:
 
 ```
-git clone https://github.com/postmanlabs/postman-plugin
-cd postman-plugin && opencode
+opencode plugin @postman/opencode-plugin --global
 ```
 
-or copy that file into your own project and repoint both `skills.paths` and
-`instructions` at the clone. Use `~/` or absolute paths, so the skills load
-whichever directory opencode starts in:
+Omit `--global` to add it only to the current project. OpenCode adds the npm
+package to the config and installs it at startup. A contributor testing a clone
+can run OpenCode from anywhere inside this repository; the checked-in local
+adapter is discovered automatically.
 
-```
-"skills": { "paths": ["~/src/postman-plugin/skills"] },
-"instructions": ["~/src/postman-plugin/hooks/session-start-context.md"]
-```
-
-Repointing `skills.paths` alone gets the skills but drops the session-start
-mandate, which is the failure that reads as if nothing were installed.
-
-opencode also scans `~/.config/opencode/skills/`, `~/.claude/skills/` and
-`~/.agents/skills/`, but a skill copied there arrives without the MCP block or
-the mandate — use `opencode.json`.
+The package is publish-ready but installing by name will work only after a
+Postman npm maintainer publishes it. See the
+[OpenCode plugin plan](https://github.com/postmanlabs/postman-plugin/blob/main/docs/opencode-plugin-plan.md)
+for testing and release gates.
 
 The MCP server answers an unauthenticated request with a 401 that advertises
 OAuth, and opencode starts that flow on its own. If the browser prompt never
@@ -193,8 +168,8 @@ too — see [The MCP server config](#the-mcp-server-config). None of the CLI
 flags above apply to that traffic; declining it means not installing the MCP
 server.
 
-Every config names its endpoint outright — `/mcp` for Claude Code, Cursor and
-Codex, `/minimal` for Kimi Code and opencode. Don't reintroduce a `${POSTMAN_MCP_MODE:-...}`
+Every route names its endpoint outright — `/mcp` for Claude Code, Cursor and
+Codex, `/minimal` for Kimi Code and OpenCode. Don't reintroduce a `${POSTMAN_MCP_MODE:-...}`
 placeholder to express the default: no route expands `${...}` inside an MCP URL,
 so the whole segment ships literally and the request never reaches the intended
 mode. `claude plugin list --json` reports the registered URL with the
@@ -213,7 +188,7 @@ mcp.claude-code.json        <- .claude-plugin/plugin.json  "mcpServers": "./mcp.
 mcp.cursor.json             <- .cursor-plugin/plugin.json  "mcpServers": "./mcp.cursor.json"
 mcp.codex.json              <- .codex-plugin/plugin.json   "mcpServers": "./mcp.codex.json"
 .kimi-plugin/plugin.json       inline — Kimi documents no path form
-opencode.json                  inline under "mcp" — opencode's schema admits no path form
+opencode/index.ts              OpenCode config hook — headers use package.json's version
 ```
 
 Maintained by hand, and they are not interchangeable copies. Four things
@@ -253,9 +228,9 @@ identical is wrong once versions are per-route.
    so a bump means the three strings that one route owns: `version` in its
    manifest, plus `X-Plugin-Version` and `User-Agent` in its MCP config (for
    Kimi all three live in the manifest; for Codex the two headers sit under
-   `http_headers`, not `headers`; opencode's config schema admits no `version`
-   key at all, so that route owns only the two header strings). Nothing
-   verifies this, so check the route's strings against each other before you
+   `http_headers`, not `headers`). OpenCode derives both header strings from
+   its npm package version, so its release change updates only that version.
+   Run the route validation and tests so the strings are checked before you
    commit. Don't skip the bump itself either: `claude plugin update` compares
    only that string against a version-keyed cache, so a release that changes
    files without bumping it reports "already at the latest version" and
