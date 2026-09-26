@@ -41,8 +41,20 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Install OpenCode plugin development dependencies
+        run: npm ci
+
       - name: Manifest is in sync with the skill files
         run: node scripts/build-manifest.js --check
+
+      - name: OpenCode plugin unit tests
+        run: npm test
+
+      - name: OpenCode packed-install harness
+        run: npm run test:harness
+
+      - name: OpenCode eval cases cover every skill
+        run: npm run eval:skills:validate
 
       - name: Every JSON file parses
         run: |

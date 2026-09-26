@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "declaration": true,
+    "esModuleInterop": true,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "outDir": "dist",
+    "rootDir": "opencode",
+    "strict": true,
+    "target": "ES2022"
+  },
+  "include": ["opencode/**/*.ts"]
+}

@@ -12,13 +12,12 @@
  * with `--check` and fails if the committed manifest is stale — a wrong sha256
  * makes the CLI reject a legitimate skill, which is a confusing way to find out.
  */
-'use strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import crypto from 'node:crypto';
+import { fileURLToPath } from 'node:url';
 
-const fs = require('fs'),
-    path = require('path'),
-    crypto = require('crypto');
-
-const ROOT = path.join(__dirname, '..'),
+const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..'),
     SKILLS_DIR = path.join(ROOT, 'skills'),
     PLUGIN_MANIFEST = path.join(ROOT, '.claude-plugin', 'plugin.json'),
     MANIFEST = path.join(ROOT, 'manifest.json'),
