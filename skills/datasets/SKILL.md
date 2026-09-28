@@ -235,8 +235,9 @@ them back down. Reach for those when the whole repo should move; the
 ## Verification
 
 A dataset is not working because `create` and `source add` exited 0 — those
-prove the manifest was written, and on the JDBC path that a connection
-opened, but never that a query returns rows. Run an actual query and state
+prove only that the write went through: a manifest locally, a workspace
+entity in the cloud, and on the JDBC path a connection that opened, unless
+`--no-test` skipped that test. None of it proves a query returns rows. Run an actual query and state
 the row count and columns you got back. For a run, state the iteration count
 and confirm it equals the view's row count; three rows producing one
 iteration means the view, not the collection, is what to look at. Say which
