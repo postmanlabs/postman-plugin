@@ -58,11 +58,19 @@ them back down. Reach for those when the whole repo should move; the
   added from the CLI and the same one added from the app produce identical
   table names and survive a push/pull round trip.
 
-  Read the names off the command's output rather than predicting them. The
-  sanitisation step is exactly where a guessed `FROM` clause breaks — the same
-  failure mode as the `source_users` trap above, and note the irony that here
-  a `source_` prefix is genuinely correct.
+  Read the names off the command's output rather than predicting them —
+  sanitisation is where a guessed `FROM` clause breaks. Note that a `source_`
+  prefix is correct here and wrong for a plain CSV source, so do not carry
+  the habit across.
 
+  `source update` cannot turn an existing source into a spreadsheet: it
+  merges fields and never writes a worksheet selector, so re-add the file with
+  `source add` instead.
+
+- **`--format` is not validated.** Its help text lists the real formats, but
+  the flag accepts any string and writes it straight into the manifest, so a
+  typo becomes a source that fails only later at query time. Pass it only to
+  override inference deliberately; otherwise let the file extension speak.
 - **A datasource's `name` is its SQL table name.** `-n users` means
   `FROM users`. **The CLI's own `-h` examples say `FROM source_users`, and
   they are wrong** — there is no prefixing logic in the code, and
@@ -96,15 +104,15 @@ them back down. Reach for those when the whole repo should move; the
   runs one iteration per row, with each column bound as a variable
   (`{{name}}`). Both flags are required together, and the pair is mutually
   exclusive with `-d/--iteration-data`.
-- **A logged-out `collection run` always prints an auth error, and it means
-  nothing about your dataset.** `No authorization data found. Please use the
-  postman login command.` comes from the run command itself, not the dataset
-  path — a plain `collection run` with no dataset flags prints it too. On a
-  file-backed dataset the iterations then run correctly and exit 0, so treat
-  that line as noise and judge the run by its iteration count. `dataset query`
-  never prints it, but only because it is not a collection run — not because
-  it checked anything about your sources. (A *database* source does genuinely
-  need auth, and fails for real.)
+- **On a dataset run, `No authorization data found` means a source really
+  does need auth.** A file-backed dataset needs none, and a logged-out run
+  over one is silent. So if that line appears on an
+  `--iteration-data-dataset` run, read it as signal: a database or cloud
+  source is in play, or the manifest could not be read (the check fails
+  closed). What it is *not* is a verdict on the run — a plain
+  `collection run` with no dataset flags still prints it whenever you are
+  logged out, because it comes from the run command rather than anything
+  dataset-related.
 - **`--dataset <pathOrDir>` is the other consumption path** — repeatable,
   and it exposes datasets to scripts as `pm.datasets(<id>)` rather than
   driving iterations. Resolution is lazy: a run that never calls
