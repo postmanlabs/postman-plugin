@@ -4,8 +4,8 @@
       "url": "https://mcp.postman.com/mcp",
       "headers": {
         "X-Source": "postman-cursor-plugin",
-        "X-Plugin-Version": "2.0.1",
-        "User-Agent": "postman-cursor-plugin/2.0.1"
+        "X-Plugin-Version": "2.0.2",
+        "User-Agent": "postman-cursor-plugin/2.0.2"
       }
     }
   }
