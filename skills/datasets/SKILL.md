@@ -1,6 +1,6 @@
 ---
 name: datasets
-description: Query CSV and JSON files, spreadsheet exports, and live databases (MySQL, PostgreSQL, SQL Server, or anything with a JDBC driver JAR) as one SQL surface; join across them; save a query as a named view so it can be rerun without re-pasting the SQL; then drive a collection run one iteration per row — feeding it the rows a query returns instead of a hardcoded data file — or read rows from scripts via `pm.datasets()`. Use when the user wants to run or loop a collection over rows of test data, parameterize a run from a CSV or spreadsheet or database table, query or join data across files and tables, save or rerun a query without pasting it again, use a query's result rows as the input for a run in place of hardcoded JSON or a data file, point Postman at a JDBC driver, work out where database credentials get stored, or names a Postman dataset or view. Covers `postman dataset` (`source`, `view`, `query`, `jdbc`) and `--iteration-data-dataset`/`--iteration-data-view`/`--dataset` on `collection run`. File-backed datasets need no login and work offline; database sources need `postman login` and a paid plan — JDBC and SQL Server need Enterprise — even inside a local YAML file. A JDBC source is queried on its own with `--source`: it is the one source type federation cannot join across.
+description: Query CSV and JSON files, spreadsheet exports, and live databases (MySQL, PostgreSQL, SQL Server, or anything with a JDBC driver JAR) as one SQL surface; join across them; save a query as a named view so it can be rerun without re-pasting the SQL; then drive a collection run one iteration per row — feeding it the rows a query returns instead of a hardcoded data file — or read rows from scripts via `pm.datasets()`. Use when the user wants to run or loop a collection over rows of test data, parameterize a run from a CSV or spreadsheet or database table, query or join data across files and tables, save or rerun a query without pasting it again, use a query's result rows as the input for a run in place of hardcoded JSON or a data file, point Postman at a JDBC driver, work out where database credentials get stored, or names a Postman dataset or view. Covers `postman dataset` (`source`, `view`, `query`, `jdbc`) and `--iteration-data-dataset`/`--iteration-data-view`/`--dataset` on `collection run`. File-backed datasets need no login and work offline; database sources need `postman login` and a paid plan — JDBC and SQL Server need Enterprise — even inside a local YAML file. A JDBC source is queried on its own with `--source` — it is the one source type federation cannot join across.
 ---
 
 # Datasets
@@ -50,32 +50,49 @@ them back down. Reach for those when the whole repo should move; the
   is no flag for picking a sheet, by design.
 
   Each source is named `source_<sheet>`, with anything outside
-  `[a-zA-Z0-9_]` replaced by `_` so the name is SQL-safe, and `_2`/`_3`
-  appended on collision. A workbook with People, Orders and "Sales Q3 2026"
-  therefore gives three tables: `source_People`, `source_Orders`,
-  `source_Sales_Q3_2026`. The `-n` you passed does **not** appear in them —
-  the scheme matches the Postman app (and DCS server-side), so a workbook
-  added from the CLI and the same one added from the app produce identical
-  table names and survive a push/pull round trip.
+  `[a-zA-Z0-9_]` replaced by `_`, and `_2`/`_3` appended on collision. A
+  workbook with People, Orders and "Sales Q3 2026" therefore gives
+  `source_People`, `source_Orders` and `source_Sales_Q3_2026`. The `-n` you
+  passed does **not** appear in them — the scheme matches the Postman app
+  (and DCS server-side), so a workbook added from the CLI and the same one
+  added from the app produce identical source names and survive a push/pull
+  round trip.
 
-  Read the names off the command's output rather than predicting them —
-  sanitisation is where a guessed `FROM` clause breaks. Note that a `source_`
-  prefix is correct here and wrong for a plain CSV source, so do not carry
-  the habit across.
+  Those are *source* names. Put them through the normalisation in
+  "a datasource's table name" below to get the name a `FROM` clause needs.
+  For plain ASCII sheets the two coincide; for others they do not — a sheet
+  named entirely outside `[a-zA-Z0-9_]` sanitises to underscores that then
+  collapse away, so a `売上` sheet is reported as `source___` and queried as
+  `FROM source`. Don't copy a name out of the command's output into a `FROM`
+  clause verbatim. Note that a `source_` prefix is correct here and wrong for
+  a source you named yourself, so do not carry the habit across.
 
-  `source update` cannot turn an existing source into a spreadsheet: it
-  merges fields and never writes a worksheet selector, so re-add the file with
-  `source add` instead.
+  **Never run `source update --file` on a worksheet source.** It cannot
+  create one — it merges fields and never writes a worksheet selector — and
+  on a source that already has one it is destructive: `--file` infers the
+  format from the extension as `json` or otherwise *`csv`*, so an `.xlsx`
+  is rewritten to `format: csv` while the stale `spreadsheet.worksheet`
+  selector is left in place, and the source stops being queryable
+  (AUTO-1000). Remove the source and re-add the workbook with `source add`.
 
 - **`--format` is not validated.** Its help text lists the real formats, but
   the flag accepts any string and writes it straight into the manifest, so a
   typo becomes a source that fails only later at query time. Pass it only to
   override inference deliberately; otherwise let the file extension speak.
-- **A datasource's `name` is its SQL table name.** `-n users` means
-  `FROM users`. **The CLI's own `-h` examples say `FROM source_users`, and
-  they are wrong** — there is no prefixing logic in the code, and
-  `source_users` fails with `SQL_UNKNOWN_TABLE`. Trust the source name you
-  passed, not the example text.
+- **A datasource's table name is its `name` *normalised*, not its `name`.**
+  Before exposing a source as a table the engine lowercases the name,
+  collapses every run of `_` to a single `_`, and strips leading and trailing
+  `_`. So `-n users` really is `FROM users`, but `-n Sales__Q3_` is
+  `FROM sales_q3` — and `FROM Sales__Q3_`, the name you passed and the name
+  the CLI echoes back, fails `SQL_UNKNOWN_TABLE`. Case alone is safe (SQL
+  identifiers are case-insensitive, so `FROM MixedCase` still finds
+  `mixedcase`); underscore runs and edge underscores are not. Keep source
+  names already-normalised and the two can never diverge. On the federated
+  path `SELECT name FROM sqlite_master WHERE type='table'` lists the real
+  ones. **The CLI's own `-h` examples say `FROM source_users`, and they are
+  wrong** — there is no `source_` prefixing for a source you named yourself,
+  and `source_users` fails `SQL_UNKNOWN_TABLE`. Trust the normalised source
+  name, not the example text.
 - **Federated vs native is the central query decision.** With no `--source`,
   the query runs through a federated SQLite layer that can join across every
   *federatable* source in the dataset — which is all of them except JDBC, per
@@ -107,9 +124,12 @@ them back down. Reach for those when the whole repo should move; the
 - **On a dataset run, `No authorization data found` means a source really
   does need auth.** A file-backed dataset needs none, and a logged-out run
   over one is silent. So if that line appears on an
-  `--iteration-data-dataset` run, read it as signal: a database or cloud
-  source is in play, or the manifest could not be read (the check fails
-  closed). What it is *not* is a verdict on the run — a plain
+  `--iteration-data-dataset` run, read it as signal: a **database** source is
+  in play — `jdbc`, `mysql`, `postgres`/`postgresql` or `sqlserver`, and a
+  `postmancloudfile` source is *not* one of those and does not trigger it —
+  or you passed a cloud dataset id or a cloud collection, or the manifest
+  could not be read, those last three all landing on the same fail-closed
+  branch. What it is *not* is a verdict on the run — a plain
   `collection run` with no dataset flags still prints it whenever you are
   logged out, because it comes from the run command rather than anything
   dataset-related.
