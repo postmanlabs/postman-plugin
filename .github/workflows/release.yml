@@ -1,87 +1,81 @@
-# Publishes opencode/ as @postman/opencode-plugin. Routes version independently,
-# so the stable trigger is an `opencode-v<version>` tag, not a bare `v*`.
-name: Release OpenCode package
+# Publishes npm packages through AppSec's shared workflow, from the routed example:
+# https://github.com/postmanlabs/gh-security-scan-workflow/blob/main/examples/npm-publish/monorepo-routed.yml
+# This filename is bound to each package's npm trusted-publisher config. Renaming it
+# breaks publishing until AppSec (#security) repoints it.
+name: NPM Publish
 
 on:
   push:
-    tags:
-      - 'opencode-v*'
+    tags: ['@postman/*@*']
+
+  # Retries a tag that already exists, and is the only way to reach dry_run.
   workflow_dispatch:
     inputs:
-      dist-tag:
-        description: 'npm dist-tag (latest is not allowed here — push an opencode-v* tag instead)'
+      tag:
+        description: 'Tag to publish, e.g. @postman/opencode-plugin@0.1.0. Must already exist in origin, annotated and signed.'
         required: true
-        type: choice
-        options:
-          - beta
-          - next
-          - rc
-          - alpha
+        type: string
+      dry_run:
+        description: 'Run the checks against a tag that ALREADY EXISTS, without publishing. Not a pre-flight -- pushing a tag is the release. Skips the signed-tag and default-branch gates, and does not exercise OIDC.'
+        default: false
+        type: boolean
 
 permissions:
   contents: read
-  id-token: write
 
 jobs:
-  publish:
+  # Refuses anything but <name>@<version>: a bare tag would skip the shared
+  # workflow's package-identity check.
+  resolve:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: opencode
+    permissions: {}
+    outputs:
+      package_path: ${{ steps.map.outputs.package_path }}
     steps:
-      - uses: actions/checkout@v7
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: '24'
-          registry-url: 'https://registry.npmjs.org'
-          cache: 'npm'
-          cache-dependency-path: opencode/package-lock.json
-
-      - name: Install development dependencies
-        run: npm ci
-
-      - name: Unit tests
-        run: npm test
-
-      - name: Packed-install harness
-        run: npm run test:harness
-
-      - name: Verify stable version matches the tag
-        if: github.ref_type == 'tag'
+      - id: map
         env:
-          TAG: ${{ github.ref_name }}
+          TAG: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag }}
+          # One line per publishable package: <npm name> <directory>.
+          PACKAGE_PATHS: |
+            @postman/opencode-plugin  opencode
         run: |
-          VERSION=$(node -p "require('./package.json').version")
-          if [[ "$TAG" != "opencode-v$VERSION" ]]; then
-            echo "::error::tag '$TAG' does not match package.json version '$VERSION'. Tag the release commit as opencode-v$VERSION."
+          set -euo pipefail
+
+          if [[ ! "$TAG" =~ ^(@[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*)@([0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.-]+)?)$ ]]; then
+            # Newlines stripped so the value cannot forge a second workflow command.
+            echo "::error::tag '${TAG//[$'\n\r']/ }' must be <name>@<version>, e.g. @postman/opencode-plugin@0.1.0."
             exit 1
           fi
-          if [[ "$VERSION" == *-* ]]; then
-            echo "::error::'$VERSION' is a prerelease. Publish it through workflow_dispatch with a dist-tag, not a tag push."
-            exit 1
-          fi
+          NAME="${BASH_REMATCH[1]}"
 
-      - name: Publish to npm (stable)
-        if: github.ref_type == 'tag'
-        run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.POSTMAN_NPM_TOKEN }}
+          MATCH=$(awk -v n="$NAME" '$1 == n { print $2 }' <<< "$PACKAGE_PATHS")
 
-      - name: Verify prerelease version
-        if: github.event_name == 'workflow_dispatch'
-        env:
-          DIST_TAG: ${{ inputs.dist-tag }}
-        run: |
-          VERSION=$(node -p "require('./package.json').version")
-          if [[ ! "$VERSION" =~ -${DIST_TAG}(\.|$) ]]; then
-            echo "::error::package.json version '$VERSION' does not contain a '-$DIST_TAG' prerelease suffix. Set it to <version>-$DIST_TAG.<n> first."
+          if [ -z "$MATCH" ]; then
+            echo "::error::tag $TAG names '$NAME', which has no entry in PACKAGE_PATHS."
             exit 1
           fi
 
-      - name: Publish to npm (prerelease)
-        if: github.event_name == 'workflow_dispatch'
-        run: npm publish --provenance --access public --tag "$DIST_TAG"
-        env:
-          DIST_TAG: ${{ inputs.dist-tag }}
-          NODE_AUTH_TOKEN: ${{ secrets.POSTMAN_NPM_TOKEN }}
+          if [ "$(wc -l <<< "$MATCH")" -ne 1 ]; then
+            echo "::error::PACKAGE_PATHS has more than one entry for $NAME"
+            exit 1
+          fi
+
+          echo "package_path=$MATCH" >> "$GITHUB_OUTPUT"
+
+  publish:
+    needs: resolve
+    permissions:
+      contents: read
+      id-token: write
+    uses: postmanlabs/gh-security-scan-workflow/.github/workflows/security-npm-publish.yml@npm-publish/v1
+    with:
+      tag: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag }}
+      package_path: ${{ needs.resolve.outputs.package_path }}
+      # opencode/ carries its own lockfile; there is no root workspace.
+      install_path: ${{ needs.resolve.outputs.package_path }}
+      # The shared workflow defaults to 20 and does not read engines.node.
+      node_version: '24'
+      dry_run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
+
+    secrets:
+      POSTMAN_NPM_TOKEN: ${{ secrets.POSTMAN_NPM_TOKEN }}
