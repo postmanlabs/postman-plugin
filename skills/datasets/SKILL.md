@@ -49,15 +49,19 @@ them back down. Reach for those when the whole repo should move; the
   adds each as its own datasource — matching what the Postman app does. There
   is no flag for picking a sheet, by design.
 
-  Each source is named `<--name>_<sheet>`, with anything outside
+  Each source is named `source_<sheet>`, with anything outside
   `[a-zA-Z0-9_]` replaced by `_` so the name is SQL-safe, and `_2`/`_3`
-  appended on collision. So `-n staff` over a workbook with People, Orders and
-  "Sales Q3 2026" gives three tables: `staff_People`, `staff_Orders`,
-  `staff_Sales_Q3_2026`. Read the names off the command's output rather than
-  predicting them — that sanitisation is where a guessed `FROM` clause breaks.
+  appended on collision. A workbook with People, Orders and "Sales Q3 2026"
+  therefore gives three tables: `source_People`, `source_Orders`,
+  `source_Sales_Q3_2026`. The `-n` you passed does **not** appear in them —
+  the scheme matches the Postman app (and DCS server-side), so a workbook
+  added from the CLI and the same one added from the app produce identical
+  table names and survive a push/pull round trip.
 
-  A single-sheet workbook stays one source named exactly `-n`, so the simple
-  case looks no different from a CSV.
+  Read the names off the command's output rather than predicting them. The
+  sanitisation step is exactly where a guessed `FROM` clause breaks — the same
+  failure mode as the `source_users` trap above, and note the irony that here
+  a `source_` prefix is genuinely correct.
 
 - **A datasource's `name` is its SQL table name.** `-n users` means
   `FROM users`. **The CLI's own `-h` examples say `FROM source_users`, and
