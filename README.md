@@ -1,8 +1,8 @@
 # Postman for Agents
 
-Postman's skills and hosted MCP server for coding agents. Design, mock, test,
-monitor and document APIs, run checks in CI, and deploy and debug Postman
-Flows, without leaving your agent.
+Postman's skills for coding agents, built on the Postman CLI. Design, mock,
+test, monitor and document APIs, run checks in CI, and deploy and debug Postman
+Flows from your agent, using the same `postman` commands you would run yourself.
 
 **Install for your agent:**
 [Claude Code](#claude-code) ·
@@ -13,27 +13,30 @@ Flows, without leaving your agent.
 
 ## What you get
 
-- **Skills.** Instructions your agent loads when a task needs them: setting up
-  Postman in a repository, mocking an API before it exists, testing and
-  load-testing it, monitoring a live endpoint, adding Postman checks to CI,
-  publishing API docs, scoring a spec for AI readiness, and running Postman
-  Flows. `api-engineer` is the entry point and routes to the rest. See
+- **Skills that drive the Postman CLI.** Your agent loads them when a task
+  needs them: setting up Postman in a repository, mocking an API before it
+  exists, testing and load-testing it, monitoring a live endpoint, adding
+  Postman checks to CI, publishing API docs, scoring a spec for AI readiness,
+  and running Postman Flows. The work happens as real `postman` commands, so
+  you can read them, rerun them, and put them in CI as they are.
+  `api-engineer` is the entry point and routes to the rest; see
   [`skills/`](skills/) for the full set.
-- **The Postman MCP server.** Postman's hosted server at `mcp.postman.com`,
-  registered as `postman`, so your agent can work with your Postman
-  workspaces, collections and specs directly.
+- **The Postman CLI, set up for you.** You don't install it first. The
+  `bootstrap` skill installs it the first time a task needs it, with npm or
+  Postman's platform installer
+  ([install options](skills/bootstrap/reference/cli_installation.md)), and
+  links the repository to a Postman workspace when you want one.
 - **Session guidance.** On agents that support it, a short always-on
   instruction that points API work at `api-engineer`. Your own instructions,
   such as `AGENTS.md`, take precedence.
 
-Most skills run the Postman CLI. You don't need to install it first: the
-`bootstrap` skill installs it the first time a task needs it, with npm or
-Postman's platform installer
-([install options](skills/bootstrap/reference/cli_installation.md)).
+Where the CLI can't run at all, such as a hosted session with no shell or no
+Node.js, the skills fall back to Postman's hosted MCP server, which the plugin
+also registers.
 
 ## Install
 
-Pick your agent. Each one gets the same skills and the same MCP server.
+Pick your agent. Each one gets the same skills.
 
 | Agent | How it installs |
 | --- | --- |
@@ -96,14 +99,9 @@ OpenCode to load it. Nothing else is installed.
 
 3. Restart OpenCode.
 
-4. Check that the MCP server is registered:
-
-   ```bash
-   opencode mcp list
-   ```
-
-   `postman` should be listed, marked "needs authentication" until you
-   [sign in](#sign-in-to-postman).
+4. Check it loaded: open a repository in OpenCode and ask it to "set up
+   Postman in this repo". It should load the `bootstrap` skill and run the
+   Postman CLI.
 
 That installs it for every project. To update it, pull the clone:
 
@@ -117,16 +115,16 @@ copies register every skill twice.
 
 ## Sign in to Postman
 
-The MCP server uses OAuth. The first time your agent calls it, the agent opens
-Postman's sign-in in your browser. If the prompt never appears, start it
+Local work needs no Postman account: setting up a repository with
+`postman init`, or generating and running a mock on your machine, works signed
+out. When a task reaches
+your Postman workspace, the `bootstrap` skill signs the CLI in, with
+`POSTMAN_API_KEY` if it is set and in your browser otherwise. To sign in
 yourself:
 
-- **Claude Code:** run `/mcp` and authenticate the Postman server.
-- **OpenCode:** run `opencode mcp auth postman`.
-- **Other agents:** use the agent's own MCP authentication command.
-
-Skills that call the Postman CLI sign it in separately. The `bootstrap` skill
-does that when a task needs it.
+```bash
+postman login
+```
 
 ## Get started
 
@@ -190,13 +188,13 @@ above, as do the `postman mock` subcommands and `postman performance run`.
 The one thing that does suppress it: the collector is only wired for the US
 region, and emission no-ops in other regions (EU included).
 
-### MCP
+### The MCP fallback
 
-Separately, **every route** configures the hosted Postman MCP server at
-`mcp.postman.com`, so MCP tool calls made through any of them reach Postman
-too — see [The MCP server config](CONTRIBUTING.md#the-mcp-server-config). None of the CLI
-flags above apply to that traffic; declining it means not installing the MCP
-server.
+Every route also registers Postman's hosted MCP server at `mcp.postman.com`,
+the fallback for environments where the CLI can't run. Tool calls made through
+it reach Postman too, and none of the CLI flags above apply to them; declining
+that traffic means not installing the MCP server. See
+[The MCP server config](CONTRIBUTING.md#the-mcp-server-config).
 
 ## Contributing
 
