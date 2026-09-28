@@ -5,6 +5,17 @@ description: Query CSV and JSON files, spreadsheet exports, and live databases (
 
 # Datasets
 
+## Required CLI version
+
+This skill documents the dataset commands as they behave **after**
+postman-cli#1323 (AUTO-987, the spurious `No authorization data found`
+notice) and postman-cli#1340 (AUTO-999/AUTO-998, one datasource per
+worksheet plus the help-text fixes). Both are needed; 1.62.0 has neither.
+Check with `postman --version` before trusting the worksheet and
+auth-notice rules below, and on an older CLI expect `source add --file
+book.xlsx` to add a workbook as a single unqueryable source and every
+logged-out `--iteration-data-dataset` run to print the notice.
+
 ## Overview
 
 A dataset is a Postman entity that names one or more *datasources* and
