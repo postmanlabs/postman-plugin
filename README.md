@@ -48,6 +48,7 @@ it lands.
 .cursor-plugin/plugin.json        the Cursor plugin manifest
 .kimi-plugin/plugin.json          the Kimi Code plugin manifest — carries its MCP block inline
 .codex-plugin/plugin.json         the Codex plugin manifest
+.app.json                         maps the Codex plugin to its published ChatGPT app ID
 .opencode/plugins/postman.ts      OpenCode development adapter for a repository clone
 opencode/index.ts                 OpenCode npm plugin implementation
 opencode.json                     minimal project config; the development adapter is auto-loaded

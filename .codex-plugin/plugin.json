@@ -22,10 +22,25 @@
   ],
   "skills": "./skills/",
   "mcpServers": "./mcp.codex.json",
+  "apps": "./.app.json",
   "interface": {
     "displayName": "Postman",
-    "shortDescription": "Bootstrap, mock, test, monitor, document, and automate APIs with Postman.",
+    "shortDescription": "The AI-native API Platform",
+    "longDescription": "Equip Codex with specialized Postman skills for the complete API lifecycle. Discover, design, test, document, mock, monitor, and improve APIs through agent-friendly, filesystem-first workflows",
     "developerName": "Postman",
-    "websiteURL": "https://www.postmanlabs.com/skills/"
+    "category": "Developer Tools",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://www.postman.com/",
+    "privacyPolicyURL": "https://privacy.postman.com/policies/",
+    "termsOfServiceURL": "https://www.postman.com/legal/terms/",
+    "defaultPrompt": [
+      "Create a collection for the API in this repo, add tests, and run them",
+      "Turn this OpenAPI spec into a working mock server",
+      "Is this API Agent ready?"
+    ],
+    "brandColor": "#FF6C37"
   }
 }
