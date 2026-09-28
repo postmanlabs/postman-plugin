@@ -49,10 +49,12 @@ out of git, because every other route clones the whole repo.
 
 **OpenCode's `skills.paths` is in its schema but not its docs.** A docs-only pass
 concludes no pointer exists and discovery is fixed-path only. It does exist:
-entries resolve against the project root, a missing directory logs a warning and
-continues, and the glob is `{*.md,**/SKILL.md}`. v1's config hook appends the
-packaged directory to it. Enumerate the schema's properties; do not infer
-absence from prose.
+relative entries are joined to the directory OpenCode started in, with no walk
+up to the project root; `~/` is expanded; a missing directory logs "skill path
+not found" and continues; each entry is scanned for `**/SKILL.md`. v1's config
+hook appends the packaged directory as an absolute path, which sidesteps the
+start-directory rule. Enumerate the schema's properties; do not infer absence
+from prose.
 
 **No route expands `${...}` inside an MCP URL.** `claude plugin list --json`
 reports the registered URL with any placeholder still in the path, Cursor has no

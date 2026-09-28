@@ -64,8 +64,8 @@ jobs:
       - name: Claude Code accepts the marketplace and plugin manifests
         run: npx -y @anthropic-ai/claude-code plugin validate .
 
-  # The only route that ships as a built package. Its harness packs the tarball,
-  # installs it into a clean project and has the pinned OpenCode CLI load it.
+  # The only route that ships as a built package. Its harness packs the tarball
+  # and has the pinned OpenCode CLI install it as an npm plugin and load it.
   opencode:
     name: OpenCode package
     runs-on: ubuntu-latest

@@ -32,14 +32,18 @@ a committed copy ships a second set of skills to all of them; `.gitignore`
 covers both paths, and the harness fails if `npm pack` leaves them behind.
 
 The package's default export serves both OpenCode plugin APIs: v1 hosts call
-`server()`, v2 hosts call `setup()`. v1's config hook appends the packaged
+`server()`, v2 hosts call `setup()`. Both hosts resolve a package through
+`exports["./server"]` first, so that entry and `.` point at the same module.
+v1's config hook appends the packaged
 `skills/` to `skills.paths` and adds the server from `mcp.opencode.json`; v2's
 skill and MCP transforms register the same files. Both leave an existing
 `postman` MCP entry and existing skill paths untouched. OpenCode has no
 session-start event, so the plugin pushes `hooks/session-start-context.md` into
 the system prompt, rewriting `` `postman:<skill>` `` to `` `<skill>` `` because
-OpenCode's skill names are un-namespaced. The harness exercises v1 only; v2 is
-covered by unit tests against a mock host.
+OpenCode's skill names are un-namespaced. The harness has the pinned OpenCode 1
+CLI install the tarball as an npm plugin — the same install, entry lookup and
+`engines.opencode` gate a user's install goes through — and load every skill.
+OpenCode 2 is covered only by unit tests against a mock host.
 
 Inside a clone, `.opencode/plugins/postman.ts` loads the plugin from source,
 and the plugin reads the shared files from the repository root instead of
@@ -232,7 +236,7 @@ needs a model:
 ```
 npm ci
 npm test                       # builds, then unit-tests the v1 and v2 entry points
-npm run test:harness           # packs, installs into a clean project, loads it with the pinned CLI
+npm run test:harness           # packs, then has the pinned CLI install it as an npm plugin and load it
 npm run eval:skills:validate   # every skill has at least one positive routing case
 npm run eval:skills            # live routing eval against a configured model
 ```
@@ -288,15 +292,18 @@ of failing loudly.
 ## Adding a skill
 
 Create `skills/<name>/SKILL.md` with `name` and `description`
-frontmatter, where `name` matches the directory. Run the manifest script.
+frontmatter, where `name` matches the directory. Add at least one case that
+expects it to `opencode/evals/cases.json` — CI's `opencode` job fails for a
+skill with none. Run the manifest script.
 
 ## Removing a skill
 
 Delete `skills/<name>/`, then grep the rest of the repo for that name —
-`grep -rn "<name>" README.md skills/ intent.md` — since other `SKILL.md`
-files and this README can reference a skill by name in prose, not just in
-frontmatter, and nothing catches a stale reference automatically. Fix or
-remove what turns up, then run the manifest script.
+`grep -rn "<name>" README.md skills/ hooks/ intent.md opencode/evals/` — since
+other `SKILL.md` files, the session-start context and this README can reference
+a skill by name in prose, not just in frontmatter. Most stale references fail
+silently; an eval case that still expects the skill fails CI. Fix or remove
+what turns up, then run the manifest script.
 
 ## The bindings placeholder
 

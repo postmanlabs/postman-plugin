@@ -18,9 +18,9 @@ OpenCode 1.18.29 or later:
 opencode plugin @postman/opencode-plugin --global
 ```
 
-On OpenCode 1, omit `--global` to add it to the current project only.
-OpenCode 2's `plugin add` always writes the global config. Either way OpenCode
-installs the package the next time it starts.
+Both commands install the package and add it to your config. On OpenCode 1,
+omit `--global` to add it to the current project only; OpenCode 2's
+`plugin add` always writes the global config.
 
 ## What it adds
 
@@ -39,7 +39,8 @@ server named `postman`, the plugin leaves it as it is.
 
 OpenCode skill names share one namespace. If another plugin or your own config
 already provides a skill with the same name as one of these, OpenCode loads only
-one of them.
+one of them. OpenCode 2 keeps the one already defined; on OpenCode 1 which one
+wins is not guaranteed, so rename one of the two.
 
 ## Sign in
 

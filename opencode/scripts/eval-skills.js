@@ -12,7 +12,13 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'),
     cases = JSON.parse(fs.readFileSync(casesFile, 'utf8')),
     manifest = JSON.parse(fs.readFileSync(manifestFile, 'utf8')),
     argumentsList = process.argv.slice(2),
-    validateOnly = argumentsList.includes('--validate');
+    validateOnly = argumentsList.includes('--validate'),
+
+    // Routing needs no MCP tools, and the live server answers 401 with OAuth, which
+    // OpenCode may open in a browser. OPENCODE_CONFIG_CONTENT outranks the user's config.
+    mcpDisabledConfig = JSON.stringify({
+        mcp: { postman: { type: 'remote', url: 'https://mcp.postman.com/minimal', enabled: false } }
+    });
 
 function option (name) {
     const index = argumentsList.indexOf(name);
@@ -123,6 +129,7 @@ for (const entry of selected) {
             encoding: 'utf8',
             env: {
                 ...process.env,
+                OPENCODE_CONFIG_CONTENT: mcpDisabledConfig,
                 OPENCODE_DISABLE_CLAUDE_CODE_SKILLS: '1',
                 OPENCODE_DISABLE_EXTERNAL_SKILLS: '1'
             },

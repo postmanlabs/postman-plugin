@@ -14,9 +14,11 @@ One parallel job per concern, so a failure names itself:
   so a stale manifest fails on a user's machine rather than here; checking it on
   every push is much cheaper than diagnosing that.
 - **`opencode`** — from `opencode/`: `npm ci`, the unit tests, the harness that
-  packs the tarball, installs it into a clean project and has the pinned
-  OpenCode CLI load every skill, and a check that every skill has a routing
-  eval case.
+  packs the tarball and has the pinned OpenCode CLI install it as an npm plugin
+  (install, `package.json` entry, `engines.opencode` gate) and load every
+  skill, and a check that every skill has a routing eval case. Load it through
+  a local plugin file instead and the gate is skipped: OpenCode treats file
+  plugins as development code.
 - **`schema`** — one matrix entry per official schema, fetched from the vendor's
   own source on every run, so a vendor tightening its schema fails here rather
   than at marketplace review. Entries carry `spec`, which is not always `draft7`

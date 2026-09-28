@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 import { resolveOpenCodeExecutable } from './lib/opencode-executable.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'),
@@ -14,12 +14,13 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'),
         fs.mkdtempSync(path.join(os.tmpdir(), 'postman-opencode-harness-'))
     ),
     packageDirectory = path.join(temporary, 'package'),
+    loadDirectory = path.join(temporary, 'load'),
     npmCache = path.join(temporary, 'npm-cache'),
     projectDirectory = path.join(temporary, 'project'),
-    pluginDirectory = path.join(projectDirectory, '.opencode', 'plugins'),
     nestedDirectory = path.join(projectDirectory, 'services', 'orders'),
     openCode = resolveOpenCodeExecutable(root),
-    npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+    npm = process.platform === 'win32' ? 'npm.cmd' : 'npm',
+    packagedSkill = path.join('@postman', 'opencode-plugin', 'assets', 'skills');
 
 const npmEnvironment = {
     ...process.env,
@@ -32,7 +33,7 @@ function run (command, argumentsList, options = {}) {
         encoding: 'utf8',
         env: options.env || process.env,
         maxBuffer: 16 * 1024 * 1024,
-        timeout: 120000
+        timeout: 180000
     });
 
     if (result.status !== 0) {
@@ -58,19 +59,24 @@ function trailingJsonArray (output) {
     return JSON.parse(lines.slice(start).join('\n'));
 }
 
+function pack (cwd, destination, extraArguments = []) {
+    const output = trailingJsonArray(run(npm, [
+        'pack', '--json', '--silent', '--pack-destination', destination, ...extraArguments
+    ], { cwd, env: npmEnvironment }));
+
+    return path.join(destination, output[0].filename);
+}
+
 function sha256 (file) {
     return crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 }
 
 try {
     fs.mkdirSync(packageDirectory, { recursive: true });
+    fs.mkdirSync(loadDirectory, { recursive: true });
     fs.mkdirSync(nestedDirectory, { recursive: true });
-    fs.mkdirSync(pluginDirectory, { recursive: true });
 
-    const packOutput = trailingJsonArray(run(npm, [
-            'pack', '--json', '--silent', '--pack-destination', packageDirectory
-        ], { env: npmEnvironment })),
-        tarball = path.join(packageDirectory, packOutput[0].filename);
+    const tarball = pack(root, packageDirectory);
 
     assert.equal(fs.existsSync(path.join(root, 'assets')), false, 'postpack left staged assets in the package directory');
     assert.equal(fs.existsSync(path.join(root, 'LICENSE')), false, 'postpack left a staged LICENSE in the package directory');
@@ -84,34 +90,7 @@ try {
             projectDirectory, 'node_modules', '@postman', 'opencode-plugin'
         ),
         installedAssets = path.join(installedRoot, 'assets'),
-        pluginEntry = path.join(installedRoot, 'dist', 'index.js'),
-        config = {
-            $schema: 'https://opencode.ai/config.json',
-
-            // Keep the runtime harness offline. Unit tests separately prove the
-            // plugin adds the default MCP server when the user has not configured it.
-            mcp: {
-                postman: {
-                    type: 'remote',
-                    url: 'https://mcp.postman.com/minimal',
-                    enabled: false
-                }
-            }
-        };
-
-    fs.writeFileSync(
-        path.join(pluginDirectory, 'postman.js'),
-        `export { default } from ${JSON.stringify(pathToFileURL(pluginEntry).href)};\n`,
-        'utf8'
-    );
-
-    fs.writeFileSync(
-        path.join(projectDirectory, 'opencode.json'),
-        `${JSON.stringify(config, null, 2)}\n`,
-        'utf8'
-    );
-
-    const manifest = JSON.parse(fs.readFileSync(path.join(repoRoot, 'manifest.json'), 'utf8'));
+        manifest = JSON.parse(fs.readFileSync(path.join(repoRoot, 'manifest.json'), 'utf8'));
 
     assert.equal(fs.existsSync(path.join(installedRoot, 'LICENSE')), true);
     assert.deepEqual(
@@ -119,10 +98,9 @@ try {
         JSON.parse(fs.readFileSync(path.join(repoRoot, 'mcp.opencode.json'), 'utf8'))
     );
 
-    // Prove the tarball contains the canonical bytes before shortening the
-    // skill bodies for `opencode debug skill`. OpenCode 1.18 truncates that
-    // command's aggregate JSON around 64 KiB, which otherwise makes its output
-    // invalid for a repository with this many full-length skills.
+    // Prove the tarball carries the canonical bytes, then shorten the skill bodies
+    // and repack: OpenCode 1.18 truncates `debug skill` output written to a pipe
+    // around 64 KiB, which would otherwise make it invalid JSON.
     for (const skill of manifest.skills) {
         for (const file of skill.files) {
             const installedFile = path.join(installedAssets, file.source);
@@ -145,6 +123,30 @@ try {
         );
     }
 
+    const loadTarball = pack(installedRoot, loadDirectory, ['--ignore-scripts']),
+        config = {
+            $schema: 'https://opencode.ai/config.json',
+
+            // OpenCode's own npm path: install, package.json entry, engines gate, id.
+            plugin: [`@postman/opencode-plugin@file:${loadTarball}`],
+
+            // Keep the runtime harness offline. Unit tests separately prove the
+            // plugin adds the default MCP server when the user has not configured it.
+            mcp: {
+                postman: {
+                    type: 'remote',
+                    url: 'https://mcp.postman.com/minimal',
+                    enabled: false
+                }
+            }
+        };
+
+    fs.writeFileSync(
+        path.join(projectDirectory, 'opencode.json'),
+        `${JSON.stringify(config, null, 2)}\n`,
+        'utf8'
+    );
+
     const environment = {
             ...process.env,
             OPENCODE_DISABLE_CLAUDE_CODE_SKILLS: '1',
@@ -158,20 +160,19 @@ try {
             cwd: nestedDirectory, env: environment
         })),
         expectedNames = manifest.skills.map((skill) => skill.name).sort(),
-        actualPostmanSkills = skills.filter((skill) => {
-            return skill.location.startsWith(path.join(installedAssets, 'skills'));
-        }),
+        actualPostmanSkills = skills.filter((skill) => skill.location.includes(packagedSkill)),
         actualNames = actualPostmanSkills.map((skill) => skill.name).sort();
 
     assert.deepEqual(actualNames, expectedNames);
     assert.equal(actualPostmanSkills.every((skill) => skill.description), true);
     assert.equal(actualPostmanSkills.every((skill) => skill.content.trim().length > 0), true);
     assert.equal(
-        actualPostmanSkills.find((skill) => skill.name === 'api-engineer')?.location,
-        path.join(installedAssets, 'skills', 'api-engineer', 'SKILL.md')
+        actualPostmanSkills.find((skill) => skill.name === 'api-engineer')?.location
+            .endsWith(path.join(packagedSkill, 'api-engineer', 'SKILL.md')),
+        true
     );
 
-    console.log(`OpenCode loaded all ${actualNames.length} packaged Postman skills from a nested directory.`);
+    console.log(`OpenCode installed the package and loaded all ${actualNames.length} Postman skills from a nested directory.`);
 }
 finally {
     fs.rmSync(temporary, { recursive: true, force: true });
