@@ -12,7 +12,7 @@ plugin route below — each route's manifest or config points back at the same
 | Cursor plugin | `.cursor-plugin/plugin.json` points at this repo's `skills/` dir | `mcp.cursor.json` | `postman-cursor-plugin` |
 | Kimi Code plugin | `.kimi-plugin/plugin.json` points at the same `skills/` dir | `mcpServers` in `.kimi-plugin/plugin.json` | `postman-kimi-plugin` |
 | Codex plugin | `.codex-plugin/plugin.json` points at the same `skills/` dir | `mcp.codex.json` | `postman-codex-plugin` |
-| OpenCode | `@postman/opencode-plugin` adds this package's absolute `skills/` path | `config` hook in `opencode/index.ts` | `postman-opencode-plugin` |
+| OpenCode | `@postman/opencode-plugin` exposes the canonical packaged skills to v1 and v2 | v1 config hook / v2 MCP transform | `postman-opencode-plugin` |
 
 Codex also reads `.claude-plugin/plugin.json` and `.cursor-plugin/plugin.json` as
 fallbacks — its `DISCOVERABLE_PLUGIN_MANIFEST_PATHS` is `.codex-plugin`,
@@ -22,19 +22,19 @@ Codex would read `mcp.claude-code.json`, whose `headers` key Codex does not
 understand, so its traffic arrived with no `X-Source` at all. Keep
 `.codex-plugin/plugin.json` first in precedence and Codex never falls back.
 
-OpenCode is the npm route. Its plugin `config` hook appends an absolute path to
-the package's canonical `skills/` directory and adds the hosted Postman MCP
-server without replacing user configuration. An
-`experimental.chat.system.transform` hook injects the shared
-`hooks/session-start-context.md`; at runtime it removes the `postman:` prefix
-because OpenCode's native skill IDs are un-namespaced. The content stays
-single-sourced while the vocabulary matches OpenCode.
+OpenCode is the npm route. The package default-exports OpenCode's documented
+dual-version transition shape: v2 calls `setup()`, while v1 calls `server()`.
+The v1 config hook appends an absolute path to the canonical `skills/`
+directory. The v2 setup reads those same files and registers them through the
+skill transform. Each route also adds the hosted Postman MCP server and injects
+the shared `hooks/session-start-context.md` without replacing user
+configuration. At runtime it removes the `postman:` prefix because OpenCode's
+native skill IDs are un-namespaced. The content stays single-sourced while the
+vocabulary matches OpenCode.
 
 A clone uses `.opencode/plugins/postman.ts`, a tiny development adapter that
-imports the same implementation. The npm package exports the compiled module
-from `dist/index.js`. Do not put local file paths in `opencode.json`'s `plugin`
-array: OpenCode documents that array for npm package names and auto-loads local
-plugins from `.opencode/plugins/`.
+default-exports the same dual-version implementation. The npm package exports
+the compiled module from `dist/index.js`.
 
 The Postman CLI also has its own path for installing these skills, but it's
 still being redesigned — don't treat it as settled or document it here until
@@ -188,7 +188,7 @@ mcp.claude-code.json        <- .claude-plugin/plugin.json  "mcpServers": "./mcp.
 mcp.cursor.json             <- .cursor-plugin/plugin.json  "mcpServers": "./mcp.cursor.json"
 mcp.codex.json              <- .codex-plugin/plugin.json   "mcpServers": "./mcp.codex.json"
 .kimi-plugin/plugin.json       inline — Kimi documents no path form
-opencode/index.ts              OpenCode config hook — headers use package.json's version
+opencode/index.ts              OpenCode v1/v2 entrypoints — headers use package.json's version
 ```
 
 Maintained by hand, and they are not interchangeable copies. Four things

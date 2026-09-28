@@ -50,13 +50,15 @@
   },
   "devDependencies": {
     "@opencode-ai/plugin": "1.18.32",
+    "@opencode/plugin": "2.0.18",
+    "@types/json-schema": "7.0.15",
     "@types/node": "24.5.2",
     "opencode-ai": "1.18.32",
     "typescript": "5.9.2"
   },
   "engines": {
     "node": ">=22",
-    "opencode": ">=1.18.32"
+    "opencode": ">=1.18.29"
   },
   "publishConfig": {
     "access": "public"

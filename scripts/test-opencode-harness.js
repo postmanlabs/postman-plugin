@@ -98,7 +98,7 @@ try {
 
     fs.writeFileSync(
         path.join(pluginDirectory, 'postman.js'),
-        `export { PostmanPlugin } from ${JSON.stringify(pathToFileURL(pluginEntry).href)};\n`,
+        `export { default } from ${JSON.stringify(pathToFileURL(pluginEntry).href)};\n`,
         'utf8'
     );
 

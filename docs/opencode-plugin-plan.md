@@ -15,19 +15,23 @@ does not create a second copy or fork of the skill content.
 
 ## Implemented architecture
 
-1. `opencode/index.ts` exports an OpenCode plugin.
-2. Its `config` hook appends the package's absolute `skills/` directory and the
-   Postman MCP server. Existing user paths and an existing `mcp.postman` entry
-   win.
-3. Its system-transform hook loads `hooks/session-start-context.md` and adapts
-   namespaced `postman:<skill>` references to OpenCode's native `<skill>` IDs.
+1. `opencode/index.ts` default-exports OpenCode's dual transition definition:
+   v2 calls `setup()` and v1 calls `server()`.
+2. On v1, the config hook appends the package's absolute `skills/` directory
+   and Postman MCP server. On v2, skill and MCP transforms register the same
+   canonical assets. Existing user paths and an existing Postman MCP entry win.
+3. The v1 system-transform hook and v2 session-context hook both load
+   `hooks/session-start-context.md` and adapt namespaced `postman:<skill>`
+   references to OpenCode's native `<skill>` IDs.
 4. `.opencode/plugins/postman.ts` lets a repository clone load the same source
    through OpenCode's documented local-plugin directory.
 5. TypeScript compiles to the npm entry point in `dist/index.js`.
 
-The first release declares OpenCode `>=1.18.32`, the version used by the unit,
-harness and live-model tests. Broaden that range only after running the same
-checks against the older version.
+The first release declares OpenCode `>=1.18.29`, the first v1 version supporting
+the object entrypoint needed by the dual-version shape. The packed harness and
+live-model tests run against v1.18.32; unit tests additionally exercise the v2
+`id + setup` contract using the v2.0.18 SDK types. Broaden either tested range
+only after running the same checks against the target version.
 
 ## Verification layers
 
@@ -41,11 +45,12 @@ npm run eval:skills:validate
 node .claude/hooks/validate-manifests.js
 ```
 
-`npm test` checks config merging, attribution headers, namespace adaptation and
-asset resolution. `test:harness` creates a tarball, installs it into a clean
-temporary project, launches the pinned OpenCode CLI from a nested directory,
-verifies every shipped file against `manifest.json`, and confirms that
-OpenCode discovers all published skill IDs.
+`npm test` checks v1 config merging, the v2 default definition and transforms,
+attribution headers, namespace adaptation and asset resolution. `test:harness`
+creates a tarball, installs it into a clean temporary project, launches the
+pinned OpenCode v1 CLI from a nested directory, verifies every shipped file
+against `manifest.json`, and confirms that OpenCode discovers all published
+skill IDs.
 
 The live routing loop uses an actual configured model:
 
