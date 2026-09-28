@@ -53,6 +53,16 @@ tidying:
   through Claude Code: a plugin with the markdown removed reports
   `exit_code: 1, outcome: "error"` and the message in `stderr`.
 
+## The context itself must stay agent-neutral
+
+`hooks/session-start-context.md` is one file read by every route that has a
+context mechanism — Claude Code and Cursor through `hooks/hooks.json`, Codex
+through its fallback to that same file, opencode through `instructions`. So it
+must not name one vendor's machinery: "invoke it with the Skill tool" is an
+instruction Codex and opencode cannot follow, and it reaches them verbatim.
+Name the skill and let each agent use its own loading mechanism. A vendor that
+needs different wording is a reason to fix the shared text, not to fork it.
+
 ## Which shell, and which OS
 
 Claude Code runs a hook's `command` through `sh -c` on macOS and Linux, and on
