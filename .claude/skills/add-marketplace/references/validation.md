@@ -96,3 +96,14 @@ node .claude/hooks/validate-manifests.js && echo "manifests consistent"
   mechanism.** A vendor with no hooks may still carry it through a rules or
   instructions file, and nothing here can tell that apart from a route that
   silently never mentions Postman.
+
+## The marketplace-channel notification
+
+Nothing checks `.github/workflows/notify-marketplace-log.yml`. A route missing
+from its `paths` or its `report` lines ships and works; it just never tells
+#postman-plugin-marketplaces about a bump. A `report` line whose jq path finds no
+version logs a `::warning` and moves on, so the job still passes. And a report
+that no listing's *Version file* matches is accepted by the webhook and posts
+nothing. All three failures are silent, which is why Step 6 checks the first two
+(`paths` and the `report` line separately, since either can be present without
+the other) and Step 4 asks the PR to state the third.

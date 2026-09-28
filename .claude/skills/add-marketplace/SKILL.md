@@ -1,6 +1,6 @@
 ---
 name: add-marketplace
-description: Add a new vendor plugin route (marketplace) to this repo - Windsurf, Zed, Copilot, Gemini CLI, opencode, or any other agent that can be pointed at a skills directory, whether it loads a plugin manifest or only a project config. Use when asked to add, wire up, or onboard a new marketplace, vendor, plugin route, or agent target. Covers the manifest or config, the MCP config, the session-start hook, the CI schema check, and the README sections that do not update themselves.
+description: Add a new vendor plugin route (marketplace) to this repo - Windsurf, Zed, Copilot, Gemini CLI, opencode, or any other agent that can be pointed at a skills directory, whether it loads a plugin manifest or only a project config. Use when asked to add, wire up, or onboard a new marketplace, vendor, plugin route, or agent target. Covers the manifest or config, the MCP config, the session-start hook, the CI schema check, the marketplace-channel notification, and the README sections that do not update themselves.
 argument-hint: <vendor-name>
 disable-model-invocation: true
 ---
@@ -19,7 +19,8 @@ anything else).
 
 Put this work in its own git worktree before editing anything. A route touches
 the same shared files every other route touches — `README.md`,
-`.github/workflows/validate.yml`, `hooks/hooks.json`, `manifest.json` — so two
+`.github/workflows/validate.yml`, `.github/workflows/notify-marketplace-log.yml`,
+`hooks/hooks.json`, `manifest.json` — so two
 routes in one working tree interleave their edits and neither agent can tell
 which changes are theirs. The local pre-commit guard compounds it: the guard
 validates the whole tree, so a neighbour's half-finished edit blocks your commit
@@ -194,6 +195,27 @@ Run the ajv command locally rather than waiting for CI. Where a vendor sets
 of them a plausible copy-from-another-route mistake that no other check here
 would catch.
 
+### The marketplace-channel notification
+
+`.github/workflows/notify-marketplace-log.yml` tells #postman-plugin-marketplaces
+when a route's version changes on `main`, by posting each route file's version to
+the Marketplace Log app ([postman-eng/marketplace-log](https://github.com/postman-eng/marketplace-log)).
+Nothing validates it, so a route missing from it never announces a bump. Two
+edits:
+
+- Add the route file to `on.push.paths`.
+- Add a `report <route file> '<jq path>'` line. The path is `.version` for a
+  manifest route. A config-only route with no `version` key reports the version
+  its headers carry — opencode's line reads
+  `.mcp.postman.headers["X-Plugin-Version"]` — so it must be the header Step 2
+  keeps in agreement.
+
+The report only reaches the channel if a listing names this route file. That is
+a Slack step, not a repo edit: from the channel's **Add / update a listing**
+bookmark, set *Source repo* to `postmanlabs/postman-plugin` and *Version file* to
+the route file. It posts the listing's first card. Say in the PR whether it is
+done, rather than leaving it implied.
+
 ## Step 5 — README
 
 `README.md` describes the routes in prose that does not update itself:
@@ -216,7 +238,7 @@ would catch.
 `$ROUTE_FILE` is the manifest or root config from Step 1.
 
 ```bash
-actionlint .github/workflows/validate.yml
+actionlint .github/workflows/validate.yml .github/workflows/notify-marketplace-log.yml
 node -e "JSON.parse(require('fs').readFileSync('$ROUTE_FILE','utf8'))"
 npx -y @anthropic-ai/claude-code plugin validate .
 node .claude/hooks/validate-manifests.js && echo "manifests consistent"
@@ -227,6 +249,12 @@ node .claude/hooks/validate-manifests.js && echo "manifests consistent"
 # naming a variable that does not exist reports a FAIL that reads like a
 # regression.
 .claude/skills/add-marketplace/scripts/check-hooks.sh <VENDOR>_PLUGIN_ROOT
+
+# The notify workflow both watches the route file and reports it; each needs its
+# own entry, so check them separately. The jq path is the one on the report line.
+grep -F -- "- '$ROUTE_FILE'" .github/workflows/notify-marketplace-log.yml
+grep -F -- "report $ROUTE_FILE '" .github/workflows/notify-marketplace-log.yml
+jq -r '<jq path> // empty' "$ROUTE_FILE"
 
 # No other route's version may move: only your route's files may appear here.
 # Scope by file, not by grepping the diff - an added `"version": "1.0.0"` line
