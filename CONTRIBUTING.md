@@ -15,7 +15,7 @@ plugin route below — each route's manifest or package points back at the same
 | Cursor plugin | `.cursor-plugin/plugin.json` points at this repo's `skills/` dir | `mcp.cursor.json` | `postman-cursor-plugin` |
 | Kimi Code plugin | `.kimi-plugin/plugin.json` points at the same `skills/` dir | `mcpServers` in `.kimi-plugin/plugin.json` | `postman-kimi-plugin` |
 | Codex plugin | `.codex-plugin/plugin.json` points at the same `skills/` dir | `mcp.codex.json` | `postman-codex-plugin` |
-| OpenCode plugin | a clone of this repo, loaded by a one-line local plugin that re-exports `opencode/src/index.ts` | `mcp.opencode.json` | `postman-opencode-plugin` |
+| OpenCode plugin | the npm package `@postman/opencode-plugin`, built from `opencode/`, which copies `skills/` in at pack time; or a clone of this repo loaded by a one-line local plugin | `mcp.opencode.json` | `postman-opencode-plugin` |
 
 Codex also reads `.claude-plugin/plugin.json` and `.cursor-plugin/plugin.json` as
 fallbacks — its `DISCOVERABLE_PLUGIN_MANIFEST_PATHS` is `.codex-plugin`,
@@ -25,14 +25,25 @@ Codex would read `mcp.claude-code.json`, whose `headers` key Codex does not
 understand, so its traffic arrived with no `X-Source` at all. Keep
 `.codex-plugin/plugin.json` first in precedence and Codex never falls back.
 
-OpenCode has no plugin-manifest format, so its route is a local plugin: a
-clone of this repository plus a one-line file in OpenCode's `plugins/`
-directory that re-exports `opencode/src/index.ts`. OpenCode runs the
-TypeScript directly, and the source has no runtime dependencies — its only
-imports from OpenCode are `import type` — so nothing is built or installed.
-The plugin reads the skills, `hooks/session-start-context.md`,
-`manifest.json` and `mcp.opencode.json` from the clone's root. It is not
-published to npm.
+OpenCode has no plugin-manifest format, so its route is plugin code, installed
+one of two ways:
+
+- **The npm package** in `opencode/`, published as `@postman/opencode-plugin`.
+  npm packs nothing outside the package directory, so `npm pack` copies the
+  skill files `manifest.json` lists, plus `hooks/session-start-context.md`,
+  `manifest.json`, `mcp.opencode.json` and `LICENSE`, into `opencode/assets/`
+  and `opencode/LICENSE`, then deletes them. **Never commit that copy.** Every
+  other route clones this whole repository, so a committed copy ships a second
+  set of skills to all of them; `.gitignore` covers both paths, and the npm
+  harness fails if `npm pack` leaves them behind.
+- **A local plugin**: a clone of this repository plus a one-line file in
+  OpenCode's `plugins/` directory that re-exports `opencode/src/index.ts`.
+  OpenCode runs the TypeScript directly, and the source has no runtime
+  dependencies — its only imports from OpenCode are `import type` — so nothing
+  is built or installed.
+
+The plugin reads the shared files from `assets/` when it has one (the npm
+install) and from the repository root otherwise (a clone).
 
 The default export serves both OpenCode plugin APIs: v1 hosts call
 `server()`, v2 hosts call `setup()`. v1's config hook appends the clone's
@@ -41,9 +52,11 @@ skill and MCP transforms register the same files. Both leave an existing
 `postman` MCP entry and existing skill paths untouched. OpenCode has no
 session-start event, so the plugin pushes `hooks/session-start-context.md` into
 the system prompt, rewriting `` `postman:<skill>` `` to `` `<skill>` `` because
-OpenCode's skill names are un-namespaced. The harness installs the plugin the
-way a user does — the clone and the one-line file under an isolated global
-config directory — and has the pinned OpenCode 1 CLI load every skill.
+OpenCode's skill names are un-namespaced. Two harnesses install the plugin the
+ways a user does — the clone and the one-line file under an isolated global
+config directory, and the packed tarball as an npm plugin through OpenCode's
+own install, entry lookup and `engines.opencode` gate — and each has the pinned
+OpenCode 1 CLI load every skill.
 OpenCode 2 is covered only by unit tests against a mock host.
 
 Inside a clone, `.opencode/plugins/postman.ts` is that same one-line file, so
@@ -62,7 +75,7 @@ it lands.
 .kimi-plugin/plugin.json          the Kimi Code plugin manifest — carries its MCP block inline
 .codex-plugin/plugin.json         the Codex plugin manifest
 .app.json                         maps the Codex plugin to its published ChatGPT app ID
-opencode/                         the OpenCode plugin — source, tests, install harness, routing evals
+opencode/                         the OpenCode plugin and npm package — source, tests, install harnesses, routing evals
 .opencode/plugins/postman.ts      loads that plugin from source when OpenCode runs inside a clone
 mcp.claude-code.json              Claude Code's MCP config
 mcp.cursor.json                   Cursor's MCP config
@@ -140,7 +153,8 @@ needs a model:
 ```
 npm ci
 npm test                       # builds, then unit-tests the v1 and v2 entry points
-npm run test:harness           # installs it as a user does, then has the pinned CLI load every skill
+npm run test:harness           # installs it as a local plugin, then has the pinned CLI load every skill
+npm run test:harness:npm       # packs it, installs the tarball as an npm plugin, then loads every skill
 npm run eval:skills:validate   # every skill has at least one positive routing case
 npm run eval:skills            # live routing eval against a configured model
 ```
@@ -151,19 +165,30 @@ belongs in the shared skill description or `hooks/session-start-context.md`, and
 both reach every route, so rerun the full set after changing either and don't
 tune wording for OpenCode alone.
 
-Users run whatever their clone has checked out, so a change reaches them on
-their next `git pull` of `main`. A release is still its own version bump:
+Local-plugin users run whatever their clone has checked out, so a change
+reaches them on their next `git pull` of `main`. npm users get it only when a
+version is published. A release is its own version bump:
 
-1. Set the version on the route's three strings (`opencode/package.json` and
+1. Never publish by hand. `.github/workflows/release.yml` calls AppSec's
+   shared npm-publish workflow, which publishes through OIDC trusted
+   publishing; token publishing is disabled on the package. The package, and
+   that workflow's filename, are registered with AppSec in #security — see
+   [NPM Pub: Onboard a repo/package](https://postmanlabs.atlassian.net/wiki/x/WQA5qgE).
+2. Run `npm pack --dry-run` and read the file list — `dist/`, `assets/`,
+   `LICENSE`, `README.md` and `package.json`, nothing else.
+3. Set the version on the route's three strings (`opencode/package.json` and
    both headers in `mcp.opencode.json`; the unit tests fail if they differ).
-2. After it merges, push a signed tag `opencode-v<version>` on that commit.
-3. Install it from a fresh clone, on OpenCode 1 and on OpenCode 2, following
-   [opencode/README.md](opencode/README.md), and check that each loads the
-   skills and the MCP server. The harness can't cover OpenCode 2: its CLI has
-   no `debug skill` command.
-
-List it in [OpenCode's ecosystem page](https://opencode.ai/docs/ecosystem/) only
-after step 3 passes.
+4. After it merges, push two annotated, signed tags on that commit:
+   `opencode-v<version>`, the route's own label, and
+   `@postman/opencode-plugin@<version>`, the only form the shared workflow
+   accepts — pushing that one is the release. Ship `<version>-rc.<n>` first:
+   it publishes to the `next` dist-tag, leaves `latest` alone, and skips the
+   default-branch gate. A plain `<version>` must be tagged on `main`. Retry a
+   failed run with "Run workflow" and the same scoped tag, never a new one.
+5. Install it from the public registry and from a fresh clone, on OpenCode 1
+   and on OpenCode 2, following [opencode/README.md](opencode/README.md), and
+   check that each loads the skills. The harnesses can't cover OpenCode 2: its
+   CLI has no `debug skill` command.
 
 ## Changing a skill
 

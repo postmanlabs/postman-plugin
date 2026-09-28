@@ -1,0 +1,81 @@
+# Publishes npm packages through AppSec's shared workflow, from the routed example:
+# https://github.com/postmanlabs/gh-security-scan-workflow/blob/main/examples/npm-publish/monorepo-routed.yml
+# This filename is bound to each package's npm trusted-publisher config. Renaming it
+# breaks publishing until AppSec (#security) repoints it.
+name: NPM Publish
+
+on:
+  push:
+    tags: ['@postman/*@*']
+
+  # Retries a tag that already exists, and is the only way to reach dry_run.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to publish, e.g. @postman/opencode-plugin@0.1.0. Must already exist in origin, annotated and signed.'
+        required: true
+        type: string
+      dry_run:
+        description: 'Run the checks against a tag that ALREADY EXISTS, without publishing. Not a pre-flight -- pushing a tag is the release. Skips the signed-tag and default-branch gates, and does not exercise OIDC.'
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  # Refuses anything but <name>@<version>: a bare tag would skip the shared
+  # workflow's package-identity check.
+  resolve:
+    runs-on: ubuntu-latest
+    permissions: {}
+    outputs:
+      package_path: ${{ steps.map.outputs.package_path }}
+    steps:
+      - id: map
+        env:
+          TAG: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag }}
+          # One line per publishable package: <npm name> <directory>.
+          PACKAGE_PATHS: |
+            @postman/opencode-plugin  opencode
+        run: |
+          set -euo pipefail
+
+          if [[ ! "$TAG" =~ ^(@[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*)@([0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.-]+)?)$ ]]; then
+            # Newlines stripped so the value cannot forge a second workflow command.
+            echo "::error::tag '${TAG//[$'\n\r']/ }' must be <name>@<version>, e.g. @postman/opencode-plugin@0.1.0."
+            exit 1
+          fi
+          NAME="${BASH_REMATCH[1]}"
+
+          MATCH=$(awk -v n="$NAME" '$1 == n { print $2 }' <<< "$PACKAGE_PATHS")
+
+          if [ -z "$MATCH" ]; then
+            echo "::error::tag $TAG names '$NAME', which has no entry in PACKAGE_PATHS."
+            exit 1
+          fi
+
+          if [ "$(wc -l <<< "$MATCH")" -ne 1 ]; then
+            echo "::error::PACKAGE_PATHS has more than one entry for $NAME"
+            exit 1
+          fi
+
+          echo "package_path=$MATCH" >> "$GITHUB_OUTPUT"
+
+  publish:
+    needs: resolve
+    permissions:
+      contents: read
+      id-token: write
+    uses: postmanlabs/gh-security-scan-workflow/.github/workflows/security-npm-publish.yml@npm-publish/v1
+    with:
+      tag: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag }}
+      package_path: ${{ needs.resolve.outputs.package_path }}
+      # opencode/ carries its own lockfile; there is no root workspace.
+      install_path: ${{ needs.resolve.outputs.package_path }}
+      # The shared workflow defaults to 20 and does not read engines.node.
+      node_version: '24'
+      dry_run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
+
+    secrets:
+      POSTMAN_NPM_TOKEN: ${{ secrets.POSTMAN_NPM_TOKEN }}

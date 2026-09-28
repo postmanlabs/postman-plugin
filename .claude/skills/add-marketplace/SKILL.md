@@ -46,8 +46,9 @@ writing anything:
      and the route's version lives in a `package.json`. OpenCode is this: the
      user clones this repo and adds a one-line file to OpenCode's `plugins/`
      directory that re-exports `opencode/src/index.ts`, which reads the
-     clone's `skills/` and `mcp.opencode.json` at runtime. It is not published
-     to npm.
+     clone's `skills/` and `mcp.opencode.json` at runtime — or installs the
+     same code as the npm package `@postman/opencode-plugin`, which copies the
+     skill files into a gitignored `assets/` at pack time.
 2. The manifest or config path and filename.
 3. The **exact shape** of the skills pointer. The routes here already cover
    implicit, string, array and object (`{"skills": {"paths": ["./skills"]}}`), so

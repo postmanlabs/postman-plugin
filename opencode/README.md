@@ -6,9 +6,30 @@ OpenCode session, using the same `postman` commands you would run yourself.
 
 ## Install
 
-Requires OpenCode 1.18.29 or later, and `git`. The plugin is a clone of this
-repository plus a one-line file in OpenCode's `plugins/` directory, which
-OpenCode loads at startup. Nothing is installed from npm.
+Requires OpenCode 1.18.29 or later. Install it one way only — from npm or as a
+local plugin, not both — or every skill registers twice.
+
+### From npm
+
+OpenCode 2:
+
+```bash
+opencode plugin add @postman/opencode-plugin
+```
+
+OpenCode 1:
+
+```bash
+opencode plugin @postman/opencode-plugin --global
+```
+
+On OpenCode 1, omit `--global` to add it to the current project only; OpenCode
+2's `plugin add` always writes the global config.
+
+### As a local plugin
+
+A clone of this repository plus a one-line file in OpenCode's `plugins/`
+directory, which OpenCode loads at startup. Needs `git`.
 
 For every project (global):
 
@@ -30,10 +51,6 @@ git clone https://github.com/postmanlabs/postman-plugin .opencode/postman-plugin
 mkdir -p .opencode/plugins && echo "export { default } from '../postman-plugin/opencode/src/index.ts';" > .opencode/plugins/postman.ts
 ```
 
-Restart OpenCode after either. To check it loaded, ask OpenCode to "set up
-Postman in this repo": it should load the `bootstrap` skill and run the Postman
-CLI. Install it one way, not both — two clones register every skill twice.
-
 To update, pull the clone:
 
 ```bash
@@ -41,6 +58,11 @@ git -C ~/.config/opencode/postman-plugin pull
 ```
 
 To uninstall, delete `plugins/postman.ts` and the `postman-plugin` clone.
+
+### Check it loaded
+
+Restart OpenCode, then ask it to "set up Postman in this repo": it should load
+the `bootstrap` skill and run the Postman CLI.
 
 ## What it adds
 

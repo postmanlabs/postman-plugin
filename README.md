@@ -40,7 +40,7 @@ Pick your agent. Each one gets the same skills.
 | [Cursor](#cursor) | `npx plugins add` |
 | [Codex](#codex) | Plugin marketplace |
 | [Kimi Code](#kimi-code) | `npx plugins add` |
-| [OpenCode](#opencode) | Local plugin: a clone of this repository plus a one-line loader file |
+| [OpenCode](#opencode) | `opencode plugin` from npm, or a local plugin |
 
 ### Claude Code
 
@@ -75,11 +75,24 @@ npx plugins add postmanlabs/postman-plugin
 
 ### OpenCode
 
-**OpenCode installs this as a local plugin, not from npm.** You clone this
-repository into OpenCode's config directory and add a one-line file that tells
-OpenCode to load it. Nothing else is installed.
+**You need:** OpenCode 1.18.29 or later.
 
-**You need:** OpenCode 1.18.29 or later, and `git`.
+**From npm** — the two major versions spell the command differently:
+
+```bash
+opencode plugin add @postman/opencode-plugin
+```
+
+```bash
+opencode plugin @postman/opencode-plugin --global
+```
+
+The first is OpenCode 2, the second OpenCode 1. Restart OpenCode, then check it
+loaded: open a repository and ask it to "set up Postman in this repo". It
+should load the `bootstrap` skill and run the Postman CLI.
+
+**As a local plugin**, if you'd rather track this repository directly (needs
+`git`):
 
 1. Clone this repository into OpenCode's config directory:
 
@@ -106,8 +119,8 @@ git -C ~/.config/opencode/postman-plugin pull
 ```
 
 To install it for a single project instead, or to uninstall it, see the
-[OpenCode install guide](opencode/README.md). Install it one way only: two
-copies register every skill twice.
+[OpenCode install guide](opencode/README.md). Install it one way only — npm or
+the local plugin, not both — or every skill registers twice.
 
 ## Sign in to Postman
 

@@ -11,3 +11,9 @@ opencode/dist/
 opencode/node_modules/
 opencode/evals/results/
 
+# What `npm pack` copies in (removed again after it) and the tarball it writes.
+# Every route clones this repo, so a committed copy would ship a second set of
+# skills to all of them.
+opencode/assets/
+opencode/LICENSE
+opencode/*.tgz

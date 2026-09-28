@@ -64,8 +64,9 @@ jobs:
       - name: Claude Code accepts the marketplace and plugin manifests
         run: npx -y @anthropic-ai/claude-code plugin validate .
 
-  # The only route that runs code. Its harness installs the plugin as a user
-  # does and has the pinned OpenCode CLI load every skill.
+  # The only route that runs code. Its harnesses install the plugin both ways a
+  # user can, as a local plugin and as the packed npm tarball, and have the
+  # pinned OpenCode CLI load every skill.
   opencode:
     name: OpenCode package
     runs-on: ubuntu-latest
@@ -85,8 +86,11 @@ jobs:
       - name: Unit tests
         run: npm test
 
-      - name: Packed-install harness
+      - name: Local-plugin harness
         run: npm run test:harness
+
+      - name: npm packed-install harness
+        run: npm run test:harness:npm
 
       - name: Eval cases cover every skill
         run: npm run eval:skills:validate

@@ -45,7 +45,9 @@ rather than copying the block.
 route is a local plugin instead: a clone of this repo plus a one-line file in
 OpenCode's `plugins/` directory that re-exports `opencode/src/index.ts`. OpenCode
 runs the TypeScript directly and the source has only type imports, so nothing
-is built or installed, and nothing is published to npm.
+is built or installed. The same code also ships as the npm package
+`@postman/opencode-plugin`, which copies the skill files in at pack time and
+must keep that copy out of git.
 
 **OpenCode's `skills.paths` is in its schema but not its docs.** A docs-only pass
 concludes no pointer exists and discovery is fixed-path only. It does exist:
