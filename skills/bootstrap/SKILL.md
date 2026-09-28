@@ -99,9 +99,21 @@ preferred; take the first row that fits the machine.
 | Machine | Installer |
 | --- | --- |
 | Windows (native PowerShell or cmd) | PowerShell script |
-| macOS, Linux or WSL, and `/usr/local/bin` is writable or `sudo -n true` succeeds | curl script |
-| Node.js and npm present, and the row above does not fit | npm |
+| macOS, Linux or WSL, and the probe prints `curl: ok` | curl script |
+| The probe prints `npm: ok` | npm |
 | Alpine Linux (musl) | none — unsupported by every installer |
+
+On macOS, Linux and WSL, run this probe before picking a row. It checks whether
+each installer can write where it installs without asking for a password:
+
+```bash
+if [ -w /usr/local/bin ] || { [ ! -e /usr/local/bin ] && [ -w /usr/local ]; } || sudo -n true 2>/dev/null; then echo "curl: ok"; else echo "curl: needs password"; fi
+if command -v npm >/dev/null; then d="$(npm prefix -g)/lib/node_modules"; [ -d "$d" ] || d="$(npm prefix -g)"; [ -w "$d" ] && echo "npm: ok" || echo "npm: needs sudo"; else echo "npm: absent"; fi
+```
+
+Never make a row fit by force: no `sudo npm install -g`, no `chown` or
+`chmod` on `/usr/local` or the npm prefix. Those change the user's system.
+Report what the probe printed instead.
 
 **Windows — PowerShell script** (installs into
 `%USERPROFILE%\AppData\Local\Microsoft\WindowsApps`):
@@ -118,14 +130,19 @@ curl -o- "https://dl-cli.pstmn.io/install/unix.sh" | sh
 ```
 
 The script falls back to `sudo` when `/usr/local/bin` isn't writable, and a
-password prompt can't be answered from an agent shell — that is why the table
-checks `sudo -n true` first.
+password prompt can't be answered from an agent shell. That is why the probe
+comes first.
 
 **Any OS with Node.js — npm:**
 
 ```bash
 npm install -g postman-cli
 ```
+
+**After any install**, re-run `command -v postman && postman --version`. An
+install that succeeded but isn't found means its directory is off `PATH` — for
+npm, `$(npm prefix -g)/bin`. Call the binary by full path for this session and
+tell the user which directory to add; don't edit their shell profile.
 
 **Update:** re-run the command that installed it; the new binary overwrites the
 old. The CLI has no self-update verb, and `postman skills update` refreshes a
@@ -134,11 +151,11 @@ repository's `postman/skills/`, not the binary.
 **Uninstall:** `npm uninstall -g postman-cli` for npm; otherwise delete the
 `postman` binary from the path in the table above.
 
-**If nothing fits or every attempt fails:** name what blocked you — Alpine, no
-Node and no writable install directory, a `sudo` that needs a password, no
-shell, or a hosted session that cannot install. When only the password blocks
-the curl script, give the user that one command to run in their own terminal
-and wait. Otherwise hand off to the `postman-mcp-server` skill; an attempted
+**If nothing fits or every attempt fails:** name what blocked you — Alpine, what
+the probe printed, no shell, or a hosted session that cannot install. When the
+probe prints `curl: needs password` and npm isn't `ok`, give the user the curl
+command to run in their own terminal, where they can answer the password
+prompt, and wait. Otherwise hand off to the `postman-mcp-server` skill; an attempted
 install that actually failed is the only thing that qualifies.
 
 ## 2. Establish the filesystem and workspace bindings
