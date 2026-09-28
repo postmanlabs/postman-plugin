@@ -253,8 +253,11 @@ version bump:
 1. Confirm the `@postman` npm organization owns `@postman/opencode-plugin`.
 2. Run `npm pack --dry-run` and read the file list — `dist/`, `assets/`,
    `LICENSE`, `README.md` and `package.json`, nothing else.
-3. Publish from a trusted CI workflow with provenance, using Postman's npm
-   credentials.
+3. Publish through `.github/workflows/release.yml`, which runs the tests and
+   publishes with provenance using Postman's npm credentials. For a stable
+   release, push the tag `opencode-v<version>` matching `opencode/package.json`.
+   For a prerelease, set the version to `<version>-<dist-tag>.<n>` and run the
+   workflow manually with that dist-tag.
 4. Install it from the public registry in a clean environment, on OpenCode 1
    and on OpenCode 2, and check that each loads the skills and the MCP server.
    The harness can't cover OpenCode 2: its CLI has no `debug skill` command.

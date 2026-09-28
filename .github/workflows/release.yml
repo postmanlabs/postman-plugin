@@ -1,0 +1,87 @@
+# Publishes opencode/ as @postman/opencode-plugin. Routes version independently,
+# so the stable trigger is an `opencode-v<version>` tag, not a bare `v*`.
+name: Release OpenCode package
+
+on:
+  push:
+    tags:
+      - 'opencode-v*'
+  workflow_dispatch:
+    inputs:
+      dist-tag:
+        description: 'npm dist-tag (latest is not allowed here — push an opencode-v* tag instead)'
+        required: true
+        type: choice
+        options:
+          - beta
+          - next
+          - rc
+          - alpha
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: opencode
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
+          cache-dependency-path: opencode/package-lock.json
+
+      - name: Install development dependencies
+        run: npm ci
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Packed-install harness
+        run: npm run test:harness
+
+      - name: Verify stable version matches the tag
+        if: github.ref_type == 'tag'
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if [[ "$TAG" != "opencode-v$VERSION" ]]; then
+            echo "::error::tag '$TAG' does not match package.json version '$VERSION'. Tag the release commit as opencode-v$VERSION."
+            exit 1
+          fi
+          if [[ "$VERSION" == *-* ]]; then
+            echo "::error::'$VERSION' is a prerelease. Publish it through workflow_dispatch with a dist-tag, not a tag push."
+            exit 1
+          fi
+
+      - name: Publish to npm (stable)
+        if: github.ref_type == 'tag'
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.POSTMAN_NPM_TOKEN }}
+
+      - name: Verify prerelease version
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          DIST_TAG: ${{ inputs.dist-tag }}
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if [[ ! "$VERSION" =~ -${DIST_TAG}(\.|$) ]]; then
+            echo "::error::package.json version '$VERSION' does not contain a '-$DIST_TAG' prerelease suffix. Set it to <version>-$DIST_TAG.<n> first."
+            exit 1
+          fi
+
+      - name: Publish to npm (prerelease)
+        if: github.event_name == 'workflow_dispatch'
+        run: npm publish --provenance --access public --tag "$DIST_TAG"
+        env:
+          DIST_TAG: ${{ inputs.dist-tag }}
+          NODE_AUTH_TOKEN: ${{ secrets.POSTMAN_NPM_TOKEN }}
