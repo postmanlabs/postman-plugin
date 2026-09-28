@@ -259,11 +259,13 @@ version bump:
    `LICENSE`, `README.md` and `package.json`, nothing else.
 3. Set the version on the route's three strings (`opencode/package.json` and
    both headers in `mcp.opencode.json`; the unit tests fail if they differ).
-4. Push an annotated, signed tag `@postman/opencode-plugin@<version>` on that
-   commit — pushing the tag is the release. Ship `<version>-rc.<n>` first: it
-   publishes to the `next` dist-tag, leaves `latest` alone, and skips the
-   default-branch gate. A plain `<version>` must be tagged on `main`. Retry a
-   failed run with "Run workflow" and the same tag, never a new one.
+4. Push two annotated, signed tags on that commit: `opencode-v<version>`, the
+   route's own label, and `@postman/opencode-plugin@<version>`, the only form
+   the shared workflow accepts — pushing that one is the release. Ship
+   `<version>-rc.<n>` first: it publishes to the `next` dist-tag, leaves
+   `latest` alone, and skips the default-branch gate. A plain `<version>` must
+   be tagged on `main`. Retry a failed run with "Run workflow" and the same
+   scoped tag, never a new one.
 5. Install it from the public registry in a clean environment, on OpenCode 1
    and on OpenCode 2, and check that each loads the skills and the MCP server.
    The harness can't cover OpenCode 2: its CLI has no `debug skill` command.
