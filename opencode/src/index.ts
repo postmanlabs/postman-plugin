@@ -4,11 +4,10 @@ import { fileURLToPath } from 'node:url';
 import type { Plugin as OpenCodeV2, Skill } from '@opencode/plugin';
 import type { Config, Plugin } from '@opencode-ai/plugin';
 
-const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'),
-    stagedAssets = path.join(packageRoot, 'assets');
+const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-/** A published install carries the shared files in `assets/`; a clone reads them from the repository root. */
-export const assetRoot = fs.existsSync(stagedAssets) ? stagedAssets : path.dirname(packageRoot);
+/** The plugin runs from a clone of this repository and reads the shared files from its root. */
+export const assetRoot = path.dirname(packageRoot);
 export const skillsDirectory = path.join(assetRoot, 'skills');
 export const sessionContextFile = path.join(assetRoot, 'hooks', 'session-start-context.md');
 export const mcpConfigFile = path.join(assetRoot, 'mcp.opencode.json');

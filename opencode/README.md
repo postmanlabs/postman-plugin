@@ -1,26 +1,45 @@
 # Postman for OpenCode
 
-Postman's agent skills and hosted MCP server as an OpenCode plugin: design,
+Postman's agent skills and hosted MCP server as an OpenCode local plugin: design,
 mock, test, monitor and document APIs, and deploy and debug Postman Flows, from
 your OpenCode session.
 
 ## Install
 
-OpenCode 2:
+Requires OpenCode 1.18.29 or later, and `git`. The plugin is a clone of this
+repository plus a one-line file in OpenCode's `plugins/` directory, which
+OpenCode loads at startup. Nothing is installed from npm.
+
+For every project (global):
 
 ```bash
-opencode plugin add @postman/opencode-plugin
+git clone https://github.com/postmanlabs/postman-plugin ~/.config/opencode/postman-plugin
 ```
-
-OpenCode 1.18.29 or later:
 
 ```bash
-opencode plugin @postman/opencode-plugin --global
+mkdir -p ~/.config/opencode/plugins && echo "export { default } from '../postman-plugin/opencode/src/index.ts';" > ~/.config/opencode/plugins/postman.ts
 ```
 
-Both commands install the package and add it to your config. On OpenCode 1,
-omit `--global` to add it to the current project only; OpenCode 2's
-`plugin add` always writes the global config.
+For one project only, run these from the project root instead:
+
+```bash
+git clone https://github.com/postmanlabs/postman-plugin .opencode/postman-plugin
+```
+
+```bash
+mkdir -p .opencode/plugins && echo "export { default } from '../postman-plugin/opencode/src/index.ts';" > .opencode/plugins/postman.ts
+```
+
+Restart OpenCode after either. Install it one way, not both — two clones
+register every skill twice.
+
+To update, pull the clone:
+
+```bash
+git -C ~/.config/opencode/postman-plugin pull
+```
+
+To uninstall, delete `plugins/postman.ts` and the `postman-plugin` clone.
 
 ## What it adds
 
@@ -61,10 +80,10 @@ for what is sent and how to opt out.
 
 ## Contributing
 
-The package is built from the
+The plugin lives in the
 [postmanlabs/postman-plugin](https://github.com/postmanlabs/postman-plugin)
 repository, which serves the same skills to every agent it supports. See its
-README's "The OpenCode package" section for tests and releases.
+README's "The OpenCode plugin" section for tests and releases.
 
 ## License
 

@@ -1,6 +1,6 @@
 # Independent concerns, one parallel job each, so a failure names itself:
 # `skills` checks what Claude Code loads from skills/, `manifest` checks the
-# index `postman init` fetches, `opencode` builds and exercises the npm package,
+# index `postman init` fetches, `opencode` builds and loads the OpenCode plugin,
 # `schema` checks each vendor plugin manifest against that vendor's own
 # published schema.
 name: Validate
@@ -64,8 +64,8 @@ jobs:
       - name: Claude Code accepts the marketplace and plugin manifests
         run: npx -y @anthropic-ai/claude-code plugin validate .
 
-  # The only route that ships as a built package. Its harness packs the tarball
-  # and has the pinned OpenCode CLI install it as an npm plugin and load it.
+  # The only route that runs code. Its harness installs the plugin as a user
+  # does and has the pinned OpenCode CLI load every skill.
   opencode:
     name: OpenCode package
     runs-on: ubuntu-latest

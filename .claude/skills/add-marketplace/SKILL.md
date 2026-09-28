@@ -42,12 +42,12 @@ writing anything:
      configured by one file it owns at the repo root. Steps 1 and 2 collapse
      into that one file, Step 5 usually has no install command, and there may
      be no `version` key anywhere.
-   - **Package route** — the vendor installs plugins as packages and reads no
-     manifest from a clone of this repo. OpenCode is this: the route is the npm
-     package in `opencode/`, which copies the skill files in at pack time and
-     reads its MCP config from `mcp.opencode.json` at runtime. Every other
-     route clones the whole repo, so the copy lives in a gitignored directory
-     and is deleted after packing — never commit it.
+   - **Package route** — the vendor loads plugin code rather than a manifest,
+     and the route's version lives in a `package.json`. OpenCode is this: the
+     user clones this repo and adds a one-line file to OpenCode's `plugins/`
+     directory that re-exports `opencode/src/index.ts`, which reads the
+     clone's `skills/` and `mcp.opencode.json` at runtime. It is not published
+     to npm.
 2. The manifest or config path and filename.
 3. The **exact shape** of the skills pointer. The routes here already cover
    implicit, string, array and object (`{"skills": {"paths": ["./skills"]}}`), so
@@ -147,7 +147,7 @@ support" as a limitation, look for a context-injection mechanism: an always-on
 instructions or rules file the vendor feeds to the model. Most agents have one,
 it takes the same shared markdown, and it beats nothing. OpenCode's
 `instructions` array is one such file. A package route runs code, so it can do
-the injection itself: the OpenCode package reads
+the injection itself: the OpenCode plugin reads
 `hooks/session-start-context.md` and pushes it into the system prompt from its
 plugin hooks. Either way it is always-on context rather than a `SessionStart`
 event, but the effect on the session is the one that matters.
@@ -162,7 +162,7 @@ new vendor.
 
 `.github/workflows/validate.yml` runs one parallel job per concern; the `schema`
 job is the one a route touches. A package route also gets a job of its own that
-builds, tests and packs it — the `opencode` job is the example.
+builds, tests and loads it — the `opencode` job is the example.
 
 - **Vendor publishes a schema** → add a `matrix.include` entry: `name`, `file`,
   `schema` (the vendor's raw URL, not a mirror, so a vendor tightening its
@@ -278,7 +278,5 @@ covers what each of these checks and — more usefully — what none of them do.
   override `plugin.json` and give that route a second source of truth.
 - **Do not write a generator for these files.** A tool whose job is to keep them
   identical is wrong once versions are per-route.
-- **Do not copy skill files into a route directory.** Point at `skills/`. A
-  package route that has to ship them copies them at pack time into a
-  gitignored directory and deletes them after; every other route clones the
-  whole repo, so a committed copy reaches all of them.
+- **Do not copy skill files into a route directory.** Point at `skills/`.
+  Every route clones the whole repo, so a committed copy reaches all of them.
