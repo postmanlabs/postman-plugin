@@ -29,9 +29,11 @@ const SERVER_KEYS = ['mcpServers', 'mcp'],
     },
     MANIFEST_DIR_PATTERN = /^\..+-plugin$/,
 
-    // Routes with no manifest for MANIFEST_DIR_PATTERN to match. A route missing
-    // here is never checked, which looks exactly like passing.
-    CONFIG_ONLY_ROUTES = [{ file: 'opencode.json', keys: { serverKey: 'mcp' } }],
+    // Routes shipped as a registry package, so MANIFEST_DIR_PATTERN never matches
+    // them. A route missing here is never checked, which looks exactly like passing.
+    PACKAGE_ROUTES = [
+        { manifest: 'opencode/package.json', mcpConfig: 'mcp.opencode.json', keys: { serverKey: 'mcp' } }
+    ],
 
     X_SOURCE_FORMAT = /^postman-[a-z0-9-]+-plugin$/;
 
@@ -67,7 +69,7 @@ function runChecks () {
     // runs last because the route checks are what populate `sources`.
     manifestIsInSyncWithSkillFiles();
     manifestRoutesAgreeWithTheirMcpConfig();
-    configOnlyRoutesCarryTheirOwnAttribution();
+    packageRoutesAgreeWithTheirMcpConfig();
     noTwoRoutesShareAnXSource();
 }
 
@@ -109,9 +111,21 @@ function manifestRoutesAgreeWithTheirMcpConfig () {
     }
 }
 
-function configOnlyRoutesCarryTheirOwnAttribution () {
-    for (const route of CONFIG_ONLY_ROUTES.filter((r) => exists(r.file))) {
-        checkRoute(readJson(route.file), route.file, routeKeys(route.keys), null);
+/** The package manifest carries the version and the plugin code reads the MCP config,
+ *  so the pair is checked as if the manifest pointed at that file. */
+function packageRoutesAgreeWithTheirMcpConfig () {
+    for (const route of PACKAGE_ROUTES) {
+        const missing = [route.manifest, route.mcpConfig].filter((file) => !exists(file));
+
+        if (missing.length) {
+            errors.push(`${missing.join(' and ')} missing - the package route in PACKAGE_ROUTES needs both`);
+            continue;
+        }
+
+        const keys = routeKeys(route.keys),
+            manifest = readJson(route.manifest);
+
+        checkRoute({ [keys.serverKey]: route.mcpConfig }, route.manifest, keys, manifest && manifest.version);
     }
 }
 

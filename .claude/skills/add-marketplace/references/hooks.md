@@ -19,7 +19,7 @@ install path. Every vendor names that differently, and only some substitute
 | Codex | `PLUGIN_ROOT` and `PLUGIN_DATA`, plus `CLAUDE_PLUGIN_ROOT`/`CLAUDE_PLUGIN_DATA` for compatibility | as environment variables |
 | Kimi Code | `KIMI_PLUGIN_ROOT`, and cwd is set to the plugin root | not documented |
 | Agent Plugins 1.0 (root `plugin.json`) | `PLUGIN_ROOT`, `PLUGIN_DATA` | **no** — the spec restricts expansion to `args`, `env` values and `cwd`, and defines no hooks component at all |
-| opencode | **none, and none should be added** — paths in its config resolve against the project root | n/a — no hooks to substitute into |
+| OpenCode | **none, and none should be added** — the npm plugin locates its own files from `import.meta.url` | n/a — it never reads `hooks/hooks.json` |
 
 So a single vendor token is wrong on every other route, and forking the file per
 route re-creates the problem the shared `skills/` directory exists to avoid.
@@ -57,9 +57,10 @@ tidying:
 
 `hooks/session-start-context.md` is one file read by every route that has a
 context mechanism — Claude Code and Cursor through `hooks/hooks.json`, Codex
-through its fallback to that same file, opencode through `instructions`. So it
-must not name one vendor's machinery: "invoke it with the Skill tool" is an
-instruction Codex and opencode cannot follow, and it reaches them verbatim.
+through its fallback to that same file, OpenCode through its npm plugin, which
+rewrites `` `postman:<skill>` `` to the bare skill name at runtime. So it must
+not name one vendor's machinery: "invoke it with the Skill tool" is an
+instruction Codex and OpenCode cannot follow, and it reaches them verbatim.
 Name the skill and let each agent use its own loading mechanism. A vendor that
 needs different wording is a reason to fix the shared text, not to fork it.
 
@@ -92,7 +93,7 @@ Discovery is the other half, and it is not uniform either:
 | Codex | manifest `hooks`, resolved relative to the plugin root and required to stay inside it; otherwise `hooks/hooks.json` — its `DEFAULT_HOOKS_CONFIG_FILE` is that exact path, so the shared file is found with no `hooks` key in the manifest at all |
 | Copilot / VS Code | layout-dependent — `hooks/hooks.json` for the Claude layout, `com.github.copilot/hooks/hooks.json` for Agent Plugins 1.0, `hooks.json` at the root for the Copilot layout |
 | Kimi Code | **nowhere.** Hooks are an inline `hooks` array in the manifest, entries shaped `event` / `matcher` / `command` / `timeout`, and Kimi documents no default file to discover |
-| opencode | **no hooks at all.** Nothing hook-, event- or session-shaped in its config schema. `instructions` carries the mandate instead — see item 1 below |
+| OpenCode | **no `hooks.json`.** Nothing session-shaped in its config schema; the npm plugin pushes the mandate into the system prompt from its own hooks — see item 1 below |
 
 That last row is a live gap in this repo, and exactly what a new route inherits
 if Step 3 is skipped: nothing points Kimi at `hooks/hooks.json`, so the Kimi
@@ -106,19 +107,14 @@ relative to the root it provides. Never a copy of the markdown.
 1. Whether it supports hooks at all — and if not, **whether it has a
    context-injection mechanism instead**. "No hooks" is not the end of the
    enquiry; stopping there ships a route whose skills load and whose agent never
-   mentions Postman. opencode has nothing hook-, event- or session-shaped
-   anywhere in its config schema (`experimental` included), but it does have
-   `instructions`, its rules-file mechanism — an array of paths or globs whose
-   contents go to the model:
-
-   ```json
-   "instructions": ["./hooks/session-start-context.md"]
-   ```
-
-   Same shared markdown, no copy, and no plugin-root variable needed because it
-   resolves against the project root. It is always-on context rather than a
-   `SessionStart` event, so the mechanism differs, but the effect on the session
-   is the one that matters. Record a limitation only after finding nothing.
+   mentions Postman. A config-only vendor usually has a rules file for this —
+   OpenCode's `instructions`, an array of paths whose contents go to the model,
+   is one. A package route can do it in code: the OpenCode plugin reads the
+   shared markdown and pushes it into the system prompt through
+   `experimental.chat.system.transform` (v1) and `session.hook('context')` (v2).
+   Either is always-on context rather than a `SessionStart` event, but the
+   effect on the session is the one that matters. Record a limitation only
+   after finding nothing.
 2. The **event name** for session start. Claude spells it `SessionStart`.
    Codex spells it the same way — verified: its `HooksFile` is
    `{description?, hooks: {…}}` with PascalCase event keys
@@ -154,7 +150,6 @@ plugin through its Agent Plugins loader, which has no hooks component, so
 goes dead — including the ones that work today.
 
 **The trigger is the filename.** A config-only vendor's own root file is not
-affected, and is usually its only possible route shape: `opencode.json` is a
-different name in a different namespace, in neither
-`DISCOVERABLE_PLUGIN_MANIFEST_PATHS` nor the Agent Plugins set, so Codex never
-loads it and it cannot reroute anything.
+affected, and neither is a package route's `package.json` in its own directory:
+each is a different name, in neither `DISCOVERABLE_PLUGIN_MANIFEST_PATHS` nor
+the Agent Plugins set, so Codex never loads it and it cannot reroute anything.

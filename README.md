@@ -3,8 +3,8 @@
 Postman's skills for coding agents.
 
 The skill files in this repository are the single source of truth for every
-plugin route below — each route's manifest or config points back at the same
-`skills/` directory rather than copying files into itself:
+plugin route below — each route's manifest or package points back at the same
+`skills/` directory rather than keeping a copy of its own in git:
 
 | Route | How it gets the files | MCP config it reads | Reports itself as |
 | --- | --- | --- | --- |
@@ -12,7 +12,7 @@ plugin route below — each route's manifest or config points back at the same
 | Cursor plugin | `.cursor-plugin/plugin.json` points at this repo's `skills/` dir | `mcp.cursor.json` | `postman-cursor-plugin` |
 | Kimi Code plugin | `.kimi-plugin/plugin.json` points at the same `skills/` dir | `mcpServers` in `.kimi-plugin/plugin.json` | `postman-kimi-plugin` |
 | Codex plugin | `.codex-plugin/plugin.json` points at the same `skills/` dir | `mcp.codex.json` | `postman-codex-plugin` |
-| opencode | `opencode.json` points `skills.paths` at the same `skills/` dir | `mcp` in `opencode.json` | `postman-opencode-plugin` |
+| OpenCode plugin | the npm package `@postman/opencode-plugin`, built from `opencode/`, copies `skills/` in at pack time | `mcp.opencode.json` | `postman-opencode-plugin` |
 
 Codex also reads `.claude-plugin/plugin.json` and `.cursor-plugin/plugin.json` as
 fallbacks — its `DISCOVERABLE_PLUGIN_MANIFEST_PATHS` is `.codex-plugin`,
@@ -22,40 +22,32 @@ Codex would read `mcp.claude-code.json`, whose `headers` key Codex does not
 understand, so its traffic arrived with no `X-Source` at all. Keep
 `.codex-plugin/plugin.json` first in precedence and Codex never falls back.
 
-opencode is the odd one out: it has no plugin-manifest format at all. Its
-plugins are JS/TS modules — npm packages named in a `plugin` array, or local
-files under `.opencode/plugins/` — and its skills are found by scanning
-directories, so there is nothing that clones this repo and reads a manifest
-from it. What it does have is a project config — `opencode.json`, found by
-walking up to the git root — whose `skills.paths` takes a list of directories
-to scan and whose `mcp` block configures servers inline. That is the whole
-route. It is a real pointer rather than a workaround: `skills.paths` entries
-are scanned for `**/SKILL.md`, exactly like the other routes' skills pointers.
-Note that it is in opencode's config *schema* but not in its prose docs — read
-the schema, not the docs page, when changing it.
+OpenCode installs plugins as packages and has no plugin-manifest format, so its
+route is the npm package in `opencode/`. npm packs nothing outside the package
+directory, so `npm pack` copies the skill files `manifest.json` lists, plus
+`hooks/session-start-context.md`, `manifest.json`, `mcp.opencode.json` and
+`LICENSE`, into `opencode/assets/` and `opencode/LICENSE`, then deletes them.
+**Never commit that copy.** Every other route clones this whole repository, so
+a committed copy ships a second set of skills to all of them; `.gitignore`
+covers both paths, and the harness fails if `npm pack` leaves them behind.
 
-opencode has **no config-level hooks** — there is nothing hook-, event- or
-session-shaped anywhere in its config schema. Its hooks live only in JS plugin
-modules, which this repo deliberately does not ship. So `hooks/hooks.json`
-never fires on this route. What stands in for it is `instructions`, opencode's
-rules-file mechanism: it points at the same `hooks/session-start-context.md`
-the hook injects everywhere else, so the session-start mandate still lands
-without a second copy of the markdown. It is not a hook — it is always-on
-context rather than a `SessionStart` event — but the effect on the session is
-the one that matters.
+The package's default export serves both OpenCode plugin APIs: v1 hosts call
+`server()`, v2 hosts call `setup()`. Both hosts resolve a package through
+`exports["./server"]` first, so that entry and `.` point at the same module.
+v1's config hook appends the packaged
+`skills/` to `skills.paths` and adds the server from `mcp.opencode.json`; v2's
+skill and MCP transforms register the same files. Both leave an existing
+`postman` MCP entry and existing skill paths untouched. OpenCode has no
+session-start event, so the plugin pushes `hooks/session-start-context.md` into
+the system prompt, rewriting `` `postman:<skill>` `` to `` `<skill>` `` because
+OpenCode's skill names are un-namespaced. The harness has the pinned OpenCode 1
+CLI install the tarball as an npm plugin — the same install, entry lookup and
+`engines.opencode` gate a user's install goes through — and load every skill.
+OpenCode 2 is covered only by unit tests against a mock host.
 
-The two pointers resolve relative paths differently, and the difference fails
-silently:
-
-- `instructions` entries are searched for from the directory opencode was
-  started in, walking up to the git root.
-- `skills.paths` entries are joined to the directory opencode was started in,
-  with no walk up. A path that does not exist only logs "skill path not found".
-
-So `./skills` holds only when opencode starts at the repo root: started from a
-subdirectory, the config and the mandate still load but every skill is dropped.
-Both expand a leading `~/`, and absolute or `~/` paths sidestep the difference
-entirely.
+Inside a clone, `.opencode/plugins/postman.ts` loads the plugin from source,
+and the plugin reads the shared files from the repository root instead of
+`assets/`.
 
 The Postman CLI also has its own path for installing these skills, but it's
 still being redesigned — don't treat it as settled or document it here until
@@ -70,10 +62,12 @@ it lands.
 .kimi-plugin/plugin.json          the Kimi Code plugin manifest — carries its MCP block inline
 .codex-plugin/plugin.json         the Codex plugin manifest
 .app.json                         maps the Codex plugin to its published ChatGPT app ID
-opencode.json                     opencode's project config — skills pointer, instructions pointer and MCP block, all inline
+opencode/                         the OpenCode npm package — source, tests, install harness, routing evals
+.opencode/plugins/postman.ts      loads that package from source when OpenCode runs inside a clone
 mcp.claude-code.json              Claude Code's MCP config
 mcp.cursor.json                   Cursor's MCP config
 mcp.codex.json                    Codex's MCP config — spells its headers `http_headers`
+mcp.opencode.json                 OpenCode's MCP config, read by the package at runtime
 skills/<name>/SKILL.md            one skill per directory — see skills/ for the current list
 manifest.json                     generated index of the skill files
 scripts/build-manifest.js         regenerates it
@@ -107,30 +101,19 @@ Codex discovers `.claude-plugin/marketplace.json` — that path is in its
 file to maintain. The `marketplace add` step is required: only
 `~/.agents/plugins/marketplace.json` is discovered implicitly.
 
-opencode has no install command for a repo of skills — `opencode plugin` takes
-an npm module, not a git repo. Instead, either run opencode from the root of a
-clone of this repo, where the checked-in `opencode.json` already applies:
+OpenCode, once `@postman/opencode-plugin` is published to npm — the two major
+versions spell the command differently:
 
 ```
-git clone https://github.com/postmanlabs/postman-plugin
-cd postman-plugin && opencode
+opencode plugin add @postman/opencode-plugin          # OpenCode 2
+opencode plugin @postman/opencode-plugin --global     # OpenCode 1
 ```
 
-or copy that file into your own project and repoint both `skills.paths` and
-`instructions` at the clone. Use `~/` or absolute paths, so the skills load
-whichever directory opencode starts in:
-
-```
-"skills": { "paths": ["~/src/postman-plugin/skills"] },
-"instructions": ["~/src/postman-plugin/hooks/session-start-context.md"]
-```
-
-Repointing `skills.paths` alone gets the skills but drops the session-start
-mandate, which is the failure that reads as if nothing were installed.
-
-opencode also scans `~/.config/opencode/skills/`, `~/.claude/skills/` and
-`~/.agents/skills/`, but a skill copied there arrives without the MCP block or
-the mandate — use `opencode.json`.
+On OpenCode 1, omit `--global` to add it to the current project only; OpenCode
+2's `plugin add` always writes the global config. Until the package is
+published, run OpenCode inside a clone of this repository instead. The
+user-facing install guide is [opencode/README.md](opencode/README.md), which is
+also the package's npm page.
 
 The MCP server answers an unauthenticated request with a 401 that advertises
 OAuth, and opencode starts that flow on its own. If the browser prompt never
@@ -194,8 +177,8 @@ too — see [The MCP server config](#the-mcp-server-config). None of the CLI
 flags above apply to that traffic; declining it means not installing the MCP
 server.
 
-Every config names its endpoint outright — `/mcp` for Claude Code, Cursor and
-Codex, `/minimal` for Kimi Code and opencode. Don't reintroduce a `${POSTMAN_MCP_MODE:-...}`
+Every route names its endpoint outright — `/mcp` for Claude Code, Cursor and
+Codex, `/minimal` for Kimi Code and OpenCode. Don't reintroduce a `${POSTMAN_MCP_MODE:-...}`
 placeholder to express the default: no route expands `${...}` inside an MCP URL,
 so the whole segment ships literally and the request never reaches the intended
 mode. `claude plugin list --json` reports the registered URL with the
@@ -214,7 +197,7 @@ mcp.claude-code.json        <- .claude-plugin/plugin.json  "mcpServers": "./mcp.
 mcp.cursor.json             <- .cursor-plugin/plugin.json  "mcpServers": "./mcp.cursor.json"
 mcp.codex.json              <- .codex-plugin/plugin.json   "mcpServers": "./mcp.codex.json"
 .kimi-plugin/plugin.json       inline — Kimi documents no path form
-opencode.json                  inline under "mcp" — opencode's schema admits no path form
+mcp.opencode.json           <- opencode/src/index.ts       read at runtime; opencode/package.json holds the version
 ```
 
 Maintained by hand, and they are not interchangeable copies. Four things
@@ -245,6 +228,43 @@ all:
 There is no generator, deliberately: a tool whose job is to keep these
 identical is wrong once versions are per-route.
 
+## The OpenCode package
+
+Run these from `opencode/`. CI's `opencode` job runs all but the last, which
+needs a model:
+
+```
+npm ci
+npm test                       # builds, then unit-tests the v1 and v2 entry points
+npm run test:harness           # packs, then has the pinned CLI install it as an npm plugin and load it
+npm run eval:skills:validate   # every skill has at least one positive routing case
+npm run eval:skills            # live routing eval against a configured model
+```
+
+`npm run eval:skills -- --case <id>` runs one case, and `--model provider/model`
+picks the model. The cases live in `opencode/evals/cases.json`. A routing fix
+belongs in the shared skill description or `hooks/session-start-context.md`, and
+both reach every route, so rerun the full set after changing either and don't
+tune wording for OpenCode alone.
+
+Publishing is a release in its own right, under the same rule as every other
+version bump:
+
+1. Confirm the `@postman` npm organization owns `@postman/opencode-plugin`.
+2. Run `npm pack --dry-run` and read the file list — `dist/`, `assets/`,
+   `LICENSE`, `README.md` and `package.json`, nothing else.
+3. Publish through `.github/workflows/release.yml`, which runs the tests and
+   publishes with provenance using Postman's npm credentials. For a stable
+   release, push the tag `opencode-v<version>` matching `opencode/package.json`.
+   For a prerelease, set the version to `<version>-<dist-tag>.<n>` and run the
+   workflow manually with that dist-tag.
+4. Install it from the public registry in a clean environment, on OpenCode 1
+   and on OpenCode 2, and check that each loads the skills and the MCP server.
+   The harness can't cover OpenCode 2: its CLI has no `debug skill` command.
+
+List it in [OpenCode's ecosystem page](https://opencode.ai/docs/ecosystem/) only
+after step 4 passes.
+
 ## Changing a skill
 
 1. Edit the file under `skills/<skill>/`.
@@ -254,10 +274,11 @@ identical is wrong once versions are per-route.
    so a bump means the three strings that one route owns: `version` in its
    manifest, plus `X-Plugin-Version` and `User-Agent` in its MCP config (for
    Kimi all three live in the manifest; for Codex the two headers sit under
-   `http_headers`, not `headers`; opencode's config schema admits no `version`
-   key at all, so that route owns only the two header strings). Nothing
-   verifies this, so check the route's strings against each other before you
-   commit. Don't skip the bump itself either: `claude plugin update` compares
+   `http_headers`, not `headers`; for OpenCode the manifest is
+   `opencode/package.json`, and the change reaches users only once that
+   version is published to npm). Nothing verifies this, so check the route's
+   strings against each other before you commit. Don't skip the bump itself
+   either: `claude plugin update` compares
    only that string against a version-keyed cache, so a release that changes
    files without bumping it reports "already at the latest version" and
    delivers nothing. Semver here is major for a breaking change to a skill's
@@ -274,15 +295,18 @@ of failing loudly.
 ## Adding a skill
 
 Create `skills/<name>/SKILL.md` with `name` and `description`
-frontmatter, where `name` matches the directory. Run the manifest script.
+frontmatter, where `name` matches the directory. Add at least one case that
+expects it to `opencode/evals/cases.json` — CI's `opencode` job fails for a
+skill with none. Run the manifest script.
 
 ## Removing a skill
 
 Delete `skills/<name>/`, then grep the rest of the repo for that name —
-`grep -rn "<name>" README.md skills/ intent.md` — since other `SKILL.md`
-files and this README can reference a skill by name in prose, not just in
-frontmatter, and nothing catches a stale reference automatically. Fix or
-remove what turns up, then run the manifest script.
+`grep -rn "<name>" README.md skills/ hooks/ intent.md opencode/evals/` — since
+other `SKILL.md` files, the session-start context and this README can reference
+a skill by name in prose, not just in frontmatter. Most stale references fail
+silently; an eval case that still expects the skill fails CI. Fix or remove
+what turns up, then run the manifest script.
 
 ## The bindings placeholder
 

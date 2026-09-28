@@ -1,0 +1,77 @@
+[
+  {
+    "id": "api-engineer",
+    "prompt": "Design an API for subscription billing, including its contract, implementation plan, tests, and operational checks.",
+    "expected": ["api-engineer"]
+  },
+  {
+    "id": "bootstrap",
+    "prompt": "Initialize Postman in this repository and connect it to our existing workspace.",
+    "expected": ["bootstrap"]
+  },
+  {
+    "id": "api-mocking",
+    "prompt": "Set up a fake backend for my API so frontend development can continue before the real service exists.",
+    "expected": ["api-mocking"]
+  },
+  {
+    "id": "api-testing",
+    "prompt": "Run this Postman collection and verify that the API still satisfies its assertions.",
+    "expected": ["api-testing"]
+  },
+  {
+    "id": "api-monitoring",
+    "prompt": "Schedule a recurring check against our production API and show me how to inspect failed runs.",
+    "expected": ["api-monitoring"]
+  },
+  {
+    "id": "performance-testing",
+    "prompt": "Load test this collection with concurrent users and fail if p95 latency is too high.",
+    "expected": ["performance-testing"]
+  },
+  {
+    "id": "ci-integration",
+    "prompt": "Add Postman collection tests and governance checks as separate pull-request CI gates.",
+    "expected": ["ci-integration"]
+  },
+  {
+    "id": "api-documentation",
+    "prompt": "Generate and publish useful API documentation for this collection.",
+    "expected": ["api-documentation"]
+  },
+  {
+    "id": "api-discovery",
+    "prompt": "Find a suitable public shipping API and help me understand how to integrate its endpoints.",
+    "expected": ["api-discovery"]
+  },
+  {
+    "id": "ai-readiness",
+    "prompt": "Score this OpenAPI specification for how easily an AI agent can use it.",
+    "expected": ["ai-readiness"]
+  },
+  {
+    "id": "collection-schema-v3",
+    "prompt": "Create a git-native Postman v3 collection request YAML by hand.",
+    "expected": ["collection-schema-v3"]
+  },
+  {
+    "id": "flows",
+    "prompt": "Deploy my Postman Flow and diagnose why its latest run failed.",
+    "expected": ["flows"]
+  },
+  {
+    "id": "postman-mcp-server",
+    "prompt": "Explain which Postman MCP tools and modes I should use to search, sync, and test resources.",
+    "expected": ["postman-mcp-server"]
+  },
+  {
+    "id": "irrelevant-readme",
+    "prompt": "Fix a spelling mistake in the project README.",
+    "expected": []
+  },
+  {
+    "id": "irrelevant-http-question",
+    "prompt": "What does HTTP status code 404 mean? Answer briefly.",
+    "expected": []
+  }
+]
