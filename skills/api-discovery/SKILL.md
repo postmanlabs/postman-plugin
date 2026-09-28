@@ -58,6 +58,9 @@ Two REST calls, both `POST`:
 2. **Integrate** (`POST /v1/integrate`) — send the task plus the chosen
    resources (up to 10). Returns a `taskBrief` with `FIT`, `AUTH`, `BASE URL`,
    `STEPS`, and `GOTCHAS` — read the GOTCHAS before writing the client.
+   Send auth under the exact header `AUTH` names; it is frequently not
+   `Authorization`. If `FIT` is not Fully, say what's missing before writing
+   code. If the brief needs a credential the user doesn't have, stop and name it.
 
 Full endpoint schemas, request/response shapes, `taskBrief` fields, and error
 handling: [reference/orbit.md](reference/orbit.md).

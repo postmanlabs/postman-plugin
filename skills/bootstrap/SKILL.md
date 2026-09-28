@@ -64,14 +64,28 @@ Three steps, in order. Stop at the first that fails and report which one.
 
 ### 1.1 Check what is already there
 
-**Present, and at which version?**
+**Present, at which version, and installed by what?**
 
 ```bash
-command -v postman && postman --version
+command -v postman && postman --version   # Windows: where postman
 ```
 
-**Current?** Never blocking — no network is a normal answer. But don't call a
-feature missing without having made this comparison.
+The path says which installer owns the binary. Reuse that installer for any
+update — a second installer leaves two `postman` binaries, and `PATH` order
+silently decides which one runs.
+
+| Binary path | Installed by |
+| --- | --- |
+| `/usr/local/bin/postman` | the curl script |
+| `%USERPROFILE%\AppData\Local\Microsoft\WindowsApps\postman.exe` | the PowerShell script |
+| under `npm prefix -g` | npm |
+
+If `which -a postman` (`where postman` on Windows) lists two, uninstall one
+before going further.
+
+**Current?** Never blocking — no network or no npm is a normal answer, reported
+as `not checked`. But don't call a feature missing without having made this
+comparison.
 
 ```bash
 npm view postman-cli version
@@ -79,23 +93,53 @@ npm view postman-cli version
 
 ### 1.2 Install only if missing
 
-**Preferred — npm, all platforms:**
+All three installers are official and put `postman` on `PATH`. None is
+preferred; take the first row that fits the machine.
+
+| Machine | Installer |
+| --- | --- |
+| Windows (native PowerShell or cmd) | PowerShell script |
+| macOS, Linux or WSL, and `/usr/local/bin` is writable or `sudo -n true` succeeds | curl script |
+| Node.js and npm present, and the row above does not fit | npm |
+| Alpine Linux (musl) | none — unsupported by every installer |
+
+**Windows — PowerShell script** (installs into
+`%USERPROFILE%\AppData\Local\Microsoft\WindowsApps`):
+
+```powershell
+powershell.exe -NoProfile -InputFormat None -ExecutionPolicy AllSigned -Command "[System.Net.ServicePointManager]::SecurityProtocol = 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://dl-cli.pstmn.io/install/win64.ps1'))"
+```
+
+**macOS, Linux (x64 or arm64), WSL — curl script** (installs into
+`/usr/local/bin`):
+
+```bash
+curl -o- "https://dl-cli.pstmn.io/install/unix.sh" | sh
+```
+
+The script falls back to `sudo` when `/usr/local/bin` isn't writable, and a
+password prompt can't be answered from an agent shell — that is why the table
+checks `sudo -n true` first.
+
+**Any OS with Node.js — npm:**
 
 ```bash
 npm install -g postman-cli
 ```
 
-**Windows, or avoiding a global npm install:** use the platform installers in
-[reference/cli_installation.md](reference/cli_installation.md). Every route puts
-`postman` on `PATH`.
+**Update:** re-run the command that installed it; the new binary overwrites the
+old. The CLI has no self-update verb, and `postman skills update` refreshes a
+repository's `postman/skills/`, not the binary.
 
-**Updating a copy that already exists:** use the same route that installed it.
-curl-installed binaries don't take `npm install -g` cleanly.
+**Uninstall:** `npm uninstall -g postman-cli` for npm; otherwise delete the
+`postman` binary from the path in the table above.
 
-**If every route fails:** name what blocked you — no Node, no shell, no write
-access, or a hosted session that cannot install — then hand off to the
-`postman-mcp-server` skill. An attempted install that actually failed is the
-only thing that qualifies.
+**If nothing fits or every attempt fails:** name what blocked you — Alpine, no
+Node and no writable install directory, a `sudo` that needs a password, no
+shell, or a hosted session that cannot install. When only the password blocks
+the curl script, give the user that one command to run in their own terminal
+and wait. Otherwise hand off to the `postman-mcp-server` skill; an attempted
+install that actually failed is the only thing that qualifies.
 
 ## 2. Establish the filesystem and workspace bindings
 
@@ -212,5 +256,3 @@ written but the requested workspace was not created — it does *not* mean re-ru
 
 - `collection-schema-v3` skill — read when inspecting or writing the
   collection files this skill resolves.
-- [CLI Installation](reference/cli_installation.md) — read for install, update
-  and uninstall commands per platform.
