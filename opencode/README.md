@@ -1,41 +1,62 @@
 # Postman for OpenCode
 
-Postman's agent skills and hosted MCP server as an OpenCode plugin: design,
-mock, test, monitor and document APIs, and deploy and debug Postman Flows, from
-your OpenCode session.
+Postman's agent skills for OpenCode, built on the Postman CLI: design, mock,
+test, monitor and document APIs, and deploy and debug Postman Flows from your
+OpenCode session, using the same `postman` commands you would run yourself.
 
 ## Install
 
-OpenCode 2:
+Requires OpenCode 1.18.29 or later, and `git`. The plugin is a clone of this
+repository plus a one-line file in OpenCode's `plugins/` directory, which
+OpenCode loads at startup. Nothing is installed from npm.
+
+For every project (global):
 
 ```bash
-opencode plugin add @postman/opencode-plugin
+git clone https://github.com/postmanlabs/postman-plugin ~/.config/opencode/postman-plugin
 ```
-
-OpenCode 1.18.29 or later:
 
 ```bash
-opencode plugin @postman/opencode-plugin --global
+mkdir -p ~/.config/opencode/plugins && echo "export { default } from '../postman-plugin/opencode/src/index.ts';" > ~/.config/opencode/plugins/postman.ts
 ```
 
-Both commands install the package and add it to your config. On OpenCode 1,
-omit `--global` to add it to the current project only; OpenCode 2's
-`plugin add` always writes the global config.
+For one project only, run these from the project root instead:
+
+```bash
+git clone https://github.com/postmanlabs/postman-plugin .opencode/postman-plugin
+```
+
+```bash
+mkdir -p .opencode/plugins && echo "export { default } from '../postman-plugin/opencode/src/index.ts';" > .opencode/plugins/postman.ts
+```
+
+Restart OpenCode after either. To check it loaded, ask OpenCode to "set up
+Postman in this repo": it should load the `bootstrap` skill and run the Postman
+CLI. Install it one way, not both — two clones register every skill twice.
+
+To update, pull the clone:
+
+```bash
+git -C ~/.config/opencode/postman-plugin pull
+```
+
+To uninstall, delete `plugins/postman.ts` and the `postman-plugin` clone.
 
 ## What it adds
 
 - **Skills** — every skill in
   [`skills/`](https://github.com/postmanlabs/postman-plugin/tree/main/skills),
-  under OpenCode's own un-namespaced names. `api-engineer` is the entry point
-  and routes to the rest.
-- **The Postman MCP server** — `https://mcp.postman.com/minimal`, registered as
-  `postman`.
+  under OpenCode's own un-namespaced names. They do the work through the
+  Postman CLI, which the `bootstrap` skill installs the first time a task needs
+  it. `api-engineer` is the entry point and routes to the rest.
 - **Session guidance** — a short system instruction that points API work at
   `api-engineer`. Your own instructions, such as `AGENTS.md` and direct
   requests, take precedence over it.
 
-The plugin never overwrites your configuration. If you already define an MCP
-server named `postman`, the plugin leaves it as it is.
+Where the CLI can't run, the skills fall back to Postman's hosted MCP server,
+which the plugin registers as `postman`. The plugin never overwrites your
+configuration: if you already define an MCP server named `postman`, it leaves
+it as it is.
 
 OpenCode skill names share one namespace. If another plugin or your own config
 already provides a skill with the same name as one of these, OpenCode loads only
@@ -44,27 +65,29 @@ wins is not guaranteed, so rename one of the two.
 
 ## Sign in
 
-The MCP server asks an unauthenticated client to sign in with OAuth, and
-OpenCode opens that flow on its own. If the browser prompt never appears, run:
+Local work, such as setting up a repository with `postman init` or running a
+mock on your machine, needs no Postman account. When a task reaches your
+Postman workspace, the `bootstrap` skill signs the CLI in. To sign in yourself:
 
 ```bash
-opencode mcp auth postman
+postman login
 ```
 
 ## Data sent to Postman
 
-MCP tool calls go to Postman's hosted server and identify themselves as
-`postman-opencode-plugin`. The skills also run Postman CLI commands that report
-usage by default. See
+The Postman CLI commands the skills run report usage by default, and calls
+through the MCP fallback go to Postman's hosted server as
+`postman-opencode-plugin`. See
 [Data sent to Postman](https://github.com/postmanlabs/postman-plugin#data-sent-to-postman)
 for what is sent and how to opt out.
 
 ## Contributing
 
-The package is built from the
+The plugin lives in the
 [postmanlabs/postman-plugin](https://github.com/postmanlabs/postman-plugin)
 repository, which serves the same skills to every agent it supports. See its
-README's "The OpenCode package" section for tests and releases.
+[CONTRIBUTING.md](https://github.com/postmanlabs/postman-plugin/blob/main/CONTRIBUTING.md#the-opencode-plugin)
+for tests and releases.
 
 ## License
 

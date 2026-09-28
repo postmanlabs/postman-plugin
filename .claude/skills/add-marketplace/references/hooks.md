@@ -19,7 +19,7 @@ install path. Every vendor names that differently, and only some substitute
 | Codex | `PLUGIN_ROOT` and `PLUGIN_DATA`, plus `CLAUDE_PLUGIN_ROOT`/`CLAUDE_PLUGIN_DATA` for compatibility | as environment variables |
 | Kimi Code | `KIMI_PLUGIN_ROOT`, and cwd is set to the plugin root | not documented |
 | Agent Plugins 1.0 (root `plugin.json`) | `PLUGIN_ROOT`, `PLUGIN_DATA` | **no** — the spec restricts expansion to `args`, `env` values and `cwd`, and defines no hooks component at all |
-| OpenCode | **none, and none should be added** — the npm plugin locates its own files from `import.meta.url` | n/a — it never reads `hooks/hooks.json` |
+| OpenCode | **none, and none should be added** — the local plugin locates the clone's files from `import.meta.url` | n/a — it never reads `hooks/hooks.json` |
 
 So a single vendor token is wrong on every other route, and forking the file per
 route re-creates the problem the shared `skills/` directory exists to avoid.
@@ -57,7 +57,7 @@ tidying:
 
 `hooks/session-start-context.md` is one file read by every route that has a
 context mechanism — Claude Code and Cursor through `hooks/hooks.json`, Codex
-through its fallback to that same file, OpenCode through its npm plugin, which
+through its fallback to that same file, OpenCode through its local plugin, which
 rewrites `` `postman:<skill>` `` to the bare skill name at runtime. So it must
 not name one vendor's machinery: "invoke it with the Skill tool" is an
 instruction Codex and OpenCode cannot follow, and it reaches them verbatim.
@@ -93,7 +93,7 @@ Discovery is the other half, and it is not uniform either:
 | Codex | manifest `hooks`, resolved relative to the plugin root and required to stay inside it; otherwise `hooks/hooks.json` — its `DEFAULT_HOOKS_CONFIG_FILE` is that exact path, so the shared file is found with no `hooks` key in the manifest at all |
 | Copilot / VS Code | layout-dependent — `hooks/hooks.json` for the Claude layout, `com.github.copilot/hooks/hooks.json` for Agent Plugins 1.0, `hooks.json` at the root for the Copilot layout |
 | Kimi Code | **nowhere.** Hooks are an inline `hooks` array in the manifest, entries shaped `event` / `matcher` / `command` / `timeout`, and Kimi documents no default file to discover |
-| OpenCode | **no `hooks.json`.** Nothing session-shaped in its config schema; the npm plugin pushes the mandate into the system prompt from its own hooks — see item 1 below |
+| OpenCode | **no `hooks.json`.** Nothing session-shaped in its config schema; the local plugin pushes the mandate into the system prompt from its own hooks — see item 1 below |
 
 That last row is a live gap in this repo, and exactly what a new route inherits
 if Step 3 is skipped: nothing points Kimi at `hooks/hooks.json`, so the Kimi

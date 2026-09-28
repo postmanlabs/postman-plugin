@@ -17,7 +17,7 @@ vendor has a manifest at all.
 | `version` key | yes | yes | yes | yes | `version` in `opencode/package.json` |
 | Hooks | `hooks/hooks.json` discovered | manifest `hooks`, falls back to `hooks/hooks.json` | inline `hooks` array only — **no file discovery** | manifest `hooks`, falls back to `hooks/hooks.json` | **no `hooks.json`** — the plugin pushes the mandate into the system prompt |
 | Published schema | SchemaStore | `cursor/plugins` repo | none | none — prose docs only | `opencode.ai/config.json`, draft2020, `$ref`s `models.dev` — validates `mcp.opencode.json` |
-| Extras | `$schema` | — | `interface` block | `interface` block | `engines.opencode` gates the host version |
+| Extras | `$schema` | — | `interface` block | `interface` block | no host-version gate for a local plugin; the minimum is documented |
 
 ## Per-route notes worth knowing before you add a fifth
 
@@ -40,12 +40,12 @@ right for the other three; do not normalize across all four.
 share a name — each vendor defines its own fields. Check the vendor's docs
 rather than copying the block.
 
-**OpenCode installs plugins as packages.** Its `plugin` command takes a package
-specifier, never a plugin manifest, so a checked-in `opencode.json` only ever
-reached users who ran OpenCode inside a clone. The npm package in `opencode/` is
-the installable route. npm packs nothing outside the package directory, so the
-skill files are copied in at pack time and deleted afterwards — and must stay
-out of git, because every other route clones the whole repo.
+**OpenCode loads plugins as code, never from a manifest.** A checked-in
+`opencode.json` only ever reached users who ran OpenCode inside a clone. The
+route is a local plugin instead: a clone of this repo plus a one-line file in
+OpenCode's `plugins/` directory that re-exports `opencode/src/index.ts`. OpenCode
+runs the TypeScript directly and the source has only type imports, so nothing
+is built or installed, and nothing is published to npm.
 
 **OpenCode's `skills.paths` is in its schema but not its docs.** A docs-only pass
 concludes no pointer exists and discovery is fixed-path only. It does exist:

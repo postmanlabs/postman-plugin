@@ -20,7 +20,7 @@ test('mcp.opencode.json carries this package version in both headers', () => {
     assert.equal(headers['User-Agent'], `postman-opencode-plugin/${packageVersion}`);
 });
 
-test('registers the packaged skills directory and Postman MCP server', () => {
+test('registers the skills directory and Postman MCP server', () => {
     const config = {};
 
     applyPostmanConfig(config);
