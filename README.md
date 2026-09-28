@@ -30,10 +30,6 @@ Flows from your agent, using the same `postman` commands you would run yourself.
   instruction that points API work at `api-engineer`. Your own instructions,
   such as `AGENTS.md`, take precedence.
 
-Where the CLI can't run at all, such as a hosted session with no shell or no
-Node.js, the skills fall back to Postman's hosted MCP server, which the plugin
-also registers.
-
 ## Install
 
 Pick your agent. Each one gets the same skills.
