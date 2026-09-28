@@ -11,9 +11,9 @@
 # chain's `.` fallback cannot rescue a token that does not actually resolve.
 # Pass the new vendor's variable when adding a route.
 #
-# Pass `none` for a config-only vendor: it resolves paths against the project
-# root, so it has no token to add to the chain. Naming a variable that does not
-# exist would report a FAIL that reads like a regression.
+# Pass `none` for a config-only or package vendor: neither reads hooks.json, so
+# it has no token to add to the chain. Naming a variable that does not exist
+# would report a FAIL that reads like a regression.
 set -uo pipefail
 
 repo=$PWD

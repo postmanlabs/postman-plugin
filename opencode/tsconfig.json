@@ -5,9 +5,9 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "outDir": "dist",
-    "rootDir": "opencode",
+    "rootDir": "src",
     "strict": true,
     "target": "ES2022"
   },
-  "include": ["opencode/**/*.ts"]
+  "include": ["src/**/*.ts"]
 }

@@ -1,6 +1,6 @@
 ---
 name: add-marketplace
-description: Add a new vendor plugin route (marketplace) to this repo - Windsurf, Zed, Copilot, Gemini CLI, opencode, or any other agent that can be pointed at a skills directory, whether it loads a plugin manifest or only a project config. Use when asked to add, wire up, or onboard a new marketplace, vendor, plugin route, or agent target. Covers the manifest or config, the MCP config, the session-start hook, the CI schema check, and the README sections that do not update themselves.
+description: Add a new vendor plugin route (marketplace) to this repo - Windsurf, Zed, Copilot, Gemini CLI, or any other agent that can be pointed at a skills directory, whether it loads a plugin manifest, only a project config, or a package from a registry. Use when asked to add, wire up, or onboard a new marketplace, vendor, plugin route, or agent target. Covers the manifest or config, the MCP config, the session-start hook, the CI schema check, and the README sections that do not update themselves.
 argument-hint: <vendor-name>
 disable-model-invocation: true
 ---
@@ -39,11 +39,15 @@ writing anything:
    - **Manifest route** — a plugin manifest the vendor discovers by path
      (`.claude-plugin/`, `.cursor-plugin/`, `.kimi-plugin/`, `.codex-plugin/`).
    - **Config-only route** — no manifest format exists, and the vendor is
-     configured by one file it owns at the repo root. opencode is this: its
-     plugins are npm modules and its skills are scanned from directories, so
-     `opencode.json`'s `skills.paths` and inline `mcp` block *are* the whole
-     route. Steps 1 and 2 collapse into that one file, Step 5 usually has no
-     install command, and there may be no `version` key anywhere.
+     configured by one file it owns at the repo root. Steps 1 and 2 collapse
+     into that one file, Step 5 usually has no install command, and there may
+     be no `version` key anywhere.
+   - **Package route** — the vendor installs plugins as packages and reads no
+     manifest from a clone of this repo. OpenCode is this: the route is the npm
+     package in `opencode/`, which copies the skill files in at pack time and
+     reads its MCP config from `mcp.opencode.json` at runtime. Every other
+     route clones the whole repo, so the copy lives in a gitignored directory
+     and is deleted after packing — never commit it.
 2. The manifest or config path and filename.
 3. The **exact shape** of the skills pointer. The routes here already cover
    implicit, string, array and object (`{"skills": {"paths": ["./skills"]}}`), so
@@ -53,8 +57,8 @@ writing anything:
 5. Whether it publishes a JSON Schema, which draft, and **whether that schema
    `$ref`s another** — ajv resolves nothing over the network, so Step 4 has to
    fetch those too.
-6. Whether it accepts a `version` key at all. opencode's root config is
-   `additionalProperties: false`, so one cannot be added and Step 2's version
+6. Whether it accepts a `version` key at all. A config-only vendor's root file
+   may be `additionalProperties: false` without one, and then Step 2's version
    agreement has to hold between the two header strings alone.
 7. Whether it supports hooks and how it finds them. If it does not, read Step 3
    before concluding the route ships without the mandate.
@@ -72,8 +76,9 @@ at load time, so the route ships doing nothing.
 
 ## Step 1 — The manifest, or the config
 
-Create `.<vendor>-plugin/plugin.json`, or the root config for a config-only
-vendor. Take the *values* from `.claude-plugin/plugin.json` (name, displayName,
+Create `.<vendor>-plugin/plugin.json`, the root config for a config-only
+vendor, or `<vendor>/package.json` (or that registry's equivalent) for a
+package vendor. Take the *values* from `.claude-plugin/plugin.json` (name, displayName,
 description, author, homepage, repository, license, keywords) and the
 *structure* from Step 0. A config-only route carries pointers, not plugin
 metadata, so most of those values have nowhere to go — do not invent keys to
@@ -99,15 +104,17 @@ must hold. CI checks none of them; the pre-commit guard checks the first three.
   `User-Agent` is `postman-<vendor>-plugin/<version>`. A mismatch is accepted at
   runtime and files the traffic under a version never cut.
 - **The server and header keys are the ones that vendor deserializes** —
-  `mcpServers` for the manifest routes and `mcp` for opencode; `headers` for
-  three routes and `http_headers` for Codex. The wrong spelling is dropped with
+  `mcpServers` for the manifest routes and `mcp` for OpenCode; `headers`
+  everywhere except Codex, which reads `http_headers`. The wrong spelling is dropped with
   no error, the server still connects, and every request goes out unattributed.
 - **The URL ships literally**, with its mode segment. Never put `${...}` inside
   the URL; no route expands variables there, so the placeholder ships as-is.
 
-Register the route in `.claude/hooks/validate-manifests.js` — `MANIFEST_ROUTES`
-or `CONFIG_ONLY_ROUTES`, with the keys above — or the guard blocks the commit
-as an unregistered route (manifest) or never checks it (config-only).
+Register the route in `.claude/hooks/validate-manifests.js` — `MANIFEST_ROUTES`,
+or `PACKAGE_ROUTES` with the package manifest and the MCP config its code reads
+— or the guard blocks the commit as an unregistered route (manifest) or never
+checks it (package). The guard has no list for config-only routes yet; add one
+beside `PACKAGE_ROUTES` when the first one arrives.
 
 `/mcp` and `/minimal` expose different tool surfaces. Ask which one this vendor
 gets instead of defaulting.
@@ -138,16 +145,12 @@ not, and currently ships without the mandate.
 **A vendor with no hooks still gets the mandate.** Before recording "no hook
 support" as a limitation, look for a context-injection mechanism: an always-on
 instructions or rules file the vendor feeds to the model. Most agents have one,
-it takes the same shared markdown, and it beats nothing. opencode supports no
-hooks of any kind, but its `instructions` array lands the same mandate:
-
-```json
-"instructions": ["./hooks/session-start-context.md"]
-```
-
-That is always-on context rather than a `SessionStart` event, and it resolves
-against the project root so it needs no plugin-root variable — but the effect on
-the session is the one that matters.
+it takes the same shared markdown, and it beats nothing. OpenCode's
+`instructions` array is one such file. A package route runs code, so it can do
+the injection itself: the OpenCode package reads
+`hooks/session-start-context.md` and pushes it into the system prompt from its
+plugin hooks. Either way it is always-on context rather than a `SessionStart`
+event, but the effect on the session is the one that matters.
 
 Both failure modes here are silent and nothing in CI reads `hooks/`, so read
 [references/hooks.md](references/hooks.md) before editing anything under
@@ -157,8 +160,9 @@ new vendor.
 
 ## Step 4 — CI
 
-`.github/workflows/validate.yml` runs three parallel jobs; the `schema` job is
-the one a route touches.
+`.github/workflows/validate.yml` runs one parallel job per concern; the `schema`
+job is the one a route touches. A package route also gets a job of its own that
+builds, tests and packs it — the `opencode` job is the example.
 
 - **Vendor publishes a schema** → add a `matrix.include` entry: `name`, `file`,
   `schema` (the vendor's raw URL, not a mirror, so a vendor tightening its
@@ -213,7 +217,7 @@ would catch.
 
 ## Step 6 — Verify
 
-`$ROUTE_FILE` is the manifest or root config from Step 1.
+`$ROUTE_FILE` is the manifest, root config or package manifest from Step 1.
 
 ```bash
 actionlint .github/workflows/validate.yml
@@ -222,17 +226,17 @@ npx -y @anthropic-ai/claude-code plugin validate .
 node .claude/hooks/validate-manifests.js && echo "manifests consistent"
 
 # Root resolution for the session-start hook. Pass this vendor's plugin-root
-# variable - or `none` for a config-only vendor, which has none and should not
-# gain one. `none` says "not applicable" and still exercises the shared chain;
+# variable - or `none` for a config-only or package vendor, which has none and
+# should not gain one. `none` says "not applicable" and still exercises the shared chain;
 # naming a variable that does not exist reports a FAIL that reads like a
 # regression.
 .claude/skills/add-marketplace/scripts/check-hooks.sh <VENDOR>_PLUGIN_ROOT
 
 # No other route's version may move: only your route's files may appear here.
 # Scope by file, not by grepping the diff - an added `"version": "1.0.0"` line
-# names no vendor and slips a text filter. Config-only routes match no
-# `*plugin.json`, so name their root config explicitly.
-git diff --name-only main -- '*plugin.json' 'mcp.*.json' opencode.json
+# names no vendor and slips a text filter. Package routes match no
+# `*plugin.json`, so name their package manifest explicitly.
+git diff --name-only main -- '*plugin.json' 'mcp.*.json' opencode/package.json
 ```
 
 If the vendor publishes a schema, run the `schema` job's ajv command against the
@@ -250,9 +254,9 @@ covers what each of these checks and — more usefully — what none of them do.
   pattern-matches that filename and routes the whole plugin through its Agent
   Plugins loader, which has no hooks component, so every hook in the repo goes
   dead — including the ones that work today. The trigger is the filename, not
-  root-level config in general: a config-only route's own file at the root is
-  fine and is often the only shape available to it, since `opencode.json` is a
-  different name in a different namespace that Codex never looks at.
+  root-level config in general: a config-only route's own file at the root, or
+  a package route's `package.json` in its own directory, is a different name
+  that Codex never looks at.
 - **Do not copy another vendor's manifest or MCP file wholesale.** `X-Source`,
   version, header key and URL mode are deliberate per-route differences; a copy
   breaks all four at once.
@@ -274,4 +278,7 @@ covers what each of these checks and — more usefully — what none of them do.
   override `plugin.json` and give that route a second source of truth.
 - **Do not write a generator for these files.** A tool whose job is to keep them
   identical is wrong once versions are per-route.
-- **Do not copy skill files into a route directory.** Point at `skills/`.
+- **Do not copy skill files into a route directory.** Point at `skills/`. A
+  package route that has to ship them copies them at pack time into a
+  gitignored directory and deletes them after; every other route clones the
+  whole repo, so a committed copy reaches all of them.

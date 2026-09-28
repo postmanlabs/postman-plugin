@@ -9,13 +9,14 @@
     "email": "postman-plugins@postman.com",
     "url": "https://github.com/postmanlabs"
   },
-  "homepage": "https://www.postmanlabs.com/skills/",
+  "homepage": "https://github.com/postmanlabs/postman-plugin/tree/main/opencode#readme",
   "bugs": {
     "url": "https://github.com/postmanlabs/postman-plugin/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/postmanlabs/postman-plugin.git"
+    "url": "git+https://github.com/postmanlabs/postman-plugin.git",
+    "directory": "opencode"
   },
   "keywords": [
     "opencode",
@@ -34,19 +35,16 @@
   },
   "files": [
     "dist/",
-    "skills/",
-    "hooks/session-start-context.md",
-    "manifest.json",
-    "LICENSE",
-    "README.md"
+    "assets/"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "npm run build && node --test test/*.test.js",
-    "test:harness": "npm run build && node scripts/test-opencode-harness.js",
-    "eval:skills": "npm run build && node scripts/eval-opencode-skills.js",
-    "eval:skills:validate": "node scripts/eval-opencode-skills.js --validate",
-    "prepack": "npm run build && node scripts/build-manifest.js --check"
+    "test:harness": "npm run build && node scripts/test-harness.js",
+    "eval:skills": "node scripts/eval-skills.js",
+    "eval:skills:validate": "node scripts/eval-skills.js --validate",
+    "prepack": "npm run build && node ../scripts/build-manifest.js --check && node scripts/stage-assets.js",
+    "postpack": "node scripts/stage-assets.js --clean"
   },
   "devDependencies": {
     "@opencode-ai/plugin": "1.18.32",

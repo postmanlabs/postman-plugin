@@ -1,6 +1,4 @@
 #!/usr/bin/env node
-'use strict';
-
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -8,8 +6,9 @@ import { fileURLToPath } from 'node:url';
 import { resolveOpenCodeExecutable } from './lib/opencode-executable.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'),
-    casesFile = path.join(root, 'evals', 'opencode', 'cases.json'),
-    manifestFile = path.join(root, 'manifest.json'),
+    repoRoot = path.dirname(root),
+    casesFile = path.join(root, 'evals', 'cases.json'),
+    manifestFile = path.join(repoRoot, 'manifest.json'),
     cases = JSON.parse(fs.readFileSync(casesFile, 'utf8')),
     manifest = JSON.parse(fs.readFileSync(manifestFile, 'utf8')),
     argumentsList = process.argv.slice(2),
@@ -118,8 +117,9 @@ for (const entry of selected) {
 
     commandArguments.push(routingPrompt);
 
+    // The repository root, where `.opencode/plugins/postman.ts` loads the plugin from source.
     const run = spawnSync(openCode, commandArguments, {
-            cwd: root,
+            cwd: repoRoot,
             encoding: 'utf8',
             env: {
                 ...process.env,

@@ -1,6 +1,4 @@
 #!/usr/bin/env node
-'use strict';
-
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -11,6 +9,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { resolveOpenCodeExecutable } from './lib/opencode-executable.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'),
+    repoRoot = path.dirname(root),
     temporary = fs.realpathSync(
         fs.mkdtempSync(path.join(os.tmpdir(), 'postman-opencode-harness-'))
     ),
@@ -73,6 +72,9 @@ try {
         ], { env: npmEnvironment })),
         tarball = path.join(packageDirectory, packOutput[0].filename);
 
+    assert.equal(fs.existsSync(path.join(root, 'assets')), false, 'postpack left staged assets in the package directory');
+    assert.equal(fs.existsSync(path.join(root, 'LICENSE')), false, 'postpack left a staged LICENSE in the package directory');
+
     fs.writeFileSync(path.join(projectDirectory, 'package.json'), '{"private":true}\n');
     run(npm, [
         'install', '--ignore-scripts', '--no-audit', '--no-fund', tarball
@@ -81,6 +83,7 @@ try {
     const installedRoot = path.join(
             projectDirectory, 'node_modules', '@postman', 'opencode-plugin'
         ),
+        installedAssets = path.join(installedRoot, 'assets'),
         pluginEntry = path.join(installedRoot, 'dist', 'index.js'),
         config = {
             $schema: 'https://opencode.ai/config.json',
@@ -108,7 +111,13 @@ try {
         'utf8'
     );
 
-    const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));
+    const manifest = JSON.parse(fs.readFileSync(path.join(repoRoot, 'manifest.json'), 'utf8'));
+
+    assert.equal(fs.existsSync(path.join(installedRoot, 'LICENSE')), true);
+    assert.deepEqual(
+        JSON.parse(fs.readFileSync(path.join(installedAssets, 'mcp.opencode.json'), 'utf8')),
+        JSON.parse(fs.readFileSync(path.join(repoRoot, 'mcp.opencode.json'), 'utf8'))
+    );
 
     // Prove the tarball contains the canonical bytes before shortening the
     // skill bodies for `opencode debug skill`. OpenCode 1.18 truncates that
@@ -116,14 +125,14 @@ try {
     // invalid for a repository with this many full-length skills.
     for (const skill of manifest.skills) {
         for (const file of skill.files) {
-            const installedFile = path.join(installedRoot, file.source);
+            const installedFile = path.join(installedAssets, file.source);
 
             assert.equal(fs.statSync(installedFile).size, file.bytes);
             assert.equal(sha256(installedFile), file.sha256);
         }
 
         fs.writeFileSync(
-            path.join(installedRoot, 'skills', skill.name, 'SKILL.md'),
+            path.join(installedAssets, 'skills', skill.name, 'SKILL.md'),
             [
                 '---',
                 `name: ${skill.name}`,
@@ -150,7 +159,7 @@ try {
         })),
         expectedNames = manifest.skills.map((skill) => skill.name).sort(),
         actualPostmanSkills = skills.filter((skill) => {
-            return skill.location.startsWith(path.join(installedRoot, 'skills'));
+            return skill.location.startsWith(path.join(installedAssets, 'skills'));
         }),
         actualNames = actualPostmanSkills.map((skill) => skill.name).sort();
 
@@ -159,7 +168,7 @@ try {
     assert.equal(actualPostmanSkills.every((skill) => skill.content.trim().length > 0), true);
     assert.equal(
         actualPostmanSkills.find((skill) => skill.name === 'api-engineer')?.location,
-        path.join(installedRoot, 'skills', 'api-engineer', 'SKILL.md')
+        path.join(installedAssets, 'skills', 'api-engineer', 'SKILL.md')
     );
 
     console.log(`OpenCode loaded all ${actualNames.length} packaged Postman skills from a nested directory.`);

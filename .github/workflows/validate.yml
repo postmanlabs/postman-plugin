@@ -1,7 +1,8 @@
-# Three independent concerns, three parallel jobs, so a failure names itself:
+# Independent concerns, one parallel job each, so a failure names itself:
 # `skills` checks what Claude Code loads from skills/, `manifest` checks the
-# index `postman init` fetches, `schema` checks each vendor plugin manifest
-# against that vendor's own published schema.
+# index `postman init` fetches, `opencode` builds and exercises the npm package,
+# `schema` checks each vendor plugin manifest against that vendor's own
+# published schema.
 name: Validate
 
 on:
@@ -41,20 +42,8 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Install OpenCode plugin development dependencies
-        run: npm ci
-
       - name: Manifest is in sync with the skill files
         run: node scripts/build-manifest.js --check
-
-      - name: OpenCode plugin unit tests
-        run: npm test
-
-      - name: OpenCode packed-install harness
-        run: npm run test:harness
-
-      - name: OpenCode eval cases cover every skill
-        run: npm run eval:skills:validate
 
       - name: Every JSON file parses
         run: |
@@ -75,11 +64,38 @@ jobs:
       - name: Claude Code accepts the marketplace and plugin manifests
         run: npx -y @anthropic-ai/claude-code plugin validate .
 
+  # The only route that ships as a built package. Its harness packs the tarball,
+  # installs it into a clean project and has the pinned OpenCode CLI load it.
+  opencode:
+    name: OpenCode package
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: opencode
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install development dependencies
+        run: npm ci
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Packed-install harness
+        run: npm run test:harness
+
+      - name: Eval cases cover every skill
+        run: npm run eval:skills:validate
+
   # One check per official schema. Schemas are fetched from the vendor's source
   # on every run, so a vendor tightening its schema fails CI here rather than
   # at marketplace review. Files with no published schema (.kimi-plugin/plugin.json,
-  # .codex-plugin/plugin.json, mcp.*.json, manifest.json) are covered by the
-  # `manifest` job above. Codex documents its manifest in prose only and publishes
+  # .codex-plugin/plugin.json, the other mcp.*.json, manifest.json) are covered by
+  # the `manifest` job above. Codex documents its manifest in prose only and publishes
   # no schema for it; the agent-plugins.org schema is not a substitute, since it
   # describes the root-level `plugin.json` Agent Plugins format, which Codex selects
   # by path and which .codex-plugin/plugin.json is deliberately not.
@@ -102,11 +118,12 @@ jobs:
             file: .cursor-plugin/plugin.json
             schema: https://raw.githubusercontent.com/cursor/plugins/main/schemas/plugin.schema.json
             spec: draft7
-          # opencode's config schema $refs models.dev for the model union, and ajv
-          # resolves no reference over the network - without `ref` the run fails on
-          # "can't resolve reference", not on anything about our file.
-          - name: opencode config
-            file: opencode.json
+          # mcp.opencode.json is a valid OpenCode config fragment, so the config
+          # schema checks its server block. That schema $refs models.dev for the
+          # model union, and ajv resolves no reference over the network - without
+          # `ref` the run fails on "can't resolve reference", not on our file.
+          - name: OpenCode MCP config
+            file: mcp.opencode.json
             schema: https://opencode.ai/config.json
             ref: https://models.dev/model-schema.json
             spec: draft2020

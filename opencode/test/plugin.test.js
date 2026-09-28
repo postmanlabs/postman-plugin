@@ -2,14 +2,23 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 import PostmanPluginDefinition, {
-    applyPostmanConfig, packageRoot, PostmanPlugin, sessionContextFile,
+    applyPostmanConfig, assetRoot, mcpConfigFile, PostmanPlugin, sessionContextFile,
     skillsDirectory, toOpenCodeSessionContext
 } from '../dist/index.js';
 
-const packageVersion = JSON.parse(
-    fs.readFileSync(path.join(packageRoot, 'package.json'), 'utf8')
-).version;
+const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'),
+    packageVersion = JSON.parse(fs.readFileSync(path.join(packageRoot, 'package.json'), 'utf8')).version,
+    manifestSkills = JSON.parse(fs.readFileSync(path.join(assetRoot, 'manifest.json'), 'utf8')).skills;
+
+test('mcp.opencode.json carries this package version in both headers', () => {
+    const { headers } = JSON.parse(fs.readFileSync(mcpConfigFile, 'utf8')).mcp.postman;
+
+    assert.equal(headers['X-Source'], 'postman-opencode-plugin');
+    assert.equal(headers['X-Plugin-Version'], packageVersion);
+    assert.equal(headers['User-Agent'], `postman-opencode-plugin/${packageVersion}`);
+});
 
 test('registers the packaged skills directory and Postman MCP server', () => {
     const config = {};
@@ -19,12 +28,9 @@ test('registers the packaged skills directory and Postman MCP server', () => {
     assert.deepEqual(config.skills.paths, [skillsDirectory]);
     assert.equal(config.mcp.postman.type, 'remote');
     assert.equal(config.mcp.postman.url, 'https://mcp.postman.com/minimal');
+    assert.equal(config.mcp.postman.enabled, true);
     assert.equal(config.mcp.postman.headers['X-Source'], 'postman-opencode-plugin');
     assert.equal(config.mcp.postman.headers['X-Plugin-Version'], packageVersion);
-    assert.equal(
-        config.mcp.postman.headers['User-Agent'],
-        `postman-opencode-plugin/${packageVersion}`
-    );
 });
 
 test('preserves user configuration and stays idempotent', () => {
@@ -51,6 +57,11 @@ test('adapts the shared session mandate to native OpenCode skill ids', () => {
     assert.match(adapted, /`api-engineer` skill/);
     assert.match(adapted, /`api-testing`/);
     assert.match(adapted, /User instructions .* take precedence/s);
+});
+
+test('rewrites only backticked skill references', () => {
+    assert.equal(toOpenCodeSessionContext('see `postman:bootstrap`'), 'see `bootstrap`');
+    assert.equal(toOpenCodeSessionContext('run /postman:setup'), 'run /postman:setup');
 });
 
 test('exposes config and system hooks through the public plugin export', async () => {
@@ -108,11 +119,13 @@ test('exposes a default v2 definition while retaining the v1 server entrypoint',
 
     await PostmanPluginDefinition.setup(context);
 
-    assert.equal(skills.size, 13);
+    assert.equal(skills.size, manifestSkills.length);
     assert.equal(skills.get('api-mocking').path,
         path.join(skillsDirectory, 'api-mocking', 'SKILL.md'));
     assert.match(skills.get('api-mocking').content, /# API Mocking/);
     assert.equal(mcp.get('postman').url, 'https://mcp.postman.com/minimal');
+    assert.equal(mcp.get('postman').disabled, false);
+    assert.equal('enabled' in mcp.get('postman'), false);
     assert.equal(mcp.get('postman').headers['X-Plugin-Version'], packageVersion);
 
     const event = { system: [] };
@@ -125,8 +138,8 @@ test('exposes a default v2 definition while retaining the v1 server entrypoint',
     assert.match(event.system[0].text, /`api-engineer` skill/);
 });
 
-test('resolves package assets in both source and published layouts', () => {
-    assert.equal(fs.existsSync(path.join(packageRoot, 'package.json')), true);
+test('reads the shared files from the repository root in a clone', () => {
+    assert.equal(assetRoot, path.dirname(packageRoot));
     assert.equal(fs.existsSync(path.join(skillsDirectory, 'api-engineer', 'SKILL.md')), true);
     assert.equal(fs.existsSync(sessionContextFile), true);
 });

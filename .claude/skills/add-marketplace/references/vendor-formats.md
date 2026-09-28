@@ -5,19 +5,19 @@ each vendor specified its own — so this table is a record of what was verified
 per vendor, never a template to copy from. The disagreement extends to whether a
 vendor has a manifest at all.
 
-| | Claude Code | Cursor | Kimi Code | Codex | opencode |
+| | Claude Code | Cursor | Kimi Code | Codex | OpenCode |
 | --- | --- | --- | --- | --- | --- |
-| Route kind | manifest | manifest | manifest | manifest | **config-only** |
-| Manifest | `.claude-plugin/plugin.json` | `.cursor-plugin/plugin.json` | `.kimi-plugin/plugin.json` | `.codex-plugin/plugin.json` | **none** — `opencode.json` at the repo root |
-| Skills pointer | *(implicit — no key)* | `"skills": "skills"` | `"skills": ["./skills"]` | `"skills": "./skills/"` | `"skills": {"paths": ["./skills"]}` |
-| MCP config | `"mcpServers": "./mcp.claude-code.json"` | `"mcpServers": "./mcp.cursor.json"` | inline object | `"mcpServers": "./mcp.codex.json"` | inline under `mcp` — no path form |
+| Route kind | manifest | manifest | manifest | manifest | **package** (npm) |
+| Manifest | `.claude-plugin/plugin.json` | `.cursor-plugin/plugin.json` | `.kimi-plugin/plugin.json` | `.codex-plugin/plugin.json` | `opencode/package.json` — no plugin-manifest format exists |
+| Skills pointer | *(implicit — no key)* | `"skills": "skills"` | `"skills": ["./skills"]` | `"skills": "./skills/"` | plugin code: v1 appends the packaged dir to `skills.paths`, v2 calls `skill.transform` |
+| MCP config | `"mcpServers": "./mcp.claude-code.json"` | `"mcpServers": "./mcp.cursor.json"` | inline object | `"mcpServers": "./mcp.codex.json"` | `mcp.opencode.json`, read by the plugin at runtime |
 | MCP header key | `headers` | `headers` | `headers` | `http_headers` | `headers` |
-| Transport key | `"type": "http"` | *(none)* | `"transport": "http"`, `"auth": "oauth"` | `"type": "http"` | `"type": "remote"`, `"enabled": true` |
+| Transport key | `"type": "http"` | *(none)* | `"transport": "http"`, `"auth": "oauth"` | `"type": "http"` | `"type": "remote"`, `"enabled": true` (v2 takes `"disabled": false`) |
 | URL mode segment | `/mcp` | `/mcp` | `/minimal` | `/mcp` | `/minimal` |
-| `version` key | yes | yes | yes | yes | **none possible** — root is `additionalProperties: false` |
-| Hooks | `hooks/hooks.json` discovered | manifest `hooks`, falls back to `hooks/hooks.json` | inline `hooks` array only — **no file discovery** | manifest `hooks`, falls back to `hooks/hooks.json` | **no hooks** — `instructions` array instead |
-| Published schema | SchemaStore | `cursor/plugins` repo | none | none — prose docs only | `opencode.ai/config.json`, draft2020, `$ref`s `models.dev` |
-| Extras | `$schema` | — | `interface` block | `interface` block | `$schema` |
+| `version` key | yes | yes | yes | yes | `version` in `opencode/package.json` |
+| Hooks | `hooks/hooks.json` discovered | manifest `hooks`, falls back to `hooks/hooks.json` | inline `hooks` array only — **no file discovery** | manifest `hooks`, falls back to `hooks/hooks.json` | **no `hooks.json`** — the plugin pushes the mandate into the system prompt |
+| Published schema | SchemaStore | `cursor/plugins` repo | none | none — prose docs only | `opencode.ai/config.json`, draft2020, `$ref`s `models.dev` — validates `mcp.opencode.json` |
+| Extras | `$schema` | — | `interface` block | `interface` block | `engines.opencode` gates the host version |
 
 ## Per-route notes worth knowing before you add a fifth
 
@@ -40,12 +40,19 @@ right for the other three; do not normalize across all four.
 share a name — each vendor defines its own fields. Check the vendor's docs
 rather than copying the block.
 
-**opencode's pointer is in its schema but not its docs.** `skills.paths` does
-not appear on the docs site, so a docs-only pass concludes no pointer exists and
-discovery is fixed-path only. It does exist: entries resolve against the project
-root, a missing directory logs a warning and continues, and the glob is
-`{*.md,**/SKILL.md}`, so a container directory behaves exactly like Cursor's
-pointer. Enumerate the schema's properties; do not infer absence from prose.
+**OpenCode installs plugins as packages.** Its `plugin` command takes a package
+specifier, never a plugin manifest, so a checked-in `opencode.json` only ever
+reached users who ran OpenCode inside a clone. The npm package in `opencode/` is
+the installable route. npm packs nothing outside the package directory, so the
+skill files are copied in at pack time and deleted afterwards — and must stay
+out of git, because every other route clones the whole repo.
+
+**OpenCode's `skills.paths` is in its schema but not its docs.** A docs-only pass
+concludes no pointer exists and discovery is fixed-path only. It does exist:
+entries resolve against the project root, a missing directory logs a warning and
+continues, and the glob is `{*.md,**/SKILL.md}`. v1's config hook appends the
+packaged directory to it. Enumerate the schema's properties; do not infer
+absence from prose.
 
 **No route expands `${...}` inside an MCP URL.** `claude plugin list --json`
 reports the registered URL with any placeholder still in the path, Cursor has no

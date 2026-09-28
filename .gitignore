@@ -6,6 +6,12 @@ skills/.quarantine/
 # Agent worktrees. These are real git worktrees, so `git add .claude/` would
 # otherwise stage one as an embedded repository and commit a broken pointer.
 .claude/worktrees/
-dist/
-node_modules/
-evals/opencode/results/
+
+opencode/dist/
+opencode/node_modules/
+opencode/evals/results/
+
+# Copied in by `npm pack` and removed after it. Every route clones this repo, so
+# a committed copy would ship a second set of skills to all of them.
+opencode/assets/
+opencode/LICENSE

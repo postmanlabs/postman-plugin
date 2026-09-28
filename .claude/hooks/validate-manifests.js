@@ -6,9 +6,11 @@
  * Vendor key spellings and per-route invariants are documented in
  * .claude/skills/add-marketplace/references/validation.md.
  */
-import fs from 'node:fs';
-import path from 'node:path';
-import { execFileSync } from 'node:child_process';
+'use strict';
+
+const fs = require('fs'),
+    path = require('path'),
+    { execFileSync } = require('child_process');
 
 // Each of these keys is read by one set of vendors and ignored without an error
 // by the rest, so the wrong spelling leaves a route that loads, connects and
@@ -26,6 +28,12 @@ const SERVER_KEYS = ['mcpServers', 'mcp'],
         '.kimi-plugin': {}
     },
     MANIFEST_DIR_PATTERN = /^\..+-plugin$/,
+
+    // Routes shipped as a registry package, so MANIFEST_DIR_PATTERN never matches
+    // them. A route missing here is never checked, which looks exactly like passing.
+    PACKAGE_ROUTES = [
+        { manifest: 'opencode/package.json', mcpConfig: 'mcp.opencode.json', keys: { serverKey: 'mcp' } }
+    ],
 
     X_SOURCE_FORMAT = /^postman-[a-z0-9-]+-plugin$/;
 
@@ -61,6 +69,7 @@ function runChecks () {
     // runs last because the route checks are what populate `sources`.
     manifestIsInSyncWithSkillFiles();
     manifestRoutesAgreeWithTheirMcpConfig();
+    packageRoutesAgreeWithTheirMcpConfig();
     noTwoRoutesShareAnXSource();
 }
 
@@ -99,6 +108,24 @@ function manifestRoutesAgreeWithTheirMcpConfig () {
         const manifest = readJson(manifestRel);
 
         checkRoute(manifest, manifestRel, routeKeys(MANIFEST_ROUTES[dir]), manifest && manifest.version);
+    }
+}
+
+/** The package manifest carries the version and the plugin code reads the MCP config,
+ *  so the pair is checked as if the manifest pointed at that file. */
+function packageRoutesAgreeWithTheirMcpConfig () {
+    for (const route of PACKAGE_ROUTES) {
+        const missing = [route.manifest, route.mcpConfig].filter((file) => !exists(file));
+
+        if (missing.length) {
+            errors.push(`${missing.join(' and ')} missing - the package route in PACKAGE_ROUTES needs both`);
+            continue;
+        }
+
+        const keys = routeKeys(route.keys),
+            manifest = readJson(route.manifest);
+
+        checkRoute({ [keys.serverKey]: route.mcpConfig }, route.manifest, keys, manifest && manifest.version);
     }
 }
 

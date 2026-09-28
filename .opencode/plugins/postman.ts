@@ -1,4 +1,2 @@
-// Development adapter. Published installs load @postman/opencode-plugin from npm;
-// a clone of this repository loads the same dual v1/v2 definition through
-// OpenCode's documented project-local plugin directory.
-export { default } from '../../opencode/index.ts';
+// Loads the plugin from source when OpenCode runs inside a clone of this repository.
+export { default } from '../../opencode/src/index.ts';
