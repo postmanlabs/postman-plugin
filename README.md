@@ -250,20 +250,26 @@ tune wording for OpenCode alone.
 Publishing is a release in its own right, under the same rule as every other
 version bump:
 
-1. Confirm the `@postman` npm organization owns `@postman/opencode-plugin`.
+1. Never publish by hand. `.github/workflows/release.yml` calls AppSec's
+   shared npm-publish workflow, which publishes through OIDC trusted
+   publishing; token publishing is disabled on the package. The package,
+   and that workflow's filename, are registered with AppSec in #security —
+   see [NPM Pub: Onboard a repo/package](https://postmanlabs.atlassian.net/wiki/x/WQA5qgE).
 2. Run `npm pack --dry-run` and read the file list — `dist/`, `assets/`,
    `LICENSE`, `README.md` and `package.json`, nothing else.
-3. Publish through `.github/workflows/release.yml`, which runs the tests and
-   publishes with provenance using Postman's npm credentials. For a stable
-   release, push the tag `opencode-v<version>` matching `opencode/package.json`.
-   For a prerelease, set the version to `<version>-<dist-tag>.<n>` and run the
-   workflow manually with that dist-tag.
-4. Install it from the public registry in a clean environment, on OpenCode 1
+3. Set the version on the route's three strings (`opencode/package.json` and
+   both headers in `mcp.opencode.json`; the unit tests fail if they differ).
+4. Push an annotated, signed tag `@postman/opencode-plugin@<version>` on that
+   commit — pushing the tag is the release. Ship `<version>-rc.<n>` first: it
+   publishes to the `next` dist-tag, leaves `latest` alone, and skips the
+   default-branch gate. A plain `<version>` must be tagged on `main`. Retry a
+   failed run with "Run workflow" and the same tag, never a new one.
+5. Install it from the public registry in a clean environment, on OpenCode 1
    and on OpenCode 2, and check that each loads the skills and the MCP server.
    The harness can't cover OpenCode 2: its CLI has no `debug skill` command.
 
 List it in [OpenCode's ecosystem page](https://opencode.ai/docs/ecosystem/) only
-after step 4 passes.
+after step 5 passes.
 
 ## Changing a skill
 

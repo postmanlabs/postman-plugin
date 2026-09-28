@@ -1,6 +1,6 @@
 {
   "name": "@postman/opencode-plugin",
-  "version": "0.1.0-beta.0",
+  "version": "0.1.0",
   "description": "Postman skills and MCP integration for OpenCode.",
   "type": "module",
   "license": "Apache-2.0",
