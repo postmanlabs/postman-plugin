@@ -250,22 +250,19 @@ tune wording for OpenCode alone.
 Publishing is a release in its own right, under the same rule as every other
 version bump:
 
-1. Never publish by hand. `.github/workflows/release.yml` calls AppSec's
-   shared npm-publish workflow, which publishes through OIDC trusted
-   publishing; token publishing is disabled on the package. The package,
-   and that workflow's filename, are registered with AppSec in #security —
-   see [NPM Pub: Onboard a repo/package](https://postmanlabs.atlassian.net/wiki/x/WQA5qgE).
+1. Never publish by hand. `.github/workflows/release.yml` runs the tests and
+   publishes with provenance using the org `POSTMAN_NPM_TOKEN`, the same way
+   `postman-mcp-server`'s `pkg-release.yml` does. AppSec's shared workflow is
+   the target once this public repo can call it — see
+   [NPM Pub: Onboard a repo/package](https://postmanlabs.atlassian.net/wiki/x/WQA5qgE).
 2. Run `npm pack --dry-run` and read the file list — `dist/`, `assets/`,
    `LICENSE`, `README.md` and `package.json`, nothing else.
 3. Set the version on the route's three strings (`opencode/package.json` and
    both headers in `mcp.opencode.json`; the unit tests fail if they differ).
-4. Push two annotated, signed tags on that commit: `opencode-v<version>`, the
-   route's own label, and `@postman/opencode-plugin@<version>`, the only form
-   the shared workflow accepts — pushing that one is the release. Ship
-   `<version>-rc.<n>` first: it publishes to the `next` dist-tag, leaves
-   `latest` alone, and skips the default-branch gate. A plain `<version>` must
-   be tagged on `main`. Retry a failed run with "Run workflow" and the same
-   scoped tag, never a new one.
+4. For a prerelease, the version is `<version>-<dist-tag>.<n>` (e.g.
+   `0.1.0-rc.0`): run the workflow manually on the branch carrying it, with
+   that dist-tag. For a stable release, push a signed tag
+   `opencode-v<version>` on `main`.
 5. Install it from the public registry in a clean environment, on OpenCode 1
    and on OpenCode 2, and check that each loads the skills and the MCP server.
    The harness can't cover OpenCode 2: its CLI has no `debug skill` command.
