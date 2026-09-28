@@ -30,7 +30,8 @@ git clone https://github.com/postmanlabs/postman-plugin .opencode/postman-plugin
 mkdir -p .opencode/plugins && echo "export { default } from '../postman-plugin/opencode/src/index.ts';" > .opencode/plugins/postman.ts
 ```
 
-Restart OpenCode after either. Install it one way, not both — two clones
+Restart OpenCode after either, then run `opencode mcp list`: `postman` should be
+listed, marked "needs authentication" until you sign in. Install it one way, not both — two clones
 register every skill twice.
 
 To update, pull the clone:
@@ -83,7 +84,8 @@ for what is sent and how to opt out.
 The plugin lives in the
 [postmanlabs/postman-plugin](https://github.com/postmanlabs/postman-plugin)
 repository, which serves the same skills to every agent it supports. See its
-README's "The OpenCode plugin" section for tests and releases.
+[CONTRIBUTING.md](https://github.com/postmanlabs/postman-plugin/blob/main/CONTRIBUTING.md#the-opencode-plugin)
+for tests and releases.
 
 ## License
 

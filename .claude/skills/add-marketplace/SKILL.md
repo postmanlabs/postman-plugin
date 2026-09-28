@@ -1,6 +1,6 @@
 ---
 name: add-marketplace
-description: Add a new vendor plugin route (marketplace) to this repo - Windsurf, Zed, Copilot, Gemini CLI, or any other agent that can be pointed at a skills directory, whether it loads a plugin manifest, only a project config, or a package from a registry. Use when asked to add, wire up, or onboard a new marketplace, vendor, plugin route, or agent target. Covers the manifest or config, the MCP config, the session-start hook, the CI schema check, and the README sections that do not update themselves.
+description: Add a new vendor plugin route (marketplace) to this repo - Windsurf, Zed, Copilot, Gemini CLI, or any other agent that can be pointed at a skills directory, whether it loads a plugin manifest, only a project config, or a package from a registry. Use when asked to add, wire up, or onboard a new marketplace, vendor, plugin route, or agent target. Covers the manifest or config, the MCP config, the session-start hook, the CI schema check, and the README and CONTRIBUTING sections that do not update themselves.
 argument-hint: <vendor-name>
 disable-model-invocation: true
 ---
@@ -9,7 +9,7 @@ disable-model-invocation: true
 
 A "route" is one agent's way of loading the *same* `skills/` and `hooks/`
 directories. Every route points back at them; none gets its own copy. Adding one
-is five files' worth of edits plus a README pass, and most of the cost is in the
+is five files' worth of edits plus a docs pass, and most of the cost is in the
 parts nothing validates.
 
 Vendor to add: **$ARGUMENTS** (if that is empty, ask which vendor before doing
@@ -18,7 +18,7 @@ anything else).
 ## Work in a worktree
 
 Put this work in its own git worktree before editing anything. A route touches
-the same shared files every other route touches — `README.md`,
+the same shared files every other route touches — `README.md`, `CONTRIBUTING.md`,
 `.github/workflows/validate.yml`, `hooks/hooks.json`, `manifest.json` — so two
 routes in one working tree interleave their edits and neither agent can tell
 which changes are theirs. The local pre-commit guard compounds it: the guard
@@ -198,21 +198,28 @@ Run the ajv command locally rather than waiting for CI. Where a vendor sets
 of them a plausible copy-from-another-route mistake that no other check here
 would catch.
 
-## Step 5 — README
+## Step 5 — README and CONTRIBUTING
 
-`README.md` describes the routes in prose that does not update itself:
+`README.md` is the page users and marketplace listings land on, and
+`CONTRIBUTING.md` describes how the routes are wired. Neither updates itself:
 
-1. The **route table** near the top — one row (Route / How it gets the files /
-   MCP config it reads / Reports itself as).
-2. **`## Layout`** — the manifest, and the MCP config if separate.
-3. **`## Installing`** — the vendor's install command, or fold it into an
-   existing line (Cursor and Kimi already share `npx plugins add`).
-4. **`## The MCP server config`** — a line in the mapping block, plus a bullet
-   if the route introduces a *new* per-route difference (the `http_headers`
-   bullet is there because Codex did).
-5. **`## The session-start hook`** — only if the route adds a token to the chain,
-   needs its own pointer at `hooks/hooks.json`, or supports no hooks at all.
-6. Any sentence that **counts** routes. A number goes stale the moment another
+1. **`README.md` — the agent links under the intro and the `## Install`
+   table** — one entry each.
+2. **`README.md` — a `### <Agent>` section under `## Install`** with the
+   vendor's exact install command, plus anything a user must know that
+   differs from the other routes (OpenCode's section is the example: it
+   installs differently from every other agent, so it says so first).
+3. **`README.md` — `## Sign in to Postman`** — only if the vendor has its own
+   MCP authentication command worth naming.
+4. **`CONTRIBUTING.md` — the route table** under `## How the routes work` —
+   one row (Route / How it gets the files / MCP config it reads / Reports
+   itself as).
+5. **`CONTRIBUTING.md` — `## Layout`** — the manifest, and the MCP config if
+   separate.
+6. **`CONTRIBUTING.md` — `## The MCP server config`** — a line in the mapping
+   block, plus a bullet if the route introduces a *new* per-route difference
+   (the `http_headers` bullet is there because Codex did).
+7. Any sentence that **counts** routes. A number goes stale the moment another
    route exists; rephrase to drop the count rather than incrementing it.
 
 ## Step 6 — Verify
