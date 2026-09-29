@@ -1,201 +1,139 @@
-# Postman for Agents
+<div align="center">
 
-Postman's skills for coding agents, built on the Postman CLI. Design, mock,
-test, monitor and document APIs, run checks in CI, and deploy and debug Postman
-Flows from your agent, using the same `postman` commands you would run yourself.
+<a href="https://www.postman.com/"><img src="https://assets.getpostman.com/common-share/postman-logo-horizontal-320x132.png" alt="Postman" width="240" /></a>
 
-**Install for your agent:**
-[Claude Code](#claude-code) ·
-[Cursor](#cursor) ·
-[Codex](#codex) ·
-[Kimi Code](#kimi-code) ·
-[OpenCode](#opencode)
+# API engineering for agents
 
-## What you get
+**Agent friendly filesystem first API development plugin.**
 
-- **Skills that drive the Postman CLI.** Your agent loads them when a task
-  needs them: setting up Postman in a repository, mocking an API before it
-  exists, testing and load-testing it, monitoring a live endpoint, adding
-  Postman checks to CI, publishing API docs, scoring a spec for AI readiness,
-  and running Postman Flows. The work happens as real `postman` commands, so
-  you can read them, rerun them, and put them in CI as they are.
-  `api-engineer` is the entry point and routes to the rest; see
-  [`skills/`](skills/) for the full set.
-- **The Postman CLI, set up for you.** You don't install it first. The
-  `bootstrap` skill installs it the first time a task needs it, with npm or
-  Postman's platform installer
-  ([install options](skills/bootstrap/reference/cli_installation.md)), and
-  links the repository to a Postman workspace when you want one.
-- **Session guidance.** On agents that support it, a short always-on
-  instruction that points API work at `api-engineer`. Your own instructions,
-  such as `AGENTS.md`, take precedence.
+The Postman plugin gives coding agents the skills and tools to develop,
+document, test, and ship APIs with confidence.
+
+[Install](#install) · [Why Postman](#why-use-the-postman-plugin)
+
+</div>
 
 ## Install
 
-Pick your agent. Each one gets the same skills.
-
-| Agent | How it installs |
-| --- | --- |
-| [Claude Code](#claude-code) | Plugin marketplace |
-| [Cursor](#cursor) | `npx plugins add` |
-| [Codex](#codex) | Plugin marketplace |
-| [Kimi Code](#kimi-code) | `npx plugins add` |
-| [OpenCode](#opencode) | Local plugin: a clone of this repository plus a one-line loader file |
-
-### Claude Code
-
-```
-/plugin marketplace add postmanlabs/postman-plugin
-/plugin install postman@postman
-```
-
-### Cursor
+Install Postman in every compatible coding agent detected on your machine:
 
 ```bash
 npx plugins add postmanlabs/postman-plugin
 ```
 
-### Codex
+One command configures **Claude Code, Cursor, Codex**.
+
+You can also use the following commands to install individually:
+
+| Agent | Registry or documentation | Install command |
+| --- | --- | --- |
+| Claude Code | [Postman on Claude Plugins](https://claude.com/plugins/postman) | `claude plugin install postman@postman` |
+| Cursor | [Postman on the Cursor Marketplace](https://cursor.com/marketplace/postman) | `/add-plugin postman` |
+| Codex | [Postman on ChatGPT Plugins](https://chatgpt.com/plugins/postman?open_in_app) | `codex plugin add postman@postman` |
+
+## Why use the Postman plugin?
+
+### Filesystem-first API development
+
+All postman resources have a filesystem representation, so your agent can work
+with the API ecosystem through the interface it understands best: files. API
+specifications, collections, environments, examples, mocks, documentation,
+and Flows can live beside the application code.
+
+The git-native [v3 collection schema](skills/collection-schema-v3/) makes this
+especially agent-friendly. A collection is a directory tree under
+`postman/collections/`, where every request, folder definition, and saved
+example is its own YAML file. Environments use the same file-first model under
+`postman/environments/`. HTTP, GraphQL, gRPC, WebSocket, Socket.IO, MQTT, MCP,
+and LLM requests all have defined schemas the agent can follow.
+
+That means the agent can:
+
+- Read or change one request without rewriting a large collection export.
+- Generate requests and examples directly from an API specification.
+- Produce small, reviewable Git diffs and resolve changes with normal code
+  review workflows.
+- Lint and test the files locally before anything is shared with a Postman
+  workspace.
+
+
+### Context Graph: know what breaks before you make a change
+
+A repository can show what an endpoint calls, but rarely who calls it, whether
+those consumers are active in production, where they are deployed, or which
+team owns them. The Context Graph fills that gap with a private, authenticated,
+organization-wide map of your API ecosystem.
+
+It reconciles signals from the systems where API knowledge already lives:
+
+- **Postman workspaces:** specifications, collections, monitors, and mocks
+- **GitHub:** repositories, API definitions, and source-level call sites
+- **New Relic:** deployments, runtime traffic, latency, errors, and telemetry
+
+The [`api-discovery`](skills/api-discovery/) skill lets the agent start with the
+thing you plan to change and ask one natural-language question:
 
 ```bash
-codex plugin marketplace add postmanlabs/postman-plugin
+postman context-graph ask "What could break if we change the billing API?" --wait
 ```
 
-```bash
-codex plugin add postman@postman
-```
 
-The `marketplace add` step is required.
+The graph discovers the surrounding scope—including repositories that are not
+checked out locally—before the agent starts editing code. It refreshes nightly
+as services, deployments, ownership, and runtime relationships change.
 
-### Kimi Code
+In Postman's controlled benchmark across 468 repositories, starting with this
+map used **up to 74% fewer tokens, 52% fewer tool calls, and 72% lower cost**.
+Accuracy also improved in 18 of 21 scored prompt-model pairs. Most graph
+queries completed in roughly 20–40 seconds. Read the methodology and results in
+[Introducing the Context Graph API: One Map of Your API Ecosystem](https://blog.postman.com/introducing-the-context-graph-api-one-map-of-your-api-ecosystem/).
 
-```bash
-npx plugins add postmanlabs/postman-plugin
-```
+### File-first API mocks
 
-### OpenCode
+The [`api-mocking`](skills/api-mocking/) skill creates a working mock from an
+OpenAPI specification or collection and stores the implementation beside the
+API code. The agent can run it locally, add success and failure scenarios, and
+test consumers without waiting for the real service to be ready or available.
 
-**OpenCode installs this as a local plugin, not from npm.** You clone this
-repository into OpenCode's config directory and add a one-line file that tells
-OpenCode to load it. Nothing else is installed.
+The mock stays local until you choose to push and deploy it. When teammates or
+external systems need access, the same mock can become a durable hosted URL
+without rebuilding it in another tool.
 
-**You need:** OpenCode 1.18.29 or later, and `git`.
 
-1. Clone this repository into OpenCode's config directory:
+## Telemetry
 
-   ```bash
-   git clone https://github.com/postmanlabs/postman-plugin ~/.config/opencode/postman-plugin
-   ```
+Some Postman CLI commands report usage analytics by default. Where supported,
+you can disable reporting for an individual command with
+`--no-report-events`. `postman application test` uses
+`--report-events=false` instead.
 
-2. Add the loader file to OpenCode's `plugins/` directory:
+What is sent by default:
 
-   ```bash
-   mkdir -p ~/.config/opencode/plugins && echo "export { default } from '../postman-plugin/opencode/src/index.ts';" > ~/.config/opencode/plugins/postman.ts
-   ```
-
-3. Restart OpenCode.
-
-4. Check it loaded: open a repository in OpenCode and ask it to "set up
-   Postman in this repo". It should load the `bootstrap` skill and run the
-   Postman CLI.
-
-That installs it for every project. To update it, pull the clone:
-
-```bash
-git -C ~/.config/opencode/postman-plugin pull
-```
-
-To install it for a single project instead, or to uninstall it, see the
-[OpenCode install guide](opencode/README.md). Install it one way only: two
-copies register every skill twice.
-
-## Sign in to Postman
-
-Local work needs no Postman account: setting up a repository with
-`postman init`, or generating and running a mock on your machine, works signed
-out. When a task reaches
-your Postman workspace, the `bootstrap` skill signs the CLI in, with
-`POSTMAN_API_KEY` if it is set and in your browser otherwise. To sign in
-yourself:
-
-```bash
-postman login
-```
-
-## Get started
-
-Open a repository in your agent and describe the API work you want done, for
-example:
-
-- "Set up Postman in this repo."
-- "Mock this OpenAPI spec so the frontend can start today."
-- "Add a Postman collection run to our CI."
-- "Set up a monitor for our production health endpoint."
-
-The agent picks the right skill on its own.
-
-## Data sent to Postman
-
-Postman CLI commands these skills run report to Postman by default. There are
-two separate paths, and only one of them can be turned off.
-
-### Declinable: `--no-report-events`
-
-Seven commands send analytics — and in `application test`'s case the run
-results too — unless you opt out:
-
-| Command | Sent by default |
+| Command | Data sent |
 | --- | --- |
-| `postman collection run` | Run analytics (see the note below on run history) |
+| `postman collection run` | Run analytics and run history |
 | `postman application test` | Run results and analytics |
-| `postman spec lint` | Lint analytics (violation counts, pass/fail) |
+| `postman spec lint` | Lint analytics, including violation counts and pass/fail |
 | `postman workspace push` | Push analytics |
 | `postman runner start` | Runner analytics |
-| `postman flows run` | Flow run analytics |
+| `postman flows run` | Flow-run analytics |
 | `postman request` | Request analytics |
 
-**Use the command-specific opt-out spelling shown above.** `application test`
-uses `--report-events=false`; `runner start` and `flows run` use
-`--no-report-events`. Do not substitute one spelling for another.
+Important limits:
 
-**`collection run` uploads its run history either way.** The opt-out covers
-analytics only — the upload is gated on a separate internal flag that
-`--no-report-events` does not touch. What the flag does affect is git-native v3
-collections specifically: it selects the execution engine that lets *their*
-results upload, which is why the command's `--report-events` help text reads
-"Upload results for git-native v3 collection runs. Analytics are sent by
-default." Contrast `application test`, whose opt-out does cover both.
-
-The exception is `postman init`, which the `bootstrap` skill runs. There
-`--report-events` is opt-*in* (it gates one richer analytics row and needs a
-login), and `init` declares no negated form — so `--report-events=false` on
-`init` is rewritten to an option it does not have, and the command exits
-non-zero with `unknown option`. Don't copy the opt-out onto `init`.
-
-### Not declinable: client-events
-
-Independently of any flag, the CLI emits a one-line "this command ran" event to
-Postman's unauthenticated client-events collector. It does not depend on
-`--report-events` and does not depend on being logged in, so
-`--no-report-events` does not stop it. `postman collection run`,
-`spec lint`, `workspace push` and `init` emit it in addition to the table
-above, as do the `postman mock` subcommands and `postman performance run`.
-
-The one thing that does suppress it: the collector is only wired for the US
-region, and emission no-ops in other regions (EU included).
-
-### The MCP fallback
-
-Every route also registers Postman's hosted MCP server at `mcp.postman.com`,
-the fallback for environments where the CLI can't run. Tool calls made through
-it reach Postman too, and none of the CLI flags above apply to them; declining
-that traffic means not installing the MCP server. See
-[The MCP server config](CONTRIBUTING.md#the-mcp-server-config).
-
-## Contributing
-
-How the routes are wired, the per-agent MCP configs, tests, and how to add,
-change or release a skill are in [CONTRIBUTING.md](CONTRIBUTING.md).
+- `postman collection run --no-report-events` disables analytics but does not
+  disable run-history uploads.
+- `postman init` makes richer reporting opt-in with `--report-events`; it does
+  not accept `--report-events=false`.
+- The CLI also sends a minimal, unauthenticated event indicating that certain
+  commands ran. Reporting flags do not disable these client events. They are
+  emitted by `collection run`, `spec lint`, `workspace push`, `init`, the
+  `mock` commands, and `performance run` in the US region; other regions,
+  including the EU, do not emit them.
+- The plugin registers Postman's hosted MCP server as a fallback when the CLI
+  cannot run. MCP tool calls reach Postman and are not controlled by CLI
+  reporting flags; avoiding that traffic requires not installing the MCP
+  server.
 
 ## License
 
