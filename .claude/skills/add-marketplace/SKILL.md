@@ -111,11 +111,13 @@ must hold. CI checks none of them; the pre-commit guard checks the first three.
 - **The URL ships literally**, with its mode segment. Never put `${...}` inside
   the URL; no route expands variables there, so the placeholder ships as-is.
 
-Register the route in `.claude/hooks/validate-manifests.js` — `MANIFEST_ROUTES`,
-or `PACKAGE_ROUTES` with the package manifest and the MCP config its code reads
-— or the guard blocks the commit as an unregistered route (manifest) or never
-checks it (package). The guard has no list for config-only routes yet; add one
-beside `PACKAGE_ROUTES` when the first one arrives.
+Register the route in `scripts/routes.js` — `MANIFEST_ROUTES`, or
+`PACKAGE_ROUTES` with the package manifest and the MCP config its code reads —
+or the pre-commit guard blocks the commit as an unregistered route (manifest)
+or never checks it (package). The installer's tests read the same registry
+(Step 6). It has no list for config-only routes yet; add one beside
+`PACKAGE_ROUTES` when the first one arrives, and read it in
+`installer/test/routes.test.js`.
 
 `/mcp` and `/minimal` expose different tool surfaces. Ask which one this vendor
 gets instead of defaulting.
@@ -226,8 +228,9 @@ would catch.
 ## Step 6 — The installer adapter
 
 `npx @postman/postman-plugin` installs every route, through one adapter per
-agent in `installer/src/hosts/`. `npm test` in `installer/` fails until the new
-route has one: an agent the installer skips gets nothing, and says nothing.
+agent in `installer/src/hosts/`. `npm test` in `installer/` fails until every
+route in `scripts/routes.js` has one: an agent the installer skips gets
+nothing, and says nothing.
 
 1. Add `installer/src/hosts/<vendor>.ts` exporting a `Host`. Its `route` is the
    manifest directory or package manifest from Step 1, and its `install` runs

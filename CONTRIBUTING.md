@@ -72,6 +72,7 @@ mcp.opencode.json                 OpenCode's MCP config, read by the plugin at r
 skills/<name>/SKILL.md            one skill per directory — see skills/ for the current list
 manifest.json                     generated index of the skill files
 scripts/build-manifest.js         regenerates it
+scripts/routes.js                 every route, read by the pre-commit guard and the installer's tests
 ```
 
 ## The MCP server config
@@ -194,10 +195,12 @@ node dist/cli.js status              # what it detects on this machine, and what
 node dist/cli.js install --dry-run   # the commands an install would run
 ```
 
-`npm test` fails when a `.*-plugin/` directory or `opencode/package.json` has
-no adapter whose `route` names it, so a new route can't ship without one. CI's
-`installer-smoke` job runs the installer against the latest Claude Code and
-Codex CLIs, which catches a change to either CLI's commands or JSON output.
+`npm test` fails when a route in `scripts/routes.js`, or any `.*-plugin/`
+directory, has no adapter whose `route` names it, so a new route can't ship
+without one. The `Installer smoke` workflow runs the installer against the
+latest Claude Code and Codex CLIs on every installer change and nightly, so a
+change to either CLI's commands or JSON output fails CI even when nothing here
+changed.
 
 The package isn't on npm yet. It publishes once Anthropic's `postman` catalog
 entry points at this repository (it still points at the DevRel mirror) and npm

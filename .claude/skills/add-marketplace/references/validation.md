@@ -50,9 +50,9 @@ machine-local, gitignored, and holding an absolute path. A fresh checkout
 therefore has no guard at all until that entry is added by hand. Treat it as a
 local convenience, not as an invariant the repo enforces.
 
-Every route needs one line in the guard. A **manifest** route goes in
-`MANIFEST_ROUTES`, keyed by its directory, with any server or header key that
-differs from `mcpServers`/`headers`. The guard globs `.*-plugin/plugin.json` and
+Every route needs one line in `scripts/routes.js`, the registry the guard
+reads. A **manifest** route goes in `MANIFEST_ROUTES`, keyed by its directory,
+with any server or header key that differs from `mcpServers`/`headers`. The guard globs `.*-plugin/plugin.json` and
 blocks on any directory missing from the table, rather than checking it against
 spellings the vendor may not read. A **package** route matches no such glob and
 goes in `PACKAGE_ROUTES`, giving its package manifest (the version source), the
