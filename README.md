@@ -2,14 +2,17 @@
 
 <a href="https://www.postman.com/"><img src="https://assets.getpostman.com/common-share/postman-logo-horizontal-320x132.png" alt="Postman" width="240" /></a>
 
-# API engineering for agents
+# Postman Plugin
+**Powering API engineering for agents**
 
-**Agent friendly filesystem first API development plugin.**
+The Postman plugin brings filesystem-first API development and organization-wide
+API context to coding agents. It enables agents to design, mock, test, document,
+monitor, and ship APIs directly from Claude Code, Cursor, and Codex. Every
+operation produces inspectable files or CLI commands that fit naturally into
+Git and CI, while the Postman Context Graph helps agents understand
+dependencies, ownership, runtime behavior, and the likely impact of a change.
 
-The Postman plugin gives coding agents the skills and tools to develop,
-document, test, and ship APIs with confidence.
-
-[Install](#install) · [Why Postman](#why-use-the-postman-plugin)
+[Install](#install) · [Highlights](#highlights)
 
 </div>
 
@@ -25,13 +28,31 @@ One command configures **Claude Code, Cursor, Codex**.
 
 You can also use the following commands to install individually:
 
-| Agent | Registry or documentation | Install command |
-| --- | --- | --- |
-| Claude Code | [Postman on Claude Plugins](https://claude.com/plugins/postman) | `claude plugin install postman@postman` |
-| Cursor | [Postman on the Cursor Marketplace](https://cursor.com/marketplace/postman) | `/add-plugin postman` |
-| Codex | [Postman on ChatGPT Plugins](https://chatgpt.com/plugins/postman?open_in_app) | `codex plugin add postman@postman` |
+### Claude Code
 
-## Why use the Postman plugin?
+[View Postman on Claude Plugins](https://claude.com/plugins/postman)
+
+```bash
+claude plugin install postman@postman
+```
+
+### Cursor
+
+[View Postman on the Cursor Marketplace](https://cursor.com/marketplace/postman)
+
+```text
+/add-plugin postman
+```
+
+### Codex
+
+[View Postman on ChatGPT Plugins](https://chatgpt.com/plugins/postman?open_in_app)
+
+```bash
+codex plugin add postman@postman
+```
+
+## Highlights
 
 ### Filesystem-first API development
 
