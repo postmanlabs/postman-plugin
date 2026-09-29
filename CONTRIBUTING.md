@@ -63,6 +63,7 @@ it lands.
 .codex-plugin/plugin.json         the Codex plugin manifest
 .app.json                         maps the Codex plugin to its published ChatGPT app ID
 opencode/                         the OpenCode plugin — source, tests, install harness, routing evals
+installer/                        `npx @postman/postman-plugin` — one adapter per agent in src/hosts/
 .opencode/plugins/postman.ts      loads that plugin from source when OpenCode runs inside a clone
 mcp.claude-code.json              Claude Code's MCP config
 mcp.cursor.json                   Cursor's MCP config
@@ -164,6 +165,43 @@ their next `git pull` of `main`. A release is still its own version bump:
 
 List it in [OpenCode's ecosystem page](https://opencode.ai/docs/ecosystem/) only
 after step 3 passes.
+
+## The installer
+
+`installer/` is `npx @postman/postman-plugin`. It detects each supported agent
+on the machine and installs this plugin into it, through the agent's own CLI
+wherever one exists:
+
+| Agent | What it runs |
+| --- | --- |
+| Claude Code | `claude plugin` against Anthropic's `claude-plugins-official` catalog, after uninstalling a user-scope `postman@postman` so skills don't load twice |
+| Codex | `codex plugin` against this repo as the `postman` marketplace |
+| Cursor | a clone at `~/.cursor/plugins/local/postman`; skipped when the Cursor Marketplace copy is installed |
+| Kimi Code | `npx plugins@1.3.4 add postmanlabs/postman-plugin --target kimi`, because Kimi installs plugins only from its TUI |
+| OpenCode | the clone and one-line file [opencode/README.md](opencode/README.md) documents |
+
+Every agent gets the plugin from GitHub, not from the npm package, so a skill
+change needs no installer release. On Claude Code, a route release reaches
+installer users when Anthropic's catalog moves its pin for `postman`. The
+installer's version is its own, independent of every route's.
+
+Run these from `installer/`:
+
+```
+npm ci
+npm test                             # builds, then pins each adapter's command sequence
+node dist/cli.js status              # what it detects on this machine, and what's installed
+node dist/cli.js install --dry-run   # the commands an install would run
+```
+
+`npm test` fails when a `.*-plugin/` directory or `opencode/package.json` has
+no adapter whose `route` names it, so a new route can't ship without one. CI's
+`installer-smoke` job runs the installer against the latest Claude Code and
+Codex CLIs, which catches a change to either CLI's commands or JSON output.
+
+The package isn't on npm yet. It publishes once Anthropic's `postman` catalog
+entry points at this repository (it still points at the DevRel mirror) and npm
+publishing from this repository is available.
 
 ## Changing a skill
 

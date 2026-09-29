@@ -1,6 +1,6 @@
 ---
 name: add-marketplace
-description: Add a new vendor plugin route (marketplace) to this repo - Windsurf, Zed, Copilot, Gemini CLI, or any other agent that can be pointed at a skills directory, whether it loads a plugin manifest, only a project config, or a package from a registry. Use when asked to add, wire up, or onboard a new marketplace, vendor, plugin route, or agent target. Covers the manifest or config, the MCP config, the session-start hook, the CI schema check, and the README and CONTRIBUTING sections that do not update themselves.
+description: Add a new vendor plugin route (marketplace) to this repo - Windsurf, Zed, Copilot, Gemini CLI, or any other agent that can be pointed at a skills directory, whether it loads a plugin manifest, only a project config, or a package from a registry. Use when asked to add, wire up, or onboard a new marketplace, vendor, plugin route, or agent target. Covers the manifest or config, the MCP config, the session-start hook, the CI schema check, the installer adapter, and the README and CONTRIBUTING sections that do not update themselves.
 argument-hint: <vendor-name>
 disable-model-invocation: true
 ---
@@ -9,7 +9,7 @@ disable-model-invocation: true
 
 A "route" is one agent's way of loading the *same* `skills/` and `hooks/`
 directories. Every route points back at them; none gets its own copy. Adding one
-is five files' worth of edits plus a docs pass, and most of the cost is in the
+is a handful of files' worth of edits plus a docs pass, and most of the cost is in the
 parts nothing validates.
 
 Vendor to add: **$ARGUMENTS** (if that is empty, ask which vendor before doing
@@ -62,7 +62,8 @@ writing anything:
    agreement has to hold between the two header strings alone.
 7. Whether it supports hooks and how it finds them. If it does not, read Step 3
    before concluding the route ships without the mandate.
-8. The install command for the README, or that there is none.
+8. The install command, for the README and the installer adapter (Step 6), or
+   that there is none.
 
 **Enumerate the schema's properties. Never conclude a key is absent because the
 prose docs do not mention it.** The two disagree in both directions: opencode's
@@ -222,12 +223,35 @@ would catch.
 7. Any sentence that **counts** routes. A number goes stale the moment another
    route exists; rephrase to drop the count rather than incrementing it.
 
-## Step 6 — Verify
+## Step 6 — The installer adapter
+
+`npx @postman/postman-plugin` installs every route, through one adapter per
+agent in `installer/src/hosts/`. `npm test` in `installer/` fails until the new
+route has one: an agent the installer skips gets nothing, and says nothing.
+
+1. Add `installer/src/hosts/<vendor>.ts` exporting a `Host`. Its `route` is the
+   manifest directory or package manifest from Step 1, and its `install` runs
+   Step 0's install command (fact 8).
+   - Shell out to the vendor's own CLI when it has one: `system.run` for
+     changes, `system.probe` for read-only listings. Don't write the vendor's
+     config files yourself.
+   - With no CLI, clone this repo where the vendor loads local plugins
+     (`syncClone` in `hosts/shared.ts`), as Cursor and OpenCode do.
+   - Before installing, remove any copy that would load the same skills twice,
+     as Claude Code and Codex do. Return `manual` for a step only the user can
+     take.
+2. Register it in `installer/src/hosts/index.ts` and add its id to `HostId` in
+   `installer/src/hosts/types.ts`.
+3. Add `installer/test/<vendor>.test.js` pinning the exact command sequence for
+   a fresh install, a re-run and a remove.
+
+## Step 7 — Verify
 
 `$ROUTE_FILE` is the manifest, root config or package manifest from Step 1.
 
 ```bash
 actionlint .github/workflows/validate.yml
+(cd installer && npm ci && npm test)
 node -e "JSON.parse(require('fs').readFileSync('$ROUTE_FILE','utf8'))"
 npx -y @anthropic-ai/claude-code plugin validate .
 node .claude/hooks/validate-manifests.js && echo "manifests consistent"
@@ -269,7 +293,7 @@ covers what each of these checks and — more usefully — what none of them do.
   breaks all four at once.
 - **Do not bump any version.** `AGENTS.md` keeps bumps to a dedicated release
   PR. The new route's `1.0.0` is its starting value, not a bump; every other
-  route's strings come out of your diff untouched, which Step 6 checks.
+  route's strings come out of your diff untouched, which Step 7 checks.
 - **Do not run `node scripts/build-manifest.js` expecting a diff** *from the
   route itself*. `manifest.json` indexes the skill *files* and takes `plugin`
   from `.claude-plugin/plugin.json`'s name; adding a route changes neither. So

@@ -1,6 +1,7 @@
 # Independent concerns, one parallel job each, so a failure names itself:
 # `skills` checks what Claude Code loads from skills/, `manifest` checks the
 # index `postman init` fetches, `opencode` builds and loads the OpenCode plugin,
+# `installer` and `installer-smoke` check `npx @postman/postman-plugin`,
 # `schema` checks each vendor plugin manifest against that vendor's own
 # published schema.
 name: Validate
@@ -90,6 +91,64 @@ jobs:
 
       - name: Eval cases cover every skill
         run: npm run eval:skills:validate
+
+  installer:
+    name: Installer package
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: installer
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install development dependencies
+        run: npm ci
+
+      # Includes a test that fails when a route in this repo has no installer adapter.
+      - name: Unit tests
+        run: npm test
+
+  # The unit tests pin the commands the installer sends; this checks the latest
+  # Claude Code and Codex CLIs still accept them. Both install from GitHub, not
+  # from this checkout, so this tests the installer, not the branch's skills.
+  installer-smoke:
+    name: Installer against real CLIs
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: installer
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Build
+        run: npm ci && npm run build
+
+      - name: Install the agent CLIs
+        run: npm install -g @anthropic-ai/claude-code @openai/codex
+
+      - name: Install, then re-run to take the update path
+        run: |
+          node dist/cli.js install --yes --agent claude-code --agent codex
+          node dist/cli.js install --yes --agent claude-code --agent codex
+
+      - name: Each CLI lists the plugin
+        run: |
+          claude plugin list --json | node -e 'const l=JSON.parse(require("fs").readFileSync(0,"utf8")); if(!l.some(p=>p.id==="postman@claude-plugins-official"&&p.scope==="user")){console.error(l);process.exit(1)}'
+          codex plugin list --json | node -e 'const l=JSON.parse(require("fs").readFileSync(0,"utf8")).installed; if(!l.some(p=>p.pluginId==="postman@postman")){console.error(l);process.exit(1)}'
+
+      - name: Remove, and each CLI no longer lists it
+        run: |
+          node dist/cli.js remove --yes --agent claude-code --agent codex
+          claude plugin list --json | node -e 'const l=JSON.parse(require("fs").readFileSync(0,"utf8")); if(l.some(p=>p.id.startsWith("postman@"))){console.error(l);process.exit(1)}'
+          codex plugin list --json | node -e 'const l=JSON.parse(require("fs").readFileSync(0,"utf8")).installed; if(l.some(p=>p.pluginId.startsWith("postman@"))){console.error(l);process.exit(1)}'
 
   # One check per official schema. Schemas are fetched from the vendor's source
   # on every run, so a vendor tightening its schema fails CI here rather than

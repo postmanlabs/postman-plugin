@@ -1,0 +1,49 @@
+{
+  "name": "@postman/postman-plugin",
+  "version": "0.1.0",
+  "description": "Installs the Postman plugin into every supported coding agent on this machine.",
+  "type": "module",
+  "license": "Apache-2.0",
+  "author": {
+    "name": "Postman",
+    "email": "postman-plugins@postman.com",
+    "url": "https://github.com/postmanlabs"
+  },
+  "homepage": "https://github.com/postmanlabs/postman-plugin#install",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/postmanlabs/postman-plugin.git",
+    "directory": "installer"
+  },
+  "bugs": "https://github.com/postmanlabs/postman-plugin/issues",
+  "keywords": [
+    "postman",
+    "claude-code",
+    "codex",
+    "cursor",
+    "kimi",
+    "opencode",
+    "agent-plugin"
+  ],
+  "bin": {
+    "postman-plugin": "dist/cli.js"
+  },
+  "files": [
+    "dist/"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepack": "npm run build",
+    "test": "npm run build && node --test test/*.test.js"
+  },
+  "devDependencies": {
+    "@types/node": "24.5.2",
+    "typescript": "5.9.2"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
