@@ -202,9 +202,21 @@ latest Claude Code and Codex CLIs on every installer change and nightly, so a
 change to either CLI's commands or JSON output fails CI even when nothing here
 changed.
 
-The package isn't on npm yet. It publishes once Anthropic's `postman` catalog
-entry points at this repository (it still points at the DevRel mirror) and npm
-publishing from this repository is available.
+To release it:
+
+1. In `installer/`, run `npm version <version> --no-git-tag-version` and merge
+   that bump as its own PR. A `-rc.N` version is a release candidate.
+2. After it merges, push an annotated tag `@postman/postman-plugin@<version>`
+   on that commit. `release.yml` checks that the tag matches `package.json`,
+   runs the tests, and publishes with npm trusted publishing and provenance: a
+   release candidate goes to the `next` dist-tag (`npx @postman/postman-plugin@next`),
+   and a plain version goes to `latest` and must be tagged on `main`.
+3. To retry a tag, or rehearse one without publishing, run the workflow by hand:
+   `gh workflow run release.yml -f tag=<tag> -f dry_run=true`.
+
+Keep the workflow's filename: npm's trusted publisher for the package is
+pinned to `release.yml`. Hold the first `latest` release until Anthropic's
+`postman` catalog entry points at this repository.
 
 ## Changing a skill
 
