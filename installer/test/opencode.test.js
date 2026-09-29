@@ -9,12 +9,14 @@ const config = path.join('/home/user', '.config', 'opencode'),
     clone = path.join(config, 'postman-plugin'),
     shim = path.join(config, 'plugins', 'postman.ts'),
     GIT_URL = 'https://github.com/postmanlabs/postman-plugin.git',
-    probes = ({ branch = { code: 0, stdout: 'main\n' }, changes = '' } = {}) => ({
+    target = path.join(clone, 'opencode', 'src', 'index.ts'),
+    probes = ({ branch = { code: 0, stdout: 'main\n' }, changes = '', ahead = '0' } = {}) => ({
         [`git -C ${clone} remote get-url origin`]: GIT_URL,
         [`git -C ${clone} symbolic-ref --short HEAD`]: branch,
-        [`git -C ${clone} status --porcelain`]: changes
+        [`git -C ${clone} status --porcelain`]: changes,
+        [`git -C ${clone} rev-list --count origin/main..HEAD`]: `${ahead}\n`
     }),
-    ourClone = { dirs: [path.join(clone, '.git')], probes: probes() };
+    ourClone = { dirs: [path.join(clone, '.git'), target], probes: probes() };
 
 test('detects OpenCode by its CLI on PATH', async () => {
     assert.equal(await opencode.detect(fakeSystem({ bins: ['opencode'] })), true);
@@ -97,6 +99,29 @@ test('remove deletes nothing when the clone has local changes', async () => {
     assert.equal(outcome.outcome, 'blocked');
     assert.match(outcome.message, /local changes/);
     assert.deepEqual(system.commands, []);
+});
+
+test('remove deletes nothing when the clone has commits that are not on origin/main', async () => {
+    const system = fakeSystem({ bins: ['git'], ...ourClone, probes: probes({ ahead: '1' }), files: { [shim]: OPENCODE_SHIM } });
+
+    assert.equal((await opencode.remove(system)).outcome, 'blocked');
+    assert.deepEqual(system.commands, []);
+});
+
+test('remove keeps the clone while a plugins/postman.ts it did not write may still load it', async () => {
+    const system = fakeSystem({ bins: ['git'], ...ourClone, files: { [shim]: "export { default } from '../postman-plugin/opencode/src/index.ts'\n" } }),
+        outcome = await opencode.remove(system);
+
+    assert.equal(outcome.outcome, 'blocked');
+    assert.match(outcome.message, /may load/);
+    assert.deepEqual(system.commands, []);
+});
+
+test('a clone without the file the loader imports is not installed', async () => {
+    const status = await opencode.status(fakeSystem({ dirs: [clone], files: { [shim]: OPENCODE_SHIM } }));
+
+    assert.equal(status.installed, false);
+    assert.match(status.notes[0], /no opencode\/src\/index\.ts/);
 });
 
 test('remove deletes nothing when the clone is not ours', async () => {

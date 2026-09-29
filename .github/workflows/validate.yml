@@ -1,9 +1,9 @@
 # Independent concerns, one parallel job each, so a failure names itself:
 # `skills` checks what Claude Code loads from skills/, `manifest` checks the
 # index `postman init` fetches, `opencode` builds and loads the OpenCode plugin,
-# `installer` unit-tests `npx @postman/postman-plugin` (installer-smoke.yml runs
-# it against the real agent CLIs), `schema` checks each vendor plugin manifest
-# against that vendor's own published schema.
+# `installer` and `installer-windows` unit-test `npx @postman/postman-plugin`
+# (installer-smoke.yml runs it against the real agent CLIs), `schema` checks
+# each vendor plugin manifest against that vendor's own published schema.
 name: Validate
 
 on:
@@ -101,6 +101,29 @@ jobs:
         run: npm ci
 
       # Includes a test that fails when a route in scripts/routes.js has no installer adapter.
+      - name: Unit tests
+        run: npm test
+
+  # npm installs the agent CLIs on Windows as `.cmd` shims, which system.ts starts
+  # through cmd.exe. Only a Windows runner takes that path.
+  installer-windows:
+    name: Installer package / Windows
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: installer
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+
+      - name: Install development dependencies
+        run: npm ci
+
       - name: Unit tests
         run: npm test
 

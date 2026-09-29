@@ -8,11 +8,13 @@ const home = '/home/user',
     local = path.join(home, '.cursor', 'plugins', 'local', 'postman'),
     marketplaceCopy = path.join(home, '.cursor', 'plugins', 'cache', 'cursor-public', 'postman'),
     GIT_URL = 'https://github.com/postmanlabs/postman-plugin.git',
-    origin = (url) => ({
+    origin = (url, { ahead = '0' } = {}) => ({
         [`git -C ${local} remote get-url origin`]: `${url}\n`,
         [`git -C ${local} symbolic-ref --short HEAD`]: 'main\n',
-        [`git -C ${local} status --porcelain`]: ''
-    });
+        [`git -C ${local} status --porcelain`]: '',
+        [`git -C ${local} rev-list --count origin/main..HEAD`]: `${ahead}\n`
+    }),
+    manifest = path.join(local, '.cursor-plugin', 'plugin.json');
 
 test('detects Cursor by CLI, by app bundle on macOS, or by its config directory', async () => {
     assert.equal(await cursor.detect(fakeSystem({ bins: ['cursor'] })), true);
@@ -85,6 +87,24 @@ test('remove deletes our clone', async () => {
 
     assert.equal((await cursor.remove(system)).outcome, 'done');
     assert.deepEqual(system.commands, [`remove ${local}`]);
+});
+
+test('remove deletes nothing when the clone has commits that are not on origin/main', async () => {
+    const system = fakeSystem({ bins: ['git'], dirs: [path.join(local, '.git')], probes: origin(GIT_URL, { ahead: '2' }) }),
+        outcome = await cursor.remove(system);
+
+    assert.equal(outcome.outcome, 'blocked');
+    assert.match(outcome.message, /commits that aren't on origin\/main/);
+    assert.deepEqual(system.commands, []);
+});
+
+test('a directory at the clone path counts as installed only if it holds a Cursor plugin', async () => {
+    const empty = await cursor.status(fakeSystem({ dirs: [local] })),
+        plugin = await cursor.status(fakeSystem({ dirs: [local, manifest] }));
+
+    assert.equal(empty.installed, false);
+    assert.match(empty.notes[0], /no \.cursor-plugin\/plugin\.json/);
+    assert.equal(plugin.installed, true);
 });
 
 test('remove hands a Marketplace install back to Cursor', async () => {

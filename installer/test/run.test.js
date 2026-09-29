@@ -157,6 +157,18 @@ test('remove reaches every detected host, even one whose status says not install
     assert.deepEqual([installed.calls, duplicateOnly.calls, absent.calls, missing.calls], [['remove'], ['remove'], ['remove'], []]);
 });
 
+test('a host whose detection throws is reported, and the others still run', async () => {
+    const broken = fakeHost('broken'),
+        after = fakeHost('after'),
+        system = fakeSystem();
+
+    broken.detect = async () => { throw new Error('EACCES: permission denied'); };
+
+    assert.equal(await run(system, [broken, after], options()), 1);
+    assert.deepEqual(after.calls, ['install']);
+    assert.ok(system.lines.some((line) => line.includes('could not check whether broken is here') && line.includes('EACCES')));
+});
+
 test('a host whose status throws is reported unknown, and the run goes on', async () => {
     const broken = fakeHost('broken'),
         after = fakeHost('after'),

@@ -17,6 +17,7 @@ export interface System {
     readonly env: NodeJS.ProcessEnv;
     readonly dryRun: boolean;
     which (command: string): Promise<string | null>;
+    /** `false` only when the path does not exist; any other error is thrown, like `readFile`. */
     exists (file: string): Promise<boolean>;
     /** `null` only when the file does not exist; any other read error is thrown, not read as "absent". */
     readFile (file: string): Promise<string | null>;
@@ -110,8 +111,12 @@ export function createSystem ({ dryRun = false, log = (line: string) => console.
 
                 return true;
             }
-            catch {
-                return false;
+            catch (error) {
+                if (ABSENT.includes((error as NodeJS.ErrnoException).code ?? '')) {
+                    return false;
+                }
+
+                throw error;
             }
         },
         async readFile (file) {

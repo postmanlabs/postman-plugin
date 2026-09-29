@@ -27,9 +27,14 @@ export const cursor: Host = {
     async status (system) {
         const fromMarketplace = await system.exists(marketplaceCopy(system)),
             cloned = await system.exists(localClone(system)),
-            notes = fromMarketplace && cloned ? [`the Cursor Marketplace copy is present too; if it's enabled, both load Postman`] : [];
+            // The manifest Cursor reads; a directory without it is nothing Cursor can load.
+            loadable = cloned && await system.exists(path.join(localClone(system), '.cursor-plugin', 'plugin.json')),
+            notes = [
+                ...(cloned && !loadable ? [`${localClone(system)} exists but has no .cursor-plugin/plugin.json, so Cursor loads nothing from it`] : []),
+                ...(fromMarketplace && loadable ? ['the Cursor Marketplace copy is present too; if it\'s enabled, both load Postman'] : [])
+            ];
 
-        if (cloned) {
+        if (loadable) {
             return { installed: true, detail: `local clone at ${localClone(system)}`, notes };
         }
 

@@ -9,6 +9,8 @@ import { type Host, result } from './types.js';
 const configDir = (system: System) => path.join(system.env.XDG_CONFIG_HOME || path.join(system.home, '.config'), 'opencode'),
     cloneDir = (system: System) => path.join(configDir(system), 'postman-plugin'),
     shimFile = (system: System) => path.join(configDir(system), 'plugins', 'postman.ts'),
+    // What OPENCODE_SHIM imports; a directory without it loads nothing.
+    shimTarget = (system: System) => path.join(cloneDir(system), 'opencode', 'src', 'index.ts'),
     NEXT = 'Restart OpenCode for the change to take effect.';
 
 export const opencode: Host = {
@@ -22,15 +24,17 @@ export const opencode: Host = {
 
     async status (system) {
         const cloned = await system.exists(cloneDir(system)),
+            loadable = cloned && await system.exists(shimTarget(system)),
             shim = await system.readFile(shimFile(system));
 
-        if (cloned && shim === OPENCODE_SHIM) {
+        if (loadable && shim === OPENCODE_SHIM) {
             return { installed: true, detail: `clone at ${cloneDir(system)}`, notes: [] };
         }
 
         const notes = [
             ...(shim !== null && shim !== OPENCODE_SHIM ? [`${shimFile(system)} has other contents; install will refuse to overwrite it`] : []),
-            ...(cloned && shim === null ? [`${cloneDir(system)} exists but nothing loads it`] : [])
+            ...(cloned && !loadable ? [`${cloneDir(system)} exists but has no opencode/src/index.ts for the loader to import`] : []),
+            ...(loadable && shim === null ? [`${cloneDir(system)} exists but nothing loads it`] : [])
         ];
 
         return { installed: false, detail: 'not installed', notes };
@@ -61,6 +65,11 @@ export const opencode: Host = {
 
             if (!cloned && shim !== OPENCODE_SHIM) {
                 return result('skipped', 'not installed');
+            }
+
+            // A loader we didn't write may still import the clone; deleting it would break that file.
+            if (shim !== null && shim !== OPENCODE_SHIM) {
+                blocked(`${shimFile(system)} has other contents and may load ${cloneDir(system)}; move it aside and re-run`);
             }
 
             const removed = cloned ? [cloneDir(system)] : [];

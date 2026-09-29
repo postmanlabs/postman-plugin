@@ -126,6 +126,13 @@ export async function removeClone (system: System, dir: string): Promise<void> {
         blocked(`${dir} has local changes; commit or discard them, or delete it yourself`);
     }
 
+    // A clean tree can still hold commits that exist nowhere else.
+    const ahead = await system.probe('git', ['-C', dir, 'rev-list', '--count', `origin/${BRANCH}..HEAD`]);
+
+    if (ahead.code !== 0 || ahead.stdout.trim() !== '0') {
+        blocked(`${dir} has commits that aren't on origin/${BRANCH}; push or drop them, or delete it yourself`);
+    }
+
     await system.remove(dir);
 }
 

@@ -14,7 +14,7 @@ const home = '/home/user',
 test('detects Kimi Code on PATH or in the places the plugins CLI looks', async () => {
     assert.equal(await kimi.detect(fakeSystem({ bins: ['kimi'] })), true);
     assert.equal(await kimi.detect(fakeSystem({ files: { [path.join(defaultHome, 'bin', 'kimi')]: '' } })), true);
-    assert.equal(await kimi.detect(fakeSystem({ env: { KIMI_CODE_HOME: '/opt/kimi' }, files: { '/opt/kimi/bin/kimi': '' } })), true);
+    assert.equal(await kimi.detect(fakeSystem({ env: { KIMI_CODE_HOME: '/opt/kimi' }, files: { [path.join('/opt/kimi', 'bin', 'kimi')]: '' } })), true);
     assert.equal(await kimi.detect(fakeSystem()), false);
 });
 

@@ -98,7 +98,19 @@ export async function run (system: System, hosts: readonly Host[], options: RunO
         targets: Target[] = [];
 
     for (const host of requested) {
-        if (await host.detect(system)) {
+        let detected: boolean;
+
+        try {
+            detected = await host.detect(system);
+        }
+        catch (error) {
+            const reason = error instanceof Error ? error.message : String(error);
+
+            reports.push({ host, result: { outcome: 'failed', message: `could not check whether ${host.name} is here: ${reason}` } });
+            continue;
+        }
+
+        if (detected) {
             targets.push({ host, status: await readStatus(system, host) });
         }
         else if (options.agents.length) {
