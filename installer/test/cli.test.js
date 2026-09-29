@@ -89,7 +89,7 @@ test('finds nothing on a machine with no agents', posixOnly, () => {
         status = cliRun(['status', '--agent', 'claude-code,codex,kimi,opencode'], box.env);
 
     assert.equal(status.status, 0);
-    assert.match(status.stdout, /No supported coding agent found/);
+    assert.match(status.stdout, /None of the requested agents was found/);
 });
 
 test('--dry-run runs only read-only probes', posixOnly, () => {

@@ -1,7 +1,6 @@
-# Publishes npm packages through AppSec's shared workflow, from the routed example:
-# https://github.com/postmanlabs/gh-security-scan-workflow/blob/main/examples/npm-publish/monorepo-routed.yml
-# This filename is bound to each package's npm trusted-publisher config. Renaming it
-# breaks publishing until AppSec (#security) repoints it.
+# Publishes npm packages from this repository with npm trusted publishing (OIDC).
+# The FILENAME is load-bearing: each package's trusted publisher on npmjs.org is pinned
+# to `release.yml`, and a renamed file fails the token exchange with a bare 404 on PUT.
 name: NPM Publish
 
 on:
@@ -12,27 +11,37 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Tag to publish, e.g. @postman/postman-plugin@0.1.0. Must already exist in origin, annotated and signed.'
+        description: 'Tag to publish, e.g. @postman/postman-plugin@0.1.0. Must already exist in origin.'
         required: true
         type: string
       dry_run:
-        description: 'Run the checks against a tag that ALREADY EXISTS, without publishing. Not a pre-flight -- pushing a tag is the release. Skips the signed-tag and default-branch gates, and does not exercise OIDC.'
+        description: 'Run every check and `npm publish --dry-run` against the tag, without publishing.'
         default: false
         type: boolean
 
 permissions:
   contents: read
 
+# One release at a time, so an older run finishing late can't be the last to set a dist-tag.
+# `queue: max` keeps every pending tag; the default keeps one and cancels the rest.
+concurrency:
+  group: npm-release
+  queue: max
+
 jobs:
-  # Refuses anything but <name>@<version>: a bare tag would skip the shared
-  # workflow's package-identity check.
-  resolve:
+  publish:
     runs-on: ubuntu-latest
-    permissions: {}
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
     outputs:
-      package_path: ${{ steps.map.outputs.package_path }}
+      tag: ${{ steps.meta.outputs.tag }}
+      dist_tag: ${{ steps.meta.outputs.dist_tag }}
     steps:
-      - id: map
+      # Runs before the tag is used as a ref: anything but <name>@<version> stops here.
+      - name: Resolve the package, version and dist-tag
+        id: meta
         env:
           TAG: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag }}
           # One line per publishable package: <npm name> <directory>.
@@ -41,41 +50,157 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [[ ! "$TAG" =~ ^(@[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*)@([0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.-]+)?)$ ]]; then
+          if [[ ! "$TAG" =~ ^(@[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*)@([0-9]+\.[0-9]+\.[0-9]+(-([A-Za-z0-9-]+)[A-Za-z0-9.-]*)?)$ ]]; then
             # Newlines stripped so the value cannot forge a second workflow command.
             echo "::error::tag '${TAG//[$'\n\r']/ }' must be <name>@<version>, e.g. @postman/postman-plugin@0.1.0."
             exit 1
           fi
           NAME="${BASH_REMATCH[1]}"
+          VERSION="${BASH_REMATCH[2]}"
+          PRERELEASE="${BASH_REMATCH[4]}"
 
           MATCH=$(awk -v n="$NAME" '$1 == n { print $2 }' <<< "$PACKAGE_PATHS")
-
           if [ -z "$MATCH" ]; then
             echo "::error::tag $TAG names '$NAME', which has no entry in PACKAGE_PATHS."
             exit 1
           fi
-
           if [ "$(wc -l <<< "$MATCH")" -ne 1 ]; then
             echo "::error::PACKAGE_PATHS has more than one entry for $NAME"
             exit 1
           fi
 
-          echo "package_path=$MATCH" >> "$GITHUB_OUTPUT"
+          # An allowlist, not the prerelease itself: `1.2.3-latest.1` would promote a prerelease,
+          # and npm rejects a dist-tag that parses as a version range (`v1`, `x`, `1`).
+          if [ -z "$PRERELEASE" ]; then
+            DIST_TAG=latest
+          elif [[ "$PRERELEASE" =~ ^(rc|next|[0-9]+)$ ]]; then
+            DIST_TAG=next
+          elif [[ "$PRERELEASE" =~ ^(alpha|beta|canary)$ ]]; then
+            DIST_TAG="$PRERELEASE"
+          else
+            echo "::error::prerelease '$PRERELEASE' has no dist-tag; use rc, alpha, beta or canary"
+            exit 1
+          fi
 
-  publish:
-    needs: resolve
+          {
+            echo "tag=$TAG"
+            echo "name=$NAME"
+            echo "version=$VERSION"
+            echo "dist_tag=$DIST_TAG"
+            echo "package_path=$MATCH"
+          } >> "$GITHUB_OUTPUT"
+          echo "Publishing $NAME@$VERSION from $MATCH under the '$DIST_TAG' dist-tag"
+
+      - uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ steps.meta.outputs.tag }}
+          # The whole history, so a latest release can be proven to be on main.
+          fetch-depth: 0
+          persist-credentials: false
+
+      # npm only ever sees package.json, so a tag that disagrees with it would publish the wrong version.
+      - name: The tag matches the package's name and version
+        working-directory: ${{ steps.meta.outputs.package_path }}
+        env:
+          NAME: ${{ steps.meta.outputs.name }}
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          set -euo pipefail
+          # readFileSync, not require(): a package.json directory holding index.js would run it.
+          ACTUAL=$(node -e 'const p = JSON.parse(require("fs").readFileSync("package.json", "utf8")); process.stdout.write(p.name + "@" + p.version)')
+          if [ "$ACTUAL" != "$NAME@$VERSION" ]; then
+            echo "::error::the tag says $NAME@$VERSION, but package.json says $ACTUAL"
+            exit 1
+          fi
+
+      - name: A latest release is on main
+        if: steps.meta.outputs.dist_tag == 'latest'
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin main
+          if ! git merge-base --is-ancestor HEAD FETCH_HEAD; then
+            echo "::error::a latest release must be tagged on a commit that is on main"
+            exit 1
+          fi
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+          registry-url: 'https://registry.npmjs.org'
+          cache: npm
+          cache-dependency-path: ${{ steps.meta.outputs.package_path }}/package-lock.json
+
+      # An older npm can't exchange the OIDC token and fails the publish with an unrelated-looking auth error.
+      - name: npm supports trusted publishing
+        run: |
+          set -euo pipefail
+          NPM=$(npm --version)
+          if ! node -e 'const [a, b, c] = process.argv[1].split(".").map(Number); process.exit(a > 11 || (a === 11 && (b > 5 || (b === 5 && c >= 1))) ? 0 : 1)' "$NPM"; then
+            echo "::error::npm $NPM is too old for trusted publishing; it needs 11.5.1 or later"
+            exit 1
+          fi
+
+      - name: Install dependencies
+        working-directory: ${{ steps.meta.outputs.package_path }}
+        run: npm ci
+
+      - name: Audit production dependencies
+        working-directory: ${{ steps.meta.outputs.package_path }}
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Test
+        working-directory: ${{ steps.meta.outputs.package_path }}
+        run: npm test
+
+      - name: Publish with npm trusted publishing
+        working-directory: ${{ steps.meta.outputs.package_path }}
+        env:
+          NAME: ${{ steps.meta.outputs.name }}
+          VERSION: ${{ steps.meta.outputs.version }}
+          DIST_TAG: ${{ steps.meta.outputs.dist_tag }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          # npm versions are immutable: a retry after a failed release page must not fail here.
+          if [ -n "$(npm view "$NAME@$VERSION" version 2>/dev/null || true)" ]; then
+            echo "$NAME@$VERSION is already on npm; nothing to publish"
+            exit 0
+          fi
+
+          CURRENT=$(npm view "$NAME@$DIST_TAG" version 2>/dev/null || true)
+          if [ -n "$CURRENT" ] && ! npx -y semver@7.8.5 --include-prerelease --range ">$CURRENT" "$VERSION" >/dev/null; then
+            echo "::error::$NAME@$VERSION would move the '$DIST_TAG' dist-tag back from $CURRENT"
+            exit 1
+          fi
+
+          if [ "$DRY_RUN" = "true" ]; then
+            npm publish --provenance --tag "$DIST_TAG" --dry-run
+          else
+            npm publish --provenance --tag "$DIST_TAG"
+          fi
+
+  # A release page per published tag; a retried tag that already has one is left as it is.
+  release:
+    needs: publish
+    if: ${{ github.event_name != 'workflow_dispatch' || !inputs.dry_run }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
     permissions:
-      contents: read
-      id-token: write
-    uses: postmanlabs/gh-security-scan-workflow/.github/workflows/security-npm-publish.yml@npm-publish/v1
-    with:
-      tag: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag }}
-      package_path: ${{ needs.resolve.outputs.package_path }}
-      # installer/ carries its own lockfile; there is no root workspace.
-      install_path: ${{ needs.resolve.outputs.package_path }}
-      # The shared workflow defaults to 20 and does not read engines.node.
-      node_version: '24'
-      dry_run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
-
-    secrets:
-      POSTMAN_NPM_TOKEN: ${{ secrets.POSTMAN_NPM_TOKEN }}
+      contents: write
+    steps:
+      - name: Publish release notes for the tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.publish.outputs.tag }}
+          DIST_TAG: ${{ needs.publish.outputs.dist_tag }}
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "$TAG already has a release"
+            exit 0
+          fi
+          PRERELEASE=()
+          if [ "$DIST_TAG" != latest ]; then
+            PRERELEASE=(--prerelease)
+          fi
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes --title "$TAG" "${PRERELEASE[@]}"

@@ -24,7 +24,13 @@ Options:
   -y, --yes     Don't ask for confirmation (required when not in a terminal)
   --dry-run     Print what would change without changing anything
   -h, --help    Show this help
-  -v, --version Show the version`;
+  -v, --version Show the version
+
+Exit codes:
+  0  Done, or nothing needed doing
+  1  Something failed or was blocked, you cancelled, or install found no agent
+  2  Bad usage, or confirmation needed but no terminal (use --yes)
+  3  Done, except a step only you can do (printed as "next:")`;
 
 function version (): string {
     const manifest = new URL('../package.json', import.meta.url);

@@ -15,10 +15,9 @@ export type RunOptions = {
 type Target = { host: Host; status: Status };
 type Report = { host: Host; result: Result };
 
-export const EXIT = { ok: 0, failed: 1, usage: 2 } as const;
+export const EXIT = { ok: 0, failed: 1, usage: 2, manual: 3 } as const;
 
-// `manual` counts: the command did not finish, and a script needs to know the user has a step left.
-const INCOMPLETE: Outcome[] = ['failed', 'blocked', 'manual'];
+const FAILED: Outcome[] = ['failed', 'blocked'];
 
 function padEnd (text: string, width: number): string {
     return text + ' '.repeat(Math.max(1, width - text.length));
@@ -119,13 +118,17 @@ export async function run (system: System, hosts: readonly Host[], options: RunO
     }
 
     if (!targets.length) {
-        system.log(`No supported coding agent found. Supported: ${joinNames(requested)}.`);
+        system.log(options.agents.length ?
+            'None of the requested agents was found.' :
+            `No supported coding agent found. Supported: ${joinNames(requested)}.`);
         reports.forEach((report) => system.log(`  ${report.result.message}`));
 
-        return reports.length && options.command !== 'status' ? EXIT.failed : EXIT.ok;
+        // Nothing to remove is a clean remove; nothing to install into is not a successful install.
+        return options.command === 'install' || (options.command === 'remove' && reports.length) ? EXIT.failed : EXIT.ok;
     }
 
-    system.log('Found:');
+    // "Found:" over "not installed" read to agents as "not found"; the header says both things.
+    system.log(`Found ${targets.length} coding agent${targets.length === 1 ? '' : 's'}. Postman in each:`);
     printStatuses(system, targets, width);
     reports.forEach((report) => system.log(`  ${padEnd(report.host.name, width)}${report.result.message}`));
 
@@ -138,15 +141,16 @@ export async function run (system: System, hosts: readonly Host[], options: RunO
     const command = options.command;
 
     if (!options.yes && !system.dryRun) {
+        const verb = command === 'install' ? 'install or update Postman in' : 'remove Postman from',
+            names = joinNames(targets.map((target) => target.host));
+
         if (!options.isTTY) {
-            system.log('\nNot running in a terminal, so there is no one to confirm. Re-run with --yes.');
+            system.log(`\nNothing changed: there is no terminal to confirm in. To ${verb} ${names}, re-run with --yes (add --agent <id> for only some).`);
 
             return EXIT.usage;
         }
 
-        const verb = command === 'install' ? 'Install or update Postman in' : 'Remove Postman from';
-
-        if (!(await options.confirm(`\n${verb} ${joinNames(targets.map((target) => target.host))}? [Y/n] `))) {
+        if (!(await options.confirm(`\n${verb[0].toUpperCase()}${verb.slice(1)} ${names}? [Y/n] `))) {
             system.log('Cancelled.');
 
             return EXIT.failed;
@@ -168,5 +172,9 @@ export async function run (system: System, hosts: readonly Host[], options: RunO
         system.log(`  ${padEnd(host.name, width)}${padEnd(result.outcome, 9)}${result.message.split('\n')[0]}`);
     }
 
-    return reports.some(({ result }) => INCOMPLETE.includes(result.outcome)) ? EXIT.failed : EXIT.ok;
+    if (reports.some(({ result }) => FAILED.includes(result.outcome))) {
+        return EXIT.failed;
+    }
+
+    return reports.some(({ result }) => result.outcome === 'manual') ? EXIT.manual : EXIT.ok;
 }
