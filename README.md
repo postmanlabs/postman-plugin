@@ -52,6 +52,11 @@ claude plugin install postman@postman
 codex plugin add postman@postman
 ```
 
+### OpenCode
+
+OpenCode installs from a clone of this repository. See the
+[OpenCode README](opencode/README.md) for setup.
+
 ## Highlights
 
 ### Filesystem-first API development

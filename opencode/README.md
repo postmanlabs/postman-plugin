@@ -78,7 +78,7 @@ postman login
 The Postman CLI commands the skills run report usage by default, and calls
 through the MCP fallback go to Postman's hosted server as
 `postman-opencode-plugin`. See
-[Data sent to Postman](https://github.com/postmanlabs/postman-plugin#data-sent-to-postman)
+[Telemetry](https://github.com/postmanlabs/postman-plugin#telemetry)
 for what is sent and how to opt out.
 
 ## Contributing
