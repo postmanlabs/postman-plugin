@@ -64,11 +64,14 @@ export const kimi: Host = {
                 blocked('npx is not on PATH');
             }
 
-            await mustRun(system, 'npx', ['-y', PLUGINS_CLI, 'add', REPO, '--target', 'kimi', '--yes'], {
+            const { installed } = await kimi.status(system);
+
+            // An explicit --package outranks the npm_config_package an outer `npx -p` exports to us.
+            await mustRun(system, 'npx', ['-y', `--package=${PLUGINS_CLI}`, 'plugins', 'add', REPO, '--target', 'kimi', '--yes'], {
                 env: { DISABLE_TELEMETRY: '1', DO_NOT_TRACK: '1' }
             });
 
-            return result('done', `installed ${PLUGIN_ID} into ${kimiHome(system)}`, NEXT);
+            return result('done', `${installed ? 'updated' : 'installed'} ${PLUGIN_ID} in ${kimiHome(system)}`, NEXT);
         });
     },
 

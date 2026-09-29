@@ -6,7 +6,7 @@ import { fakeSystem } from './fake-system.js';
 
 const home = '/home/user',
     defaultHome = path.join(home, '.kimi-code'),
-    INSTALL = 'npx -y plugins@1.3.4 add postmanlabs/postman-plugin --target kimi --yes',
+    INSTALL = 'npx -y --package=plugins@1.3.4 plugins add postmanlabs/postman-plugin --target kimi --yes',
     installedJson = (kimiHome, ids) => ({
         [path.join(kimiHome, 'plugins', 'installed.json')]: JSON.stringify({ plugins: ids.map((id) => ({ id })) })
     });
@@ -36,6 +36,13 @@ test('installs through the pinned plugins CLI, targeting only Kimi, with telemet
     assert.equal(outcome.outcome, 'done');
     assert.deepEqual(system.commands, [INSTALL]);
     assert.deepEqual(system.runEnv[INSTALL], { DISABLE_TELEMETRY: '1', DO_NOT_TRACK: '1' });
+});
+
+test('reports a re-install as an update', async () => {
+    const system = fakeSystem({ bins: ['npx'], files: installedJson(defaultHome, ['postman']) });
+
+    assert.match((await kimi.install(system)).message, /^updated postman/);
+    assert.match((await kimi.install(fakeSystem({ bins: ['npx'] }))).message, /^installed postman/);
 });
 
 test('blocks without npx', async () => {

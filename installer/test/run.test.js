@@ -72,7 +72,8 @@ test('without --yes and without a terminal, refuses instead of silently doing no
 
     assert.equal(await run(system, [a], options({ yes: false })), 2);
     assert.deepEqual(a.calls, []);
-    assert.ok(system.lines.some((line) => line.includes('--yes')));
+    assert.ok(system.lines.includes('\nNothing changed: there is no terminal to confirm in. To install or update Postman in a, re-run with --yes (add --agent <id> for only some).'));
+    assert.equal(system.lines[0], 'Found 1 coding agent. Postman in each:');
 });
 
 test('asks once in a terminal, and a "no" changes nothing', async () => {
@@ -141,10 +142,18 @@ test('a skipped host does not fail the run', async () => {
     assert.equal(await run(fakeSystem(), [skipped], options()), 0);
 });
 
-test('a manual step left for the user fails the run, so a script can tell', async () => {
-    const manual = fakeHost('manual', { installed: true, remove: () => ({ outcome: 'manual', message: 'do it yourself' }) });
+test('a manual step left for the user exits 3, so a script can tell it from a failure', async () => {
+    const manual = fakeHost('manual', { installed: true, remove: () => ({ outcome: 'manual', message: 'do it yourself' }) }),
+        done = fakeHost('done', { installed: true });
 
-    assert.equal(await run(fakeSystem(), [manual], options({ command: 'remove' })), 1);
+    assert.equal(await run(fakeSystem(), [manual, done], options({ command: 'remove' })), 3);
+});
+
+test('a failure outranks a manual step', async () => {
+    const manual = fakeHost('manual', { installed: true, remove: () => ({ outcome: 'manual', message: 'do it yourself' }) }),
+        broken = fakeHost('broken', { installed: true, remove: () => ({ outcome: 'failed', message: 'boom' }) });
+
+    assert.equal(await run(fakeSystem(), [manual, broken], options({ command: 'remove' })), 1);
 });
 
 test('remove reaches every detected host, even one whose status says not installed', async () => {
@@ -188,9 +197,19 @@ test('status changes nothing', async () => {
     assert.deepEqual(a.calls, []);
 });
 
-test('finding no agent at all is not an error', async () => {
+test('finding no agent fails an install, but not a status or a remove', async () => {
+    const hosts = [fakeHost('a', { detected: false })],
+        system = fakeSystem();
+
+    assert.equal(await run(system, hosts, options()), 1);
+    assert.match(system.lines[0], /No supported coding agent found\. Supported: a\./);
+    assert.equal(await run(fakeSystem(), hosts, options({ command: 'status' })), 0);
+    assert.equal(await run(fakeSystem(), hosts, options({ command: 'remove' })), 0);
+});
+
+test('when no requested agent is found, says so instead of listing them as the supported set', async () => {
     const system = fakeSystem();
 
-    assert.equal(await run(system, [fakeHost('a', { detected: false })], options()), 0);
-    assert.match(system.lines[0], /No supported coding agent found/);
+    assert.equal(await run(system, [fakeHost('a', { detected: false }), fakeHost('b')], options({ agents: ['a'], command: 'status' })), 0);
+    assert.deepEqual(system.lines, ['None of the requested agents was found.', '  a was not found on this machine']);
 });
