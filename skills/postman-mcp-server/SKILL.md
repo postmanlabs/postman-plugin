@@ -36,7 +36,7 @@ See `references/setup.md` for how to set up the Postman MCP server and auth.
 | Audit API security | Run security checks against spec or collection | `references/security.md` |
 | Learn how to use a Postman feature | Search Postman docs with `searchLearningCenter` (Full mode) | `references/learn.md` |
 
-Once a goal is picked, read its workflow file before the first tool call.
+When the goal's row names a workflow file, read it before the first tool call.
 
 ## MCP Tool Selection
 

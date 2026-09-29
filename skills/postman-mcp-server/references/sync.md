@@ -1,6 +1,6 @@
 ---
 description: Sync Postman collections with your API code. Create collections from specs, push updates, keep everything in sync.
-allowed-tools: Bash, Read, Write, Glob, Grep, mcp__postman__getWorkspaces, mcp__postman__getCollections, mcp__postman__getCollection, mcp__postman__createSpec, mcp__postman__updateSpecFile, mcp__postman__generateCollection, mcp__postman__getAsyncSpecTaskStatus, mcp__postman__getGeneratedCollectionSpecs, mcp__postman__syncCollectionWithSpec, mcp__postman__syncSpecWithCollection, mcp__postman__getCollectionUpdatesTasks, mcp__postman__createEnvironment, mcp__postman__createCollectionRequest, mcp__postman__updateCollectionRequest, mcp__postman__createCollectionFolder, mcp__postman__createCollectionResponse
+allowed-tools: Bash, Read, Write, Glob, Grep, mcp__postman__getWorkspaces, mcp__postman__getCollections, mcp__postman__getCollection, mcp__postman__createSpec, mcp__postman__updateSpecFile, mcp__postman__generateCollection, mcp__postman__getAsyncSpecTaskStatus, mcp__postman__getGeneratedCollectionSpecs, mcp__postman__getSpecCollections, mcp__postman__syncCollectionWithSpec, mcp__postman__syncSpecWithCollection, mcp__postman__getCollectionUpdatesTasks, mcp__postman__createEnvironment, mcp__postman__createCollectionRequest, mcp__postman__updateCollectionRequest, mcp__postman__createCollectionFolder, mcp__postman__createCollectionResponse
 ---
 
 # Sync Collections

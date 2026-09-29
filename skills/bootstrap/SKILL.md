@@ -64,99 +64,36 @@ Three steps, in order. Stop at the first that fails and report which one.
 
 ### 1.1 Check what is already there
 
-**Present, at which version, and installed by what?**
+**Present, and at which version?**
 
 ```bash
-command -v postman && postman --version   # Windows: where postman
+command -v postman && postman --version
 ```
 
-The path says which installer owns the binary. Reuse that installer for any
-update — a second installer leaves two `postman` binaries, and `PATH` order
-silently decides which one runs.
+```powershell
+where.exe postman; postman --version
+```
 
-| Binary path | Installed by |
-| --- | --- |
-| `/usr/local/bin/postman` | the curl script |
-| `%USERPROFILE%\AppData\Local\Microsoft\WindowsApps\postman.exe` | the PowerShell script |
-| under `npm prefix -g` | npm |
-
-If `which -a postman` (`where postman` on Windows) lists two, uninstall one
-before going further.
-
-**Current?** Never blocking — no network or no npm is a normal answer, reported
-as `not checked`. But don't call a feature missing without having made this
+**Current?** Never blocking — no network is a normal answer, reported as
+`not checked`. But don't call a feature missing without having made this
 comparison.
 
 ```bash
-npm view postman-cli version
+postman update --check
 ```
+
+**Update:** `postman update`. It updates through whichever installer put the
+binary there, so never reinstall over an existing copy with a different one.
+`postman skills update` is unrelated — it refreshes a repository's
+`postman/skills/`, not the binary.
 
 ### 1.2 Install only if missing
 
-All three installers are official and put `postman` on `PATH`. None is
-preferred; take the first row that fits the machine.
-
-| Machine | Installer |
-| --- | --- |
-| Windows (native PowerShell or cmd) | PowerShell script |
-| macOS, Linux or WSL, and the probe prints `curl: ok` | curl script |
-| The probe prints `npm: ok` | npm |
-| Alpine Linux (musl) | none — unsupported by every installer |
-
-On macOS, Linux and WSL, run this probe before picking a row. It checks whether
-each installer can write where it installs without asking for a password:
-
-```bash
-if [ -w /usr/local/bin ] || { [ ! -e /usr/local/bin ] && [ -w /usr/local ]; } || sudo -n true 2>/dev/null; then echo "curl: ok"; else echo "curl: needs password"; fi
-if command -v npm >/dev/null; then d="$(npm prefix -g)/lib/node_modules"; [ -d "$d" ] || d="$(npm prefix -g)"; [ -w "$d" ] && echo "npm: ok" || echo "npm: needs sudo"; else echo "npm: absent"; fi
-```
-
-Never make a row fit by force: no `sudo npm install -g`, no `chown` or
-`chmod` on `/usr/local` or the npm prefix. Those change the user's system.
-Report what the probe printed instead.
-
-**Windows — PowerShell script** (installs into
-`%USERPROFILE%\AppData\Local\Microsoft\WindowsApps`):
-
-```powershell
-powershell.exe -NoProfile -InputFormat None -ExecutionPolicy AllSigned -Command "[System.Net.ServicePointManager]::SecurityProtocol = 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://dl-cli.pstmn.io/install/win64.ps1'))"
-```
-
-**macOS, Linux (x64 or arm64), WSL — curl script** (installs into
-`/usr/local/bin`):
-
-```bash
-curl -o- "https://dl-cli.pstmn.io/install/unix.sh" | sh
-```
-
-The script falls back to `sudo` when `/usr/local/bin` isn't writable, and a
-password prompt can't be answered from an agent shell. That is why the probe
-comes first.
-
-**Any OS with Node.js — npm:**
-
-```bash
-npm install -g postman-cli
-```
-
-**After any install**, re-run `command -v postman && postman --version`. An
-install that succeeded but isn't found means its directory is off `PATH` — for
-npm, `$(npm prefix -g)/bin`. Call the binary by full path for this session and
-tell the user which directory to add; don't edit their shell profile.
-
-**Update:** re-run the command that installed it; the new binary overwrites the
-old. The CLI has no self-update verb, and `postman skills update` refreshes a
-repository's `postman/skills/`, not the binary.
-
-**Uninstall:** `npm uninstall -g postman-cli` for npm; otherwise delete the
-`postman` binary from the path in the table above.
-
-**If nothing fits or every attempt fails:** name what blocked you — Alpine, what
-the probe printed, no shell, or a hosted session that cannot install. When the
-probe prints `curl: needs password` and npm isn't `ok`, give the user the curl
-command to run in their own terminal, where they can answer the password
-prompt, and wait. Otherwise hand off to the `postman-mcp-server` skill; an attempted
-install that actually failed is the only thing that qualifies.
+Only when the presence check finds no `postman`: read
+[reference/cli_installation.md](reference/cli_installation.md) before running
+any installer. It picks the installer for this machine, probes permissions
+first so no password prompt hangs the shell, and says what to report when
+nothing fits.
 
 ## 2. Establish the filesystem and workspace bindings
 

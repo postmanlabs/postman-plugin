@@ -22,8 +22,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-discovery/SKILL.md",
-          "bytes": 6939,
-          "sha256": "b388b40c11e2c0777ef8b334f776ce2328044355588330edebd360b23d077b61"
+          "bytes": 6709,
+          "sha256": "f4a6b5243a044538bfa969a190d566f0de5ba943deef4f4c0d20f09cb00ef7fd"
         },
         {
           "target": "reference/orbit.md",
@@ -112,8 +112,14 @@
         {
           "target": "SKILL.md",
           "source": "skills/bootstrap/SKILL.md",
-          "bytes": 12469,
-          "sha256": "0f9b0134b7da787563509894d5884d025fef978955aa9f5cb4ac902ec75d5689"
+          "bytes": 9534,
+          "sha256": "31748b8471afef2a3cbce6b53f2b6f2548215236b9a02c220540b6e9ad00a613"
+        },
+        {
+          "target": "reference/cli_installation.md",
+          "source": "skills/bootstrap/reference/cli_installation.md",
+          "bytes": 3141,
+          "sha256": "f8be91c48e270a991caff75d7504aa9e33b5c74eb800a2ae410485dedfee590a"
         }
       ]
     },
@@ -195,8 +201,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/postman-mcp-server/SKILL.md",
-          "bytes": 5562,
-          "sha256": "834f131ba3e5a480f5070eb0fcdb0d3828beb93a5a4f7471e1e3b7639f740596"
+          "bytes": 5567,
+          "sha256": "96a09d63838a38242ded65946ea87dc7bb66719ca12b2a76b424cb9abf47f070"
         },
         {
           "target": "references/docs.md",
@@ -237,8 +243,8 @@
         {
           "target": "references/sync.md",
           "source": "skills/postman-mcp-server/references/sync.md",
-          "bytes": 4597,
-          "sha256": "1e7843e704d7993da87d99fdda89c6458cad6796b824d443256e674139643be1"
+          "bytes": 4631,
+          "sha256": "8b71afdfb82d58868e38b05bc45db649e7efe1e570f65eb4b4488659221b1eff"
         },
         {
           "target": "references/test.md",
