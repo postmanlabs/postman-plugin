@@ -228,7 +228,7 @@ would catch.
 
 ```bash
 actionlint .github/workflows/validate.yml
-node -e "JSON.parse(require('fs').readFileSync('$ROUTE_FILE','utf8'))"
+node scripts/check-json.js "$ROUTE_FILE"
 npx -y @anthropic-ai/claude-code plugin validate .
 node .claude/hooks/validate-manifests.js && echo "manifests consistent"
 
