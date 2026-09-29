@@ -23,9 +23,10 @@ permissions:
   contents: read
 
 # One release at a time, so an older run finishing late can't be the last to set a dist-tag.
+# `queue: max` keeps every pending tag; the default keeps one and cancels the rest.
 concurrency:
   group: npm-release
-  cancel-in-progress: false
+  queue: max
 
 jobs:
   publish:
@@ -70,15 +71,16 @@ jobs:
 
           # An allowlist, not the prerelease itself: `1.2.3-latest.1` would promote a prerelease,
           # and npm rejects a dist-tag that parses as a version range (`v1`, `x`, `1`).
-          case "$PRERELEASE" in
-            '') DIST_TAG=latest ;;
-            rc | next | [0-9]*) DIST_TAG=next ;;
-            alpha | beta | canary) DIST_TAG="$PRERELEASE" ;;
-            *)
-              echo "::error::prerelease '$PRERELEASE' has no dist-tag; use rc, alpha, beta or canary"
-              exit 1
-              ;;
-          esac
+          if [ -z "$PRERELEASE" ]; then
+            DIST_TAG=latest
+          elif [[ "$PRERELEASE" =~ ^(rc|next|[0-9]+)$ ]]; then
+            DIST_TAG=next
+          elif [[ "$PRERELEASE" =~ ^(alpha|beta|canary)$ ]]; then
+            DIST_TAG="$PRERELEASE"
+          else
+            echo "::error::prerelease '$PRERELEASE' has no dist-tag; use rc, alpha, beta or canary"
+            exit 1
+          fi
 
           {
             echo "tag=$TAG"
