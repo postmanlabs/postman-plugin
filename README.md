@@ -21,7 +21,7 @@ dependencies, ownership, runtime behavior, and the likely impact of a change.
 Install Postman in every compatible coding agent detected on your machine:
 
 ```bash
-npx @postman/postman-plugin@next
+npx @postman/postman-plugin
 ```
 
 One command configures **Claude Code, Codex, Cursor, Kimi Code and OpenCode**.
