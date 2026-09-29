@@ -1,6 +1,6 @@
 {
   "name": "@postman/postman-plugin",
-  "version": "0.1.0",
+  "version": "0.1.0-rc.0",
   "description": "Installs the Postman plugin into every supported coding agent on this machine.",
   "type": "module",
   "license": "Apache-2.0",
@@ -34,7 +34,8 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "prepack": "npm run build",
+    "prepack": "npm run build && node scripts/pack-docs.js stage",
+    "postpack": "node scripts/pack-docs.js clean",
     "test": "npm run build && node --test test/*.test.js"
   },
   "devDependencies": {

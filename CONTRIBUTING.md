@@ -184,7 +184,7 @@ wherever one exists:
 | Codex | `codex plugin` against this repo as the `postman` marketplace |
 | Cursor | a clone at `~/.cursor/plugins/local/postman`. A fresh install is skipped when the Cursor Marketplace copy is present, but an existing clone is kept and updated: Cursor keeps a disabled Marketplace copy on disk too, so the installer can't tell whether that copy is enabled |
 | Factory.ai | `droid plugin` against this repo as the `postman-plugin` marketplace |
-| Kimi Code | `npx plugins@1.3.4 add postmanlabs/postman-plugin --target kimi`, because Kimi installs plugins only from its TUI |
+| Kimi Code | `npx --package=plugins@1.3.4 plugins add postmanlabs/postman-plugin --target kimi`, because Kimi installs plugins only from its TUI |
 | OpenCode | the clone and one-line file [opencode/README.md](opencode/README.md) documents |
 
 Every agent gets the plugin from GitHub, not from the npm package, so a skill
@@ -208,9 +208,27 @@ latest Claude Code and Codex CLIs on every installer change and nightly, so a
 change to either CLI's commands or JSON output fails CI even when nothing here
 changed.
 
-The package isn't on npm yet. It publishes once Anthropic's `postman` catalog
-entry points at this repository (it still points at the DevRel mirror) and npm
-publishing from this repository is available.
+To release it:
+
+1. In `installer/`, run `npm version <version> --no-git-tag-version` and merge
+   that bump as its own PR. A `-rc.N` version is a release candidate.
+2. After it merges, push an annotated tag `@postman/postman-plugin@<version>`
+   on that commit. `release.yml` checks that the tag matches `package.json`,
+   runs the tests, and publishes with npm trusted publishing and provenance: a
+   release candidate goes to the `next` dist-tag (`npx @postman/postman-plugin@next`),
+   `-alpha.N`, `-beta.N` and `-canary.N` go to a dist-tag of that name, and a plain
+   version goes to `latest` and must be tagged on `main`. Any other prerelease, and
+   any version older than the one its dist-tag already points at, is refused.
+3. To retry a tag, or rehearse one without publishing, run the workflow by hand.
+   A version already on npm is not published again, so a retry still creates a
+   release page that failed the first time:
+   `gh workflow run release.yml -f tag=<tag> -f dry_run=true`.
+
+Keep the workflow's filename: npm's trusted publisher for the package is
+pinned to `release.yml`. Hold the first `latest` release until Anthropic's
+`postman` catalog entry points at this repository. Until then `latest` is a
+`0.0.0` placeholder with no command, which is why README.md installs with
+`@next`; drop that suffix in the same PR as the first `latest` release.
 
 ## Changing a skill
 

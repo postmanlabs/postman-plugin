@@ -22,11 +22,12 @@ a change.
 Install Postman in every compatible coding agent detected on your machine:
 
 ```bash
-npx plugins add postmanlabs/postman-plugin
+npx @postman/postman-plugin@next
 ```
 
-One command configures every supported agent it detects, including **Claude
-Code, Cursor, Codex, and Factory.ai**.
+One command configures **Claude Code, Codex, Cursor, Factory.ai, Kimi Code and
+OpenCode**. Run it again to update, `status` to see what's installed, and
+`remove` to uninstall; `--agent <id>` limits any of them to one agent.
 
 You can also use the following commands to install individually:
 
