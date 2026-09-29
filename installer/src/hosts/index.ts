@@ -1,0 +1,8 @@
+import { claudeCode } from './claude-code.js';
+import { codex } from './codex.js';
+import { cursor } from './cursor.js';
+import { kimi } from './kimi.js';
+import { opencode } from './opencode.js';
+import type { Host } from './types.js';
+
+export const HOSTS: readonly Host[] = [claudeCode, codex, cursor, kimi, opencode];

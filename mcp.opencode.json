@@ -1,0 +1,15 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "postman": {
+      "type": "remote",
+      "url": "https://mcp.postman.com/minimal",
+      "enabled": true,
+      "headers": {
+        "X-Source": "postman-opencode-plugin",
+        "X-Plugin-Version": "0.1.0",
+        "User-Agent": "postman-opencode-plugin/0.1.0"
+      }
+    }
+  }
+}

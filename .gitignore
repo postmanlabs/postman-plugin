@@ -1,1 +1,16 @@
 skills/.quarantine/
+
+# Personal Claude Code settings - machine-local, never shared.
+.claude/settings.local.json
+
+# Agent worktrees. These are real git worktrees, so `git add .claude/` would
+# otherwise stage one as an embedded repository and commit a broken pointer.
+.claude/worktrees/
+
+opencode/dist/
+opencode/node_modules/
+opencode/evals/results/
+
+installer/dist/
+installer/node_modules/
+

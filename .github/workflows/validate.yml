@@ -1,7 +1,9 @@
-# The manifest carries a sha256 per file, and `postman init` rejects a file whose
-# bytes do not match. A stale manifest therefore does not fail loudly here - it
-# fails on a user's machine, as a skill that silently falls back to the CLI's
-# bundled copy. Checking it on every push is much cheaper than diagnosing that.
+# Independent concerns, one parallel job each, so a failure names itself:
+# `skills` checks what Claude Code loads from skills/, `manifest` checks the
+# index `postman init` fetches, `opencode` builds and loads the OpenCode plugin,
+# `installer` and `installer-windows` unit-test `npx @postman/postman-plugin`
+# (installer-smoke.yml runs it against the real agent CLIs), `schema` checks
+# each vendor plugin manifest against that vendor's own published schema.
 name: Validate
 
 on:
@@ -10,7 +12,29 @@ on:
   pull_request:
 
 jobs:
-  validate:
+  skills:
+    name: Skills
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Pure bash - no setup-node here on purpose.
+      - name: Every skill has frontmatter Claude Code can load
+        run: |
+          status=0
+          for skill in skills/*/SKILL.md; do
+            head -1 "$skill" | grep -qx -- '---' || { echo "::error file=$skill::missing YAML frontmatter"; status=1; }
+            grep -qE '^name:' "$skill" || { echo "::error file=$skill::frontmatter has no name"; status=1; }
+            grep -qE '^description:' "$skill" || { echo "::error file=$skill::frontmatter has no description"; status=1; }
+          done
+          exit $status
+
+  # The manifest carries a sha256 per file, and `postman init` rejects a file whose
+  # bytes do not match. A stale manifest therefore does not fail loudly here - it
+  # fails on a user's machine, as a skill that silently falls back to the CLI's
+  # bundled copy. Checking it on every push is much cheaper than diagnosing that.
+  manifest:
+    name: Manifest
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -22,18 +46,144 @@ jobs:
       - name: Manifest is in sync with the skill files
         run: node scripts/build-manifest.js --check
 
-      - name: Manifests are valid JSON
-        run: |
-          for file in .claude-plugin/marketplace.json .claude-plugin/plugin.json .cursor-plugin/plugin.json .kimi-plugin/plugin.json manifest.json; do
-            node -e "JSON.parse(require('fs').readFileSync('$file','utf8'))" && echo "ok $file"
-          done
+      - name: Every JSON file parses
+        run: node scripts/check-json.js
 
-      - name: Every skill has frontmatter Claude Code can load
+      # SchemaStore's Claude Code schemas check structure and types but accept
+      # invalid plugin names and unknown keys; Claude Code's own validator catches
+      # those, so both run.
+      - name: Claude Code accepts the marketplace and plugin manifests
+        run: npx -y @anthropic-ai/claude-code plugin validate .
+
+  # The only route that runs code. Its harness installs the plugin as a user
+  # does and has the pinned OpenCode CLI load every skill.
+  opencode:
+    name: OpenCode package
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: opencode
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install development dependencies
+        run: npm ci
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Packed-install harness
+        run: npm run test:harness
+
+      - name: Eval cases cover every skill
+        run: npm run eval:skills:validate
+
+  installer:
+    name: Installer package
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: installer
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+
+      - name: Install development dependencies
+        run: npm ci
+
+      # Includes a test that fails when a route in scripts/routes.js has no installer adapter.
+      - name: Unit tests
+        run: npm test
+
+  # npm installs the agent CLIs on Windows as `.cmd` shims, which system.ts starts
+  # through cmd.exe. Only a Windows runner takes that path.
+  installer-windows:
+    name: Installer package / Windows
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: installer
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+
+      - name: Install development dependencies
+        run: npm ci
+
+      - name: Unit tests
+        run: npm test
+
+  # One check per official schema. Schemas are fetched from the vendor's source
+  # on every run, so a vendor tightening its schema fails CI here rather than
+  # at marketplace review. Files with no published schema (.kimi-plugin/plugin.json,
+  # .codex-plugin/plugin.json, the other mcp.*.json, manifest.json) are covered by
+  # the `manifest` job above. Codex documents its manifest in prose only and publishes
+  # no schema for it; the agent-plugins.org schema is not a substitute, since it
+  # describes the root-level `plugin.json` Agent Plugins format, which Codex selects
+  # by path and which .codex-plugin/plugin.json is deliberately not.
+  schema:
+    name: Schema / ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Claude Code marketplace
+            file: .claude-plugin/marketplace.json
+            schema: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/claude-code-marketplace.json
+            spec: draft7
+          - name: Claude Code plugin
+            file: .claude-plugin/plugin.json
+            schema: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/claude-code-plugin-manifest.json
+            spec: draft7
+          - name: Cursor plugin
+            file: .cursor-plugin/plugin.json
+            schema: https://raw.githubusercontent.com/cursor/plugins/main/schemas/plugin.schema.json
+            spec: draft7
+          # mcp.opencode.json is a valid OpenCode config fragment, so the config
+          # schema checks its server block. That schema $refs models.dev for the
+          # model union, and ajv resolves no reference over the network - without
+          # `ref` the run fails on "can't resolve reference", not on our file.
+          - name: OpenCode MCP config
+            file: mcp.opencode.json
+            schema: https://opencode.ai/config.json
+            ref: https://models.dev/model-schema.json
+            spec: draft2020
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Fetch schema
+        run: curl -fsSL "${{ matrix.schema }}" -o "$RUNNER_TEMP/schema.json"
+
+      - name: Fetch referenced schema
+        if: matrix.ref != ''
+        run: curl -fsSL "${{ matrix.ref }}" -o "$RUNNER_TEMP/ref.json"
+
+      - name: Validate ${{ matrix.file }}
         run: |
-          status=0
-          for skill in skills/*/SKILL.md; do
-            head -1 "$skill" | grep -qx -- '---' || { echo "::error file=$skill::missing YAML frontmatter"; status=1; }
-            grep -qE '^name:' "$skill" || { echo "::error file=$skill::frontmatter has no name"; status=1; }
-            grep -qE '^description:' "$skill" || { echo "::error file=$skill::frontmatter has no description"; status=1; }
-          done
-          exit $status
+          # An array, not a string: `-r <file>` has to arrive as two argv entries,
+          # and an unquoted string to get that would also glob and word-split.
+          args=(--spec=${{ matrix.spec }} -c ajv-formats --strict=false --all-errors
+                -s "$RUNNER_TEMP/schema.json")
+          if [ -f "$RUNNER_TEMP/ref.json" ]; then
+            args+=(-r "$RUNNER_TEMP/ref.json")
+          fi
+          npx -y -p ajv-cli@5 -p ajv-formats@3 ajv validate "${args[@]}" -d "${{ matrix.file }}"
