@@ -15,6 +15,7 @@ plugin route below — each route's manifest or package points back at the same
 | Cursor plugin | `.cursor-plugin/plugin.json` points at this repo's `skills/` dir | `mcp.cursor.json` | `postman-cursor-plugin` |
 | Kimi Code plugin | `.kimi-plugin/plugin.json` points at the same `skills/` dir | `mcpServers` in `.kimi-plugin/plugin.json` | `postman-kimi-plugin` |
 | Codex plugin | `.codex-plugin/plugin.json` points at the same `skills/` dir | `mcp.codex.json` | `postman-codex-plugin` |
+| Pi package | npm publishes this repo's root package with the same `skills/` dir | none — Pi packages do not declare MCP servers | `@postman/postman-pi` |
 | OpenCode plugin | a clone of this repo, loaded by a one-line local plugin that re-exports `opencode/src/index.ts` | `mcp.opencode.json` | `postman-opencode-plugin` |
 
 Codex also reads `.claude-plugin/plugin.json` and `.cursor-plugin/plugin.json` as
@@ -62,6 +63,7 @@ it lands.
 .kimi-plugin/plugin.json          the Kimi Code plugin manifest — carries its MCP block inline
 .codex-plugin/plugin.json         the Codex plugin manifest
 .app.json                         maps the Codex plugin to its published ChatGPT app ID
+package.json                      the publishable @postman/postman-pi package manifest
 opencode/                         the OpenCode plugin — source, tests, install harness, routing evals
 .opencode/plugins/postman.ts      loads that plugin from source when OpenCode runs inside a clone
 mcp.claude-code.json              Claude Code's MCP config
@@ -71,7 +73,46 @@ mcp.opencode.json                 OpenCode's MCP config, read by the plugin at r
 skills/<name>/SKILL.md            one skill per directory — see skills/ for the current list
 manifest.json                     generated index of the skill files
 scripts/build-manifest.js         regenerates it
+scripts/validate-pi-package.js    verifies Pi metadata and the npm tarball contents
 ```
+
+## The Pi package
+
+Pi's package catalog discovers public npm packages with the `pi-package`
+keyword. The root `package.json` publishes `skills/` directly as
+`@postman/postman-pi` and declares that directory under `pi.skills`; it does
+not copy or generate a second skill tree. Pi packages have no MCP-server field,
+so this route exposes the CLI-driven skills without one of the repository's
+`mcp.*.json` files.
+
+Run the same check as CI before releasing:
+
+```bash
+npm run check:pi
+pi -e npm:@postman/postman-pi
+```
+
+The first command validates the Pi metadata and inspects `npm pack --dry-run`
+to ensure every skill is present and unrelated repository files are absent.
+The second command is the end-to-end smoke test once that version exists on
+npm.
+
+Pi releases are independent of the other plugin routes and happen in a
+dedicated release commit:
+
+1. Set the root `package.json` version to the release version without changing
+   any vendor plugin manifest.
+2. Run `npm run check:pi`, publish from an npm account authorized for the
+   `@postman` organization with `npm publish --access public`, and push a signed
+   `pi-v<version>` tag on the release commit.
+3. Verify both `pi -e npm:@postman/postman-pi` and
+   `pi install npm:@postman/postman-pi` load the expected skills.
+4. Confirm the package appears in the [Pi Package Catalog](https://pi.dev/packages).
+
+The `pi-package` keyword makes a package eligible for catalog discovery; Pi
+does not document a separate submission or guaranteed indexing mechanism. If
+npm publication succeeds but catalog search does not find it, record that as
+an upstream indexing issue rather than adding a second registration path here.
 
 ## The MCP server config
 

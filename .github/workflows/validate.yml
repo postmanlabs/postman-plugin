@@ -1,8 +1,8 @@
 # Independent concerns, one parallel job each, so a failure names itself:
 # `skills` checks what Claude Code loads from skills/, `manifest` checks the
-# index `postman init` fetches, `opencode` builds and loads the OpenCode plugin,
-# `schema` checks each vendor plugin manifest against that vendor's own
-# published schema.
+# index `postman init` fetches, `pi` checks the npm tarball Pi discovers,
+# `opencode` builds and loads the OpenCode plugin, and `schema` checks each
+# vendor plugin manifest against that vendor's own published schema.
 name: Validate
 
 on:
@@ -63,6 +63,22 @@ jobs:
       # those, so both run.
       - name: Claude Code accepts the marketplace and plugin manifests
         run: npx -y @anthropic-ai/claude-code plugin validate .
+
+  # Pi's catalog discovers public npm packages carrying the pi-package keyword.
+  # Check the manifest and the exact tarball contents before a release can publish
+  # a package that is eligible but unusable or missing a skill.
+  pi:
+    name: Pi package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate the Pi manifest and npm tarball
+        run: npm run check:pi
 
   # The only route that runs code. Its harness installs the plugin as a user
   # does and has the pinned OpenCode CLI load every skill.

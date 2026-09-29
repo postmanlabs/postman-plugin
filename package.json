@@ -1,0 +1,44 @@
+{
+  "name": "@postman/postman-pi",
+  "version": "0.1.0",
+  "description": "Postman API engineering skills for the Pi coding agent.",
+  "license": "Apache-2.0",
+  "author": {
+    "name": "Postman",
+    "email": "postman-plugins@postman.com",
+    "url": "https://github.com/postmanlabs"
+  },
+  "homepage": "https://www.postmanlabs.com/skills/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/postmanlabs/postman-plugin.git"
+  },
+  "bugs": {
+    "url": "https://github.com/postmanlabs/postman-plugin/issues"
+  },
+  "keywords": [
+    "pi-package",
+    "pi",
+    "agent-skills",
+    "postman",
+    "api",
+    "mocking",
+    "monitoring",
+    "testing",
+    "documentation"
+  ],
+  "files": [
+    "skills/"
+  ],
+  "pi": {
+    "skills": [
+      "./skills"
+    ]
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "check:pi": "node scripts/validate-pi-package.js"
+  }
+}
