@@ -52,14 +52,16 @@ local convenience, not as an invariant the repo enforces.
 
 Every route needs one line in `scripts/routes.js`, the registry the guard
 reads. A **manifest** route goes in `MANIFEST_ROUTES`, keyed by its directory,
-with any server or header key that differs from `mcpServers`/`headers`. The guard globs `.*-plugin/plugin.json` and
-blocks on any directory missing from the table, rather than checking it against
-spellings the vendor may not read. A **package** route matches no such glob and
-goes in `PACKAGE_ROUTES`, giving its package manifest (the version source), the
-MCP config its code reads, and the server key. The guard reports either file
-missing, but nothing flags a route left out of the list: it just drops out of
-the `X-Source` uniqueness check, the one invariant nothing else in the repo
-verifies.
+with any server or header key that differs from `mcpServers`/`headers`. If that
+vendor discovers MCP from a fixed root file rather than a manifest pointer,
+add `mcpConfig` there too; Factory.ai uses this for root `mcp.json`. The
+guard globs `.*-plugin/plugin.json` and blocks on any directory missing from
+the table, rather than checking it against spellings the vendor may not read. A
+**package** route matches no such glob and goes in `PACKAGE_ROUTES`, giving its
+package manifest (the version source), the MCP config its code reads, and the
+server key. The guard reports either file missing, but nothing flags a route
+left out of the list: it just drops out of the `X-Source` uniqueness check, the
+one invariant nothing else in the repo verifies.
 
 It checks:
 

@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "postman": {
+      "type": "http",
+      "url": "https://mcp.postman.com/mcp",
+      "headers": {
+        "X-Source": "postman-factory-plugin",
+        "X-Plugin-Version": "1.0.0",
+        "User-Agent": "postman-factory-plugin/1.0.0"
+      }
+    }
+  }
+}

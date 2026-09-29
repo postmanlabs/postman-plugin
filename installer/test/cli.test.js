@@ -86,7 +86,7 @@ test('an --agent that names no agent is rejected, not read as "every agent"', ()
 test('finds nothing on a machine with no agents', posixOnly, () => {
     // Cursor is left out: on macOS it is also detected by /Applications/Cursor.app, outside the sandbox.
     const box = sandbox(),
-        status = cliRun(['status', '--agent', 'claude-code,codex,kimi,opencode'], box.env);
+        status = cliRun(['status', '--agent', 'claude-code,codex,factory,kimi,opencode'], box.env);
 
     assert.equal(status.status, 0);
     assert.match(status.stdout, /No supported coding agent found/);

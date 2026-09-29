@@ -7,10 +7,11 @@
 
 The Postman plugin brings filesystem-first API development and organization-wide
 API context to coding agents. It enables agents to design, mock, test, document,
-monitor, and ship APIs directly from Claude Code, Cursor, and Codex. Every
-operation produces inspectable files or CLI commands that fit naturally into
-Git and CI, while the Postman Context Graph helps agents understand
-dependencies, ownership, runtime behavior, and the likely impact of a change.
+monitor, and ship APIs directly from Claude Code, Cursor, Codex, and Factory
+Droid. Every operation produces inspectable files or CLI commands that fit
+naturally into Git and CI, while the Postman Context Graph helps agents
+understand dependencies, ownership, runtime behavior, and the likely impact of
+a change.
 
 [Install](#install) · [Highlights](#highlights)
 
@@ -24,7 +25,8 @@ Install Postman in every compatible coding agent detected on your machine:
 npx plugins add postmanlabs/postman-plugin
 ```
 
-One command configures **Claude Code, Cursor, Codex**.
+One command configures every supported agent it detects, including **Claude
+Code, Cursor, Codex, and Factory.ai**.
 
 You can also use the following commands to install individually:
 
@@ -50,6 +52,13 @@ claude plugin install postman@postman
 
 ```bash
 codex plugin add postman@postman
+```
+
+### Factory.ai
+
+```bash
+droid plugin marketplace add postmanlabs/postman-plugin
+droid plugin install postman@postman-plugin --scope user
 ```
 
 ## Highlights

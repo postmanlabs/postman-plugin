@@ -15,6 +15,7 @@ plugin route below — each route's manifest or package points back at the same
 | Cursor plugin | `.cursor-plugin/plugin.json` points at this repo's `skills/` dir | `mcp.cursor.json` | `postman-cursor-plugin` |
 | Kimi Code plugin | `.kimi-plugin/plugin.json` points at the same `skills/` dir | `mcpServers` in `.kimi-plugin/plugin.json` | `postman-kimi-plugin` |
 | Codex plugin | `.codex-plugin/plugin.json` points at the same `skills/` dir | `mcp.codex.json` | `postman-codex-plugin` |
+| Factory.ai plugin | `.factory-plugin/marketplace.json` installs this repo root as the plugin, so Droid reads the same root `skills/` dir | `mcp.json` | `postman-factory-plugin` |
 | OpenCode plugin | a clone of this repo, loaded by a one-line local plugin that re-exports `opencode/src/index.ts` | `mcp.opencode.json` | `postman-opencode-plugin` |
 
 Codex also reads `.claude-plugin/plugin.json` and `.cursor-plugin/plugin.json` as
@@ -61,6 +62,8 @@ it lands.
 .cursor-plugin/plugin.json        the Cursor plugin manifest
 .kimi-plugin/plugin.json          the Kimi Code plugin manifest — carries its MCP block inline
 .codex-plugin/plugin.json         the Codex plugin manifest
+.factory-plugin/marketplace.json  the Factory.ai marketplace
+.factory-plugin/plugin.json       the Factory.ai plugin metadata
 .app.json                         maps the Codex plugin to its published ChatGPT app ID
 opencode/                         the OpenCode plugin — source, tests, install harness, routing evals
 installer/                        `npx @postman/postman-plugin` — one adapter per agent in src/hosts/
@@ -68,6 +71,7 @@ installer/                        `npx @postman/postman-plugin` — one adapter 
 mcp.claude-code.json              Claude Code's MCP config
 mcp.cursor.json                   Cursor's MCP config
 mcp.codex.json                    Codex's MCP config — spells its headers `http_headers`
+mcp.json                          Factory.ai's MCP config — must keep this exact root filename
 mcp.opencode.json                 OpenCode's MCP config, read by the plugin at runtime
 skills/<name>/SKILL.md            one skill per directory — see skills/ for the current list
 manifest.json                     generated index of the skill files
@@ -85,6 +89,7 @@ mcp.claude-code.json        <- .claude-plugin/plugin.json  "mcpServers": "./mcp.
 mcp.cursor.json             <- .cursor-plugin/plugin.json  "mcpServers": "./mcp.cursor.json"
 mcp.codex.json              <- .codex-plugin/plugin.json   "mcpServers": "./mcp.codex.json"
 .kimi-plugin/plugin.json       inline — Kimi documents no path form
+mcp.json                    <- Factory.ai reads this root filename from the installed plugin
 mcp.opencode.json           <- opencode/src/index.ts       read at runtime; opencode/package.json holds the version
 ```
 
@@ -110,14 +115,14 @@ all:
   serde. So serde ignores unknown keys: a `headers` block in `mcp.codex.json`
   is dropped without an error, the server still connects, and every request
   goes out unattributed. This is the worst failure mode in the repo, because
-  it looks exactly like success. `headers` is right for the other four;
-  don't normalize it across all five.
+  it looks exactly like success. `headers` is right for the other routes;
+  don't normalize the key across routes.
 
 There is no generator, deliberately: a tool whose job is to keep these
 identical is wrong once versions are per-route.
 
-Every route names its endpoint outright — `/mcp` for Claude Code, Cursor and
-Codex, `/minimal` for Kimi Code and OpenCode. Don't reintroduce a `${POSTMAN_MCP_MODE:-...}`
+Every route names its endpoint outright — `/mcp` for Claude Code, Cursor,
+Codex and Factory.ai, `/minimal` for Kimi Code and OpenCode. Don't reintroduce a `${POSTMAN_MCP_MODE:-...}`
 placeholder to express the default: no route expands `${...}` inside an MCP URL,
 so the whole segment ships literally and the request never reaches the intended
 mode. `claude plugin list --json` reports the registered URL with the
@@ -178,6 +183,7 @@ wherever one exists:
 | Claude Code | `claude plugin` against Anthropic's `claude-plugins-official` catalog, then uninstalls a user-scope `postman@postman` so skills don't load twice; a failed install leaves that copy in place |
 | Codex | `codex plugin` against this repo as the `postman` marketplace |
 | Cursor | a clone at `~/.cursor/plugins/local/postman`. A fresh install is skipped when the Cursor Marketplace copy is present, but an existing clone is kept and updated: Cursor keeps a disabled Marketplace copy on disk too, so the installer can't tell whether that copy is enabled |
+| Factory.ai | `droid plugin` against this repo as the `postman-plugin` marketplace |
 | Kimi Code | `npx plugins@1.3.4 add postmanlabs/postman-plugin --target kimi`, because Kimi installs plugins only from its TUI |
 | OpenCode | the clone and one-line file [opencode/README.md](opencode/README.md) documents |
 

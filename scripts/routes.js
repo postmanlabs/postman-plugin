@@ -12,6 +12,7 @@ const MANIFEST_ROUTES = {
         '.claude-plugin': {},
         '.codex-plugin': { headerKey: 'http_headers' },
         '.cursor-plugin': {},
+        '.factory-plugin': { mcpConfig: 'mcp.json' },
         '.kimi-plugin': {}
     },
     MANIFEST_DIR_PATTERN = /^\..+-plugin$/,

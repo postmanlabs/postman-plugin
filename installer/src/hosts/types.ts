@@ -1,6 +1,6 @@
 import type { System } from '../system.js';
 
-export type HostId = 'claude-code' | 'codex' | 'cursor' | 'kimi' | 'opencode';
+export type HostId = 'claude-code' | 'codex' | 'cursor' | 'factory' | 'kimi' | 'opencode';
 
 /** `installed: null` means the host's own listing could not be read, which is not the same as "absent". */
 export type Status = { installed: boolean | null; detail: string; notes: string[] };

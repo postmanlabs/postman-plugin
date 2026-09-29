@@ -90,8 +90,11 @@ function manifestRoutesAgreeWithTheirMcpConfig () {
         }
 
         const manifest = readJson(manifestRel);
+        const route = MANIFEST_ROUTES[dir],
+            keys = routeKeys(route),
+            routeConfig = route.mcpConfig ? { [keys.serverKey]: route.mcpConfig } : manifest;
 
-        checkRoute(manifest, manifestRel, routeKeys(MANIFEST_ROUTES[dir]), manifest && manifest.version);
+        checkRoute(routeConfig, manifestRel, keys, manifest && manifest.version);
     }
 }
 
