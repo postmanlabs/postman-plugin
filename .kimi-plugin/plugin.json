@@ -22,6 +22,7 @@
   "skills": [
     "./skills"
   ],
+  "systemPromptPath": "./hooks/session-start-context.md",
   "mcpServers": {
     "postman": {
       "transport": "http",

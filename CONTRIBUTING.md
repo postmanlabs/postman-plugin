@@ -60,7 +60,8 @@ it lands.
 .claude-plugin/marketplace.json   the marketplace Claude Code adds
 .claude-plugin/plugin.json        the Claude Code plugin manifest
 .cursor-plugin/plugin.json        the Cursor plugin manifest
-.kimi-plugin/plugin.json          the Kimi Code plugin manifest — carries its MCP block inline
+.kimi-plugin/plugin.json          the Kimi Code plugin manifest — carries its MCP block inline, and
+                                  loads hooks/session-start-context.md through `systemPromptPath`
 .codex-plugin/plugin.json         the Codex plugin manifest
 .app.json                         maps the Codex plugin to its published ChatGPT app ID
 opencode/                         the OpenCode plugin — source, tests, install harness, routing evals

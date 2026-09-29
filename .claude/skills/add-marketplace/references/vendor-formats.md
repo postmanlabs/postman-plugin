@@ -15,7 +15,7 @@ vendor has a manifest at all.
 | Transport key | `"type": "http"` | *(none)* | `"transport": "http"`, `"auth": "oauth"` | `"type": "http"` | `"type": "remote"`, `"enabled": true` (v2 takes `"disabled": false`) | `"type": "http"` |
 | URL mode segment | `/mcp` | `/mcp` | `/minimal` | `/mcp` | `/minimal` | `/mcp` |
 | `version` key | yes | yes | yes | yes | `version` in `opencode/package.json` | `version` in `installer/package.json` |
-| Hooks | `hooks/hooks.json` discovered | manifest `hooks`, falls back to `hooks/hooks.json` | inline `hooks` array only — **no file discovery** | manifest `hooks`, falls back to `hooks/hooks.json` | **no `hooks.json`** — the plugin pushes the mandate into the system prompt | **no hooks file** — the extension adds the mandate as a prompt section on `before_agent_start` |
+| Hooks | `hooks/hooks.json` discovered | manifest `hooks`, falls back to `hooks/hooks.json` | inline `hooks` array only — **no file discovery**; the mandate goes in through `systemPromptPath` instead | manifest `hooks`, falls back to `hooks/hooks.json` | **no `hooks.json`** — the plugin pushes the mandate into the system prompt | **no hooks file** — the extension adds the mandate as a prompt section on `before_agent_start` |
 | Published schema | SchemaStore | `cursor/plugins` repo | none | none — prose docs only | `opencode.ai/config.json`, draft2020, `$ref`s `models.dev` — validates `mcp.opencode.json` | none |
 | Extras | `$schema` | — | `interface` block | `interface` block | no host-version gate for a local plugin; the minimum is documented | `pi-package` keyword lists it in the gallery; `pi.image` is the card's preview |
 
