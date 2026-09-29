@@ -46,17 +46,7 @@ jobs:
         run: node scripts/build-manifest.js --check
 
       - name: Every JSON file parses
-        run: |
-          # `cmd && echo` inside a loop does not trip `bash -e`, so collect failures explicitly.
-          status=0
-          for file in $(git ls-files '*.json'); do
-            if node -e "JSON.parse(require('fs').readFileSync('$file','utf8'))"; then
-              echo "ok $file"
-            else
-              echo "::error file=$file::invalid JSON"; status=1
-            fi
-          done
-          exit $status
+        run: node scripts/check-json.js
 
       # SchemaStore's Claude Code schemas check structure and types but accept
       # invalid plugin names and unknown keys; Claude Code's own validator catches
