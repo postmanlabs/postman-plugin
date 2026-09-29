@@ -7,7 +7,7 @@
     "email": "postman-plugins@postman.com",
     "url": "https://github.com/postmanlabs"
   },
-  "homepage": "https://www.postmanlabs.com/skills/",
+  "homepage": "https://github.com/postmanlabs/postman-plugin",
   "repository": "https://github.com/postmanlabs/postman-plugin",
   "license": "Apache-2.0",
   "keywords": [
