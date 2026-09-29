@@ -13,14 +13,17 @@ notice) and postman-cli#1340 (AUTO-999/AUTO-998, one datasource per
 worksheet plus the help-text fixes). Both are needed; 1.62.0 has neither.
 Check with `postman --version` before trusting the worksheet and
 auth-notice rules below, and on an older CLI expect `source add --file
-book.xlsx` to add a workbook as a single unqueryable source and every
-logged-out `--iteration-data-dataset` run to print the notice.
+book.xlsx` to add a workbook as a single unqueryable source (in a cloud
+dataset too), `source update --file book.xlsx` to be accepted and rewrite the
+source to `format: csv`, and every logged-out `--iteration-data-dataset` run
+to print the notice.
 
 ## Overview
 
 A dataset is a Postman entity that names one or more *datasources* and
 presents them as SQL tables. It lives either in a Postman workspace or in the
-repository, and the same commands work on both. It is not a data file — it is
+repository, and the same commands work on both — with one carve-out, a
+spreadsheet source, covered below. It is not a data file — it is
 a layer over data files and databases, and the value is in that layer:
 heterogeneous
 sources (a CSV and a Postgres table) become joinable in one query, and a
@@ -54,37 +57,68 @@ them back down. Reach for those when the whole repo should move; the
   data; `-d` remains available for a one-off file and stays the lighter option
   when nothing more is wanted.
 
-- **A spreadsheet becomes one source per worksheet, not one source.** The
-  engine reads Excel and OpenDocument workbooks (`xlsx`, `xls`, `ods`) as well
-  as CSV and JSON, and `source add --file book.xlsx` enumerates the sheets and
-  adds each as its own datasource — matching what the Postman app does. There
-  is no flag for picking a sheet, by design.
+- **A spreadsheet becomes one source per worksheet, not one source — and
+  only in a local dataset.** The engine reads Excel and OpenDocument
+  workbooks (`xlsx`, `xls`, `ods`) as well as CSV and JSON, and
+  `source add --file book.xlsx` enumerates the sheets and adds each as its own
+  datasource — matching what the Postman app does. There is no flag for
+  picking a sheet, by design. Three boundaries come before anything else:
+
+  - **Local datasets only.** Adding a workbook to a *cloud* dataset is
+    refused with `SPREADSHEET_CLOUD_UNSUPPORTED`, with or without `--upload`:
+    a cloud add posts one datasource with no worksheet selector and the cloud
+    service is never handed the bytes to fan the workbook out itself, so it
+    would persist exactly the unqueryable source the local path exists to
+    prevent. CSV and JSON work on both. This is the carve-out to
+    "local and cloud are the same commands" — put the workbook in a local
+    `.dataset.yaml`.
+  - **`xlsx`, `xls` and `ods` only.** `.xlsm`, `.xlsb` and `.numbers` are
+    unmistakably workbooks that the engine cannot read, so extension
+    inference refuses them with `WORKBOOK_FORMAT_UNSUPPORTED` rather than
+    letting them fall through to the `csv` default and write a source that
+    fails every query. Re-save as `.xlsx`, or pass `--format csv` only if the
+    file really is delimited text.
+  - **`-n` is optional for a workbook, and ignored.** It is required for
+    every other source kind, but worksheet sources are named after their
+    sheets, so a `-n` passed here changes nothing and earns a
+    `NAME_UNUSED_FOR_SPREADSHEET` warning.
 
   Each source is named `source_<sheet>`, with anything outside
-  `[a-zA-Z0-9_]` replaced by `_`, and `_2`/`_3` appended on collision. A
-  workbook with People, Orders and "Sales Q3 2026" therefore gives
-  `source_People`, `source_Orders` and `source_Sales_Q3_2026`. The `-n` you
-  passed does **not** appear in them — the scheme matches the Postman app
-  (and DCS server-side), so a workbook added from the CLI and the same one
-  added from the app produce identical source names and survive a push/pull
-  round trip.
+  `[a-zA-Z0-9_]` replaced by `_`, and `_2`/`_3` appended on collision —
+  collision being judged on the engine's *table* key rather than on the
+  literal name, so two sheets that normalise onto one table are given
+  distinct names instead of registering one table twice and failing every
+  query on the dataset. A workbook with People, Orders and "Sales Q3 2026"
+  therefore gives `source_People`, `source_Orders` and
+  `source_Sales_Q3_2026`. The `-n` you passed does **not** appear in them —
+  the scheme matches the Postman app (and DCS server-side), so a workbook
+  added from the CLI and the same one added from the app produce identical
+  source names and survive a push/pull round trip.
 
-  Those are *source* names. Put them through the normalisation in
-  "a datasource's table name" below to get the name a `FROM` clause needs.
-  For plain ASCII sheets the two coincide; for others they do not — a sheet
-  named entirely outside `[a-zA-Z0-9_]` sanitises to underscores that then
-  collapse away, so a `売上` sheet is reported as `source___` and queried as
-  `FROM source`. Don't copy a name out of the command's output into a `FROM`
-  clause verbatim. Note that a `source_` prefix is correct here and wrong for
-  a source you named yourself, so do not carry the habit across.
+  Those are *source* names, and a source name is not always a table name.
+  **Take the queryable name from the command's own output instead of deriving
+  it.** `source add` prints a line per sheet —
+  `"source_People" (id: …) from worksheet "People"` — and appends
+  `, queryable as "<table>"` whenever the table differs, so a `売上` sheet is
+  reported as `source___`, queryable as `source`, and `FROM source` is the
+  query. Under `--json` the same thing arrives as `sources[]`, one
+  `{id, name, worksheet, table}` entry per worksheet and present for every
+  workbook add however many sheets it found; `table` is the field a `FROM`
+  clause takes. Still don't copy `name` into a `FROM` clause verbatim, and
+  note that a `source_` prefix is correct here and wrong for a source you
+  named yourself, so do not carry the habit across.
 
-  **Never run `source update --file` on a worksheet source.** It cannot
-  create one — it merges fields and never writes a worksheet selector — and
-  on a source that already has one it is destructive: `--file` infers the
-  format from the extension as `json` or otherwise *`csv`*, so an `.xlsx`
-  is rewritten to `format: csv` while the stale `spreadsheet.worksheet`
-  selector is left in place, and the source stops being queryable
-  (AUTO-1000). Remove the source and re-add the workbook with `source add`.
+  **`source update` cannot make a worksheet source, and now refuses to try.**
+  Both halves are hard refusals with a code, and nothing is written:
+  `--file <workbook>` fails `SPREADSHEET_FILE_NOT_UPDATABLE` (`.xlsm`,
+  `.xlsb` and `.numbers` included) and `--format xlsx|xls|ods` fails
+  `SPREADSHEET_FORMAT_NOT_UPDATABLE`, because the command patches `format`
+  and `location` field-wise and has no way to pin a worksheet. What is still
+  *allowed* and still destructive is `update --file other.csv` on a source
+  that already has a worksheet: that patch carries no `source_options`, so
+  the stale `spreadsheet.worksheet` selector stays pinned to a file with no
+  worksheets and the source stops being queryable (AUTO-1000). Remove the
+  source and re-add the workbook with `source add`.
 
 - **`--format` is not validated.** Its help text lists the real formats, but
   the flag accepts any string and writes it straight into the manifest, so a
@@ -98,11 +132,13 @@ them back down. Reach for those when the whole repo should move; the
   the CLI echoes back, fails `SQL_UNKNOWN_TABLE`. Case alone is safe (SQL
   identifiers are case-insensitive, so `FROM MixedCase` still finds
   `mixedcase`); underscore runs and edge underscores are not. Keep source
-  names already-normalised and the two can never diverge. On the federated
-  path `SELECT name FROM sqlite_master WHERE type='table'` lists the real
-  ones. **The CLI's own `-h` examples say `FROM source_users`, and they are
-  wrong** — there is no `source_` prefixing for a source you named yourself,
-  and `source_users` fails `SQL_UNKNOWN_TABLE`. Trust the normalised source
+  names already-normalised and the two can never diverge. A workbook add
+  reports each sheet's table itself (`queryable as …`, or `sources[].table`
+  under `--json`); for anything else, on the federated path
+  `SELECT name FROM sqlite_master WHERE type='table'` lists the real ones.
+  **The CLI's own `-h` examples say `FROM source_users`, and they are
+  wrong** — there is no `source_` prefixing for a source you named
+  yourself, and `source_users` fails `SQL_UNKNOWN_TABLE`. Trust the normalised source
   name, not the example text.
 - **Federated vs native is the central query decision.** With no `--source`,
   the query runs through a federated SQLite layer that can join across every
@@ -179,6 +215,8 @@ them back down. Reach for those when the whole repo should move; the
    sniffed, so a `.txt` holding JSON needs `--format json`. For a cloud
    dataset, `--file` alone registers a *local-filesystem* source read by the
    local engine; `--upload` is what actually puts the data in the cloud.
+   Either way a cloud dataset takes csv and json only — a workbook is refused
+   there.
 3. **For a *JDBC* source, start from `jdbc inspect`.**
    `postman dataset jdbc inspect ./drivers/pg.jar` maps straight onto the
    `source add` flags: `suggestedUrlTemplate` → `--url-template`,
