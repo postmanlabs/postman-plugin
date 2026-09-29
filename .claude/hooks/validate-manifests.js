@@ -10,7 +10,8 @@
 
 const fs = require('fs'),
     path = require('path'),
-    { execFileSync } = require('child_process');
+    { execFileSync } = require('child_process'),
+    { MANIFEST_ROUTES, MANIFEST_DIR_PATTERN, PACKAGE_ROUTES } = require('../../scripts/routes.js');
 
 // Each of these keys is read by one set of vendors and ignored without an error
 // by the rest, so the wrong spelling leaves a route that loads, connects and
@@ -18,23 +19,6 @@ const fs = require('fs'),
 const SERVER_KEYS = ['mcpServers', 'mcp'],
     HEADER_KEYS = ['headers', 'http_headers'],
     DEFAULT_ROUTE_KEYS = { serverKey: 'mcpServers', headerKey: 'headers' },
-
-    // Every manifest route, with its deviations from DEFAULT_ROUTE_KEYS. An
-    // unlisted `.*-plugin/` directory is reported, not checked against guesses.
-    MANIFEST_ROUTES = {
-        '.claude-plugin': {},
-        '.codex-plugin': { headerKey: 'http_headers' },
-        '.cursor-plugin': {},
-        '.kimi-plugin': {}
-    },
-    MANIFEST_DIR_PATTERN = /^\..+-plugin$/,
-
-    // Routes shipped as a registry package, so MANIFEST_DIR_PATTERN never matches
-    // them. A route missing here is never checked, which looks exactly like passing.
-    PACKAGE_ROUTES = [
-        { manifest: 'opencode/package.json', mcpConfig: 'mcp.opencode.json', keys: { serverKey: 'mcp' } }
-    ],
-
     X_SOURCE_FORMAT = /^postman-[a-z0-9-]+-plugin$/;
 
 const ROOT = repoRootOrExit();
@@ -101,7 +85,7 @@ function manifestRoutesAgreeWithTheirMcpConfig () {
         const manifestRel = `${dir}/plugin.json`;
 
         if (!Object.hasOwn(MANIFEST_ROUTES, dir)) {
-            errors.push(`${manifestRel}: unregistered route - add '${dir}' to MANIFEST_ROUTES in this guard, with the server and header keys this vendor reads`);
+            errors.push(`${manifestRel}: unregistered route - add '${dir}' to MANIFEST_ROUTES in scripts/routes.js, with the server and header keys this vendor reads`);
             continue;
         }
 

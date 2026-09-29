@@ -1,0 +1,58 @@
+# Runs `npx @postman/postman-plugin` against the latest Claude Code and Codex
+# CLIs. The unit tests pin the commands the installer sends; this checks the
+# CLIs still accept them. Both install from GitHub, not from this checkout, so
+# it tests the installer, not a branch's skills. It also runs nightly, because
+# a CLI release breaks the installer without anyone pushing here.
+name: Installer smoke
+
+on:
+  push:
+    branches: ['main']
+    paths: ['installer/**', '.github/workflows/installer-smoke.yml']
+  pull_request:
+    paths: ['installer/**', '.github/workflows/installer-smoke.yml']
+  schedule:
+    - cron: '23 4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: Installer against real CLIs
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: installer
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+
+      - name: Build
+        run: npm ci && npm run build
+
+      - name: Install the agent CLIs
+        run: npm install -g @anthropic-ai/claude-code @openai/codex
+
+      - name: Install, then re-run to take the update path
+        run: |
+          node dist/cli.js install --yes --agent claude-code --agent codex
+          node dist/cli.js install --yes --agent claude-code --agent codex
+
+      - name: Each CLI lists the plugin
+        run: |
+          claude plugin list --json | node -e 'const l=JSON.parse(require("fs").readFileSync(0,"utf8")); if(!l.some(p=>p.id==="postman@claude-plugins-official"&&p.scope==="user")){console.error(l);process.exit(1)}'
+          codex plugin list --json | node -e 'const l=JSON.parse(require("fs").readFileSync(0,"utf8")).installed; if(!l.some(p=>p.pluginId==="postman@postman")){console.error(l);process.exit(1)}'
+
+      - name: Remove, and each CLI no longer lists it
+        run: |
+          node dist/cli.js remove --yes --agent claude-code --agent codex
+          claude plugin list --json | node -e 'const l=JSON.parse(require("fs").readFileSync(0,"utf8")); if(l.some(p=>p.id.startsWith("postman@"))){console.error(l);process.exit(1)}'
+          codex plugin list --json | node -e 'const l=JSON.parse(require("fs").readFileSync(0,"utf8")).installed; if(l.some(p=>p.pluginId.startsWith("postman@"))){console.error(l);process.exit(1)}'

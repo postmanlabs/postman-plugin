@@ -11,3 +11,6 @@ opencode/dist/
 opencode/node_modules/
 opencode/evals/results/
 
+installer/dist/
+installer/node_modules/
+
