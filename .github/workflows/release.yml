@@ -22,6 +22,11 @@ on:
 permissions:
   contents: read
 
+# One release at a time, so an older run finishing late can't be the last to set a dist-tag.
+concurrency:
+  group: npm-release
+  cancel-in-progress: false
+
 jobs:
   publish:
     runs-on: ubuntu-latest
@@ -63,12 +68,16 @@ jobs:
             exit 1
           fi
 
-          # 1.2.3 -> latest, 1.2.3-rc.0 -> next, 1.2.3-beta.1 -> beta. A numeric one goes to next:
-          # npm rejects a dist-tag that parses as a version range, which `1` does.
+          # An allowlist, not the prerelease itself: `1.2.3-latest.1` would promote a prerelease,
+          # and npm rejects a dist-tag that parses as a version range (`v1`, `x`, `1`).
           case "$PRERELEASE" in
             '') DIST_TAG=latest ;;
-            rc | [0-9]*) DIST_TAG=next ;;
-            *) DIST_TAG="$PRERELEASE" ;;
+            rc | next | [0-9]*) DIST_TAG=next ;;
+            alpha | beta | canary) DIST_TAG="$PRERELEASE" ;;
+            *)
+              echo "::error::prerelease '$PRERELEASE' has no dist-tag; use rc, alpha, beta or canary"
+              exit 1
+              ;;
           esac
 
           {
@@ -144,10 +153,24 @@ jobs:
       - name: Publish with npm trusted publishing
         working-directory: ${{ steps.meta.outputs.package_path }}
         env:
+          NAME: ${{ steps.meta.outputs.name }}
+          VERSION: ${{ steps.meta.outputs.version }}
           DIST_TAG: ${{ steps.meta.outputs.dist_tag }}
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
         run: |
           set -euo pipefail
+          # npm versions are immutable: a retry after a failed release page must not fail here.
+          if [ -n "$(npm view "$NAME@$VERSION" version 2>/dev/null || true)" ]; then
+            echo "$NAME@$VERSION is already on npm; nothing to publish"
+            exit 0
+          fi
+
+          CURRENT=$(npm view "$NAME@$DIST_TAG" version 2>/dev/null || true)
+          if [ -n "$CURRENT" ] && ! npx -y semver@7.8.5 --include-prerelease --range ">$CURRENT" "$VERSION" >/dev/null; then
+            echo "::error::$NAME@$VERSION would move the '$DIST_TAG' dist-tag back from $CURRENT"
+            exit 1
+          fi
+
           if [ "$DRY_RUN" = "true" ]; then
             npm publish --provenance --tag "$DIST_TAG" --dry-run
           else

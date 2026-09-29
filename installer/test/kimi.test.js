@@ -45,6 +45,17 @@ test('reports a re-install as an update', async () => {
     assert.match((await kimi.install(fakeSystem({ bins: ['npx'] }))).message, /^installed postman/);
 });
 
+test('installs even when the plugin store cannot be read', async () => {
+    const system = fakeSystem({
+            bins: ['npx'],
+            files: { [path.join(defaultHome, 'plugins', 'installed.json')]: new Error('EACCES: permission denied') }
+        }),
+        outcome = await kimi.install(system);
+
+    assert.equal(outcome.outcome, 'done');
+    assert.deepEqual(system.commands, [INSTALL]);
+});
+
 test('blocks without npx', async () => {
     assert.equal((await kimi.install(fakeSystem())).outcome, 'blocked');
 });

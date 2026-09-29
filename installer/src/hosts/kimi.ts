@@ -64,7 +64,8 @@ export const kimi: Host = {
                 blocked('npx is not on PATH');
             }
 
-            const { installed } = await kimi.status(system);
+            // Only picks the verb: an unreadable store must not stop the install that could repair it.
+            const installed = await kimi.status(system).then((status) => status.installed, () => null);
 
             // An explicit --package outranks the npm_config_package an outer `npx -p` exports to us.
             await mustRun(system, 'npx', ['-y', `--package=${PLUGINS_CLI}`, 'plugins', 'add', REPO, '--target', 'kimi', '--yes'], {

@@ -210,8 +210,12 @@ To release it:
    on that commit. `release.yml` checks that the tag matches `package.json`,
    runs the tests, and publishes with npm trusted publishing and provenance: a
    release candidate goes to the `next` dist-tag (`npx @postman/postman-plugin@next`),
-   and a plain version goes to `latest` and must be tagged on `main`.
-3. To retry a tag, or rehearse one without publishing, run the workflow by hand:
+   `-alpha.N`, `-beta.N` and `-canary.N` go to a dist-tag of that name, and a plain
+   version goes to `latest` and must be tagged on `main`. Any other prerelease, and
+   any version older than the one its dist-tag already points at, is refused.
+3. To retry a tag, or rehearse one without publishing, run the workflow by hand.
+   A version already on npm is not published again, so a retry still creates a
+   release page that failed the first time:
    `gh workflow run release.yml -f tag=<tag> -f dry_run=true`.
 
 Keep the workflow's filename: npm's trusted publisher for the package is
