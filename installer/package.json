@@ -1,6 +1,6 @@
 {
   "name": "@postman/postman-plugin",
-  "version": "0.1.1-rc.0",
+  "version": "0.1.0-rc.0",
   "description": "Installs the Postman plugin into every supported coding agent on this machine.",
   "type": "module",
   "license": "Apache-2.0",
