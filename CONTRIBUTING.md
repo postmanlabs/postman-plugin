@@ -216,7 +216,9 @@ To release it:
 
 Keep the workflow's filename: npm's trusted publisher for the package is
 pinned to `release.yml`. Hold the first `latest` release until Anthropic's
-`postman` catalog entry points at this repository.
+`postman` catalog entry points at this repository. Until then `latest` is a
+`0.0.0` placeholder with no command, which is why README.md installs with
+`@next`; drop that suffix in the same PR as the first `latest` release.
 
 ## Changing a skill
 
