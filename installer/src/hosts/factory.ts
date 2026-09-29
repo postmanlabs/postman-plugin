@@ -1,32 +1,12 @@
 import { GIT_URL, REPO, isSameRepo, redact } from '../source.js';
-import { type ExecResult, type System, formatCommand } from '../system.js';
-import { blocked, failed, guard, mustRun } from './shared.js';
+import type { System } from '../system.js';
+import { blocked, guard, mustProbeText, mustRun } from './shared.js';
 import { type Host, result } from './types.js';
 
 const MARKETPLACE = 'postman-plugin',
     PLUGIN_ID = `postman@${MARKETPLACE}`,
     SCOPE = 'user',
     NEXT = 'Restart Factory.ai for the change to take effect.';
-
-function lastLines (text: string, count = 5): string {
-    return text.trim().split('\n').slice(-count).join('\n');
-}
-
-function describeFailure (command: string, args: string[], exec: ExecResult): string {
-    const output = lastLines(exec.stderr) || lastLines(exec.stdout);
-
-    return `\`${formatCommand(command, args)}\` exited ${exec.code}${output ? `\n${output}` : ''}`;
-}
-
-async function mustProbeText (system: System, command: string, args: string[]): Promise<string> {
-    const exec = await system.probe(command, args);
-
-    if (exec.code !== 0) {
-        failed(describeFailure(command, args, exec));
-    }
-
-    return exec.stdout;
-}
 
 function hasInstalledPlugin (text: string): boolean {
     return text.split('\n').some((line) => new RegExp(`^${PLUGIN_ID}\\s+\\[${SCOPE}\\]`).test(line.trimStart()));

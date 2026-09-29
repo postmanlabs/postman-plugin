@@ -6,23 +6,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "set +u; for root in \"${CLAUDE_PLUGIN_ROOT}\" \"${CURSOR_PLUGIN_ROOT}\" \"${KIMI_PLUGIN_ROOT}\" \"${DROID_PLUGIN_ROOT}\" \"${PLUGIN_ROOT}\" .; do file=\"$root/hooks/session-start-context.md\"; [ -r \"$file\" ] && { cat \"$file\"; exit 0; }; done; echo \"postman-plugin: no plugin root resolved for hooks/session-start-context.md\" >&2; exit 1",
+            "command": "cat \"${CLAUDE_PLUGIN_ROOT}/hooks/session-start-context.md\"",
             "shell": "bash",
             "async": false
           }
         ]
       }
     ]
-  },
-  "SessionStart": [
-    {
-      "matcher": "startup|clear|compact",
-      "hooks": [
-        {
-          "type": "command",
-          "command": "set +u; for root in \"${CLAUDE_PLUGIN_ROOT}\" \"${CURSOR_PLUGIN_ROOT}\" \"${KIMI_PLUGIN_ROOT}\" \"${DROID_PLUGIN_ROOT}\" \"${PLUGIN_ROOT}\" .; do file=\"$root/hooks/session-start-context.md\"; [ -r \"$file\" ] && { cat \"$file\"; exit 0; }; done; echo \"postman-plugin: no plugin root resolved for hooks/session-start-context.md\" >&2; exit 1"
-        }
-      ]
-    }
-  ]
+  }
 }

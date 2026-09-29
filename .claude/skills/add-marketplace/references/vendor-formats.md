@@ -26,12 +26,11 @@ config is not pointed to from `plugin.json`: Droid discovers `mcp.json` by that
 exact root filename inside the installed plugin. Its marketplace lives at
 `.factory-plugin/marketplace.json`, installs this repository root with
 `"source": "./"`, and therefore reads the same root `skills/` directory as the
-other routes. Factory hook files are keyed directly by event name rather than
-wrapped in a top-level `hooks` key, so `hooks/hooks.json` carries both shapes
-with the same command. The route uses `headers`, `/mcp`, a `version` in
-`.factory-plugin/plugin.json`, and `DROID_PLUGIN_ROOT` in shared hooks. The
-published docs describe the JSON fields in prose, but Factory does not publish a
-standalone JSON Schema for CI to fetch.
+other routes. Droid reads the shared `hooks/hooks.json` as it is: plugin hook
+files use Claude Code's `hooks` wrapper, and Droid sets `CLAUDE_PLUGIN_ROOT` as an
+alias of `DROID_PLUGIN_ROOT`. The route uses `headers`, `/mcp` and a `version`
+in `.factory-plugin/plugin.json`. The published docs describe the JSON fields in
+prose, but Factory does not publish a standalone JSON Schema for CI to fetch.
 
 ## Per-route notes worth knowing before you add another
 

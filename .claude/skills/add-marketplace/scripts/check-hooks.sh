@@ -19,22 +19,11 @@ set -uo pipefail
 repo=$PWD
 [ -r "$repo/hooks/hooks.json" ] || { echo "run me from the repo root" >&2; exit 2; }
 
-cmd=$(node <<'NODE'
-const config = JSON.parse(require("fs").readFileSync("hooks/hooks.json", "utf8"));
-const wrapped = config.hooks.SessionStart[0].hooks[0].command;
-const native = config.SessionStart?.[0]?.hooks?.[0]?.command;
-
-if (native && native !== wrapped) {
-  throw new Error("wrapped and native SessionStart hook commands differ");
-}
-
-process.stdout.write(wrapped);
-NODE
-)
+cmd=$(node -p 'JSON.parse(require("fs").readFileSync("hooks/hooks.json","utf8")).hooks.SessionStart[0].hooks[0].command')
 status=0
 
 # Every root variable the chain knows about, so each check starts from nothing.
-clear_env=(env -u CLAUDE_PLUGIN_ROOT -u CURSOR_PLUGIN_ROOT -u KIMI_PLUGIN_ROOT -u DROID_PLUGIN_ROOT -u PLUGIN_ROOT)
+clear_env=(env -u CLAUDE_PLUGIN_ROOT -u CURSOR_PLUGIN_ROOT -u KIMI_PLUGIN_ROOT -u PLUGIN_ROOT)
 
 check_resolves() {
   local var=$1 out rc

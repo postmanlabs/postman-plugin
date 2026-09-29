@@ -92,7 +92,7 @@ Discovery is the other half, and it is not uniform either:
 | Claude Code | `hooks/hooks.json` by default; a manifest `hooks` key can point elsewhere |
 | Cursor | manifest `hooks` (path string or inline object); falls back to `hooks/hooks.json` |
 | Codex | manifest `hooks`, resolved relative to the plugin root and required to stay inside it; otherwise `hooks/hooks.json` — its `DEFAULT_HOOKS_CONFIG_FILE` is that exact path, so the shared file is found with no `hooks` key in the manifest at all |
-| Factory.ai | `hooks/hooks.json` at the plugin root, keyed directly by event name; this repo's file also keeps the Claude/Codex `hooks` wrapper |
+| Factory.ai | `hooks/hooks.json` at the plugin root, in the same `hooks`-wrapped shape as Claude Code. Droid also sets `CLAUDE_PLUGIN_ROOT`, so the shared command needs no Factory token. A top-level event key is the shape of a user's `.factory/hooks.json`, not a plugin's |
 | Copilot / VS Code | layout-dependent — `hooks/hooks.json` for the Claude layout, `com.github.copilot/hooks/hooks.json` for Agent Plugins 1.0, `hooks.json` at the root for the Copilot layout |
 | Kimi Code | **nowhere.** Hooks are an inline `hooks` array in the manifest, entries shaped `event` / `matcher` / `command` / `timeout`, and Kimi documents no default file to discover |
 | OpenCode | **no `hooks.json`.** Nothing session-shaped in its config schema; the local plugin pushes the mandate into the system prompt from its own hooks — see item 1 below |
