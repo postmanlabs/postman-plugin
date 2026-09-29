@@ -8,7 +8,11 @@ const home = '/home/user',
     local = path.join(home, '.cursor', 'plugins', 'local', 'postman'),
     marketplaceCopy = path.join(home, '.cursor', 'plugins', 'cache', 'cursor-public', 'postman'),
     GIT_URL = 'https://github.com/postmanlabs/postman-plugin.git',
-    origin = (url) => ({ [`git -C ${local} remote get-url origin`]: `${url}\n` });
+    origin = (url) => ({
+        [`git -C ${local} remote get-url origin`]: `${url}\n`,
+        [`git -C ${local} symbolic-ref --short HEAD`]: 'main\n',
+        [`git -C ${local} status --porcelain`]: ''
+    });
 
 test('detects Cursor by CLI, by app bundle on macOS, or by its config directory', async () => {
     assert.equal(await cursor.detect(fakeSystem({ bins: ['cursor'] })), true);
@@ -22,20 +26,22 @@ test('fresh install clones this repo as a local plugin', async () => {
         outcome = await cursor.install(system);
 
     assert.equal(outcome.outcome, 'done');
-    assert.deepEqual(system.commands, [`git clone --depth 1 ${GIT_URL} ${local}`]);
+    assert.deepEqual(system.commands, [`git clone --depth 1 --branch main ${GIT_URL} ${local}`]);
 });
 
 test('re-run fast-forwards an existing clone of this repo', async () => {
     const system = fakeSystem({ bins: ['git'], dirs: [path.join(local, '.git')], probes: origin(GIT_URL) });
 
     assert.equal((await cursor.install(system)).message, `updated ${local}`);
-    assert.deepEqual(system.commands, [`git -C ${local} pull --ff-only`]);
+    assert.deepEqual(system.commands, [`git -C ${local} pull --ff-only origin main`]);
 });
 
-test('skips when the Cursor Marketplace copy is installed, so skills do not load twice', async () => {
-    const system = fakeSystem({ bins: ['git'], dirs: [marketplaceCopy] });
+test('skips when the Cursor Marketplace copy is present, and says how to check it is enabled', async () => {
+    const system = fakeSystem({ bins: ['git'], dirs: [marketplaceCopy] }),
+        outcome = await cursor.install(system);
 
-    assert.equal((await cursor.install(system)).outcome, 'skipped');
+    assert.equal(outcome.outcome, 'skipped');
+    assert.match(outcome.next, /enable it in Cursor Settings > Plugins/);
     assert.deepEqual(system.commands, []);
 });
 
@@ -46,6 +52,25 @@ test('refuses a directory at the clone path that is not our clone', async () => 
     assert.equal((await cursor.install(notGit)).outcome, 'blocked');
     assert.match((await cursor.install(otherRepo)).message, /someone\/fork/);
     assert.deepEqual([...notGit.commands, ...otherRepo.commands], []);
+});
+
+test('a refusal names the other remote without the token in its URL', async () => {
+    const system = fakeSystem({
+            bins: ['git'], dirs: [path.join(local, '.git')], probes: origin('https://x-access-token:ghp_secret@github.com/someone/fork.git')
+        }),
+        { message } = await cursor.install(system);
+
+    assert.match(message, /https:\/\/github\.com\/someone\/fork\.git/);
+    assert.doesNotMatch(message, /ghp_secret|x-access-token/);
+});
+
+test('install keeps and updates our clone next to a Marketplace copy that may be disabled', async () => {
+    const system = fakeSystem({ bins: ['git'], dirs: [path.join(local, '.git'), marketplaceCopy], probes: origin(GIT_URL) }),
+        outcome = await cursor.install(system);
+
+    assert.equal(outcome.outcome, 'done');
+    assert.match(outcome.next, /if it's enabled, Postman loads twice/);
+    assert.deepEqual(system.commands, [`git -C ${local} pull --ff-only origin main`]);
 });
 
 test('blocks without git', async () => {
@@ -67,4 +92,13 @@ test('remove hands a Marketplace install back to Cursor', async () => {
 
     assert.equal((await cursor.remove(system)).outcome, 'manual');
     assert.deepEqual(system.commands, []);
+});
+
+test('remove with both copies deletes the clone and still reports the Marketplace copy', async () => {
+    const system = fakeSystem({ bins: ['git'], dirs: [path.join(local, '.git'), marketplaceCopy], probes: origin(GIT_URL) }),
+        outcome = await cursor.remove(system);
+
+    assert.equal(outcome.outcome, 'manual');
+    assert.match(outcome.message, /Marketplace copy is still installed/);
+    assert.deepEqual(system.commands, [`remove ${local}`]);
 });

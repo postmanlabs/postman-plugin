@@ -18,6 +18,7 @@ export interface System {
     readonly dryRun: boolean;
     which (command: string): Promise<string | null>;
     exists (file: string): Promise<boolean>;
+    /** `null` only when the file does not exist; any other read error is thrown, not read as "absent". */
     readFile (file: string): Promise<string | null>;
     probe (command: string, args: string[]): Promise<ExecResult>;
     run (command: string, args: string[], options?: ExecOptions): Promise<ExecResult>;
@@ -25,6 +26,10 @@ export interface System {
     remove (file: string): Promise<void>;
     log (line: string): void;
 }
+
+// A missing file, or a path through something that isn't a directory. Anything else,
+// such as a file that exists but can't be read, must not pass for "absent".
+const ABSENT = ['ENOENT', 'ENOTDIR'];
 
 // npm installs agent CLIs on Windows as `.cmd` shims, which only cmd.exe can start.
 function needsShell (file: string): boolean {
@@ -44,6 +49,9 @@ function execute (file: string, args: string[], env: NodeJS.ProcessEnv): Promise
         let stdout = '',
             stderr = '';
 
+        // Decodes across chunks, so a multi-byte character split between two isn't mangled.
+        child.stdout.setEncoding('utf8');
+        child.stderr.setEncoding('utf8');
         child.stdout.on('data', (chunk) => { stdout += chunk; });
         child.stderr.on('data', (chunk) => { stderr += chunk; });
         child.on('error', (error) => resolve({ code: 127, stdout, stderr: stderr + error.message }));
@@ -106,8 +114,12 @@ export function createSystem ({ dryRun = false, log = (line: string) => console.
             try {
                 return await fs.readFile(file, 'utf8');
             }
-            catch {
-                return null;
+            catch (error) {
+                if (ABSENT.includes((error as NodeJS.ErrnoException).code ?? '')) {
+                    return null;
+                }
+
+                throw error;
             }
         },
         async probe (command, args) {

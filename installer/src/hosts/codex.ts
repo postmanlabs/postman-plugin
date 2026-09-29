@@ -1,4 +1,4 @@
-import { REPO, isSameRepo } from '../source.js';
+import { REPO, isSameRepo, redact } from '../source.js';
 import type { System } from '../system.js';
 import { blocked, guard, mustProbeJson, mustRun, parseJson } from './shared.js';
 import { type Host, result } from './types.js';
@@ -31,10 +31,13 @@ async function refreshMarketplace (system: System): Promise<void> {
         return;
     }
 
-    const source = existing.marketplaceSource?.source;
+    // A local marketplace can carry any path text, so only a git source counts as this repo.
+    const { sourceType, source } = existing.marketplaceSource ?? {};
 
-    if (!isSameRepo(source, REPO)) {
-        blocked(`marketplace ${MARKETPLACE} is registered from ${source ?? 'an unknown source'}, not ${REPO}`);
+    if (sourceType !== 'git' || !isSameRepo(source, REPO)) {
+        const from = source ? `${sourceType ?? 'unknown'} source ${redact(source)}` : 'an unknown source';
+
+        blocked(`marketplace ${MARKETPLACE} is registered from ${from}, not ${REPO}`);
     }
 
     await mustRun(system, 'codex', ['plugin', 'marketplace', 'upgrade', MARKETPLACE, '--json']);
@@ -82,9 +85,10 @@ export const codex: Host = {
             const plugins = await listPlugins(system),
                 wasInstalled = isInstalled(plugins, PLUGIN_ID);
 
-            await removeInstalled(system, plugins, SHADOW_IDS);
-            // `add` is idempotent and is also how Codex updates an installed plugin.
+            // `add` is idempotent and is also how Codex updates an installed plugin. It runs
+            // before the duplicate is removed, so a failed add still leaves a working copy.
             await mustRun(system, 'codex', ['plugin', 'add', PLUGIN_ID, '--json']);
+            await removeInstalled(system, plugins, SHADOW_IDS);
 
             return result('done', `${wasInstalled ? 'updated' : 'installed'} ${PLUGIN_ID}`, NEXT);
         });

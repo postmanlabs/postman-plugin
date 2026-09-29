@@ -1,3 +1,4 @@
+import { redact } from '../source.js';
 import type { System } from '../system.js';
 import { blocked, guard, mustProbeJson, mustRun, parseJson } from './shared.js';
 import { type Host, result } from './types.js';
@@ -41,7 +42,9 @@ async function refreshMarketplace (system: System): Promise<void> {
     }
 
     if (existing.repo !== MARKETPLACE.repo) {
-        blocked(`marketplace ${MARKETPLACE.name} is registered from ${existing.repo ?? existing.url ?? existing.path ?? 'an unknown source'}, not ${MARKETPLACE.repo}`);
+        const source = existing.repo ?? existing.url ?? existing.path;
+
+        blocked(`marketplace ${MARKETPLACE.name} is registered from ${source ? redact(source) : 'an unknown source'}, not ${MARKETPLACE.repo}`);
     }
 
     await mustRun(system, 'claude', ['plugin', 'marketplace', 'update', MARKETPLACE.name]);
@@ -91,9 +94,9 @@ export const claudeCode: Host = {
             const plugins = await listPlugins(system),
                 verb = plugins.some((plugin) => plugin.id === PLUGIN_ID && plugin.scope === SCOPE) ? 'update' : 'install';
 
-            await uninstallAtUserScope(system, plugins, SHADOW_IDS);
-
+            // Replacement first: if it fails, the duplicate is still a working copy.
             await mustRun(system, 'claude', ['plugin', verb, PLUGIN_ID, '--scope', SCOPE, '--json']);
+            await uninstallAtUserScope(system, plugins, SHADOW_IDS);
 
             return result('done', `${verb === 'update' ? 'updated' : 'installed'} ${PLUGIN_ID}`, NEXT);
         });

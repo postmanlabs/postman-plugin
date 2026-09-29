@@ -240,9 +240,10 @@ nothing, and says nothing.
      config files yourself.
    - With no CLI, clone this repo where the vendor loads local plugins
      (`syncClone` in `hosts/shared.ts`), as Cursor and OpenCode do.
-   - Before installing, remove any copy that would load the same skills twice,
-     as Claude Code and Codex do. Return `manual` for a step only the user can
-     take.
+   - Install or update first, and only then remove any copy that would load
+     the same skills twice, as Claude Code and Codex do: if the install fails,
+     the user keeps a working copy. Return `manual` for a step only the user
+     can take.
 2. Register it in `installer/src/hosts/index.ts` and add its id to `HostId` in
    `installer/src/hosts/types.ts`.
 3. Add `installer/test/<vendor>.test.js` pinning the exact command sequence for

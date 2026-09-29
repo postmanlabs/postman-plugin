@@ -30,7 +30,13 @@ function fakeHost (id, { detected = true, installed = false, install, remove } =
         async remove () {
             host.calls.push('remove');
 
-            return remove ? remove(host) : { outcome: 'done', message: 'removed' };
+            if (remove) {
+                return remove(host);
+            }
+
+            host.installed = false;
+
+            return { outcome: 'done', message: 'removed' };
         }
     };
 
@@ -95,6 +101,14 @@ test('a host that reports done but still is not installed counts as failed', asy
     assert.equal(await run(fakeSystem(), [liar], options()), 1);
 });
 
+test('an install whose status cannot be read afterwards is not counted as done', async () => {
+    const unreadable = fakeHost('unreadable', { install: (host) => { host.installed = null; return { outcome: 'done', message: 'installed' }; } }),
+        system = fakeSystem();
+
+    assert.equal(await run(system, [unreadable], options()), 1);
+    assert.ok(system.lines.some((line) => line.includes('could not be confirmed')));
+});
+
 test('one host failing or throwing does not stop the others', async () => {
     const thrower = fakeHost('thrower', { install: () => { throw new Error('boom'); } }),
         after = fakeHost('after'),
@@ -105,20 +119,54 @@ test('one host failing or throwing does not stop the others', async () => {
     assert.ok(system.lines.some((line) => line.includes('failed') && line.includes('boom')));
 });
 
-test('skipped and manual outcomes do not fail the run', async () => {
-    const skipped = fakeHost('skipped', { install: () => ({ outcome: 'skipped', message: 'already there' }) }),
-        manual = fakeHost('manual', { install: () => ({ outcome: 'manual', message: 'do it yourself' }) });
+test('a remove that reports done but leaves it installed counts as failed', async () => {
+    const noop = fakeHost('noop', { installed: true, remove: () => ({ outcome: 'done', message: 'removed' }) }),
+        system = fakeSystem();
 
-    assert.equal(await run(fakeSystem(), [skipped, manual], options()), 0);
+    assert.equal(await run(system, [noop], options({ command: 'remove' })), 1);
+    assert.ok(system.lines.some((line) => line.includes('still reports it as installed')));
 });
 
-test('remove only touches hosts that have it installed', async () => {
-    const installed = fakeHost('installed', { installed: true }),
-        absent = fakeHost('absent');
+test('a remove whose status cannot be read afterwards is not counted as done', async () => {
+    const unreadable = fakeHost('unreadable', {
+        installed: true, remove: (host) => { host.installed = null; return { outcome: 'done', message: 'removed' }; }
+    });
 
-    assert.equal(await run(fakeSystem(), [installed, absent], options({ command: 'remove' })), 0);
-    assert.deepEqual(installed.calls, ['remove']);
-    assert.deepEqual(absent.calls, []);
+    assert.equal(await run(fakeSystem(), [unreadable], options({ command: 'remove' })), 1);
+});
+
+test('a skipped host does not fail the run', async () => {
+    const skipped = fakeHost('skipped', { install: () => ({ outcome: 'skipped', message: 'already there' }) });
+
+    assert.equal(await run(fakeSystem(), [skipped], options()), 0);
+});
+
+test('a manual step left for the user fails the run, so a script can tell', async () => {
+    const manual = fakeHost('manual', { installed: true, remove: () => ({ outcome: 'manual', message: 'do it yourself' }) });
+
+    assert.equal(await run(fakeSystem(), [manual], options({ command: 'remove' })), 1);
+});
+
+test('remove reaches every detected host, even one whose status says not installed', async () => {
+    const installed = fakeHost('installed', { installed: true }),
+        duplicateOnly = fakeHost('duplicate-only', { remove: () => ({ outcome: 'done', message: 'removed a duplicate' }) }),
+        absent = fakeHost('absent', { remove: () => ({ outcome: 'skipped', message: 'not installed' }) }),
+        missing = fakeHost('missing', { detected: false });
+
+    assert.equal(await run(fakeSystem(), [installed, duplicateOnly, absent, missing], options({ command: 'remove' })), 0);
+    assert.deepEqual([installed.calls, duplicateOnly.calls, absent.calls, missing.calls], [['remove'], ['remove'], ['remove'], []]);
+});
+
+test('a host whose status throws is reported unknown, and the run goes on', async () => {
+    const broken = fakeHost('broken'),
+        after = fakeHost('after'),
+        system = fakeSystem();
+
+    broken.status = async () => { throw new Error('EACCES: permission denied'); };
+
+    assert.equal(await run(system, [broken, after], options({ command: 'status' })), 0);
+    assert.ok(system.lines.some((line) => line.includes('broken') && line.includes('unknown') && line.includes('EACCES')));
+    assert.ok(system.lines.some((line) => line.includes('after')));
 });
 
 test('status changes nothing', async () => {

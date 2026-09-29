@@ -1,6 +1,8 @@
 /** Where every host's copy of the plugin comes from. The npm package carries no skills. */
 export const REPO = 'postmanlabs/postman-plugin';
 export const GIT_URL = `https://github.com/${REPO}.git`;
+/** The branch every clone this installer makes tracks. */
+export const BRANCH = 'main';
 
 /** Must stay byte-identical to the shim in opencode/README.md; test/routes.test.js enforces it. */
 export const OPENCODE_SHIM = "export { default } from '../postman-plugin/opencode/src/index.ts';\n";
@@ -8,15 +10,24 @@ export const OPENCODE_SHIM = "export { default } from '../postman-plugin/opencod
 /** Pinned: this third-party CLI writes Kimi's plugin store for us, and an unpinned npx would run whatever is latest. */
 export const PLUGINS_CLI = 'plugins@1.3.4';
 
+// A git transport (not `file://`, which names a local path), optional user-info, then
+// GitHub's host and its `/`, or the scp-style `git@github.com:` form with no scheme.
+const GITHUB_PREFIX = /^(?:(?:https?|ssh|git|git\+ssh|ssh\+git|git\+https):\/\/)?(?:[^@/]+@)?github\.com[:/]/,
+    URL_USER_INFO = /^([a-z][a-z+.-]*:\/\/)[^@/]+@/i;
+
 function normalize (source: string): string {
     return source.trim().toLowerCase()
-        .replace(/^git@github\.com:/, 'https://github.com/')
-        .replace(/^https?:\/\/github\.com\//, '')
-        .replace(/\.git$/, '')
-        .replace(/\/+$/, '');
+        .replace(GITHUB_PREFIX, '')
+        .replace(/\/+$/, '')
+        .replace(/\.git$/, '');
 }
 
-/** True for `owner/repo`, its HTTPS or SSH git URL, with or without `.git`. */
+/** True for `owner/repo`, or any HTTPS, SSH or git URL of it, with or without `.git`. */
 export function isSameRepo (source: string | undefined, repo: string): boolean {
     return typeof source === 'string' && normalize(source) === repo.toLowerCase();
+}
+
+/** Strips a URL's user-info, where a token would be, so a source can be printed. */
+export function redact (source: string): string {
+    return source.replace(URL_USER_INFO, '$1');
 }

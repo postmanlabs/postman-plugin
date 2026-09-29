@@ -15,7 +15,7 @@ export interface Host {
     route: string;
     detect (system: System): Promise<boolean>;
     status (system: System): Promise<Status>;
-    /** Installs, or updates when already installed; removes shadowing copies first. */
+    /** Installs, or updates when already installed, and only then removes any copy that would load the same skills twice. */
     install (system: System): Promise<Result>;
     remove (system: System): Promise<Result>;
 }

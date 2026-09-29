@@ -74,6 +74,15 @@ test('rejects unknown commands, flags and agents with exit 2', () => {
     assert.match(unknown.stderr, /Unknown agent: vscode/);
 });
 
+test('an --agent that names no agent is rejected, not read as "every agent"', () => {
+    for (const args of [['remove', '--agent', ''], ['remove', '--agent', ','], ['remove', '--agent=', '--yes']]) {
+        const empty = cliRun(args, process.env);
+
+        assert.equal(empty.status, 2, args.join(' '));
+        assert.match(empty.stderr, /--agent was given no agent id/);
+    }
+});
+
 test('finds nothing on a machine with no agents', posixOnly, () => {
     // Cursor is left out: on macOS it is also detected by /Applications/Cursor.app, outside the sandbox.
     const box = sandbox(),

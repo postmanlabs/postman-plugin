@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { GIT_URL, REPO, isSameRepo } from '../source.js';
+import { BRANCH, GIT_URL, REPO, isSameRepo, redact } from '../source.js';
 import { type ExecOptions, type ExecResult, type System, formatCommand } from '../system.js';
 import { type Result, result } from './types.js';
 
@@ -25,7 +25,7 @@ function lastLines (text: string, count = 5): string {
 function describeFailure (command: string, args: string[], exec: ExecResult): string {
     const output = lastLines(exec.stderr) || lastLines(exec.stdout);
 
-    return `\`${formatCommand(command, args)}\` exited ${exec.code}${output ? `:\n${output}` : ''}`;
+    return `\`${formatCommand(command, args)}\` exited ${exec.code}${output ? `\n${output}` : ''}`;
 }
 
 /** Runs a state-changing command and throws `StepFailed` if it exits non-zero. */
@@ -70,7 +70,17 @@ async function assertOurClone (system: System, dir: string): Promise<void> {
     const origin = await cloneOrigin(system, dir);
 
     if (!isSameRepo(origin ?? undefined, REPO)) {
-        blocked(`${dir} is a clone of ${origin ?? 'an unknown remote'}, not ${REPO}; move it aside and re-run`);
+        blocked(`${dir} is a clone of ${origin ? redact(origin) : 'an unknown remote'}, not ${REPO}; move it aside and re-run`);
+    }
+}
+
+/** A clone someone switched to another branch is theirs to switch back, not ours. */
+async function assertOnBranch (system: System, dir: string): Promise<void> {
+    const exec = await system.probe('git', ['-C', dir, 'symbolic-ref', '--short', 'HEAD']),
+        branch = exec.code === 0 ? exec.stdout.trim() : null;
+
+    if (branch !== BRANCH) {
+        blocked(`${dir} is on ${branch ? `branch ${branch}` : 'a detached HEAD'}, not ${BRANCH}; run \`git -C ${dir} switch ${BRANCH}\` and re-run`);
     }
 }
 
@@ -86,12 +96,13 @@ export async function syncClone (system: System, dir: string): Promise<'cloned' 
 
     if (await system.exists(dir)) {
         await assertOurClone(system, dir);
-        await mustRun(system, 'git', ['-C', dir, 'pull', '--ff-only']);
+        await assertOnBranch(system, dir);
+        await mustRun(system, 'git', ['-C', dir, 'pull', '--ff-only', 'origin', BRANCH]);
 
         return 'updated';
     }
 
-    await mustRun(system, 'git', ['clone', '--depth', '1', GIT_URL, dir]);
+    await mustRun(system, 'git', ['clone', '--depth', '1', '--branch', BRANCH, GIT_URL, dir]);
 
     return 'cloned';
 }
@@ -103,6 +114,14 @@ export async function removeClone (system: System, dir: string): Promise<void> {
 
     await assertGit(system);
     await assertOurClone(system, dir);
+    await assertOnBranch(system, dir);
+
+    const changes = await system.probe('git', ['-C', dir, 'status', '--porcelain']);
+
+    if (changes.code !== 0 || changes.stdout.trim()) {
+        blocked(`${dir} has local changes; commit or discard them, or delete it yourself`);
+    }
+
     await system.remove(dir);
 }
 

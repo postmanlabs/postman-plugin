@@ -175,9 +175,9 @@ wherever one exists:
 
 | Agent | What it runs |
 | --- | --- |
-| Claude Code | `claude plugin` against Anthropic's `claude-plugins-official` catalog, after uninstalling a user-scope `postman@postman` so skills don't load twice |
+| Claude Code | `claude plugin` against Anthropic's `claude-plugins-official` catalog, then uninstalls a user-scope `postman@postman` so skills don't load twice; a failed install leaves that copy in place |
 | Codex | `codex plugin` against this repo as the `postman` marketplace |
-| Cursor | a clone at `~/.cursor/plugins/local/postman`; skipped when the Cursor Marketplace copy is installed |
+| Cursor | a clone at `~/.cursor/plugins/local/postman`. A fresh install is skipped when the Cursor Marketplace copy is present, but an existing clone is kept and updated: Cursor keeps a disabled Marketplace copy on disk too, so the installer can't tell whether that copy is enabled |
 | Kimi Code | `npx plugins@1.3.4 add postmanlabs/postman-plugin --target kimi`, because Kimi installs plugins only from its TUI |
 | OpenCode | the clone and one-line file [opencode/README.md](opencode/README.md) documents |
 

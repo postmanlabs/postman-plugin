@@ -91,6 +91,11 @@ async function main (argv: string[]): Promise<number> {
         return fail(`Unknown command: ${positionals.join(' ')}`);
     }
 
+    // An empty selection would mean "every agent", the opposite of what `--agent` asked for.
+    if (values.agent && !agents.length) {
+        return fail('--agent was given no agent id');
+    }
+
     if (unknown.length) {
         return fail(`Unknown agent: ${unknown.join(', ')}`);
     }

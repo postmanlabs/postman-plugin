@@ -1,4 +1,4 @@
-import type { Host, HostId, Result, Status } from './hosts/types.js';
+import type { Host, HostId, Outcome, Result, Status } from './hosts/types.js';
 import type { System } from './system.js';
 
 export type Command = 'install' | 'status' | 'remove';
@@ -16,6 +16,9 @@ type Target = { host: Host; status: Status };
 type Report = { host: Host; result: Result };
 
 export const EXIT = { ok: 0, failed: 1, usage: 2 } as const;
+
+// `manual` counts: the command did not finish, and a script needs to know the user has a step left.
+const INCOMPLETE: Outcome[] = ['failed', 'blocked', 'manual'];
 
 function padEnd (text: string, width: number): string {
     return text + ' '.repeat(Math.max(1, width - text.length));
@@ -40,10 +43,19 @@ function printStatuses (system: System, targets: Target[], width: number): void 
 }
 
 function printResult (system: System, { result }: Report): void {
-    system.log(`  ${result.outcome}: ${result.message}`);
+    system.log(`  ${result.outcome}: ${result.message.replaceAll('\n', '\n    ')}`);
 
     if (result.next) {
         system.log(`  next: ${result.next}`);
+    }
+}
+
+async function readStatus (system: System, host: Host): Promise<Status> {
+    try {
+        return await host.status(system);
+    }
+    catch (error) {
+        return { installed: null, detail: `could not read its state: ${error instanceof Error ? error.message : String(error)}`, notes: [] };
     }
 }
 
@@ -51,12 +63,21 @@ async function execute (system: System, command: 'install' | 'remove', host: Hos
     try {
         const outcome = await host[command](system);
 
-        if (command === 'install' && outcome.outcome === 'done' && !system.dryRun &&
-            (await host.status(system)).installed === false) {
-            return { outcome: 'failed', message: `${outcome.message}, but ${host.name} still reports it as not installed` };
+        if (outcome.outcome !== 'done' || system.dryRun) {
+            return outcome;
         }
 
-        return outcome;
+        // An agent CLI that exits 0 without doing the work is caught here, not reported as done.
+        const after = await readStatus(system, host),
+            expected = command === 'install';
+
+        if (after.installed === null) {
+            return { outcome: 'failed', message: `${outcome.message}, but it could not be confirmed: ${after.detail}` };
+        }
+
+        return after.installed === expected ?
+            outcome :
+            { outcome: 'failed', message: `${outcome.message}, but ${host.name} still reports it as ${expected ? 'not installed' : 'installed'}` };
     }
     catch (error) {
         return { outcome: 'failed', message: error instanceof Error ? error.message : String(error) };
@@ -78,7 +99,7 @@ export async function run (system: System, hosts: readonly Host[], options: RunO
 
     for (const host of requested) {
         if (await host.detect(system)) {
-            targets.push({ host, status: await host.status(system) });
+            targets.push({ host, status: await readStatus(system, host) });
         }
         else if (options.agents.length) {
             reports.push({ host, result: { outcome: 'blocked', message: `${host.name} was not found on this machine` } });
@@ -100,14 +121,9 @@ export async function run (system: System, hosts: readonly Host[], options: RunO
         return EXIT.ok;
     }
 
-    const command = options.command,
-        selected = command === 'remove' ? targets.filter((target) => target.status.installed !== false) : targets;
-
-    if (!selected.length) {
-        system.log('\nNothing to remove.');
-
-        return reports.length ? EXIT.failed : EXIT.ok;
-    }
+    // Every detected adapter gets the command, even one whose status says "not installed":
+    // remove also clears duplicates and half-finished installs that status doesn't count.
+    const command = options.command;
 
     if (!options.yes && !system.dryRun) {
         if (!options.isTTY) {
@@ -118,14 +134,14 @@ export async function run (system: System, hosts: readonly Host[], options: RunO
 
         const verb = command === 'install' ? 'Install or update Postman in' : 'Remove Postman from';
 
-        if (!(await options.confirm(`\n${verb} ${joinNames(selected.map((target) => target.host))}? [Y/n] `))) {
+        if (!(await options.confirm(`\n${verb} ${joinNames(targets.map((target) => target.host))}? [Y/n] `))) {
             system.log('Cancelled.');
 
             return EXIT.failed;
         }
     }
 
-    for (const { host } of selected) {
+    for (const { host } of targets) {
         system.log(`\n${host.name}`);
 
         const report = { host, result: await execute(system, command, host) };
@@ -140,5 +156,5 @@ export async function run (system: System, hosts: readonly Host[], options: RunO
         system.log(`  ${padEnd(host.name, width)}${padEnd(result.outcome, 9)}${result.message.split('\n')[0]}`);
     }
 
-    return reports.some(({ result }) => result.outcome === 'failed' || result.outcome === 'blocked') ? EXIT.failed : EXIT.ok;
+    return reports.some(({ result }) => INCOMPLETE.includes(result.outcome)) ? EXIT.failed : EXIT.ok;
 }

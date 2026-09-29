@@ -45,7 +45,7 @@ test('re-run upgrades the marketplace and re-adds, which is how Codex updates', 
     ]);
 });
 
-test('removes the copy `npx plugins add` leaves before adding ours', async () => {
+test('adds ours, then removes the copy `npx plugins add` leaves', async () => {
     const system = codexSystem({ plugins: [installed('postman@plugins-cli')] }),
         status = await codex.status(system);
 
@@ -54,9 +54,18 @@ test('removes the copy `npx plugins add` leaves before adding ours', async () =>
     assert.deepEqual(status.notes, ['postman@plugins-cli duplicates it and will be removed']);
     assert.deepEqual(system.commands, [
         'codex plugin marketplace upgrade postman --json',
-        'codex plugin remove postman@plugins-cli --json',
-        'codex plugin add postman@postman --json'
+        'codex plugin add postman@postman --json',
+        'codex plugin remove postman@plugins-cli --json'
     ]);
+});
+
+test('a failed add leaves the npx plugins copy in place, so Postman still works', async () => {
+    const system = codexSystem({ plugins: [installed('postman@plugins-cli')] });
+
+    system.runs['codex plugin add postman@postman --json'] = { code: 1, stderr: 'network down' };
+
+    assert.equal((await codex.install(system)).outcome, 'failed');
+    assert.ok(!system.commands.some((command) => command.includes('remove')));
 });
 
 test('accepts the marketplace source in owner/repo form', async () => {
@@ -71,6 +80,15 @@ test('refuses a postman marketplace that points somewhere else', async () => {
 
     assert.equal(outcome.outcome, 'blocked');
     assert.match(outcome.message, /\/src\/postman-plugin/);
+    assert.deepEqual(system.commands, []);
+});
+
+test('refuses a local marketplace even when its path reads like this repo', async () => {
+    const system = codexSystem({ marketplaces: [{ name: 'postman', marketplaceSource: { sourceType: 'local', source: 'postmanlabs/postman-plugin' } }] }),
+        outcome = await codex.install(system);
+
+    assert.equal(outcome.outcome, 'blocked');
+    assert.match(outcome.message, /local source postmanlabs\/postman-plugin/);
     assert.deepEqual(system.commands, []);
 });
 

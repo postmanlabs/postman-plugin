@@ -7,7 +7,11 @@ import { type Host, result } from './types.js';
 // plugins/local. Its Marketplace keeps its own copy under plugins/cache.
 const localClone = (system: System) => path.join(system.home, '.cursor', 'plugins', 'local', 'postman'),
     marketplaceCopy = (system: System) => path.join(system.home, '.cursor', 'plugins', 'cache', 'cursor-public', 'postman'),
-    NEXT = 'Reload the Cursor window (Developer: Reload Window) for the change to take effect.';
+    NEXT = 'Reload the Cursor window (Developer: Reload Window) for the change to take effect.',
+    // Cursor keeps a disabled Marketplace copy on disk and records "enabled" only in its
+    // private state database, so the copy being there doesn't mean Postman is active.
+    CHECK_ENABLED = 'If Postman isn\'t active in Cursor, enable it in Cursor Settings > Plugins.',
+    MAYBE_TWICE = 'The Cursor Marketplace copy is present too; if it\'s enabled, Postman loads twice, so disable one in Cursor Settings > Plugins.';
 
 export const cursor: Host = {
     id: 'cursor',
@@ -23,40 +27,48 @@ export const cursor: Host = {
     async status (system) {
         const fromMarketplace = await system.exists(marketplaceCopy(system)),
             cloned = await system.exists(localClone(system)),
-            notes = fromMarketplace && cloned ? [`the Cursor Marketplace copy and ${localClone(system)} both load it`] : [];
+            notes = fromMarketplace && cloned ? [`the Cursor Marketplace copy is present too; if it's enabled, both load Postman`] : [];
 
         if (cloned) {
             return { installed: true, detail: `local clone at ${localClone(system)}`, notes };
         }
 
         return fromMarketplace ?
-            { installed: true, detail: 'installed from the Cursor Marketplace', notes } :
+            { installed: true, detail: 'Cursor Marketplace copy present (enabled or not is up to Cursor)', notes } :
             { installed: false, detail: 'not installed', notes };
     },
 
     install (system) {
         return guard(async () => {
-            if (!(await system.exists(localClone(system))) && await system.exists(marketplaceCopy(system))) {
-                return result('skipped', 'already installed from the Cursor Marketplace');
+            const fromMarketplace = await system.exists(marketplaceCopy(system));
+
+            if (fromMarketplace && !(await system.exists(localClone(system)))) {
+                return result('skipped', 'the Cursor Marketplace copy is present', CHECK_ENABLED);
             }
 
+            // An existing clone is kept even next to the Marketplace copy, which may be
+            // disabled: a duplicate is visible and fixable, deleting the working copy is not.
             const action = await syncClone(system, localClone(system));
 
-            return result('done', `${action} ${localClone(system)}`, NEXT);
+            return result('done', `${action} ${localClone(system)}`, fromMarketplace ? `${NEXT} ${MAYBE_TWICE}` : NEXT);
         });
     },
 
     remove (system) {
         return guard(async () => {
-            if (await system.exists(localClone(system))) {
-                await removeClone(system, localClone(system));
+            const cloned = await system.exists(localClone(system));
 
-                return result('done', `removed ${localClone(system)}`, NEXT);
+            if (cloned) {
+                await removeClone(system, localClone(system));
             }
 
-            return await system.exists(marketplaceCopy(system)) ?
-                result('manual', 'installed from the Cursor Marketplace', 'Uninstall it in Cursor Settings > Plugins.') :
-                result('skipped', 'not installed');
+            if (await system.exists(marketplaceCopy(system))) {
+                return result('manual', cloned ?
+                    `removed ${localClone(system)}, but the Cursor Marketplace copy is still installed` :
+                    'installed from the Cursor Marketplace', 'Uninstall it in Cursor Settings > Plugins.');
+            }
+
+            return cloned ? result('done', `removed ${localClone(system)}`, NEXT) : result('skipped', 'not installed');
         });
     }
 };

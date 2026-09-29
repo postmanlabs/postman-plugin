@@ -3,7 +3,8 @@ import path from 'node:path';
 /**
  * An in-memory System. `probes` and `runs` map a command line to its result:
  * a string (stdout, exit 0), an `{ code, stdout, stderr }` object, or a
- * function of the fake returning either. `commands` records every change.
+ * function of the fake returning either. A file whose content is an Error
+ * exists but throws that error when read. `commands` records every change.
  */
 export function fakeSystem ({
     home = '/home/user',
@@ -43,6 +44,10 @@ export function fakeSystem ({
         },
 
         async readFile (file) {
+            if (system.files[file] instanceof Error) {
+                throw system.files[file];
+            }
+
             return file in system.files ? system.files[file] : null;
         },
 

@@ -43,16 +43,27 @@ test('re-run refreshes the marketplace and updates instead of installing', async
     ]);
 });
 
-test('uninstalls our own marketplace copy at user scope before installing', async () => {
+test('installs the official copy, then uninstalls our own marketplace copy at user scope', async () => {
     const system = claude({ plugins: [plugin('postman@postman')] });
 
     await claudeCode.install(system);
 
     assert.deepEqual(system.commands, [
         'claude plugin marketplace update claude-plugins-official',
-        'claude plugin uninstall postman@postman --scope user --json',
-        'claude plugin install postman@claude-plugins-official --scope user --json'
+        'claude plugin install postman@claude-plugins-official --scope user --json',
+        'claude plugin uninstall postman@postman --scope user --json'
     ]);
+});
+
+test('a failed install leaves our own marketplace copy in place, so Postman still works', async () => {
+    const system = claude({
+            plugins: [plugin('postman@postman')],
+            runs: { 'claude plugin install postman@claude-plugins-official --scope user --json': { code: 1, stderr: 'network down' } }
+        }),
+        outcome = await claudeCode.install(system);
+
+    assert.equal(outcome.outcome, 'failed');
+    assert.ok(!system.commands.some((command) => command.includes('uninstall')));
 });
 
 test('leaves project and local scope copies alone and says so', async () => {
@@ -90,7 +101,7 @@ test('a failed command reports its output and stops', async () => {
         outcome = await claudeCode.install(system);
 
     assert.equal(outcome.outcome, 'failed');
-    assert.match(outcome.message, /exited 1:\nnetwork down/);
+    assert.match(outcome.message, /exited 1\nnetwork down/);
     assert.equal(system.commands.length, 1);
 });
 
