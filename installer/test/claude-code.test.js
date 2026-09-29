@@ -112,8 +112,22 @@ test('an unreadable listing is unknown, not "not installed"', async () => {
     assert.equal((await claudeCode.install(system)).outcome, 'failed');
 });
 
+// Makes the fake `claude plugin uninstall <id>` drop that ID from the listing, as the real CLI does.
+function uninstalls (system, ids) {
+    for (const id of ids) {
+        system.runs[`claude plugin uninstall ${id} --scope user --json`] = (fake) => {
+            fake.probes[PLUGINS] = JSON.stringify(JSON.parse(fake.probes[PLUGINS]).filter((entry) => entry.id !== id));
+
+            return '';
+        };
+    }
+
+    return system;
+}
+
 test('remove uninstalls every user-scope copy', async () => {
-    const system = claude({ plugins: [plugin('postman@claude-plugins-official'), plugin('postman@postman')] }),
+    const system = uninstalls(claude({ plugins: [plugin('postman@claude-plugins-official'), plugin('postman@postman')] }),
+            ['postman@claude-plugins-official', 'postman@postman']),
         outcome = await claudeCode.remove(system);
 
     assert.equal(outcome.outcome, 'done');
@@ -121,6 +135,15 @@ test('remove uninstalls every user-scope copy', async () => {
         'claude plugin uninstall postman@claude-plugins-official --scope user --json',
         'claude plugin uninstall postman@postman --scope user --json'
     ]);
+});
+
+test('remove fails when an uninstall exits 0 but leaves the duplicate installed', async () => {
+    const system = uninstalls(claude({ plugins: [plugin('postman@claude-plugins-official'), plugin('postman@postman')] }),
+            ['postman@claude-plugins-official']),
+        outcome = await claudeCode.remove(system);
+
+    assert.equal(outcome.outcome, 'failed');
+    assert.match(outcome.message, /postman@postman is still installed/);
 });
 
 test('remove skips when nothing is installed at user scope', async () => {

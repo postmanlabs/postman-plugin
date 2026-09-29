@@ -17,6 +17,14 @@ test('output split in the middle of a UTF-8 character still decodes', async () =
     assert.equal(stdout, 'é');
 });
 
+test('a command that reads stdin gets EOF instead of waiting for input', { timeout: 10000 }, async () => {
+    const script = "process.stdin.resume(); process.stdin.on('end', () => process.stdout.write('eof'));",
+        { code, stdout } = await system.probe(process.execPath, ['-e', script]);
+
+    assert.equal(code, 0);
+    assert.equal(stdout, 'eof');
+});
+
 test('readFile is null only for a file that does not exist', async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'postman-plugin-system-'));
 

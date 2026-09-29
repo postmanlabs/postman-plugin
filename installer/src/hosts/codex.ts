@@ -1,6 +1,6 @@
 import { REPO, isSameRepo, redact } from '../source.js';
 import type { System } from '../system.js';
-import { blocked, guard, mustProbeJson, mustRun, parseJson } from './shared.js';
+import { blocked, failed, guard, mustProbeJson, mustRun, parseJson } from './shared.js';
 import { type Host, result } from './types.js';
 
 // Codex names the marketplace after `.claude-plugin/marketplace.json`'s `name`.
@@ -97,6 +97,16 @@ export const codex: Host = {
     remove (system) {
         return guard(async () => {
             const removed = await removeInstalled(system, await listPlugins(system), [PLUGIN_ID, ...SHADOW_IDS]);
+
+            // status() sees only our ID, so the duplicate's removal is confirmed here.
+            if (removed.length && !system.dryRun) {
+                const after = await listPlugins(system),
+                    left = removed.filter((id) => isInstalled(after, id));
+
+                if (left.length) {
+                    failed(`remove exited 0, but ${left.join(', ')} is still installed`);
+                }
+            }
 
             return removed.length ?
                 result('done', `removed ${removed.join(', ')}`, NEXT) :

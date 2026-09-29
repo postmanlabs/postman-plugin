@@ -1,6 +1,6 @@
 import { redact } from '../source.js';
 import type { System } from '../system.js';
-import { blocked, guard, mustProbeJson, mustRun, parseJson } from './shared.js';
+import { blocked, failed, guard, mustProbeJson, mustRun, parseJson } from './shared.js';
 import { type Host, result } from './types.js';
 
 // Anthropic's catalog entry is the Claude Code install; our own marketplace
@@ -112,6 +112,16 @@ export const claudeCode: Host = {
             }
 
             await uninstallAtUserScope(system, plugins, ids);
+
+            // status() sees only the official ID, so the duplicate's removal is confirmed here.
+            if (!system.dryRun) {
+                const after = await listPlugins(system),
+                    left = ids.filter((id) => after.some((plugin) => plugin.id === id && plugin.scope === SCOPE));
+
+                if (left.length) {
+                    failed(`uninstall exited 0, but ${left.join(', ')} is still installed at user scope`);
+                }
+            }
 
             return result('done', `uninstalled ${ids.join(', ')}`, NEXT);
         });

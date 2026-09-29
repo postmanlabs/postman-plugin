@@ -31,6 +31,10 @@ export interface System {
 // such as a file that exists but can't be read, must not pass for "absent".
 const ABSENT = ['ENOENT', 'ENOTDIR'];
 
+// Nothing is ever written to a command's stdin, so it gets EOF at once: a CLI that
+// stops to ask something fails instead of waiting forever for an answer.
+const STDIO: ['ignore', 'pipe', 'pipe'] = ['ignore', 'pipe', 'pipe'];
+
 // npm installs agent CLIs on Windows as `.cmd` shims, which only cmd.exe can start.
 function needsShell (file: string): boolean {
     return /\.(cmd|bat)$/i.test(file);
@@ -44,8 +48,8 @@ function execute (file: string, args: string[], env: NodeJS.ProcessEnv): Promise
     return new Promise((resolve) => {
         const shell = needsShell(file),
             child = shell ?
-                spawn(quoteForCmd(file), args.map(quoteForCmd), { env, shell: true, windowsHide: true }) :
-                spawn(file, args, { env, windowsHide: true });
+                spawn(quoteForCmd(file), args.map(quoteForCmd), { env, shell: true, stdio: STDIO, windowsHide: true }) :
+                spawn(file, args, { env, stdio: STDIO, windowsHide: true });
         let stdout = '',
             stderr = '';
 

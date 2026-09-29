@@ -55,6 +55,10 @@ export function blocked (message: string): never {
     throw new StepFailed(result('blocked', message));
 }
 
+export function failed (message: string): never {
+    throw new StepFailed(result('failed', message));
+}
+
 async function cloneOrigin (system: System, dir: string): Promise<string | null> {
     const exec = await system.probe('git', ['-C', dir, 'remote', 'get-url', 'origin']);
 

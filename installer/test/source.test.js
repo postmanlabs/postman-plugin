@@ -42,7 +42,10 @@ test('rejects other repos, other hosts and local paths', () => {
 
 test('redacts the user-info a token would sit in, and nothing else', () => {
     assert.equal(redact('https://x-access-token:ghp_secret@github.com/a/b.git'), 'https://github.com/a/b.git');
-    assert.equal(redact('ssh://git@github.com/a/b.git'), 'ssh://github.com/a/b.git');
+    assert.equal(redact('https://git:ghp_secret@github.com/a/b.git'), 'https://github.com/a/b.git');
+    assert.equal(redact('ssh://git@github.com/a/b.git'), 'ssh://git@github.com/a/b.git');
+    assert.equal(redact('ssh://ghp_secret@github.com/a/b.git'), 'ssh://github.com/a/b.git');
     assert.equal(redact('git@github.com:a/b.git'), 'git@github.com:a/b.git');
+    assert.equal(redact('ghp_secret@github.com:someone/fork.git'), 'github.com:someone/fork.git');
     assert.equal(redact('/src/postman-plugin'), '/src/postman-plugin');
 });

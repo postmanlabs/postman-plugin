@@ -92,14 +92,38 @@ test('refuses a local marketplace even when its path reads like this repo', asyn
     assert.deepEqual(system.commands, []);
 });
 
+// Makes the fake `codex plugin remove <id>` drop that ID from the listing, as the real CLI does.
+function removes (system, ids) {
+    for (const id of ids) {
+        system.runs[`codex plugin remove ${id} --json`] = (fake) => {
+            const listing = JSON.parse(fake.probes[PLUGINS]);
+
+            fake.probes[PLUGINS] = JSON.stringify({ ...listing, installed: listing.installed.filter((entry) => entry.pluginId !== id) });
+
+            return '';
+        };
+    }
+
+    return system;
+}
+
 test('remove removes ours and the npx plugins copy; the marketplace stays', async () => {
-    const system = codexSystem({ plugins: [installed('postman@postman'), installed('postman@plugins-cli')] });
+    const system = removes(codexSystem({ plugins: [installed('postman@postman'), installed('postman@plugins-cli')] }),
+        ['postman@postman', 'postman@plugins-cli']);
 
     assert.equal((await codex.remove(system)).outcome, 'done');
     assert.deepEqual(system.commands, [
         'codex plugin remove postman@postman --json',
         'codex plugin remove postman@plugins-cli --json'
     ]);
+});
+
+test('remove fails when a remove exits 0 but leaves the duplicate installed', async () => {
+    const system = removes(codexSystem({ plugins: [installed('postman@postman'), installed('postman@plugins-cli')] }), ['postman@postman']),
+        outcome = await codex.remove(system);
+
+    assert.equal(outcome.outcome, 'failed');
+    assert.match(outcome.message, /postman@plugins-cli is still installed/);
 });
 
 test('remove skips when nothing is installed', async () => {
