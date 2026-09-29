@@ -1,4 +1,4 @@
-import { REPO, isSameRepo, redact } from '../source.js';
+import { GIT_URL, REPO, isSameRepo, redact } from '../source.js';
 import { type ExecResult, type System, formatCommand } from '../system.js';
 import { blocked, failed, guard, mustRun } from './shared.js';
 import { type Host, result } from './types.js';
@@ -56,7 +56,7 @@ async function refreshMarketplace (system: System): Promise<void> {
     const source = marketplaceSource(await mustProbeText(system, 'droid', ['plugin', 'marketplace', 'list']));
 
     if (!source) {
-        await mustRun(system, 'droid', ['plugin', 'marketplace', 'add', REPO]);
+        await mustRun(system, 'droid', ['plugin', 'marketplace', 'add', GIT_URL]);
 
         return;
     }

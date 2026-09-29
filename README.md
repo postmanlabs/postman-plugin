@@ -57,7 +57,7 @@ codex plugin add postman@postman
 ### Factory.ai
 
 ```bash
-droid plugin marketplace add postmanlabs/postman-plugin
+droid plugin marketplace add https://github.com/postmanlabs/postman-plugin
 droid plugin install postman@postman-plugin --scope user
 ```
 

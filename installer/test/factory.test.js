@@ -33,7 +33,7 @@ test('fresh install adds this repo as a marketplace, then installs the plugin', 
 
     assert.equal(outcome.message, 'installed postman@postman-plugin');
     assert.deepEqual(system.commands, [
-        'droid plugin marketplace add postmanlabs/postman-plugin',
+        'droid plugin marketplace add https://github.com/postmanlabs/postman-plugin.git',
         'droid plugin install postman@postman-plugin --scope user'
     ]);
 });
