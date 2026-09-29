@@ -16,6 +16,7 @@ plugin route below — each route's manifest or package points back at the same
 | Kimi Code plugin | `.kimi-plugin/plugin.json` points at the same `skills/` dir | `mcpServers` in `.kimi-plugin/plugin.json` | `postman-kimi-plugin` |
 | Codex plugin | `.codex-plugin/plugin.json` points at the same `skills/` dir | `mcp.codex.json` | `postman-codex-plugin` |
 | OpenCode plugin | a clone of this repo, loaded by a one-line local plugin that re-exports `opencode/src/index.ts` | `mcp.opencode.json` | `postman-opencode-plugin` |
+| Pi package | the installer's npm tarball, which carries a copy of `skills/` staged at pack time and declares it under `pi.skills` | none — Pi packages declare no MCP server | — |
 
 Codex also reads `.claude-plugin/plugin.json` and `.cursor-plugin/plugin.json` as
 fallbacks — its `DISCOVERABLE_PLUGIN_MANIFEST_PATHS` is `.codex-plugin`,
@@ -185,6 +186,13 @@ Every agent gets the plugin from GitHub, not from the npm package, so a skill
 change needs no installer release. On Claude Code, a route release reaches
 installer users when Anthropic's catalog moves its pin for `postman`. The
 installer's version is its own, independent of every route's.
+
+Pi is the exception: it installs the npm package itself
+(`pi install npm:@postman/postman-plugin`), and `prepack` stages `skills/` into
+the tarball beside `dist/`, so a skill change reaches Pi with the next installer
+release. The `pi-package` keyword lists the package in
+[Pi's gallery](https://pi.dev/packages), which reads the `latest` version, as
+npm search does. `npm test` fails when the tarball is missing a skill file.
 
 Run these from `installer/`:
 

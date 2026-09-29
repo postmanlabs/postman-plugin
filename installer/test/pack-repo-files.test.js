@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { toPackageReadme } from '../scripts/pack-docs.js';
+import { toPackageReadme } from '../scripts/pack-repo-files.js';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..'),
     BLOB = 'https://github.com/postmanlabs/postman-plugin/blob/main/',

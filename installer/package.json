@@ -17,6 +17,8 @@
   },
   "bugs": "https://github.com/postmanlabs/postman-plugin/issues",
   "keywords": [
+    "pi-package",
+    "pi",
     "postman",
     "claude-code",
     "codex",
@@ -29,12 +31,18 @@
     "postman-plugin": "dist/cli.js"
   },
   "files": [
-    "dist/"
+    "dist/",
+    "skills/"
   ],
+  "pi": {
+    "skills": [
+      "./skills"
+    ]
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "prepack": "npm run build && node scripts/pack-docs.js stage",
-    "postpack": "node scripts/pack-docs.js clean",
+    "prepack": "npm run build && node scripts/pack-repo-files.js stage",
+    "postpack": "node scripts/pack-repo-files.js clean",
     "test": "npm run build && node --test test/*.test.js"
   },
   "devDependencies": {

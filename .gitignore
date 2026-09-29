@@ -13,7 +13,8 @@ opencode/evals/results/
 
 installer/dist/
 installer/node_modules/
-# Staged from the repo root by installer/scripts/pack-docs.js for `npm pack` only.
+# Staged from the repo root by installer/scripts/pack-repo-files.js for `npm pack` only.
 installer/README.md
 installer/LICENSE
+installer/skills/
 

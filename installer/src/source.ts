@@ -1,4 +1,4 @@
-/** Where every host's copy of the plugin comes from. The npm package carries no skills. */
+/** Where every host's copy of the plugin comes from. The npm package's copy of skills/ is for Pi only. */
 export const REPO = 'postmanlabs/postman-plugin';
 export const GIT_URL = `https://github.com/${REPO}.git`;
 /** The branch every clone this installer makes tracks. */
