@@ -198,6 +198,7 @@ Pi; the `Installer smoke` workflow runs it against the latest one nightly:
 ```
 npm test                                      # includes the tarball, extension and skill-rule tests
 PI_BIN=<path to pi> npm run test:pi-harness   # installs the packed tarball into Pi under a throwaway home and checks what Pi sends the model
+PI_PACKAGE=npm:@postman/postman-plugin@<version> PI_BIN=<path to pi> npm run test:pi-harness   # the same checks against a published version
 ```
 
 The route's version is the installer's, so `X-Plugin-Version` and `User-Agent`
@@ -242,22 +243,31 @@ latest Claude Code, Codex and Pi CLIs on every installer change and nightly, so
 a change to a CLI's commands or output fails CI even when nothing here
 changed.
 
-To release it:
+To release it, run `/release-installer rc`, `/release-installer latest` or
+`/release-installer <version>` in Claude Code. The skill in
+`.claude/skills/release-installer/` walks these steps, and resumes a release
+already under way:
 
-1. In `installer/`, run `npm version <version> --no-git-tag-version`, set the
-   same version in both headers in `mcp.pi.json`, and merge that bump as its own
-   PR. A `-rc.N` version is a release candidate.
-2. After it merges, push an annotated tag `@postman/postman-plugin@<version>`
-   on that commit. `release.yml` checks that the tag matches `package.json`,
+1. Set the version with
+   `node .claude/skills/release-installer/scripts/release.mjs bump <version>`,
+   which writes it to `installer/package.json`, its lockfile and both headers in
+   `mcp.pi.json`. Commit a release candidate (`-rc.N`) on a
+   `release/postman-plugin-<version>` branch that never merges, so `main`
+   carries only plain versions. Merge a plain version as its own PR.
+2. Push an annotated tag `@postman/postman-plugin@<version>` on that commit: the
+   rc branch's commit, or the PR's merge commit. `release.yml` checks that the tag matches `package.json`,
    runs the tests, and publishes with npm trusted publishing and provenance: a
    release candidate goes to the `next` dist-tag (`npx @postman/postman-plugin@next`),
    `-alpha.N`, `-beta.N` and `-canary.N` go to a dist-tag of that name, and a plain
    version goes to `latest` and must be tagged on `main`. Any other prerelease, and
    any version older than the one its dist-tag already points at, is refused.
-3. To retry a tag, or rehearse one without publishing, run the workflow by hand.
-   A version already on npm is not published again, so a retry still creates a
-   release page that failed the first time:
-   `gh workflow run release.yml -f tag=<tag> -f dry_run=true`.
+3. Never move a pushed tag; a release that went wrong gets the next version. To
+   retry a tag, run the workflow by hand. A version already on npm is not
+   published again, so a retry still creates a release page that failed the
+   first time: `gh workflow run release.yml -f tag=<tag>`. `-f dry_run=true`
+   needs the tag on origin already, and pushing a tag publishes it, so a new
+   version can't be rehearsed in CI: `npm pack --dry-run` in `installer/` is the
+   rehearsal.
 
 Keep the workflow's filename: npm's trusted publisher for the package is
 pinned to `release.yml`.
