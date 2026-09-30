@@ -1,8 +1,11 @@
-/** Where every host's copy of the plugin comes from. The npm package carries no skills. */
+/** Where every host's copy of the plugin comes from. Pi alone installs the npm package instead. */
 export const REPO = 'postmanlabs/postman-plugin';
 export const GIT_URL = `https://github.com/${REPO}.git`;
 /** The branch every clone this installer makes tracks. */
 export const BRANCH = 'main';
+
+/** Unpinned, so `pi update` moves it with each `latest` release; test/pi-package.test.js checks the name. */
+export const PI_SOURCE = 'npm:@postman/postman-plugin';
 
 /** Must stay byte-identical to the shim in opencode/README.md; test/routes.test.js enforces it. */
 export const OPENCODE_SHIM = "export { default } from '../postman-plugin/opencode/src/index.ts';\n";

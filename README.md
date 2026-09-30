@@ -24,7 +24,7 @@ Install Postman in every compatible coding agent detected on your machine:
 npx @postman/postman-plugin
 ```
 
-One command configures **Claude Code, Codex, Cursor, Kimi Code and OpenCode**.
+One command configures **Claude Code, Codex, Cursor, Kimi Code, OpenCode and Pi**.
 Run it again to update, `status` to see what's installed, and `remove` to
 uninstall; `--agent <id>` limits any of them to one agent.
 
@@ -53,6 +53,18 @@ claude plugin install postman@postman
 ```bash
 codex plugin add postman@postman
 ```
+
+### Pi
+
+[View Postman in Pi's package gallery](https://pi.dev/packages/@postman/postman-plugin)
+
+```bash
+pi install npm:@postman/postman-plugin
+```
+
+`pi update npm:@postman/postman-plugin` updates it. Sign in to Postman's MCP
+server with `/mcp login postman` inside a Pi session. The shell's `pi mcp login`
+doesn't load extensions, so it reports no server named `postman`.
 
 ## Highlights
 

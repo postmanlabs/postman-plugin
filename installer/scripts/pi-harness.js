@@ -1,0 +1,137 @@
+#!/usr/bin/env node
+// Packs this package, installs the tarball into Pi (`PI_BIN`, else `pi` on PATH) under a throwaway
+// home, and sends one prompt to a local stand-in for an OpenAI-compatible endpoint. It then checks
+// what Pi sent the model and what the extension registered. No model, account or network is used.
+import assert from 'node:assert/strict';
+import { spawn, spawnSync } from 'node:child_process';
+import fs from 'node:fs';
+import http from 'node:http';
+import os from 'node:os';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'),
+    repoRoot = path.dirname(packageRoot),
+    pi = process.env.PI_BIN || 'pi',
+    temporary = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'postman-pi-harness-'))),
+    home = path.join(temporary, 'home'),
+    agentDir = path.join(temporary, 'agent'),
+    project = path.join(temporary, 'project'),
+    installed = path.join(temporary, 'package'),
+    probeFile = path.join(temporary, 'probe.js'),
+    probeOutput = path.join(temporary, 'registered-mcp-servers.json'),
+    skills = JSON.parse(fs.readFileSync(path.join(repoRoot, 'manifest.json'), 'utf8')).skills.map((skill) => skill.name),
+    mcpConfig = JSON.parse(fs.readFileSync(path.join(repoRoot, 'mcp.pi.json'), 'utf8')).mcpServers,
+    env = {
+        ...process.env,
+        HOME: home,
+        USERPROFILE: home,
+        PI_CODING_AGENT_DIR: agentDir,
+        PI_OFFLINE: '1',
+        PI_SKIP_VERSION_CHECK: '1'
+    };
+
+function run (command, args, options = {}) {
+    const result = spawnSync(command, args, { encoding: 'utf8', env, timeout: 180000, ...options });
+
+    assert.equal(result.status, 0, [`${command} ${args.join(' ')} exited ${result.status}`, result.stdout, result.stderr, result.error?.message].filter(Boolean).join('\n'));
+
+    return result.stdout;
+}
+
+/** Answers every chat completion with a streamed "ok" and keeps the request bodies. */
+function startModel () {
+    const requests = [],
+        chunk = (delta, finish) => `data: ${JSON.stringify({ id: 'harness', object: 'chat.completion.chunk', created: 0, model: 'echo', choices: [{ index: 0, delta, finish_reason: finish }] })}\n\n`,
+        server = http.createServer((request, response) => {
+            let body = '';
+
+            request.on('data', (data) => { body += data; });
+            request.on('end', () => {
+                requests.push(JSON.parse(body || '{}'));
+                response.writeHead(200, { 'content-type': 'text/event-stream' });
+                response.end(chunk({ role: 'assistant', content: 'ok' }, null) + chunk({}, 'stop') + 'data: [DONE]\n\n');
+            });
+        });
+
+    return new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve({ server, requests, port: server.address().port })));
+}
+
+// Asynchronous, unlike `run`, so this process can serve the model while pi waits on it.
+function runPi (args) {
+    return new Promise((resolve) => {
+        const child = spawn(pi, args, { cwd: project, env, stdio: ['ignore', 'pipe', 'pipe'], timeout: 120000 });
+        let stdout = '',
+            stderr = '';
+
+        child.stdout.on('data', (data) => { stdout += data; });
+        child.stderr.on('data', (data) => { stderr += data; });
+        child.on('close', (code, signal) => resolve({ code: signal ? signal : code, stdout, stderr }));
+    });
+}
+
+function systemPrompt (request) {
+    const message = request.messages?.find((entry) => entry.role === 'system' || entry.role === 'developer'),
+        content = message?.content;
+
+    return Array.isArray(content) ? content.map((part) => part.text ?? '').join('') : content ?? '';
+}
+
+let model;
+
+try {
+    for (const dir of [home, agentDir, project, installed]) {
+        fs.mkdirSync(dir, { recursive: true });
+    }
+
+    const packed = JSON.parse(run('npm', ['pack', '--json', '--pack-destination', temporary], { cwd: packageRoot }))[0];
+
+    run('tar', ['-xzf', path.join(temporary, packed.filename), '-C', installed, '--strip-components=1']);
+    run(pi, ['install', installed]);
+
+    model = await startModel();
+
+    fs.writeFileSync(path.join(agentDir, 'models.json'), JSON.stringify({
+        providers: {
+            harness: { baseUrl: `http://127.0.0.1:${model.port}/v1`, api: 'openai-completions', apiKey: 'harness', models: [{ id: 'echo' }] }
+        }
+    }));
+    // A disabled `postman` entry of the user's own takes precedence, so nothing connects to Postman.
+    fs.writeFileSync(path.join(agentDir, 'mcp.json'), JSON.stringify({
+        mcpServers: { postman: { url: 'http://127.0.0.1:9/mcp', enabled: false } }
+    }));
+    fs.writeFileSync(probeFile, `import fs from 'node:fs';
+export default function (pi) {
+    pi.on('session_start', () => fs.writeFileSync(${JSON.stringify(probeOutput)}, JSON.stringify(pi.getMcpServers())));
+}
+`);
+
+    const session = await runPi(['--mode', 'json', '--print', '--no-session', '--model', 'harness/echo', '--extension', probeFile, 'Say ok.']);
+
+    assert.equal(session.code, 0, `pi exited ${session.code}\n${session.stdout}\n${session.stderr}`);
+    // Pi prints an extension that fails to load here. Skill warnings it shows only in its TUI,
+    // so test/pi-package.test.js checks the skills against Pi's rules instead.
+    assert.doesNotMatch(session.stderr, /warning|error/i, `pi printed a problem:\n${session.stderr}`);
+    assert.ok(model.requests.length > 0, 'pi never called the model');
+
+    const prompt = systemPrompt(model.requests[0]);
+
+    for (const skill of skills) {
+        assert.ok(prompt.includes(path.join(installed, 'skills', skill, 'SKILL.md')), `the skill ${skill} is not in the system prompt`);
+    }
+
+    assert.match(prompt, /<postman>\s*<EXTREMELY_IMPORTANT>/, 'the session-start mandate is not in the system prompt');
+    assert.match(prompt, /load the `api-engineer` skill/);
+    assert.doesNotMatch(prompt, /`postman:[a-z0-9-]+`/, 'the mandate still names skills as `postman:<skill>`');
+
+    const registered = JSON.parse(fs.readFileSync(probeOutput, 'utf8'));
+
+    assert.deepEqual(registered.map(({ name, config }) => ({ name, config })), Object.entries(mcpConfig).map(([name, config]) => ({ name, config })));
+    assert.ok(registered.every((server) => server.extensionPath === path.join(installed, 'dist', 'pi-extension.js')));
+
+    console.log(`pi ${run(pi, ['--version']).trim()} loaded ${skills.length} skills, the mandate and the ${Object.keys(mcpConfig).join(', ')} MCP server from ${packed.filename}`);
+}
+finally {
+    model?.server.close();
+    fs.rmSync(temporary, { recursive: true, force: true });
+}
