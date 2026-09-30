@@ -53,8 +53,17 @@ test('a pinned version is the same package, and is left pinned', async () => {
 });
 
 test('install removes a git install of this repo only after the npm package is in', async () => {
-    const clones = ['git:github.com/postmanlabs/postman-plugin@v1', 'https://github.com/postmanlabs/postman-plugin', 'git:git@github.com:postmanlabs/postman-plugin'],
-        system = fakeSystem({ bins: ['pi'], files: withPackages([...clones, 'git:github.com/someone/postman-plugin', 'npm:postman-plugin']) });
+    const clones = [
+            'git:github.com/postmanlabs/postman-plugin@v1',
+            'https://github.com/postmanlabs/postman-plugin',
+            'git:git@github.com:postmanlabs/postman-plugin',
+            // Pi's ref runs from the first `@` in the repo path, slashes included.
+            'https://github.com/postmanlabs/postman-plugin@feature/branch',
+            'git:git@github.com:postmanlabs/postman-plugin@release/1.0',
+            'ssh://git@github.com/postmanlabs/postman-plugin@main'
+        ],
+        others = ['git:github.com/someone/postman-plugin@feature/postmanlabs/postman-plugin', 'https://github.com/postmanlabs/postman-plugin-fork@main', 'npm:postman-plugin'],
+        system = fakeSystem({ bins: ['pi'], files: withPackages([...clones, ...others]) });
 
     assert.equal((await pi.status(system)).notes.length, clones.length);
     assert.equal((await pi.install(system)).outcome, 'done');
@@ -75,7 +84,7 @@ test('a failed install keeps the git copy', async () => {
 });
 
 test('settings with a byte order mark still parse, as they do in Pi', async () => {
-    assert.equal((await pi.status(fakeSystem({ files: { [settings]: `﻿${JSON.stringify({ packages: [SOURCE] })}` } }))).installed, true);
+    assert.equal((await pi.status(fakeSystem({ files: { [settings]: `\uFEFF${JSON.stringify({ packages: [SOURCE] })}` } }))).installed, true);
 });
 
 test('settings that are not JSON change nothing', async () => {

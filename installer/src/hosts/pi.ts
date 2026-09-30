@@ -6,7 +6,10 @@ import { type Host, result } from './types.js';
 
 const NEXT = 'Restart Pi, or run `/reload` in an open session, for the change to take effect.',
     GIT_PREFIX = /^git:/,
-    GIT_REF = /@[^@/:]+$/;
+    // Pi's ref is everything after the first `@` in the repo path, slashes included. The path starts
+    // after the scp-style `host:` or after the host, so an `@` in URL user-info is never a ref.
+    SCP_WITH_REF = /^(git@[^:]+:[^@]*)@/,
+    URL_WITH_REF = /^((?:[a-z][a-z0-9+.-]*:\/\/)?[^/]*\/[^@]*)@/i;
 
 type PackageEntry = string | { source?: string };
 
@@ -20,11 +23,17 @@ function agentDir (system: System): string {
     return dir === '~' || dir.startsWith('~/') ? path.join(system.home, dir.slice(1)) : dir;
 }
 
+function withoutRef (source: string): string {
+    const url = source.replace(GIT_PREFIX, '');
+
+    return (url.match(SCP_WITH_REF) ?? url.match(URL_WITH_REF))?.[1] ?? url;
+}
+
 // Pi keys an npm package by its name, so a pinned `npm:@postman/postman-plugin@x` is this
 // package too. A git install of this repo is another package loading the same skills.
 const settingsFile = (system: System) => path.join(agentDir(system), 'settings.json'),
     isOurPackage = (source: string) => source === PI_SOURCE || source.startsWith(`${PI_SOURCE}@`),
-    isRepoClone = (source: string) => !source.startsWith('npm:') && isSameRepo(source.replace(GIT_PREFIX, '').replace(GIT_REF, ''), REPO);
+    isRepoClone = (source: string) => !source.startsWith('npm:') && isSameRepo(withoutRef(source), REPO);
 
 /** Every package source in Pi's user settings, or `null` when the file can't be parsed. */
 async function packageSources (system: System): Promise<string[] | null> {
