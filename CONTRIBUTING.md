@@ -81,8 +81,8 @@ scripts/routes.js                 every route, read by the pre-commit guard and 
 
 ## The MCP server config
 
-Each route has its own config file, so each can report itself in `X-Source` and
-traffic can be attributed to the agent it came from:
+Each route that ships an MCP server has its own config file, so each can report
+itself in `X-Source` and traffic can be attributed to the agent it came from:
 
 ```
 mcp.claude-code.json        <- .claude-plugin/plugin.json  "mcpServers": "./mcp.claude-code.json"

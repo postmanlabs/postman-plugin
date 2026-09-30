@@ -282,9 +282,10 @@ covers what each of these checks and — more usefully — what none of them do.
 ## What not to do
 
 - **Do not put a vendor-specific plugin-root variable in a hook command on its
-  own**, fork `hooks/hooks.json`, or copy `hooks/session-start-context.md` into
-  a route directory. Add the token to the shared chain; point at the shared file
-  from the vendor's manifest.
+  own**, fork `hooks/hooks.json`, or hand-copy `hooks/session-start-context.md`
+  into a route directory. Add the token to the shared chain; point at the shared
+  file from the vendor's manifest. A vendor that can only take a transformed
+  copy gets a generated one with a `--check` in CI, as Kimi does.
 - **Do not add a root-level file named `plugin.json`.** It looks like the
   portable thing to do and is the most destructive edit available here: Codex
   pattern-matches that filename and routes the whole plugin through its Agent
