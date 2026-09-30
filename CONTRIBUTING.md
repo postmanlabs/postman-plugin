@@ -114,8 +114,8 @@ all:
   serde. So serde ignores unknown keys: a `headers` block in `mcp.codex.json`
   is dropped without an error, the server still connects, and every request
   goes out unattributed. This is the worst failure mode in the repo, because
-  it looks exactly like success. `headers` is right for the other four;
-  don't normalize it across all five.
+  it looks exactly like success. `headers` is right for every other route;
+  don't normalize Codex to it.
 
 There is no generator, deliberately: a tool whose job is to keep these
 identical is wrong once versions are per-route.

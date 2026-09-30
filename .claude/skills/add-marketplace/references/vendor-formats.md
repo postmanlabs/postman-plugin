@@ -19,7 +19,7 @@ vendor has a manifest at all.
 | Published schema | SchemaStore | `cursor/plugins` repo | none | none — prose docs only | `opencode.ai/config.json`, draft2020, `$ref`s `models.dev` — validates `mcp.opencode.json` | none |
 | Extras | `$schema` | — | `interface` block | `interface` block | no host-version gate for a local plugin; the minimum is documented | `pi-package` keyword lists it in the gallery; `pi.image` is the card's preview |
 
-## Per-route notes worth knowing before you add a fifth
+## Per-route notes worth knowing before you add another
 
 **Codex falls back to other routes' manifests.** Its
 `DISCOVERABLE_PLUGIN_MANIFEST_PATHS` is `.codex-plugin`, `.claude-plugin`,
@@ -34,7 +34,7 @@ plugin's MCP config into its own `RawMcpServerConfig`, which has only
 schema generation, not serde. So serde ignores unknown keys: a `headers` block
 in `mcp.codex.json` is dropped without an error, the server still connects, and
 every request goes out unattributed. It looks exactly like success. `headers` is
-right for the other three; do not normalize across all four.
+right for every other route; do not normalize Codex to it.
 
 **Kimi's `interface` block and Codex's are not the same thing** even though they
 share a name — each vendor defines its own fields. Check the vendor's docs

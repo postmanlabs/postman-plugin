@@ -97,7 +97,7 @@ Discovery is the other half, and it is not uniform either:
 | OpenCode | **no `hooks.json`.** Nothing session-shaped in its config schema; the local plugin pushes the mandate into the system prompt from its own hooks — see item 1 below |
 | Pi | **no `hooks.json`.** Its extensions subscribe to events instead; the package's extension sets the mandate as a system-prompt section on `before_agent_start` |
 
-That last row is a live gap in this repo, and exactly what a new route inherits
+The Kimi Code row is a live gap in this repo, and exactly what a new route inherits
 if Step 3 is skipped: nothing points Kimi at `hooks/hooks.json`, so the Kimi
 route ships without the session-start mandate. A vendor in that position needs
 an entry in its own manifest pointing back at the shared file — for Kimi an
