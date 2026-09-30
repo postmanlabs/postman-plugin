@@ -6,7 +6,7 @@ OpenCode session, using the same `postman` commands you would run yourself.
 
 ## Install
 
-Requires OpenCode 1.18.29 or later, and `git`. The plugin is a clone of this
+Requires OpenCode 1.18.32 or later, and `git`. The plugin is a clone of this
 repository plus a one-line file in OpenCode's `plugins/` directory, which
 OpenCode loads at startup. Nothing is installed from npm.
 
