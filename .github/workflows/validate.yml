@@ -50,6 +50,9 @@ jobs:
       - name: Every JSON file parses
         run: node scripts/check-json.js
 
+      - name: Kimi loads the session-start mandate from systemPromptPath
+        run: node scripts/check-system-prompt.js
+
       # SchemaStore's Claude Code schemas check structure and types but accept
       # invalid plugin names and unknown keys; Claude Code's own validator catches
       # those, so both run.

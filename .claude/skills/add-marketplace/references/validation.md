@@ -9,7 +9,9 @@ One parallel job per concern, so a failure names itself:
 - **`skills`** — every `skills/*/SKILL.md` has frontmatter with `name` and
   `description`. Pure bash, no `setup-node` on purpose.
 - **`manifest`** — `node scripts/build-manifest.js --check`, then every tracked
-  `*.json` parses, then `claude plugin validate .`. The manifest carries a
+  `*.json` parses, then `scripts/check-system-prompt.js` confirms Kimi will load
+  its `systemPromptPath` (Kimi only warns and drops a prompt it rejects), then
+  `claude plugin validate .`. The manifest carries a
   `sha256` per file and `postman init` rejects a file whose bytes do not match,
   so a stale manifest fails on a user's machine rather than here; checking it on
   every push is much cheaper than diagnosing that.
