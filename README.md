@@ -165,10 +165,10 @@ Important limits:
   emitted by `collection run`, `spec lint`, `workspace push`, `init`, the
   `mock` commands, and `performance run` in the US region; other regions,
   including the EU, do not emit them.
-- The plugin registers Postman's hosted MCP server as a fallback when the CLI
-  cannot run. MCP tool calls reach Postman and are not controlled by CLI
-  reporting flags; avoiding that traffic requires not installing the MCP
-  server.
+- Every route except Kimi Code registers Postman's hosted MCP server as a
+  fallback when the CLI cannot run; the Kimi Code route ships skills only.
+  MCP tool calls reach Postman and are not controlled by CLI reporting flags;
+  avoiding that traffic requires not installing the MCP server.
 
 ## License
 

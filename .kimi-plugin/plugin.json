@@ -23,18 +23,6 @@
     "./skills"
   ],
   "systemPromptPath": "./hooks/session-start-context.md",
-  "mcpServers": {
-    "postman": {
-      "transport": "http",
-      "url": "https://mcp.postman.com/minimal",
-      "auth": "oauth",
-      "headers": {
-        "X-Source": "postman-kimi-plugin",
-        "X-Plugin-Version": "2.0.1",
-        "User-Agent": "postman-kimi-plugin/2.0.1"
-      }
-    }
-  },
   "interface": {
     "displayName": "Postman",
     "shortDescription": "Bootstrap, mock, test, monitor, document, and automate APIs with Postman.",
