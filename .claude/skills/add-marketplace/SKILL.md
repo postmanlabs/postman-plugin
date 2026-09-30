@@ -47,7 +47,7 @@ writing anything:
      user clones this repo and adds a one-line file to OpenCode's `plugins/`
      directory that re-exports `opencode/src/index.ts`, which reads the
      clone's `skills/` and `mcp.opencode.json` at runtime. It is not published
-     to npm.
+     to npm. Pi is one too, published inside the installer's npm package.
 2. The manifest or config path and filename.
 3. The **exact shape** of the skills pointer. The routes here already cover
    implicit, string, array and object (`{"skills": {"paths": ["./skills"]}}`), so
@@ -271,7 +271,7 @@ node .claude/hooks/validate-manifests.js && echo "manifests consistent"
 # Scope by file, not by grepping the diff - an added `"version": "1.0.0"` line
 # names no vendor and slips a text filter. Package routes match no
 # `*plugin.json`, so name their package manifest explicitly.
-git diff --name-only main -- '*plugin.json' 'mcp.*.json' opencode/package.json
+git diff --name-only main -- '*plugin.json' 'mcp.*.json' opencode/package.json installer/package.json
 ```
 
 If the vendor publishes a schema, run the `schema` job's ajv command against the

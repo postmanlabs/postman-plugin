@@ -20,6 +20,7 @@ install path. Every vendor names that differently, and only some substitute
 | Kimi Code | `KIMI_PLUGIN_ROOT`, and cwd is set to the plugin root | not documented |
 | Agent Plugins 1.0 (root `plugin.json`) | `PLUGIN_ROOT`, `PLUGIN_DATA` | **no** — the spec restricts expansion to `args`, `env` values and `cwd`, and defines no hooks component at all |
 | OpenCode | **none, and none should be added** — the local plugin locates the clone's files from `import.meta.url` | n/a — it never reads `hooks/hooks.json` |
+| Pi | **none** — the extension locates the tarball's files from `import.meta.url` | n/a — it never reads `hooks/hooks.json` |
 
 So a single vendor token is wrong on every other route, and forking the file per
 route re-creates the problem the shared `skills/` directory exists to avoid.
@@ -94,6 +95,7 @@ Discovery is the other half, and it is not uniform either:
 | Copilot / VS Code | layout-dependent — `hooks/hooks.json` for the Claude layout, `com.github.copilot/hooks/hooks.json` for Agent Plugins 1.0, `hooks.json` at the root for the Copilot layout |
 | Kimi Code | **nowhere.** Hooks are an inline `hooks` array in the manifest, entries shaped `event` / `matcher` / `command` / `timeout`, and Kimi documents no default file to discover |
 | OpenCode | **no `hooks.json`.** Nothing session-shaped in its config schema; the local plugin pushes the mandate into the system prompt from its own hooks — see item 1 below |
+| Pi | **no `hooks.json`.** Its extensions subscribe to events instead; the package's extension sets the mandate as a system-prompt section on `before_agent_start` |
 
 That last row is a live gap in this repo, and exactly what a new route inherits
 if Step 3 is skipped: nothing points Kimi at `hooks/hooks.json`, so the Kimi
