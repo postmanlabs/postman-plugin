@@ -9,8 +9,9 @@ One parallel job per concern, so a failure names itself:
 - **`skills`** — every `skills/*/SKILL.md` has frontmatter with `name` and
   `description`. Pure bash, no `setup-node` on purpose.
 - **`manifest`** — `node scripts/build-manifest.js --check`, then every tracked
-  `*.json` parses, then `scripts/check-system-prompt.js` confirms Kimi will load
-  its `systemPromptPath` (Kimi only warns and drops a prompt it rejects), then
+  `*.json` parses, then `node scripts/build-kimi-prompt.js --check` confirms Kimi's
+  generated mandate is current and that Kimi will load it (Kimi only warns and
+  drops a prompt it rejects), then
   `claude plugin validate .`. The manifest carries a
   `sha256` per file and `postman init` rejects a file whose bytes do not match,
   so a stale manifest fails on a user's machine rather than here; checking it on
@@ -102,7 +103,8 @@ node .claude/hooks/validate-manifests.js && echo "manifests consistent"
   whether it spells the session-start event the way the file does. Pass `none`
   for a config-only or package vendor: it has no plugin-root variable, and the
   script reports `n/a` instead of a `FAIL` that reads like a regression.
-- **Whether a route delivers the session-start mandate by some other
-  mechanism.** A vendor with no hooks may still carry it through a rules or
-  instructions file, and nothing here can tell that apart from a route that
-  silently never mentions Postman.
+- **Whether a route other than Kimi delivers the session-start mandate by some
+  other mechanism.** A vendor with no hooks may still carry it through a rules
+  or instructions file, and nothing here can tell that apart from a route that
+  silently never mentions Postman. Kimi's `systemPromptPath` is the exception,
+  checked by the `manifest` job.

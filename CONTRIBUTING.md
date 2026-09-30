@@ -61,7 +61,7 @@ it lands.
 .claude-plugin/plugin.json        the Claude Code plugin manifest
 .cursor-plugin/plugin.json        the Cursor plugin manifest
 .kimi-plugin/plugin.json          the Kimi Code plugin manifest — skills only, no MCP server; loads
-                                  hooks/session-start-context.md through `systemPromptPath`
+                                  its generated session-start-context.md through `systemPromptPath`
 .codex-plugin/plugin.json         the Codex plugin manifest
 .app.json                         maps the Codex plugin to its published ChatGPT app ID
 opencode/                         the OpenCode plugin — source, tests, install harness, routing evals
@@ -153,8 +153,8 @@ npm run eval:skills            # live routing eval against a configured model
 
 `npm run eval:skills -- --case <id>` runs one case, and `--model provider/model`
 picks the model. The cases live in `opencode/evals/cases.json`. A routing fix
-belongs in the shared skill description or `hooks/session-start-context.md`, and
-both reach every route, so rerun the full set after changing either and don't
+belongs in the shared skill description or `hooks/session-start-context.md`
+(then run `node scripts/build-kimi-prompt.js`), and both reach every route, so rerun the full set after changing either and don't
 tune wording for OpenCode alone.
 
 Users run whatever their clone has checked out, so a change reaches them on

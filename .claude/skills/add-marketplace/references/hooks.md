@@ -58,9 +58,11 @@ tidying:
 
 `hooks/session-start-context.md` is one file read by every route that has a
 context mechanism — Claude Code and Cursor through `hooks/hooks.json`, Codex
-through its fallback to that same file, Kimi through its manifest's
-`systemPromptPath`, OpenCode through its local plugin, which
-rewrites `` `postman:<skill>` `` to the bare skill name at runtime. So it must
+through its fallback to that same file, OpenCode and Pi through their plugin
+code, which rewrites `` `postman:<skill>` `` to the bare skill name at runtime,
+and Kimi through `.kimi-plugin/session-start-context.md`, which
+`scripts/build-kimi-prompt.js` generates with the same rewrite because Kimi runs
+no code — rerun it after editing the shared file. So it must
 not name one vendor's machinery: "invoke it with the Skill tool" is an
 instruction Codex and OpenCode cannot follow, and it reaches them verbatim.
 Name the skill and let each agent use its own loading mechanism. A vendor that
@@ -94,14 +96,15 @@ Discovery is the other half, and it is not uniform either:
 | Cursor | manifest `hooks` (path string or inline object); falls back to `hooks/hooks.json` |
 | Codex | manifest `hooks`, resolved relative to the plugin root and required to stay inside it; otherwise `hooks/hooks.json` — its `DEFAULT_HOOKS_CONFIG_FILE` is that exact path, so the shared file is found with no `hooks` key in the manifest at all |
 | Copilot / VS Code | layout-dependent — `hooks/hooks.json` for the Claude layout, `com.github.copilot/hooks/hooks.json` for Agent Plugins 1.0, `hooks.json` at the root for the Copilot layout |
-| Kimi Code | **nowhere** — hooks are an inline `hooks` array in the manifest (`event` / `matcher` / `command` / `timeout`). The route doesn't need one: `systemPromptPath` in `.kimi-plugin/plugin.json` appends the shared markdown to the system prompt while the plugin is enabled |
+| Kimi Code | **nowhere** — hooks are an inline `hooks` array in the manifest (`event` / `matcher` / `command` / `timeout`). The route doesn't need one: `systemPromptPath` in `.kimi-plugin/plugin.json` appends the generated `.kimi-plugin/session-start-context.md` to the system prompt while the plugin is enabled |
 | OpenCode | **no `hooks.json`.** Nothing session-shaped in its config schema; the local plugin pushes the mandate into the system prompt from its own hooks — see item 1 below |
 | Pi | **no `hooks.json`.** Its extensions subscribe to events instead; the package's extension sets the mandate as a system-prompt section on `before_agent_start` |
 
 A vendor that discovers no hooks file needs its own manifest to point back at
 the shared markdown, or the route ships without the mandate — a system-prompt
-field such as Kimi's `systemPromptPath` over an inline hook. Never a copy of the
-markdown.
+field such as Kimi's `systemPromptPath` over an inline hook. Never a hand-kept
+copy of the markdown: a vendor that needs it transformed gets a generated file
+with a `--check` in CI, as Kimi does.
 
 ## What to establish for a new vendor
 

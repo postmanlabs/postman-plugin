@@ -22,7 +22,7 @@
   "skills": [
     "./skills"
   ],
-  "systemPromptPath": "./hooks/session-start-context.md",
+  "systemPromptPath": "./.kimi-plugin/session-start-context.md",
   "interface": {
     "displayName": "Postman",
     "shortDescription": "Bootstrap, mock, test, monitor, document, and automate APIs with Postman.",
