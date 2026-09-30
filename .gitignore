@@ -17,4 +17,6 @@ installer/node_modules/
 installer/README.md
 installer/LICENSE
 installer/skills/
+installer/hooks/
+installer/mcp.pi.json
 

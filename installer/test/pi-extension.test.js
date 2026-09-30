@@ -1,0 +1,58 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import test from 'node:test';
+import { fileURLToPath } from 'node:url';
+import { postmanExtension, toPiSessionContext } from '../dist/pi-extension.js';
+
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..'),
+    { mcpServers } = JSON.parse(fs.readFileSync(path.join(repoRoot, 'mcp.pi.json'), 'utf8')),
+    mandate = fs.readFileSync(path.join(repoRoot, 'hooks', 'session-start-context.md'), 'utf8');
+
+/** A Pi host that records what the extension registers. */
+function loadExtension () {
+    const host = {
+        servers: {},
+        handlers: {},
+        registerMcpServer (name, config) {
+            host.servers[name] = config;
+        },
+        on (event, handler) {
+            (host.handlers[event] ||= []).push(handler);
+        }
+    };
+
+    postmanExtension(repoRoot)(host);
+
+    return host;
+}
+
+function startAgent (host, skills) {
+    const event = { systemPromptOptions: { sections: {}, skills: skills.map((name) => ({ name })) } };
+
+    for (const handler of host.handlers.before_agent_start ?? []) {
+        handler(event);
+    }
+
+    return event.systemPromptOptions.sections;
+}
+
+test('registers the MCP servers exactly as mcp.pi.json declares them', () => {
+    assert.deepEqual(loadExtension().servers, mcpServers);
+});
+
+test('adds the session-start mandate as a prompt section, naming skills as Pi does', () => {
+    const { postman } = startAgent(loadExtension(), ['api-engineer', 'api-testing']);
+
+    assert.equal(postman, toPiSessionContext(mandate));
+    assert.match(postman, /load the `api-engineer` skill/);
+    assert.doesNotMatch(postman, /`postman:[a-z0-9-]+`/);
+});
+
+test('leaves the prompt alone when api-engineer is not loaded', () => {
+    assert.deepEqual(startAgent(loadExtension(), ['api-testing']), {});
+});
+
+test('rewrites only backticked postman:<skill> names', () => {
+    assert.equal(toPiSessionContext('use `postman:api-mocking`, not postman:bootstrap'), 'use `api-mocking`, not postman:bootstrap');
+});

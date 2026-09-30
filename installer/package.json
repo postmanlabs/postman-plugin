@@ -1,7 +1,7 @@
 {
   "name": "@postman/postman-plugin",
   "version": "0.1.0",
-  "description": "Installs the Postman plugin into every supported coding agent on this machine.",
+  "description": "Postman's API engineering skills for coding agents: a Pi package, and an npx installer that sets up Claude Code, Codex, Cursor, Kimi Code, OpenCode and Pi.",
   "type": "module",
   "license": "Apache-2.0",
   "author": {
@@ -32,18 +32,25 @@
   },
   "files": [
     "dist/",
-    "skills/"
+    "skills/",
+    "hooks/session-start-context.md",
+    "mcp.pi.json"
   ],
   "pi": {
+    "extensions": [
+      "./dist/pi-extension.js"
+    ],
     "skills": [
       "./skills"
-    ]
+    ],
+    "image": "https://assets.getpostman.com/common-share/postman-logo-horizontal-320x132.png"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "prepack": "npm run build && node scripts/pack-repo-files.js stage",
     "postpack": "node scripts/pack-repo-files.js clean",
-    "test": "npm run build && node --test test/*.test.js"
+    "test": "npm run build && node --test test/*.test.js",
+    "test:pi-harness": "node scripts/pi-harness.js"
   },
   "devDependencies": {
     "@types/node": "24.5.2",

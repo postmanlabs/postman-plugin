@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// `npm pack` takes files only from installer/, so the repo's README, LICENSE and skills/ are
-// staged here for the tarball (`stage`, from prepack) and removed after (`clean`, from postpack).
-// skills/ is for Pi, which installs this tarball as a Pi package (the `pi` key in package.json).
+// `npm pack` takes files only from installer/, so the repo files the tarball ships are staged
+// here (`stage`, from prepack) and removed after (`clean`, from postpack). All but README and
+// LICENSE are for Pi, which installs this tarball as a Pi package (the `pi` key in package.json).
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -10,7 +10,8 @@ const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '
     repoRoot = path.dirname(packageRoot),
     BLOB = 'https://github.com/postmanlabs/postman-plugin/blob/main/',
     RAW = 'https://raw.githubusercontent.com/postmanlabs/postman-plugin/main/',
-    STAGED = ['README.md', 'LICENSE', 'skills'],
+    STAGED = ['README.md', 'LICENSE', 'skills', 'hooks', 'mcp.pi.json'],
+    SESSION_CONTEXT = path.join('hooks', 'session-start-context.md'),
     // A target that already has a scheme, is protocol-relative or root-relative, or is an in-page anchor.
     NOT_RELATIVE = '(?![a-z][a-z0-9+.-]*:|/|#)(?:\\./)?';
 
@@ -23,9 +24,18 @@ export function toPackageReadme (markdown) {
         .replace(new RegExp(`(href=")${NOT_RELATIVE}`, 'g'), `$1${BLOB}`);
 }
 
+function copyFromRepo (file) {
+    fs.mkdirSync(path.dirname(path.join(packageRoot, file)), { recursive: true });
+    fs.copyFileSync(path.join(repoRoot, file), path.join(packageRoot, file));
+}
+
 function stage () {
+    // A copy left by an interrupted pack would otherwise publish files deleted from the repo since.
+    clean();
     fs.writeFileSync(path.join(packageRoot, 'README.md'), toPackageReadme(fs.readFileSync(path.join(repoRoot, 'README.md'), 'utf8')));
-    fs.copyFileSync(path.join(repoRoot, 'LICENSE'), path.join(packageRoot, 'LICENSE'));
+    copyFromRepo('LICENSE');
+    copyFromRepo(SESSION_CONTEXT);
+    copyFromRepo('mcp.pi.json');
     // Dot-directories such as skills/.quarantine/ are local and gitignored, never published.
     fs.cpSync(path.join(repoRoot, 'skills'), path.join(packageRoot, 'skills'), {
         recursive: true,
