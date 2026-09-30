@@ -3,7 +3,7 @@ name: release-installer
 description: Release @postman/postman-plugin, the npx installer and Pi package, to npm - a release candidate on the `next` dist-tag or a plain version on `latest`. Use when asked to cut, publish, tag or ship an installer release or rc, promote an rc to latest, resume a release in progress, or retry one that failed.
 argument-hint: rc | latest | <version>
 disable-model-invocation: true
-allowed-tools: Bash(node .claude/skills/release-installer/scripts/release.mjs:*), Bash(git fetch:*), Bash(git status:*), Bash(git ls-remote:*), Bash(git show:*), Bash(git worktree add:*), Bash(npm ci:*), Bash(npm test:*), Bash(npm pack:*), Bash(npm run test:pi-harness:*), Bash(gh run list:*), Bash(gh run watch:*), Bash(gh pr view:*)
+allowed-tools: Bash(node .claude/skills/release-installer/scripts/release.mjs:*), Bash(git fetch:*), Bash(git status:*), Bash(git ls-remote:*), Bash(git show:*), Bash(git worktree add:*), Bash(npm ci:*), Bash(npm test:*), Bash(npm pack:*), Bash(npm run test:pi-harness:*), Bash(gh run list:*), Bash(gh run view:*), Bash(gh pr view:*)
 ---
 
 # Release @postman/postman-plugin
@@ -52,7 +52,7 @@ Run `status`, then find the first matching state for the version and skip to it:
 
 | State | Go to |
 | --- | --- |
-| The tag is on origin (`git ls-remote --tags origin refs/tags/<tag>`) | Step 5 |
+| The tag is on origin (`git ls-remote --tags origin refs/tags/<tag>`) | Step 5; `watch` returns at once for a finished release |
 | `latest` only: the release PR is merged, but there's no tag yet | Step 4b, tagging |
 | `latest` only: the release PR is open | Step 4b, waiting |
 | A `release/postman-plugin-<version>` branch exists, locally or on origin | Step 3's checks, then Step 4 |
@@ -139,15 +139,23 @@ git tag -a @postman/postman-plugin@<version> -m "@postman/postman-plugin <versio
 
 Confirm with the user, then push the tag.
 
-## Step 5 — Watch the publish
+## Step 5 — Watch it until it's live
 
-A tag push's run lists the tag as its branch. It can take a few seconds to
-appear:
+Start this right after pushing the tag. Run it with the Monitor tool, so each line
+reaches you as it prints, and wait for it to exit instead of polling yourself:
 
 ```bash
-RUN=$(gh run list --workflow release.yml --branch @postman/postman-plugin@<version> --limit 1 --json databaseId --jq '.[0].databaseId')
-gh run watch "$RUN" --exit-status
+release.mjs watch <version> [minutes]   # default 30
 ```
+
+It follows the tag's `release.yml` run to the end, then polls npm until the
+version is live. Live means npm serves it, its dist-tag points at it, and
+`npx @postman/postman-plugin@<version> --version` downloads and runs it. It
+prints one line per change and exits 0 once live. It exits 1 with the reason
+when the run fails, naming the failed job and step, or when the timeout passes
+first. Pass each line on to the user as it arrives.
+
+When the run fails, match the failed step:
 
 | `release.yml` failed on | What happened | Do |
 | --- | --- | --- |
@@ -170,10 +178,9 @@ In a resumed session `PI_PREFIX` is gone; install Pi again as in Step 3.
 `verify` checks npm, the dist-tag, the release page and its pre-release flag, and
 `npx @postman/postman-plugin@<version> --version`. For `latest` it also reports
 whether Pi's gallery lists the package yet; the gallery indexes npm on its own
-schedule, so a 404 right after release is not a failure. If npm lags right after
-publishing, run `verify` again a minute later. The harness installs the
-published version into Pi and checks the skills, the mandate and the MCP server
-it registers.
+schedule, so a 404 right after release is not a failure. The harness installs
+the published version into Pi and checks the skills, the mandate and the MCP
+server it registers.
 
 For an rc, ask the user to try it by hand in Pi, the one step no script covers:
 `pi install npm:@postman/postman-plugin@<version>`, then `/mcp login postman`

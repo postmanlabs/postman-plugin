@@ -189,6 +189,98 @@ function verify (version) {
     report(problems);
 }
 
+const sleep = (seconds) => new Promise((resolve) => setTimeout(resolve, seconds * 1000)),
+    elapsed = (start) => `${Math.round((Date.now() - start) / 1000)}s`;
+
+/** Polls `probe` every `seconds` until it returns a value, or returns null at `deadline`. */
+async function until (deadline, seconds, probe) {
+    for (;;) {
+        const value = probe();
+
+        if (value) {
+            return value;
+        }
+
+        if (Date.now() + seconds * 1000 > deadline) {
+            return null;
+        }
+
+        await sleep(seconds);
+    }
+}
+
+function runFor (tag) {
+    const { out } = sh('gh', ['run', 'list', '--workflow', 'release.yml', '--branch', tag, '--limit', '1', '--json', 'databaseId,status,conclusion,url']),
+        runs = out ? JSON.parse(out) : [];
+
+    return runs[0] ?? null;
+}
+
+function failedSteps (id) {
+    const { out } = sh('gh', ['run', 'view', String(id), '--json', 'jobs', '--jq',
+        '[.jobs[] | select(.conclusion == "failure") | "\\(.name): \\([.steps[] | select(.conclusion == "failure") | .name] | join(", "))"] | join("; ")']);
+
+    return out || `no failed step reported; read \`gh run view ${id} --log-failed\``;
+}
+
+/** Follows the tag's release.yml run, then waits until npm serves the version and npx can run it. */
+async function watch (version, minutes = '30') {
+    const tag = tagOf(version),
+        distTag = distTagOf(version),
+        start = Date.now(),
+        deadline = start + Number(minutes) * 60 * 1000,
+        timedOut = (what) => report([`timed out after ${minutes} minutes waiting for ${what}`]);
+
+    if (!distTag || !(Number(minutes) > 0)) {
+        throw new Error('usage: watch <version> [minutes]');
+    }
+
+    let run = await until(deadline, 10, () => runFor(tag));
+
+    if (!run) {
+        return timedOut(`a release.yml run for ${tag}; was the tag pushed?`);
+    }
+
+    console.log(`run ${run.databaseId}: ${run.url}`);
+
+    let seen = '';
+
+    run = await until(deadline, 15, () => {
+        const current = runFor(tag);
+
+        if (current && current.status !== seen) {
+            seen = current.status;
+            console.log(`run ${current.databaseId} ${current.status} (${elapsed(start)})`);
+        }
+
+        return current?.status === 'completed' ? current : null;
+    });
+
+    if (!run) {
+        return timedOut(`run ${seen ? 'to finish' : 'to start'}`);
+    }
+
+    if (run.conclusion !== 'success') {
+        return report([`run ${run.databaseId} ended ${run.conclusion}: ${failedSteps(run.databaseId)}`]);
+    }
+
+    // The registry, the dist-tag and the tarball CDN each lag on their own.
+    const live = await until(deadline, 15, () => {
+        const served = sh('npm', ['view', `${NAME}@${version}`, 'version', '--prefer-online']).out === version,
+            tagged = served && JSON.parse(sh('npm', ['view', NAME, 'dist-tags', '--json', '--prefer-online']).out || '{}')[distTag] === version,
+            ran = tagged && sh('npx', ['-y', '--prefer-online', `${NAME}@${version}`, '--version']).out === version;
+
+        return ran;
+    });
+
+    if (!live) {
+        return timedOut(`npm to serve ${NAME}@${version} on '${distTag}'`);
+    }
+
+    console.log(`live: ${NAME}@${version} on '${distTag}', ${elapsed(start)} after the watch began`);
+    report([]);
+}
+
 function report (problems) {
     for (const problem of problems) {
         console.log(`FAIL ${problem}`);
@@ -199,15 +291,15 @@ function report (problems) {
 }
 
 const [command, ...args] = process.argv.slice(2),
-    commands = { status, suggest, check, bump, verify };
+    commands = { status, suggest, check, bump, watch, verify };
 
 if (!commands[command] || (command !== 'status' && !args[0])) {
-    console.error('usage: release.mjs status | suggest <rc|latest> [patch|minor|major] | check <version> | bump <version> | verify <version>');
+    console.error('usage: release.mjs status | suggest <rc|latest> [patch|minor|major] | check <version> | bump <version> | watch <version> [minutes] | verify <version>');
     process.exit(2);
 }
 
 try {
-    commands[command](...args);
+    await commands[command](...args);
 }
 catch (error) {
     console.error(error.message);
