@@ -225,10 +225,7 @@ To release it:
    `gh workflow run release.yml -f tag=<tag> -f dry_run=true`.
 
 Keep the workflow's filename: npm's trusted publisher for the package is
-pinned to `release.yml`. Hold the first `latest` release until Anthropic's
-`postman` catalog entry points at this repository. Until then `latest` is a
-`0.0.0` placeholder with no command, which is why README.md installs with
-`@next`; drop that suffix in the same PR as the first `latest` release.
+pinned to `release.yml`.
 
 ## Changing a skill
 
