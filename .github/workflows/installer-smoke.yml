@@ -1,9 +1,10 @@
-# Runs `npx @postman/postman-plugin` against the latest Claude Code, Codex and
-# Pi CLIs. The unit tests pin the commands the installer sends; this checks the
-# CLIs still accept them. They install from GitHub or npm, not from this
-# checkout, so it tests the installer, not a branch's skills; only the last step
-# loads this checkout, as a tarball into Pi. It also runs nightly, because a CLI
-# release breaks the installer without anyone pushing here.
+# Runs `npx @postman/postman-plugin` against the latest Claude Code, Codex,
+# Droid and Pi CLIs. The unit tests pin the commands the installer sends; this
+# checks the CLIs still accept them. They install from GitHub or npm, not from
+# this checkout, so it tests the installer, not a branch's skills; only the last
+# two steps load this checkout, as a tarball into Pi and as a marketplace into
+# Droid. It also runs nightly, because a CLI release breaks the installer
+# without anyone pushing here.
 name: Installer smoke
 
 on:
@@ -40,26 +41,32 @@ jobs:
         run: npm ci && npm run build
 
       - name: Install the agent CLIs
-        run: npm install -g @anthropic-ai/claude-code @openai/codex @earendil-works/pi-coding-agent
+        run: npm install -g @anthropic-ai/claude-code @openai/codex droid @earendil-works/pi-coding-agent
 
       - name: Install, then re-run to take the update path
         run: |
-          node dist/cli.js install --yes --agent claude-code --agent codex --agent pi
-          node dist/cli.js install --yes --agent claude-code --agent codex --agent pi
+          node dist/cli.js install --yes --agent claude-code --agent codex --agent factory --agent pi
+          node dist/cli.js install --yes --agent claude-code --agent codex --agent factory --agent pi
 
       - name: Each CLI lists the plugin
         run: |
           claude plugin list --json | node -e 'const l=JSON.parse(require("fs").readFileSync(0,"utf8")); if(!l.some(p=>p.id==="postman@claude-plugins-official"&&p.scope==="user")){console.error(l);process.exit(1)}'
           codex plugin list --json | node -e 'const l=JSON.parse(require("fs").readFileSync(0,"utf8")).installed; if(!l.some(p=>p.pluginId==="postman@postman")){console.error(l);process.exit(1)}'
+          droid plugin list --scope user | grep -E '^ *postman@postman-plugin +\[user\]'
           pi list | grep -Fx '  npm:@postman/postman-plugin'
 
       - name: Remove, and each CLI no longer lists it
         run: |
-          node dist/cli.js remove --yes --agent claude-code --agent codex --agent pi
+          node dist/cli.js remove --yes --agent claude-code --agent codex --agent factory --agent pi
           claude plugin list --json | node -e 'const l=JSON.parse(require("fs").readFileSync(0,"utf8")); if(l.some(p=>p.id.startsWith("postman@"))){console.error(l);process.exit(1)}'
           codex plugin list --json | node -e 'const l=JSON.parse(require("fs").readFileSync(0,"utf8")).installed; if(l.some(p=>p.pluginId.startsWith("postman@"))){console.error(l);process.exit(1)}'
+          if droid plugin list --scope user | grep -F 'postman@'; then exit 1; fi
           if pi list | grep -F 'npm:@postman/postman-plugin'; then exit 1; fi
 
       # The pinned harness in validate.yml, against the Pi release the step above installed.
       - name: The latest Pi loads the packed tarball
         run: npm run test:pi-harness
+
+      # The pinned harness in validate.yml, against the Droid release installed above.
+      - name: The latest Droid loads this checkout
+        run: node ../scripts/factory-harness.js
