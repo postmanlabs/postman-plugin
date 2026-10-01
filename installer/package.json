@@ -1,6 +1,6 @@
 {
   "name": "@postman/postman-plugin",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Postman's API engineering skills for coding agents: a Pi package, and an npx installer that sets up Claude Code, Codex, Cursor, Kimi Code, OpenCode and Pi.",
   "type": "module",
   "license": "Apache-2.0",
