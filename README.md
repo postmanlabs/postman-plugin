@@ -35,7 +35,21 @@ You can also use the following commands to install individually:
 [View Postman on Claude Plugins](https://claude.com/plugins/postman)
 
 ```bash
-claude plugin install postman@postman
+claude plugin marketplace add anthropics/claude-plugins-official
+claude plugin install postman@claude-plugins-official
+```
+
+The first command registers Anthropic's official marketplace, which a fresh
+Claude Code doesn't have until an interactive session gets past sign-in. It
+does nothing where the marketplace is already registered.
+
+### Codex
+
+[View Postman on ChatGPT Plugins](https://chatgpt.com/plugins/postman?open_in_app)
+
+```bash
+codex plugin marketplace add postmanlabs/postman-plugin
+codex plugin add postman@postman
 ```
 
 ### Cursor
@@ -46,24 +60,33 @@ claude plugin install postman@postman
 /add-plugin postman
 ```
 
-### Codex
-
-[View Postman on ChatGPT Plugins](https://chatgpt.com/plugins/postman?open_in_app)
-
-```bash
-codex plugin add postman@postman
-```
-
 ### Factory Droid
 
 ```bash
-droid plugin marketplace add postmanlabs/postman-plugin
+droid plugin marketplace add https://github.com/postmanlabs/postman-plugin.git
 droid plugin install postman@postman-plugin --scope user
 ```
 
 `droid plugin marketplace update postman-plugin`, then
 `droid plugin update postman@postman-plugin --scope user`, updates it. Sign in
 to Postman's MCP server with `/mcp` inside a Droid session.
+
+### Kimi Code
+
+Inside a Kimi Code session:
+
+```text
+/plugins install https://github.com/postmanlabs/postman-plugin/tree/main
+```
+
+Then run `/new` to start a session with the plugin. Run the same command again,
+then `/new`, to update; `/plugins remove postman` removes it. Sign in to
+Postman's MCP server with `/mcp-config login plugin-postman:postman`.
+
+### OpenCode
+
+OpenCode loads Postman from a clone of this repository and a one-line loader
+file. [opencode/README.md](opencode/README.md#install) has the commands.
 
 ### Pi
 
