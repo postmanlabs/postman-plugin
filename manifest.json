@@ -131,8 +131,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/ci-integration/SKILL.md",
-          "bytes": 6282,
-          "sha256": "5133310bc4a81b49192987cc6568fbfc46f7b12fe8fa50fc42a5ee26bb21d4c0"
+          "bytes": 9114,
+          "sha256": "897ae4ac6ec769f77bc59cc05b426389dac80a3cd2af26dc9e31f93c4a450c5d"
         }
       ]
     },
