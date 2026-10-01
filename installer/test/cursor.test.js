@@ -20,6 +20,8 @@ test('detects Cursor by its app\'s command, its CLI, its app bundle on macOS, or
     assert.equal(await cursor.detect(fakeSystem({ bins: ['cursor'] })), true);
     assert.equal(await cursor.detect(fakeSystem({ bins: ['cursor-agent'] })), true);
     assert.equal(await cursor.detect(fakeSystem({ bins: ['agent'] })), false);
+    assert.equal(await cursor.detect(fakeSystem({ files: { [path.join(home, '.local', 'bin', 'cursor-agent')]: '' } })), true);
+    assert.equal(await cursor.detect(fakeSystem({ files: { [path.join(home, '.local', 'bin', 'agent')]: '' } })), false);
     assert.equal(await cursor.detect(fakeSystem({ platform: 'darwin', dirs: ['/Applications/Cursor.app'] })), true);
     assert.equal(await cursor.detect(fakeSystem({ dirs: [path.join(home, '.cursor')] })), true);
     assert.equal(await cursor.detect(fakeSystem({ platform: 'linux', dirs: ['/Applications/Cursor.app'] })), false);

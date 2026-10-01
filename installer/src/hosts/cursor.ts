@@ -19,9 +19,11 @@ export const cursor: Host = {
     route: '.cursor-plugin',
 
     async detect (system) {
-        // The Cursor CLI creates ~/.cursor only on its first run. It also installs `agent`,
-        // a name too generic to mean Cursor.
+        // The Cursor CLI creates ~/.cursor only on its first run, and its installer can't put
+        // ~/.local/bin on the PATH of the shell that ran it. It also installs `agent`, a name
+        // too generic to mean Cursor.
         return (await system.which('cursor')) !== null || (await system.which('cursor-agent')) !== null ||
+            await system.exists(path.join(system.home, '.local', 'bin', 'cursor-agent')) ||
             (system.platform === 'darwin' && await system.exists('/Applications/Cursor.app')) ||
             await system.exists(path.join(system.home, '.cursor'));
     },
