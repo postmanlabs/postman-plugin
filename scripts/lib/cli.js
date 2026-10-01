@@ -7,7 +7,8 @@ import path from 'node:path';
 const windows = process.platform === 'win32';
 
 // Windows names are case-insensitive, but only process.env itself knows it: a copy keeps `Path`.
-const variable = (env, name) => env[Object.keys(env).find((key) => key.toUpperCase() === name)];
+// Of `Path` and `PATH` both, Node gives the child the first in sorted order, so this reads that one.
+const variable = (env, name) => env[Object.keys(env).filter((key) => key.toUpperCase() === name).sort()[0]];
 
 function onPath (command, env) {
     if (!windows || path.extname(command) || command.includes(path.sep) || command.includes('/')) {
