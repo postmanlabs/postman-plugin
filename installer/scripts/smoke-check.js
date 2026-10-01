@@ -42,7 +42,9 @@ const AGENTS = {
     },
     factory: {
         expected: ['postman@postman-plugin [user]'],
+        // A line ends in the installed commit: `postman@postman-plugin [user] 65e37b4`.
         found: () => lines(output('droid', ['plugin', 'list', '--scope', 'user']), 'postman@')
+            .map((line) => line.match(/^(\S+ \[\w+\])/)?.[1] ?? line)
     },
     kimi: {
         expected: ['postman'],

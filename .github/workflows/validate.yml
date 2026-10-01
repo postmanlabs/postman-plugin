@@ -138,19 +138,18 @@ jobs:
         run: npm ci
 
       # Includes a test that fails when a route in scripts/routes.js has no installer adapter.
+      # `npm test` with both reporters, which node reads only ahead of the test files. Not in
+      # Git Bash: its runtime enables the backup privilege, which the ACL tests' deny bypasses.
       - name: Unit tests
-        # `npm test` with both reporters; node reads them only ahead of the test files.
-        run: |
-          npm run build
-          node --test --test-reporter=spec --test-reporter-destination=stdout \
-            --test-reporter=tap --test-reporter-destination="$RUNNER_TEMP/unit-tests.tap" test/*.test.js
+        shell: pwsh
+        run: npm run build && node --test --test-reporter=spec --test-reporter-destination=stdout --test-reporter=tap --test-reporter-destination=unit-tests.tap test/*.test.js
 
       # A green run that skipped tests hid that Windows ran nothing end to end. Only a
       # test of the Windows process layer may skip, and only off Windows.
       - name: No unit test was skipped but a Windows-only one off Windows
         run: |
-          test -s "$RUNNER_TEMP/unit-tests.tap"
-          if grep -E '# SKIP' "$RUNNER_TEMP/unit-tests.tap" | grep -v '# SKIP Windows only$'; then exit 1; fi
+          test -s unit-tests.tap
+          if grep -E '# SKIP' unit-tests.tap | grep -v '# SKIP Windows only$'; then exit 1; fi
 
   # Pi installs the installer's npm tarball as a Pi package. The harness packs it,
   # installs it into a pinned Pi, and checks what Pi sends the model.
