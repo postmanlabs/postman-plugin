@@ -122,8 +122,6 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: lts/*
-          cache: npm
-          cache-dependency-path: opencode/package-lock.json
 
       - name: Install development dependencies
         run: npm ci
@@ -168,8 +166,6 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: lts/*
-          cache: npm
-          cache-dependency-path: installer/package-lock.json
 
       - name: Install development dependencies
         run: npm ci
@@ -211,8 +207,6 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: lts/*
-          cache: npm
-          cache-dependency-path: installer/package-lock.json
 
       - name: Install development dependencies
         run: npm ci

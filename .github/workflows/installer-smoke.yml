@@ -67,21 +67,6 @@ jobs:
         with:
           node-version: lts/*
 
-      # One cache of npm's download folder serves `npm ci` and the agent installs. Keyed by
-      # day: the nightly run on main saves that day's agent releases, and a pull request
-      # restores it. npm still resolves the latest version; it skips only the download.
-      - name: npm's cache folder and today's date
-        id: npm-cache
-        run: |
-          echo "dir=$(npm config get cache)" >> "$GITHUB_OUTPUT"
-          echo "day=$(date -u +%F)" >> "$GITHUB_OUTPUT"
-
-      - uses: actions/cache@v6
-        with:
-          path: ${{ steps.npm-cache.outputs.dir }}
-          key: npm-smoke-${{ runner.os }}-${{ steps.npm-cache.outputs.day }}
-          restore-keys: npm-smoke-${{ runner.os }}-
-
       - name: Build
         run: npm ci && npm run build
 
