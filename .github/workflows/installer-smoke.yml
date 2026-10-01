@@ -3,8 +3,9 @@
 # installer sends; this checks the agents still accept them, and that each one
 # then reports Postman (Cursor has no CLI, so its files are checked instead).
 # They install from GitHub or npm, not from this checkout, so it tests the
-# installer, not a branch's skills; only the last two steps load this checkout,
-# as a tarball into Pi and as a marketplace into Droid. It also runs nightly,
+# installer, not a branch's skills; only the last three steps load this checkout,
+# as a tarball into Pi, as a marketplace into Droid and as a clone's files into
+# OpenCode. It also runs nightly,
 # because an agent release breaks the installer without anyone pushing here.
 name: Installer smoke
 
