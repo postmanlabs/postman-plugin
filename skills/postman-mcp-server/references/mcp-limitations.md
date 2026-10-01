@@ -1,6 +1,6 @@
 # Known MCP Limitations
 
-These limitations are documented so they are handled correctly in all commands and workflows.
+These limitations are documented so they are handled correctly in all workflows.
 
 ## generateCollection is Async
 

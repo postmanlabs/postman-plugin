@@ -1,5 +1,6 @@
 # Independent concerns, one parallel job each, so a failure names itself:
-# `skills` checks what Claude Code loads from skills/, `manifest` checks the
+# `skills` checks what Claude Code loads from skills/ and that every
+# `postman:<name>` the repo ships names one of them, `manifest` checks the
 # index `postman init` fetches, `opencode` builds and loads the OpenCode plugin,
 # `installer` unit-tests `npx @postman/postman-plugin` (installer-smoke.yml runs
 # it against the real agent CLIs), `pi` loads that package's tarball into Pi,
@@ -29,6 +30,16 @@ jobs:
             grep -qE '^name:' "$skill" || { echo "::error file=$skill::frontmatter has no name"; status=1; }
             grep -qE '^description:' "$skill" || { echo "::error file=$skill::frontmatter has no description"; status=1; }
           done
+          exit $status
+
+      # An agent relays a stale postman:<name> to the user as-is. intent.md is a
+      # historical record of retired skill names, so it is not scanned.
+      - name: Every postman:<name> reference names a real skill
+        run: |
+          status=0
+          while IFS=: read -r file line ref; do
+            [ -d "skills/${ref#postman:}" ] || { echo "::error file=$file,line=$line::$ref names no skill under skills/"; status=1; }
+          done < <(grep -rnoE 'postman:[a-z0-9-]+' skills hooks README.md CONTRIBUTING.md)
           exit $status
 
   # The manifest carries a sha256 per file, and `postman init` rejects a file whose

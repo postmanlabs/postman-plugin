@@ -38,7 +38,7 @@ Read the returned passages and compose a direct answer to the user's question. D
 - If the docs reveal a better or officially recommended workflow than what the user asked, surface it.
 - Always cite the source URLs the tool returns so the user can read more.
 
-### Step 3: Connect to the Plugin
+### Step 3: Offer a Matching Workflow
 
 When the answer maps to one of this skill's workflows, offer to run it so the user can act immediately:
 
