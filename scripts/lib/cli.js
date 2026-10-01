@@ -6,13 +6,16 @@ import path from 'node:path';
 
 const windows = process.platform === 'win32';
 
-function onPath (command) {
+// Windows names are case-insensitive, but only process.env itself knows it: a copy keeps `Path`.
+const variable = (env, name) => env[Object.keys(env).find((key) => key.toUpperCase() === name)];
+
+function onPath (command, env) {
     if (!windows || path.extname(command) || command.includes(path.sep) || command.includes('/')) {
         return command;
     }
 
-    for (const dir of (process.env.PATH || '').split(path.delimiter).filter(Boolean)) {
-        for (const extension of (process.env.PATHEXT || '.EXE;.CMD;.BAT').split(';')) {
+    for (const dir of (variable(env, 'PATH') || '').split(path.delimiter).filter(Boolean)) {
+        for (const extension of (variable(env, 'PATHEXT') || '.EXE;.CMD;.BAT').split(';')) {
             if (fs.existsSync(path.join(dir, command + extension))) {
                 return path.join(dir, command + extension);
             }
@@ -24,22 +27,24 @@ function onPath (command) {
 
 const quoteForCmd = (arg) => (/^[\w@./:=\\-]+$/.test(arg) ? arg : `"${arg}"`);
 
-function invocation (command, args) {
-    const file = onPath(command);
+// Resolved on the PATH the child gets, which a caller may have narrowed.
+function invocation (command, args, env = process.env) {
+    const file = onPath(command, env);
 
+    // One string, not an args array: Node deprecates (DEP0190) passing both with `shell`.
     return /\.(cmd|bat)$/i.test(file) ?
-        [quoteForCmd(file), args.map(quoteForCmd), { shell: true }] :
+        [[file, ...args].map(quoteForCmd).join(' '), [], { shell: true }] :
         [file, args, {}];
 }
 
 export function spawnCliSync (command, args, options = {}) {
-    const [file, argv, extra] = invocation(command, args);
+    const [file, argv, extra] = invocation(command, args, options.env);
 
     return spawnSync(file, argv, { ...options, ...extra });
 }
 
 export function spawnCli (command, args, options = {}) {
-    const [file, argv, extra] = invocation(command, args);
+    const [file, argv, extra] = invocation(command, args, options.env);
 
     return spawn(file, argv, { ...options, ...extra });
 }
