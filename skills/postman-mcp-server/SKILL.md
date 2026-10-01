@@ -8,7 +8,7 @@ user-invocable: false
 
 Reference for Postman concepts and MCP tool selection. Use this context when working with Postman MCP tools to make better decisions.
 
-See `references/setup.md` for how to to setup postman mcp server and auth.
+See `references/setup.md` for how to set up the Postman MCP server and auth.
 
 ## Core Concepts
 
@@ -25,16 +25,18 @@ See `references/setup.md` for how to to setup postman mcp server and auth.
 
 ## Decision Guide
 
-| Goal | Approach |
-|------|----------|
-| Push code changes to Postman | Create/update spec in Spec Hub, then sync to collection |
-| Consume a Postman API | Read collection + generate client code |
-| Find an API | Use `searchPostmanElements`, then drill into details |
-| Test an API | Run collection with `runCollection` |
-| Create a fake API for frontend | Create mock server from collection with examples |
-| Document an API | Analyze collection completeness, fill gaps, optionally publish |
-| Audit API security | Run security checks against spec or collection |
-| Learn how to use a Postman feature | Search Postman docs with `searchLearningCenter` (Full mode) |
+| Goal | Approach | Workflow |
+|------|----------|----------|
+| Push code changes to Postman | Create/update spec in Spec Hub, then sync to collection | `references/sync.md` |
+| Consume a Postman API | Read collection + generate client code | — |
+| Find an API | Use `searchPostmanElements`, then drill into details | `references/search.md` |
+| Test an API | Run collection with `runCollection` | `references/test.md` |
+| Create a fake API for frontend | Create mock server from collection with examples | `references/mock.md` |
+| Document an API | Analyze collection completeness, fill gaps, optionally publish | `references/docs.md` |
+| Audit API security | Run security checks against spec or collection | `references/security.md` |
+| Learn how to use a Postman feature | Search Postman docs with `searchLearningCenter` (Full mode) | `references/learn.md` |
+
+When the goal's row names a workflow file, read it before the first tool call.
 
 ## MCP Tool Selection
 
@@ -52,7 +54,25 @@ See `references/setup.md` for how to to setup postman mcp server and auth.
 **Learning Center:** `searchLearningCenter` (Full mode only — searches Postman product docs for how-to guidance)
 **User:** `getAuthenticatedUser`
 
-See `references/mcp-limitations.md` for known limitations and workarounds.
+## Known Limitations
+
+The sync, mock and create paths all hit these; a missed one looks like success
+or fails without a useful error.
+
+- **`generateCollection` is async.** It returns HTTP 202, not the collection.
+  Poll `getGeneratedCollectionSpecs` or `getSpecCollections`;
+  `getAsyncSpecTaskStatus` may return 403 on some plans.
+- **`syncCollectionWithSpec` is async and OpenAPI 3.0 only.** Poll
+  `getCollectionUpdatesTasks`. For Swagger 2.0 or OpenAPI 3.1, `updateSpecFile`
+  and then `generateCollection` instead.
+- **`createCollection` can't nest folders.** Create the collection, then
+  `createCollectionFolder`, then `createCollectionRequest` into each folder.
+- **`putCollection`'s auth enum has no `noauth`.** Let no-auth endpoints inherit
+  collection-level auth.
+- **`createSpec` fails above roughly 50KB.** For large APIs, parse the spec
+  locally and build the collection with `createCollection`,
+  `createCollectionFolder`, `createCollectionRequest` and
+  `createCollectionResponse`.
 
 ## Workflows
 

@@ -104,7 +104,8 @@ because its result is only half-useful without the follow-up check.
 2. **Propose the path.** Derive it from the flow name — "Checkout" →
    `/checkout` — so the user is confirming a concrete value rather than
    answering an open question. Raise `--auth` here if the trigger will be
-   reachable by anyone who learns the URL.
+   reachable by anyone who learns the URL. On `deploy`, `--auth` is a bare
+   switch; on `update` it takes `on|off`.
 3. **Confirm, then run** `flows deploy <flowId> --path /checkout`.
 4. **Report the Trigger URL and whether the trigger is enabled.** A deploy can
    land with the trigger off, which looks identical to a broken deploy at call

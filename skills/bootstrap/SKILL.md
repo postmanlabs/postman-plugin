@@ -70,32 +70,30 @@ Three steps, in order. Stop at the first that fails and report which one.
 command -v postman && postman --version
 ```
 
-**Current?** Never blocking — no network is a normal answer. But don't call a
-feature missing without having made this comparison.
+```powershell
+where.exe postman; postman --version
+```
+
+**Current?** Never blocking — no network is a normal answer, reported as
+`not checked`. But don't call a feature missing without having made this
+comparison.
 
 ```bash
-npm view postman-cli version
+postman update --check
 ```
+
+**Update:** `postman update`. It updates through whichever installer put the
+binary there, so never reinstall over an existing copy with a different one.
+`postman skills update` is unrelated — it refreshes a repository's
+`postman/skills/`, not the binary.
 
 ### 1.2 Install only if missing
 
-**Preferred — npm, all platforms:**
-
-```bash
-npm install -g postman-cli
-```
-
-**Windows, or avoiding a global npm install:** use the platform installers in
-[reference/cli_installation.md](reference/cli_installation.md). Every route puts
-`postman` on `PATH`.
-
-**Updating a copy that already exists:** use the same route that installed it.
-curl-installed binaries don't take `npm install -g` cleanly.
-
-**If every route fails:** name what blocked you — no Node, no shell, no write
-access, or a hosted session that cannot install — then hand off to the
-`postman-mcp-server` skill. An attempted install that actually failed is the
-only thing that qualifies.
+Only when the presence check finds no `postman`: read
+[reference/cli_installation.md](reference/cli_installation.md) before running
+any installer. It picks the installer for this machine, probes permissions
+first so no password prompt hangs the shell, and says what to report when
+nothing fits.
 
 ## 2. Establish the filesystem and workspace bindings
 
@@ -212,5 +210,3 @@ written but the requested workspace was not created — it does *not* mean re-ru
 
 - `collection-schema-v3` skill — read when inspecting or writing the
   collection files this skill resolves.
-- [CLI Installation](reference/cli_installation.md) — read for install, update
-  and uninstall commands per platform.
