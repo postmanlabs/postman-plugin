@@ -10,7 +10,7 @@
 
 const fs = require('fs'),
     path = require('path'),
-    { execFileSync } = require('child_process'),
+    { execFileSync, spawnSync } = require('child_process'),
     { MANIFEST_ROUTES, MANIFEST_DIR_PATTERN, PACKAGE_ROUTES } = require('../../scripts/routes.js');
 
 // Each of these keys is read by one set of vendors and ignored without an error
@@ -26,6 +26,8 @@ const ROOT = repoRootOrExit();
 if (!isThisRepo()) {
     process.exit(0);
 }
+
+deferToTheCommittingCheckoutsCopy();
 
 const errors = [],
     sources = new Map();
@@ -311,6 +313,37 @@ function repoRootOrExit () {
     }
     catch (e) {
         process.exit(0);
+    }
+}
+
+/** The hook is wired to one checkout's copy by absolute path, but a commit in a
+ *  worktree must be checked against that worktree's own checks and routes.
+ *  Only a linked worktree of this clone qualifies: they share a git common dir. */
+function deferToTheCommittingCheckoutsCopy () {
+    const own = path.join(ROOT, '.claude', 'hooks', 'validate-manifests.js');
+
+    if (!fs.existsSync(own) || fs.realpathSync(own) === fs.realpathSync(__filename) ||
+        !gitCommonDir(ROOT) || gitCommonDir(ROOT) !== gitCommonDir(__dirname)) {
+        return;
+    }
+
+    const { status } = spawnSync(process.execPath, [own], { cwd: ROOT, stdio: 'inherit' });
+
+    // Fail closed, as runChecks()'s catch does: a crash's exit 1 would let the commit through.
+    process.exit(status === 0 ? 0 : 2);
+}
+
+/** null when git can't say; the caller then runs this copy's own checks. */
+function gitCommonDir (cwd) {
+    try {
+        return fs.realpathSync(execFileSync('git', ['rev-parse', '--path-format=absolute', '--git-common-dir'], {
+            cwd,
+            encoding: 'utf8',
+            stdio: ['ignore', 'pipe', 'ignore']
+        }).trim());
+    }
+    catch (e) {
+        return null;
     }
 }
 
