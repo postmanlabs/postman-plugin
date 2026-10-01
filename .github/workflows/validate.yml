@@ -34,12 +34,14 @@ jobs:
 
       # An agent relays a stale postman:<name> to the user as-is. intent.md is a
       # historical record of retired skill names, so it is not scanned.
+      # A postman: inside a longer name, like Kimi's plugin-postman:postman, is skipped.
       - name: Every postman:<name> reference names a real skill
         run: |
           status=0
-          while IFS=: read -r file line ref; do
-            [ -d "skills/${ref#postman:}" ] || { echo "::error file=$file,line=$line::$ref names no skill under skills/"; status=1; }
-          done < <(grep -rnoE 'postman:[a-z0-9-]+' skills hooks README.md CONTRIBUTING.md)
+          while IFS=: read -r file line match; do
+            name=${match#*postman:}
+            [ -d "skills/$name" ] || { echo "::error file=$file,line=$line::postman:$name names no skill under skills/"; status=1; }
+          done < <(grep -rnoE '(^|[^a-z0-9-])postman:[a-z0-9-]+' skills hooks README.md CONTRIBUTING.md)
           exit $status
 
   # The manifest carries a sha256 per file, and `postman init` rejects a file whose
