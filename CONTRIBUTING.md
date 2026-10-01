@@ -264,6 +264,13 @@ The installer's version is its own, independent of every other route's. Pi gets
 the package's `latest`, whichever version of the installer runs the adapter —
 see [The Pi package](#the-pi-package).
 
+`install` and `status` read each agent's `--version` and print a warning when it
+is below that agent's minimum in `installer/src/hosts/minimum-versions.ts`. The
+warning never stops an install or changes the exit code, and an agent with no
+minimum there, or whose version can't be read, isn't checked. Set a minimum
+only to the first release that ships every command or API the route uses, or to
+a version the route already documents, and cite the source in the PR.
+
 Run these from `installer/`:
 
 ```

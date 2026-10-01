@@ -16,6 +16,7 @@ const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '
 const FAKE_CLAUDE = `#!/bin/sh
 echo "$*" >> "$FAKE_LOG"
 case "$*" in
+  "--version") echo "\${FAKE_VERSION:-2.1.285} (Claude Code)" ;;
   "plugin marketplace list --json") echo '[]' ;;
   "plugin list --json")
     if [ -f "$FAKE_STATE" ]; then echo '[{"id":"postman@claude-plugins-official","scope":"user"}]'; else echo '[]'; fi ;;
@@ -101,7 +102,7 @@ test('--dry-run runs only read-only probes', posixOnly, () => {
 
     assert.equal(dry.status, 0, dry.stdout + dry.stderr);
     assert.match(dry.stdout, /\$ claude plugin marketplace add anthropics\/claude-plugins-official --scope user/);
-    assert.deepEqual(box.calls(), ['plugin list --json', 'plugin marketplace list --json', 'plugin list --json']);
+    assert.deepEqual(box.calls(), ['plugin list --json', '--version', 'plugin marketplace list --json', 'plugin list --json']);
 });
 
 test('--yes installs through the real process layer and verifies the result', posixOnly, () => {
@@ -113,6 +114,7 @@ test('--yes installs through the real process layer and verifies the result', po
 
     assert.equal(install.status, 0, install.stdout + install.stderr);
     assert.deepEqual(box.calls().filter((call) => !call.endsWith('list --json')), [
+        '--version',
         'plugin marketplace add anthropics/claude-plugins-official --scope user',
         'plugin install postman@claude-plugins-official --scope user --json'
     ]);
@@ -126,5 +128,17 @@ test('refuses to run unattended without --yes', posixOnly, () => {
     const unattended = cliRun(['install'], box.env);
 
     assert.equal(unattended.status, 2);
-    assert.deepEqual(box.calls(), ['plugin list --json']);
+    assert.deepEqual(box.calls(), ['plugin list --json', '--version']);
+});
+
+test('an agent below its minimum version is warned about, then installed into anyway', posixOnly, () => {
+    const box = sandbox();
+
+    box.addClaude();
+
+    const install = cliRun(['install', '--yes', '--agent', 'claude-code'], { ...box.env, FAKE_VERSION: '2.1.100' });
+
+    assert.equal(install.status, 0, install.stdout + install.stderr);
+    assert.match(install.stdout, /warning: Claude Code 2\.1\.100 is older than 2\.1\.268/);
+    assert.ok(box.calls().includes('plugin install postman@claude-plugins-official --scope user --json'));
 });

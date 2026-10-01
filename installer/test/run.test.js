@@ -197,6 +197,41 @@ test('status changes nothing', async () => {
     assert.deepEqual(a.calls, []);
 });
 
+const OLD_CLAUDE = { 'claude --version': '2.1.200 (Claude Code)' },
+    isVersionWarning = (line) => line.includes('warning: claude-code 2.1.200 is older than 2.1.268');
+
+test('an agent below its minimum version gets a warning before the install, which still runs', async () => {
+    const claude = fakeHost('claude-code'),
+        system = fakeSystem({ probes: OLD_CLAUDE });
+
+    assert.equal(await run(system, [claude], options()), 0);
+    assert.deepEqual(claude.calls, ['install']);
+    assert.ok(system.lines.findIndex(isVersionWarning) < system.lines.indexOf('\nclaude-code'));
+    assert.equal(system.lines.filter(isVersionWarning).length, 1);
+});
+
+test('the version warning shows in a dry run and in status, and not in remove', async () => {
+    const dryRun = fakeSystem({ dryRun: true, probes: OLD_CLAUDE }),
+        status = fakeSystem({ probes: OLD_CLAUDE }),
+        remove = fakeSystem({ probes: OLD_CLAUDE });
+
+    assert.equal(await run(dryRun, [fakeHost('claude-code')], options()), 0);
+    assert.equal(await run(status, [fakeHost('claude-code')], options({ command: 'status' })), 0);
+    assert.equal(await run(remove, [fakeHost('claude-code', { installed: true })], options({ command: 'remove' })), 0);
+    assert.ok(dryRun.lines.some(isVersionWarning));
+    assert.ok(status.lines.some(isVersionWarning));
+    assert.ok(!remove.lines.some((line) => line.includes('warning:')));
+});
+
+test('an agent whose version is current or unreadable gets no warning', async () => {
+    const current = fakeSystem({ probes: { 'claude --version': '2.1.285 (Claude Code)' } }),
+        unreadable = fakeSystem();
+
+    assert.equal(await run(current, [fakeHost('claude-code')], options()), 0);
+    assert.equal(await run(unreadable, [fakeHost('claude-code')], options()), 0);
+    assert.ok(![...current.lines, ...unreadable.lines].some((line) => line.includes('warning:')));
+});
+
 test('finding no agent fails an install, but not a status or a remove', async () => {
     const hosts = [fakeHost('a', { detected: false })],
         system = fakeSystem();

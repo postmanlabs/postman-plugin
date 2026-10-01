@@ -1,3 +1,4 @@
+import { versionWarning } from './hosts/minimum-versions.js';
 import type { Host, HostId, Outcome, Result, Status } from './hosts/types.js';
 import type { System } from './system.js';
 
@@ -12,7 +13,7 @@ export type RunOptions = {
     confirm: (question: string) => Promise<boolean>;
 };
 
-type Target = { host: Host; status: Status };
+type Target = { host: Host; status: Status; warning: string | null };
 type Report = { host: Host; result: Result };
 
 export const EXIT = { ok: 0, failed: 1, usage: 2, manual: 3 } as const;
@@ -32,8 +33,12 @@ function stateLabel (status: Status): string {
 }
 
 function printStatuses (system: System, targets: Target[], width: number): void {
-    for (const { host, status } of targets) {
+    for (const { host, status, warning } of targets) {
         system.log(`  ${padEnd(host.name, width)}${padEnd(stateLabel(status), 15)}${status.installed === false ? '' : status.detail}`.trimEnd());
+
+        if (warning) {
+            system.log(`  ${' '.repeat(width)}warning: ${warning}`);
+        }
 
         for (const note of status.notes) {
             system.log(`  ${' '.repeat(width)}note: ${note}`);
@@ -110,7 +115,10 @@ export async function run (system: System, hosts: readonly Host[], options: RunO
         }
 
         if (detected) {
-            targets.push({ host, status: await readStatus(system, host) });
+            const status = await readStatus(system, host),
+                warning = options.command === 'remove' ? null : await versionWarning(system, host);
+
+            targets.push({ host, status, warning });
         }
         else if (options.agents.length) {
             reports.push({ host, result: { outcome: 'blocked', message: `${host.name} was not found on this machine` } });
