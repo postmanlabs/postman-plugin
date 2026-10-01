@@ -16,8 +16,10 @@ const home = '/home/user',
     }),
     manifest = path.join(local, '.cursor-plugin', 'plugin.json');
 
-test('detects Cursor by CLI, by app bundle on macOS, or by its config directory', async () => {
+test('detects Cursor by its app\'s command, its CLI, its app bundle on macOS, or its config directory', async () => {
     assert.equal(await cursor.detect(fakeSystem({ bins: ['cursor'] })), true);
+    assert.equal(await cursor.detect(fakeSystem({ bins: ['cursor-agent'] })), true);
+    assert.equal(await cursor.detect(fakeSystem({ bins: ['agent'] })), false);
     assert.equal(await cursor.detect(fakeSystem({ platform: 'darwin', dirs: ['/Applications/Cursor.app'] })), true);
     assert.equal(await cursor.detect(fakeSystem({ dirs: [path.join(home, '.cursor')] })), true);
     assert.equal(await cursor.detect(fakeSystem({ platform: 'linux', dirs: ['/Applications/Cursor.app'] })), false);
@@ -28,6 +30,7 @@ test('fresh install clones this repo as a local plugin', async () => {
         outcome = await cursor.install(system);
 
     assert.equal(outcome.outcome, 'done');
+    assert.match(outcome.next, /Reload Window.*new Cursor CLI session/);
     assert.deepEqual(system.commands, [`git clone --depth 1 --branch main ${GIT_URL} ${local}`]);
 });
 

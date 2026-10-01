@@ -7,7 +7,7 @@ import { type Host, result } from './types.js';
 // plugins/local. Its Marketplace keeps its own copy under plugins/cache.
 const localClone = (system: System) => path.join(system.home, '.cursor', 'plugins', 'local', 'postman'),
     marketplaceCopy = (system: System) => path.join(system.home, '.cursor', 'plugins', 'cache', 'cursor-public', 'postman'),
-    NEXT = 'Reload the Cursor window (Developer: Reload Window) for the change to take effect.',
+    NEXT = 'Reload the Cursor window (Developer: Reload Window), or start a new Cursor CLI session, for the change to take effect.',
     // Cursor keeps a disabled Marketplace copy on disk and records "enabled" only in its
     // private state database, so the copy being there doesn't mean Postman is active.
     CHECK_ENABLED = 'If Postman isn\'t active in Cursor, enable it in Cursor Settings > Plugins.',
@@ -19,7 +19,9 @@ export const cursor: Host = {
     route: '.cursor-plugin',
 
     async detect (system) {
-        return (await system.which('cursor')) !== null ||
+        // The Cursor CLI creates ~/.cursor only on its first run. It also installs `agent`,
+        // a name too generic to mean Cursor.
+        return (await system.which('cursor')) !== null || (await system.which('cursor-agent')) !== null ||
             (system.platform === 'darwin' && await system.exists('/Applications/Cursor.app')) ||
             await system.exists(path.join(system.home, '.cursor'));
     },
