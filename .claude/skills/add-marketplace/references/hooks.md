@@ -2,8 +2,10 @@
 
 Reference for Step 3. Read this before editing anything under `hooks/`. Both
 failure modes documented here are silent: the pre-commit hook never reads
-`hooks/`, and in CI only the Droid harness runs it, through Droid. For every
-other vendor the only symptom of either is an agent that never mentions
+`hooks/`, and in CI only the Droid harness runs it through an agent.
+`installer/test/session-start-hook.test.js` runs the scripts directly, which
+checks what each agent gets from them but not that the agent finds them. For
+every other vendor the only symptom of either is an agent that never mentions
 Postman.
 
 ## The plugin-root variable is the trap
@@ -44,6 +46,11 @@ route re-creates the problem the shared `skills/` directory exists to avoid.
   substitutes `${DROID_PLUGIN_ROOT}`; elsewhere `sh` expands an unset variable
   to `""`. Droid's own `DROID_PLUGIN_ROOT` *environment variable* can't be the
   signal: on Windows it holds the placeholder `/PLUGIN_ROOT_NOT_EXPANDED_ERROR`.
+- **Cursor is told apart by its environment, and gets JSON.** Cursor sets
+  `CURSOR_PLUGIN_ROOT` in every plugin hook's environment and drops a hook
+  whose stdout isn't JSON as `invalid_json`, so with it set the scripts print
+  `{"additional_context": "<mandate>"}`. A third argument can't be the signal:
+  `${CURSOR_PLUGIN_ROOT}` would reach Droid's cmd.exe unexpanded.
 - **`hooks/session-start` must stay executable and LF.** The shell runs it by
   path, so it needs its mode bit, and `.gitattributes` pins it to LF so a
   Windows checkout with `core.autocrlf` doesn't hand bash a `\r` on every line.
@@ -51,14 +58,14 @@ route re-creates the problem the shared `skills/` directory exists to avoid.
 ## The context itself must stay agent-neutral
 
 `hooks/session-start-context.md` is one file read by every route that has a
-context mechanism — Claude Code and Cursor through `hooks/hooks.json`, Codex
-through its fallback to that same file, OpenCode and Pi through their own code,
-and Factory Droid through `hooks/hooks.json`. Those last three name skills
-without the `postman:` prefix, so each rewrites `` `postman:<skill>` `` to the
-bare name: the two plugins in code, the hook with `sed` when
-`DROID_PLUGIN_ROOT` is set. Droid's Skill tool answers
-`Skill "postman:api-engineer" not found` otherwise. So it must
-not name one vendor's machinery: "invoke it with the Skill tool" is an
+context mechanism — Claude Code, Cursor and Factory Droid through
+`hooks/hooks.json`, Codex through its fallback to that same file, and OpenCode
+and Pi through their own code. Cursor, Droid, OpenCode and Pi name skills
+without the `postman:` prefix, so each gets `` `postman:<skill>` `` rewritten
+to the bare name: the two plugins in code, the hook scripts for Droid and
+Cursor. Droid's Skill tool answers `Skill "postman:api-engineer" not found`
+otherwise; Cursor sends a plugin skill to its backend by path, and invokes it
+as `/<skill>`. So the file must not name one vendor's machinery: "invoke it with the Skill tool" is an
 instruction Codex and OpenCode cannot follow, and it reaches them verbatim.
 Name the skill and let each agent use its own loading mechanism. A vendor that
 needs different wording is a reason to fix the shared text, not to fork it.
@@ -76,11 +83,19 @@ substituting its root tokens itself; measured on `windows-latest`, with and
 without Git on PATH. A command written in shell syntax prints nothing there,
 which is why the command is a bare script path.
 
+Cursor feeds the command its payload as a shell heredoc on macOS and Linux. On
+Windows it runs the command through PowerShell and resolves an extensionless
+script path by trying `.ps1`, `.exe`, `.bat` and `.cmd` beside it, so it runs
+`hooks/session-start.cmd`, and a `session-start.ps1` added there would win. Read
+from the bundles of Cursor CLI 2026.10.01, not measured on Windows.
+
 `hooks/session-start` must stay POSIX-safe rather than bash-specific: dash is
 `/bin/sh` on Debian and Ubuntu, and Codex has no `shell` field at all.
 `hooks/session-start.cmd` is its twin for cmd.exe and has to change with it;
-its `postman:` rewrite goes through Windows PowerShell, told UTF-8 both ways
-because 5.1 assumes ANSI and the mandate has non-ASCII text.
+its `postman:` rewrite and Cursor's JSON go through Windows PowerShell, told
+UTF-8 both ways because 5.1 assumes ANSI and the mandate has non-ASCII text,
+and started with `PSModulePath` cleared because one inherited from `pwsh`,
+which Cursor prefers, points 5.1 at PowerShell 7 modules it can't load.
 
 Claude Code on a Windows box with no Git Bash falls back to PowerShell, where a
 quoted path is a string, not a command, so the hook prints the path instead of
@@ -93,7 +108,7 @@ Discovery is the other half, and it is not uniform either:
 | Vendor | Where it looks for the hook definition |
 | --- | --- |
 | Claude Code | `hooks/hooks.json` by default; a manifest `hooks` key can point elsewhere |
-| Cursor | manifest `hooks` (path string or inline object); falls back to `hooks/hooks.json` |
+| Cursor | manifest `hooks` (path string or inline object); falls back to `hooks/hooks.json`, which it reads in Claude Code's shape and runs as `sessionStart` |
 | Codex | manifest `hooks`, resolved relative to the plugin root and required to stay inside it; otherwise `hooks/hooks.json` — its `DEFAULT_HOOKS_CONFIG_FILE` is that exact path, so the shared file is found with no `hooks` key in the manifest at all |
 | Factory Droid | `hooks/hooks.json` at the plugin root, in the same `hooks`-wrapped shape as Claude Code. It finds the scripts through Droid's `${CLAUDE_PLUGIN_ROOT}` alias and gets `${DROID_PLUGIN_ROOT}` as its argument, which is what makes the scripts strip the `postman:` prefix. A top-level event key is the shape of a user's `.factory/hooks.json`, not a plugin's |
 | Copilot / VS Code | layout-dependent — `hooks/hooks.json` for the Claude layout, `com.github.copilot/hooks/hooks.json` for Agent Plugins 1.0, `hooks.json` at the root for the Copilot layout |
@@ -121,13 +136,15 @@ relative to the root it provides. Never a copy of the markdown.
    Either is always-on context rather than a `SessionStart` event, but the
    effect on the session is the one that matters. Record a limitation only
    after finding nothing.
-2. The **event name** for session start. Claude spells it `SessionStart`.
+2. The **event name** for session start, and **what its output must be**.
+   Claude spells it `SessionStart`.
    Codex spells it the same way — verified: its `HooksFile` is
    `{description?, hooks: {…}}` with PascalCase event keys
    (`#[serde(rename = "SessionStart")]`), so this repo's file fires there
-   unchanged. Cursor's own event list is camelCase (`sessionStart`), and whether
-   Cursor also accepts the Claude spelling inside a plugin hooks file is not
-   documented — verify rather than assuming the shared file already fires there.
+   unchanged. Cursor's own event list is camelCase (`sessionStart`), but it
+   converts a plugin's Claude-format file, so the shared file fires there too —
+   verified with Cursor CLI 2026.10.01. Cursor is also why the output matters:
+   it accepts only JSON, where Claude Code and Droid take the plain mandate.
 3. Whether it discovers `hooks/hooks.json`, or the manifest has to point at it.
 4. Whether the entry shape is the matcher-nested object this repo's file uses,
    or something else (Kimi's flat array, Cursor's `version`-keyed file). Also

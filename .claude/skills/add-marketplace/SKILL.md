@@ -137,11 +137,12 @@ passes Droid's root as an argument:
 ```
 
 `hooks/session-start` (POSIX `sh`) and `hooks/session-start.cmd` (cmd.exe, which
-Droid uses on Windows) print the markdown next to them. If this vendor neither
-substitutes nor exports `CLAUDE_PLUGIN_ROOT`, point its own manifest at the
-scripts rather than adding a second hooks file or a copy of the markdown. Some
-vendors also need their manifest to point at the shared file because they do
-not discover it; Kimi does not, and currently ships without the mandate.
+Droid uses on Windows) print the markdown next to them, as JSON for Cursor. If
+this vendor neither substitutes nor exports `CLAUDE_PLUGIN_ROOT`, point its own
+manifest at the scripts rather than adding a second hooks file or a copy of the
+markdown. Some vendors also need their manifest to point at the shared file
+because they do not discover it; Kimi does not, and currently ships without the
+mandate.
 
 **A vendor with no hooks still gets the mandate.** Before recording "no hook
 support" as a limitation, look for a context-injection mechanism: an always-on
@@ -153,7 +154,7 @@ the injection itself: the OpenCode plugin reads
 plugin hooks. Either way it is always-on context rather than a `SessionStart`
 event, but the effect on the session is the one that matters.
 
-Both failure modes here are silent, and in CI only the Droid harness runs `hooks/`, so read
+Both failure modes here are silent, and in CI only the Droid harness runs `hooks/` through an agent, so read
 [references/hooks.md](references/hooks.md) before editing anything under
 `hooks/`: it carries the per-vendor variable and discovery tables, the load-bearing
 properties of that command, and the six things to establish for a
