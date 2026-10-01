@@ -20,7 +20,9 @@ const MANIFEST_ROUTES = {
     // Routes shipped as a registry package, so MANIFEST_DIR_PATTERN never matches
     // them. A route missing here is never checked, which looks exactly like passing.
     PACKAGE_ROUTES = [
-        { manifest: 'opencode/package.json', mcpConfig: 'mcp.opencode.json', keys: { serverKey: 'mcp' } }
+        { manifest: 'opencode/package.json', mcpConfig: 'mcp.opencode.json', keys: { serverKey: 'mcp' } },
+        // Pi installs the installer's own npm package, so the route versions with it.
+        { manifest: 'installer/package.json', mcpConfig: 'mcp.pi.json' }
     ];
 
 module.exports = { MANIFEST_ROUTES, MANIFEST_DIR_PATTERN, PACKAGE_ROUTES };

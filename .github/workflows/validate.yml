@@ -2,8 +2,9 @@
 # `skills` checks what Claude Code loads from skills/, `manifest` checks the
 # index `postman init` fetches, `opencode` builds and loads the OpenCode plugin,
 # `installer` and `installer-windows` unit-test `npx @postman/postman-plugin`
-# (installer-smoke.yml runs it against the real agent CLIs), `schema` checks
-# each vendor plugin manifest against that vendor's own published schema.
+# (installer-smoke.yml runs it against the real agent CLIs), `pi` loads that
+# package's tarball into Pi, `schema` checks each vendor plugin manifest
+# against that vendor's own published schema.
 name: Validate
 
 on:
@@ -126,6 +127,35 @@ jobs:
 
       - name: Unit tests
         run: npm test
+
+  # Pi installs the installer's npm tarball as a Pi package. The harness packs it,
+  # installs it into a pinned Pi, and checks what Pi sends the model.
+  pi:
+    name: Pi package
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: installer
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+
+      - name: Install development dependencies
+        run: npm ci
+
+      # Pinned so a Pi release can't fail a PR on its own; installer-smoke.yml runs the latest nightly.
+      - name: Install Pi
+        run: npm install --no-save --prefix "$RUNNER_TEMP/pi" @earendil-works/pi-coding-agent@0.99.1
+
+      - name: Pi loads the skills, the mandate and the MCP server from the tarball
+        run: npm run test:pi-harness
+        env:
+          PI_BIN: ${{ runner.temp }}/pi/node_modules/.bin/pi
 
   # One check per official schema. Schemas are fetched from the vendor's source
   # on every run, so a vendor tightening its schema fails CI here rather than

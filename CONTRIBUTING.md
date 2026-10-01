@@ -17,6 +17,7 @@ plugin route below — each route's manifest or package points back at the same
 | Codex plugin | `.codex-plugin/plugin.json` points at the same `skills/` dir | `mcp.codex.json` | `postman-codex-plugin` |
 | Factory.ai plugin | `.factory-plugin/marketplace.json` installs this repo root as the plugin, so Droid reads the same root `skills/` dir | `mcp.json` | `postman-factory-plugin` |
 | OpenCode plugin | a clone of this repo, loaded by a one-line local plugin that re-exports `opencode/src/index.ts` | `mcp.opencode.json` | `postman-opencode-plugin` |
+| Pi package | `pi install npm:@postman/postman-plugin` — the installer's npm tarball, which carries `skills/`, `hooks/session-start-context.md` and `mcp.pi.json` staged at pack time | `mcp.pi.json`, registered by `installer/src/pi-extension.ts` | `postman-pi-plugin` |
 
 Codex also reads `.claude-plugin/plugin.json` and `.cursor-plugin/plugin.json` as
 fallbacks — its `DISCOVERABLE_PLUGIN_MANIFEST_PATHS` is `.codex-plugin`,
@@ -66,13 +67,15 @@ it lands.
 .factory-plugin/plugin.json       the Factory.ai plugin metadata
 .app.json                         maps the Codex plugin to its published ChatGPT app ID
 opencode/                         the OpenCode plugin — source, tests, install harness, routing evals
-installer/                        `npx @postman/postman-plugin` — one adapter per agent in src/hosts/
+installer/                        `npx @postman/postman-plugin` — one adapter per agent in src/hosts/ — and the Pi package
+installer/src/pi-extension.ts     the Pi package's extension: the session-start mandate and the MCP server
 .opencode/plugins/postman.ts      loads that plugin from source when OpenCode runs inside a clone
 mcp.claude-code.json              Claude Code's MCP config
 mcp.cursor.json                   Cursor's MCP config
 mcp.codex.json                    Codex's MCP config — spells its headers `http_headers`
 mcp.json                          Factory.ai's MCP config — must keep this exact root filename
 mcp.opencode.json                 OpenCode's MCP config, read by the plugin at runtime
+mcp.pi.json                       Pi's MCP config, registered by the Pi extension at runtime
 skills/<name>/SKILL.md            one skill per directory — see skills/ for the current list
 manifest.json                     generated index of the skill files
 scripts/build-manifest.js         regenerates it
@@ -91,6 +94,7 @@ mcp.codex.json              <- .codex-plugin/plugin.json   "mcpServers": "./mcp.
 .kimi-plugin/plugin.json       inline — Kimi documents no path form
 mcp.json                    <- Factory.ai reads this root filename from the installed plugin
 mcp.opencode.json           <- opencode/src/index.ts       read at runtime; opencode/package.json holds the version
+mcp.pi.json                 <- installer/src/pi-extension.ts   read at runtime; installer/package.json holds the version
 ```
 
 Maintained by hand, and they are not interchangeable copies. Four things
@@ -115,14 +119,14 @@ all:
   serde. So serde ignores unknown keys: a `headers` block in `mcp.codex.json`
   is dropped without an error, the server still connects, and every request
   goes out unattributed. This is the worst failure mode in the repo, because
-  it looks exactly like success. `headers` is right for the other routes;
-  don't normalize the key across routes.
+  it looks exactly like success. `headers` is right for every other route;
+  don't normalize Codex to it.
 
 There is no generator, deliberately: a tool whose job is to keep these
 identical is wrong once versions are per-route.
 
 Every route names its endpoint outright — `/mcp` for Claude Code, Cursor,
-Codex and Factory.ai, `/minimal` for Kimi Code and OpenCode. Don't reintroduce a `${POSTMAN_MCP_MODE:-...}`
+Codex, Factory.ai and Pi, `/minimal` for Kimi Code and OpenCode. Don't reintroduce a `${POSTMAN_MCP_MODE:-...}`
 placeholder to express the default: no route expands `${...}` inside an MCP URL,
 so the whole segment ships literally and the request never reaches the intended
 mode. `claude plugin list --json` reports the registered URL with the
@@ -172,6 +176,39 @@ their next `git pull` of `main`. A release is still its own version bump:
 List it in [OpenCode's ecosystem page](https://opencode.ai/docs/ecosystem/) only
 after step 3 passes.
 
+## The Pi package
+
+Pi installs the installer's own npm package. `installer/package.json`'s `pi`
+key declares `skills/` and one extension, `dist/pi-extension.js`, and its
+`pi-package` keyword lists the package in [Pi's gallery](https://pi.dev/packages),
+which shows the `latest` version, as npm search does. `prepack` stages
+`skills/`, `hooks/session-start-context.md` and `mcp.pi.json` beside `dist/`,
+so git still holds one copy of each.
+
+Pi has no hooks file; the extension does the hook's job. It registers the
+servers in `mcp.pi.json`, and on `before_agent_start` adds
+`hooks/session-start-context.md` to the system prompt as a `<postman>` section,
+rewriting `` `postman:<skill>` `` to `` `<skill>` `` as the OpenCode plugin does.
+It adds the section only while `api-engineer` is loaded, because `pi config`
+can turn skills off. A `postman` server in the user's own `mcp.json` takes
+precedence over the registration.
+
+The extension declares the few Pi types it uses instead of importing Pi's,
+which ship only inside Pi's CLI package. Don't add Pi to `peerDependencies`:
+npm installs peers, so every `npx @postman/postman-plugin` would download Pi.
+
+Run these from `installer/`. CI's `pi` job runs the harness against a pinned
+Pi; the `Installer smoke` workflow runs it against the latest one nightly:
+
+```
+npm test                                      # includes the tarball, extension and skill-rule tests
+PI_BIN=<path to pi> npm run test:pi-harness   # installs the packed tarball into Pi under a throwaway home and checks what Pi sends the model
+```
+
+The route's version is the installer's, so `X-Plugin-Version` and `User-Agent`
+in `mcp.pi.json` move with `installer/package.json` and `npm test` fails when
+they differ. A skill change reaches Pi with the next installer release.
+
 ## The installer
 
 `installer/` is `npx @postman/postman-plugin`. It detects each supported agent
@@ -186,11 +223,14 @@ wherever one exists:
 | Factory.ai | `droid plugin` against this repo as the `postman-plugin` marketplace |
 | Kimi Code | `npx --package=plugins@1.3.4 plugins add postmanlabs/postman-plugin --target kimi`, because Kimi installs plugins only from its TUI |
 | OpenCode | the clone and one-line file [opencode/README.md](opencode/README.md) documents |
+| Pi | `pi install npm:@postman/postman-plugin`, or `pi update` when it's installed, then `pi remove` for any git install of this repo, which would load the same skills twice |
 
-Every agent gets the plugin from GitHub, not from the npm package, so a skill
-change needs no installer release. On Claude Code, a route release reaches
-installer users when Anthropic's catalog moves its pin for `postman`. The
-installer's version is its own, independent of every route's.
+Every agent but Pi gets the plugin from GitHub, not from the npm package, so a
+skill change needs no installer release. On Claude Code, a route release
+reaches installer users when Anthropic's catalog moves its pin for `postman`.
+The installer's version is its own, independent of every other route's. Pi gets
+the package's `latest`, whichever version of the installer runs the adapter —
+see [The Pi package](#the-pi-package).
 
 Run these from `installer/`:
 
@@ -204,14 +244,15 @@ node dist/cli.js install --dry-run   # the commands an install would run
 `npm test` fails when a route in `scripts/routes.js`, or any `.*-plugin/`
 directory, has no adapter whose `route` names it, so a new route can't ship
 without one. The `Installer smoke` workflow runs the installer against the
-latest Claude Code and Codex CLIs on every installer change and nightly, so a
-change to either CLI's commands or JSON output fails CI even when nothing here
+latest Claude Code, Codex and Pi CLIs on every installer change and nightly, so
+a change to a CLI's commands or output fails CI even when nothing here
 changed.
 
 To release it:
 
-1. In `installer/`, run `npm version <version> --no-git-tag-version` and merge
-   that bump as its own PR. A `-rc.N` version is a release candidate.
+1. In `installer/`, run `npm version <version> --no-git-tag-version`, set the
+   same version in both headers in `mcp.pi.json`, and merge that bump as its own
+   PR. A `-rc.N` version is a release candidate.
 2. After it merges, push an annotated tag `@postman/postman-plugin@<version>`
    on that commit. `release.yml` checks that the tag matches `package.json`,
    runs the tests, and publishes with npm trusted publishing and provenance: a
@@ -237,7 +278,8 @@ pinned to `release.yml`.
    manifest, plus `X-Plugin-Version` and `User-Agent` in its MCP config (for
    Kimi all three live in the manifest; for Codex the two headers sit under
    `http_headers`, not `headers`; for OpenCode the manifest is
-   `opencode/package.json`). Nothing verifies this, so check the route's
+   `opencode/package.json`; for Pi it is `installer/package.json`, so Pi's bump
+   is an installer release). Nothing verifies this, so check the route's
    strings against each other before you commit. Don't skip the bump itself
    either: `claude plugin update` compares
    only that string against a version-keyed cache, so a release that changes

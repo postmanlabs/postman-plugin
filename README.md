@@ -25,9 +25,9 @@ Install Postman in every compatible coding agent detected on your machine:
 npx @postman/postman-plugin
 ```
 
-One command configures **Claude Code, Codex, Cursor, Factory.ai, Kimi Code and
-OpenCode**. Run it again to update, `status` to see what's installed, and
-`remove` to uninstall; `--agent <id>` limits any of them to one agent.
+One command configures **Claude Code, Codex, Cursor, Factory.ai, Kimi Code,
+OpenCode and Pi**. Run it again to update, `status` to see what's installed,
+and `remove` to uninstall; `--agent <id>` limits any of them to one agent.
 
 You can also use the following commands to install individually:
 
@@ -61,6 +61,18 @@ codex plugin add postman@postman
 droid plugin marketplace add https://github.com/postmanlabs/postman-plugin
 droid plugin install postman@postman-plugin --scope user
 ```
+
+### Pi
+
+[View Postman in Pi's package gallery](https://pi.dev/packages/@postman/postman-plugin)
+
+```bash
+pi install npm:@postman/postman-plugin
+```
+
+`pi update npm:@postman/postman-plugin` updates it. Sign in to Postman's MCP
+server with `/mcp login postman` inside a Pi session. The shell's `pi mcp login`
+doesn't load extensions, so it reports no server named `postman`.
 
 ## Highlights
 
