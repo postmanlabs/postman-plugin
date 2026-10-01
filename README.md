@@ -24,9 +24,9 @@ Install Postman in every compatible coding agent detected on your machine:
 npx @postman/postman-plugin
 ```
 
-One command configures **Claude Code, Codex, Cursor, Kimi Code, OpenCode and Pi**.
-Run it again to update, `status` to see what's installed, and `remove` to
-uninstall; `--agent <id>` limits any of them to one agent.
+One command configures **Claude Code, Codex, Cursor, Factory Droid, Kimi Code,
+OpenCode and Pi**. Run it again to update, `status` to see what's installed,
+and `remove` to uninstall; `--agent <id>` limits any of them to one agent.
 
 You can also use the following commands to install individually:
 
@@ -53,6 +53,17 @@ claude plugin install postman@postman
 ```bash
 codex plugin add postman@postman
 ```
+
+### Factory Droid
+
+```bash
+droid plugin marketplace add postmanlabs/postman-plugin
+droid plugin install postman@postman-plugin --scope user
+```
+
+`droid plugin marketplace update postman-plugin`, then
+`droid plugin update postman@postman-plugin --scope user`, updates it. Sign in
+to Postman's MCP server with `/mcp` inside a Droid session.
 
 ### Pi
 

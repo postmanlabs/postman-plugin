@@ -3,8 +3,9 @@
 # index `postman init` fetches, `opencode` builds and loads the OpenCode plugin,
 # `installer` and `installer-windows` unit-test `npx @postman/postman-plugin`
 # (installer-smoke.yml runs it against the real agent CLIs), `pi` loads that
-# package's tarball into Pi, `schema` checks each vendor plugin manifest
-# against that vendor's own published schema.
+# package's tarball into Pi, `factory` installs this checkout into Droid,
+# `schema` checks each vendor plugin manifest against that vendor's own
+# published schema.
 name: Validate
 
 on:
@@ -49,6 +50,9 @@ jobs:
 
       - name: Every JSON file parses
         run: node scripts/check-json.js
+
+      - name: Routes agree with their MCP configs
+        run: node .claude/hooks/validate-manifests.js
 
       # SchemaStore's Claude Code schemas check structure and types but accept
       # invalid plugin names and unknown keys; Claude Code's own validator catches
@@ -157,14 +161,38 @@ jobs:
         env:
           PI_BIN: ${{ runner.temp }}/pi/node_modules/.bin/pi
 
+  # Droid installs this repo from its marketplace. The harness installs the checkout
+  # into a pinned Droid and checks what Droid sends the model and the MCP server.
+  factory:
+    name: Factory Droid plugin
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+
+      # Pinned so a Droid release can't fail a PR on its own; installer-smoke.yml runs the latest nightly.
+      - name: Install Droid
+        run: npm install --no-save --prefix "$RUNNER_TEMP/droid" droid@0.231.0
+
+      - name: Droid loads the skills, the mandate and the MCP server from the marketplace
+        run: node scripts/factory-harness.js
+        env:
+          DROID_BIN: ${{ runner.temp }}/droid/node_modules/.bin/droid
+
   # One check per official schema. Schemas are fetched from the vendor's source
   # on every run, so a vendor tightening its schema fails CI here rather than
   # at marketplace review. Files with no published schema (.kimi-plugin/plugin.json,
-  # .codex-plugin/plugin.json, the other mcp.*.json, manifest.json) are covered by
-  # the `manifest` job above. Codex documents its manifest in prose only and publishes
-  # no schema for it; the agent-plugins.org schema is not a substitute, since it
-  # describes the root-level `plugin.json` Agent Plugins format, which Codex selects
-  # by path and which .codex-plugin/plugin.json is deliberately not.
+  # .codex-plugin/plugin.json, .factory-plugin/*.json, the other mcp.*.json,
+  # mcp.json, manifest.json) are covered by the `manifest` job above. Codex
+  # documents its manifest in prose only and publishes no schema for it; the
+  # agent-plugins.org schema is not a substitute, since it describes the
+  # root-level `plugin.json` Agent Plugins format, which Codex selects by path
+  # and which .codex-plugin/plugin.json is deliberately not.
   schema:
     name: Schema / ${{ matrix.name }}
     runs-on: ubuntu-latest

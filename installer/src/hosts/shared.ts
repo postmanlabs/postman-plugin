@@ -51,6 +51,17 @@ export async function mustProbeJson<T> (system: System, command: string, args: s
     return parsed;
 }
 
+/** Runs a read-only listing with no JSON mode; throws `StepFailed` if it fails. */
+export async function mustProbeText (system: System, command: string, args: string[]): Promise<string> {
+    const exec = await system.probe(command, args);
+
+    if (exec.code !== 0) {
+        throw new StepFailed(result('failed', describeFailure(command, args, exec)));
+    }
+
+    return exec.stdout;
+}
+
 export function blocked (message: string): never {
     throw new StepFailed(result('blocked', message));
 }
