@@ -99,7 +99,7 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Manifest is in sync with the skill files
+      - name: Manifest and Kimi's mandate are in sync with their sources
         run: node scripts/build-manifest.js --check
 
       - name: Every JSON file parses

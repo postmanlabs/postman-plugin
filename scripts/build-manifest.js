@@ -8,8 +8,12 @@
  * what they should hash to. This script derives that index from the files
  * themselves so the two can never disagree.
  *
- * Run `node scripts/build-manifest.js` after changing any skill. CI re-runs it
- * with `--check` and fails if the committed manifest is stale — a wrong sha256
+ * It also writes `.kimi-plugin/session-start-context.md`, the session-start
+ * mandate as Kimi reads it: Kimi shows the model no hook output, and names
+ * skills without the `postman:` prefix the shared mandate gives them.
+ *
+ * Run `node scripts/build-manifest.js` after changing any skill or the mandate.
+ * CI re-runs it with `--check` and fails if either file is stale — a wrong sha256
  * makes the CLI reject a legitimate skill, which is a confusing way to find out.
  */
 'use strict';
@@ -22,6 +26,8 @@ const ROOT = path.join(__dirname, '..'),
     SKILLS_DIR = path.join(ROOT, 'skills'),
     PLUGIN_MANIFEST = path.join(ROOT, '.claude-plugin', 'plugin.json'),
     MANIFEST = path.join(ROOT, 'manifest.json'),
+    MANDATE = path.join(ROOT, 'hooks', 'session-start-context.md'),
+    KIMI_MANDATE = path.join(ROOT, '.kimi-plugin', 'session-start-context.md'),
     SCHEMA_VERSION = 1,
 
     // `postman init` writes AGENTS.md naming the manifest's first skill as the entry point.
@@ -154,19 +160,33 @@ function build () {
     return { schemaVersion: SCHEMA_VERSION, skills };
 }
 
-const manifest = JSON.stringify(build(), null, 2) + '\n';
+/**
+ * @returns {string} The shared mandate with `postman:<skill>` rewritten to `<skill>`.
+ */
+function kimiMandate () {
+    return fs.readFileSync(MANDATE, 'utf8').replace(/`postman:([a-z0-9-]+)`/g, '`$1`');
+}
+
+const outputs = [
+    [MANIFEST, JSON.stringify(build(), null, 2) + '\n'],
+    [KIMI_MANDATE, kimiMandate()]
+];
 
 if (process.argv.includes('--check')) {
-    const current = fs.existsSync(MANIFEST) ? fs.readFileSync(MANIFEST, 'utf8') : '';
+    const stale = outputs
+        .filter(([file, content]) => !fs.existsSync(file) || fs.readFileSync(file, 'utf8') !== content)
+        .map(([file]) => path.relative(ROOT, file));
 
-    if (current !== manifest) {
-        console.error('manifest.json is stale. Run `node scripts/build-manifest.js` and commit the result.');
+    if (stale.length) {
+        console.error(`Stale: ${stale.join(', ')}. Run \`node scripts/build-manifest.js\` and commit the result.`);
         process.exit(1);
     }
 
-    console.log('manifest.json is up to date.');
+    console.log(`${outputs.map(([file]) => path.relative(ROOT, file)).join(' and ')} are up to date.`);
 }
 else {
-    fs.writeFileSync(MANIFEST, manifest);
-    console.log(`Wrote ${path.relative(ROOT, MANIFEST)}`);
+    for (const [file, content] of outputs) {
+        fs.writeFileSync(file, content);
+        console.log(`Wrote ${path.relative(ROOT, file)}`);
+    }
 }

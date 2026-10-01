@@ -61,7 +61,7 @@ it lands.
 .claude-plugin/marketplace.json   the marketplace Claude Code adds
 .claude-plugin/plugin.json        the Claude Code plugin manifest
 .cursor-plugin/plugin.json        the Cursor plugin manifest
-.kimi-plugin/plugin.json          the Kimi Code plugin manifest — carries its MCP block inline
+.kimi-plugin/plugin.json          the Kimi Code plugin manifest — carries its MCP block inline, and names Kimi's generated copy of the mandate
 .codex-plugin/plugin.json         the Codex plugin manifest
 .factory-plugin/marketplace.json  the Factory Droid marketplace
 .factory-plugin/plugin.json       the Factory Droid plugin metadata
@@ -78,7 +78,7 @@ mcp.opencode.json                 OpenCode's MCP config, read by the plugin at r
 mcp.pi.json                       Pi's MCP config, registered by the Pi extension at runtime
 skills/<name>/SKILL.md            one skill per directory — see skills/ for the current list
 manifest.json                     generated index of the skill files
-scripts/build-manifest.js         regenerates it
+scripts/build-manifest.js         regenerates it, and Kimi's copy of the mandate
 scripts/routes.js                 every route, read by the pre-commit guard and the installer's tests
 ```
 
@@ -159,8 +159,9 @@ npm run eval:skills            # live routing eval against a configured model
 `npm run eval:skills -- --case <id>` runs one case, and `--model provider/model`
 picks the model. The cases live in `opencode/evals/cases.json`. A routing fix
 belongs in the shared skill description or `hooks/session-start-context.md`, and
-both reach every route, so rerun the full set after changing either and don't
-tune wording for OpenCode alone.
+both reach every route — Kimi's copy of the mandate once
+`node scripts/build-manifest.js` regenerates it — so rerun the full set after
+changing either and don't tune wording for OpenCode alone.
 
 Users run whatever their clone has checked out, so a change reaches them on
 their next `git pull` of `main`. A release is still its own version bump:
@@ -219,6 +220,17 @@ PI_PACKAGE=npm:@postman/postman-plugin@<version> PI_BIN=<path to pi> npm run tes
 The route's version is the installer's, so `X-Plugin-Version` and `User-Agent`
 in `mcp.pi.json` move with `installer/package.json` and `npm test` fails when
 they differ. A skill change reaches Pi with the next installer release.
+
+## The Kimi Code plugin
+
+Kimi discards a SessionStart hook's output, so the mandate reaches it through
+`systemPromptPath` in `.kimi-plugin/plugin.json`, which Kimi Code adds to the
+system prompt from 0.31.0 on; older releases load the skills without it. The
+file it names, `.kimi-plugin/session-start-context.md`, is
+`hooks/session-start-context.md` with `` `postman:<skill>` `` rewritten to
+`` `<skill>` ``, because Kimi's skill names are un-namespaced, as Droid's are.
+`node scripts/build-manifest.js` writes it, so don't edit it by hand: `--check`
+fails CI and the pre-commit guard when it is stale.
 
 ## The Factory Droid plugin
 

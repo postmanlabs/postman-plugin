@@ -141,8 +141,8 @@ Droid uses on Windows) print the markdown next to them, as JSON for Cursor. If
 this vendor neither substitutes nor exports `CLAUDE_PLUGIN_ROOT`, point its own
 manifest at the scripts rather than adding a second hooks file or a copy of the
 markdown. Some vendors also need their manifest to point at the shared file
-because they do not discover it; Kimi does not, and currently ships without the
-mandate.
+because they do not discover it. Kimi discards hook output, so its manifest
+names a generated copy instead; see CONTRIBUTING.md's "The Kimi Code plugin".
 
 **A vendor with no hooks still gets the mandate.** Before recording "no hook
 support" as a limitation, look for a context-injection mechanism: an always-on
@@ -281,7 +281,8 @@ covers what each of these checks and — more usefully — what none of them do.
 ## What not to do
 
 - **Do not put shell syntax in the hook command**, fork `hooks/hooks.json`, or
-  copy `hooks/session-start-context.md` into a route directory. Droid runs the
+  hand-copy `hooks/session-start-context.md` into a route directory; Kimi's
+  copy is generated, and `--check` fails when it drifts. Droid runs the
   command through cmd.exe on Windows; logic goes in `hooks/session-start` and
   its `.cmd` twin, and a vendor that needs another root points at them from its
   own manifest.
@@ -303,9 +304,10 @@ covers what each of these checks and — more usefully — what none of them do.
   route's strings come out of your diff untouched, which Step 7 checks.
 - **Do not run `node scripts/build-manifest.js` expecting a diff** *from the
   route itself*. `manifest.json` indexes the skill *files* and takes `plugin`
-  from `.claude-plugin/plugin.json`'s name; adding a route changes neither. So
-  if `--check` fails and you touched nothing under `skills/`, something else
-  drifted — find out what.
+  from `.claude-plugin/plugin.json`'s name, and Kimi's copy of the mandate
+  follows `hooks/session-start-context.md`; adding a route changes none of
+  them. So if `--check` fails and you touched neither `skills/` nor that file,
+  something else drifted — find out what.
 
   Adding a route often makes skill *prose* stale, because files under `skills/`
   name the routes. Reword them to key on the *property* (which endpoint a route

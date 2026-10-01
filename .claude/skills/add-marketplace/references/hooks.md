@@ -59,13 +59,15 @@ route re-creates the problem the shared `skills/` directory exists to avoid.
 
 `hooks/session-start-context.md` is one file read by every route that has a
 context mechanism — Claude Code, Cursor and Factory Droid through
-`hooks/hooks.json`, Codex through its fallback to that same file, and OpenCode
-and Pi through their own code. Cursor, Droid, OpenCode and Pi name skills
-without the `postman:` prefix, so each gets `` `postman:<skill>` `` rewritten
-to the bare name: the two plugins in code, the hook scripts for Droid and
-Cursor. Droid's Skill tool answers `Skill "postman:api-engineer" not found`
-otherwise; Cursor sends a plugin skill to its backend by path, and invokes it
-as `/<skill>`. So the file must not name one vendor's machinery: "invoke it with the Skill tool" is an
+`hooks/hooks.json`, Codex through its fallback to that same file, OpenCode and
+Pi through their own code, and Kimi through a copy `scripts/build-manifest.js`
+generates. Cursor, Droid, OpenCode, Pi and Kimi name skills without the
+`postman:` prefix, so each gets `` `postman:<skill>` `` rewritten to the bare
+name: the two plugins in code, the hook scripts for Droid and Cursor, and the
+build script for Kimi's copy. Droid's Skill tool answers
+`Skill "postman:api-engineer" not found` otherwise; Cursor sends a plugin skill
+to its backend by path, and invokes it as `/<skill>`. So the file must not name
+one vendor's machinery: "invoke it with the Skill tool" is an
 instruction Codex and OpenCode cannot follow, and it reaches them verbatim.
 Name the skill and let each agent use its own loading mechanism. A vendor that
 needs different wording is a reason to fix the shared text, not to fork it.
@@ -112,16 +114,16 @@ Discovery is the other half, and it is not uniform either:
 | Codex | manifest `hooks`, resolved relative to the plugin root and required to stay inside it; otherwise `hooks/hooks.json` — its `DEFAULT_HOOKS_CONFIG_FILE` is that exact path, so the shared file is found with no `hooks` key in the manifest at all |
 | Factory Droid | `hooks/hooks.json` at the plugin root, in the same `hooks`-wrapped shape as Claude Code. It finds the scripts through Droid's `${CLAUDE_PLUGIN_ROOT}` alias and gets `${DROID_PLUGIN_ROOT}` as its argument, which is what makes the scripts strip the `postman:` prefix. A top-level event key is the shape of a user's `.factory/hooks.json`, not a plugin's |
 | Copilot / VS Code | layout-dependent — `hooks/hooks.json` for the Claude layout, `com.github.copilot/hooks/hooks.json` for Agent Plugins 1.0, `hooks.json` at the root for the Copilot layout |
-| Kimi Code | **nowhere.** Hooks are an inline `hooks` array in the manifest, entries shaped `event` / `matcher` / `command` / `timeout`, and Kimi documents no default file to discover |
+| Kimi Code | **nowhere.** Hooks are an inline `hooks` array in the manifest, entries shaped `event` / `matcher` / `command` / `timeout`, and Kimi documents no default file to discover. It also discards a SessionStart hook's output, so the mandate goes through the manifest's `systemPromptPath` instead |
 | OpenCode | **no `hooks.json`.** Nothing session-shaped in its config schema; the local plugin pushes the mandate into the system prompt from its own hooks — see item 1 below |
 | Pi | **no `hooks.json`.** Its extensions subscribe to events instead; the package's extension sets the mandate as a system-prompt section on `before_agent_start` |
 
-The Kimi Code row is a live gap in this repo, and exactly what a new route inherits
-if Step 3 is skipped: nothing points Kimi at `hooks/hooks.json`, so the Kimi
-route ships without the session-start mandate. A vendor in that position needs
-an entry in its own manifest pointing back at the shared file — for Kimi an
-inline `hooks` array whose `command` reads `hooks/session-start-context.md`
-relative to the root it provides. Never a copy of the markdown.
+The Kimi Code row is what a new route inherits if Step 3 is skipped: nothing
+points the vendor at `hooks/hooks.json`, so the route ships without the
+session-start mandate. A vendor in that position needs an entry in its own
+manifest pointing back at the shared file. A hook was not enough for Kimi, since
+it discards hook output; see CONTRIBUTING.md's "The Kimi Code plugin" for the
+generated copy it reads instead. Never a hand-made copy of the markdown.
 
 ## What to establish for a new vendor
 
