@@ -5,32 +5,19 @@ each vendor specified its own — so this table is a record of what was verified
 per vendor, never a template to copy from. The disagreement extends to whether a
 vendor has a manifest at all.
 
-| | Claude Code | Cursor | Kimi Code | Codex | OpenCode | Pi |
-| --- | --- | --- | --- | --- | --- | --- |
-| Route kind | manifest | manifest | manifest | manifest | **package** (npm) | **package** (npm) — the installer's own |
-| Manifest | `.claude-plugin/plugin.json` | `.cursor-plugin/plugin.json` | `.kimi-plugin/plugin.json` | `.codex-plugin/plugin.json` | `opencode/package.json` — no plugin-manifest format exists | the `pi` key in `installer/package.json` |
-| Skills pointer | *(implicit — no key)* | `"skills": "skills"` | `"skills": ["./skills"]` | `"skills": "./skills/"` | plugin code: v1 appends the packaged dir to `skills.paths`, v2 calls `skill.transform` | `"pi": { "skills": ["./skills"] }`, staged into the tarball at pack time |
-| MCP config | `"mcpServers": "./mcp.claude-code.json"` | `"mcpServers": "./mcp.cursor.json"` | inline object | `"mcpServers": "./mcp.codex.json"` | `mcp.opencode.json`, read by the plugin at runtime | `mcp.pi.json`, registered by the extension with `pi.registerMcpServer()` |
-| MCP header key | `headers` | `headers` | `headers` | `http_headers` | `headers` | `headers` |
-| Transport key | `"type": "http"` | *(none)* | `"transport": "http"`, `"auth": "oauth"` | `"type": "http"` | `"type": "remote"`, `"enabled": true` (v2 takes `"disabled": false`) | `"type": "http"` |
-| URL mode segment | `/mcp` | `/mcp` | `/minimal` | `/mcp` | `/minimal` | `/mcp` |
-| `version` key | yes | yes | yes | yes | `version` in `opencode/package.json` | `version` in `installer/package.json` |
-| Hooks | `hooks/hooks.json` discovered | manifest `hooks`, falls back to `hooks/hooks.json` | inline `hooks` array only — **no file discovery** | manifest `hooks`, falls back to `hooks/hooks.json` | **no `hooks.json`** — the plugin pushes the mandate into the system prompt | **no hooks file** — the extension adds the mandate as a prompt section on `before_agent_start` |
-| Published schema | SchemaStore | `cursor/plugins` repo | none | none — prose docs only | `opencode.ai/config.json`, draft2020, `$ref`s `models.dev` — validates `mcp.opencode.json` | none |
-| Extras | `$schema` | — | `interface` block | `interface` block | no host-version gate for a local plugin; the minimum is documented | `pi-package` keyword lists it in the gallery; `pi.image` is the card's preview |
-
-## Factory.ai
-
-Factory.ai is a manifest route, but unlike the older manifest routes its MCP
-config is not pointed to from `plugin.json`: Droid discovers `mcp.json` by that
-exact root filename inside the installed plugin. Its marketplace lives at
-`.factory-plugin/marketplace.json`, installs this repository root with
-`"source": "./"`, and therefore reads the same root `skills/` directory as the
-other routes. Droid reads the shared `hooks/hooks.json` as it is: plugin hook
-files use Claude Code's `hooks` wrapper, and Droid sets `CLAUDE_PLUGIN_ROOT` as an
-alias of `DROID_PLUGIN_ROOT`. The route uses `headers`, `/mcp` and a `version`
-in `.factory-plugin/plugin.json`. The published docs describe the JSON fields in
-prose, but Factory does not publish a standalone JSON Schema for CI to fetch.
+| | Claude Code | Cursor | Kimi Code | Codex | OpenCode | Pi | Factory Droid |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Route kind | manifest | manifest | manifest | manifest | **package** (npm) | **package** (npm) — the installer's own | manifest |
+| Manifest | `.claude-plugin/plugin.json` | `.cursor-plugin/plugin.json` | `.kimi-plugin/plugin.json` | `.codex-plugin/plugin.json` | `opencode/package.json` — no plugin-manifest format exists | the `pi` key in `installer/package.json` | `.factory-plugin/plugin.json`, metadata only — Droid installs by marketplace entry, from `.factory-plugin/marketplace.json` |
+| Skills pointer | *(implicit — no key)* | `"skills": "skills"` | `"skills": ["./skills"]` | `"skills": "./skills/"` | plugin code: v1 appends the packaged dir to `skills.paths`, v2 calls `skill.transform` | `"pi": { "skills": ["./skills"] }`, staged into the tarball at pack time | *(implicit — `skills/` at the plugin root)* |
+| MCP config | `"mcpServers": "./mcp.claude-code.json"` | `"mcpServers": "./mcp.cursor.json"` | inline object | `"mcpServers": "./mcp.codex.json"` | `mcp.opencode.json`, read by the plugin at runtime | `mcp.pi.json`, registered by the extension with `pi.registerMcpServer()` | `mcp.json` at the plugin root — no manifest key |
+| MCP header key | `headers` | `headers` | `headers` | `http_headers` | `headers` | `headers` | `headers` |
+| Transport key | `"type": "http"` | *(none)* | `"transport": "http"`, `"auth": "oauth"` | `"type": "http"` | `"type": "remote"`, `"enabled": true` (v2 takes `"disabled": false`) | `"type": "http"` | `"type": "http"` |
+| URL mode segment | `/mcp` | `/mcp` | `/minimal` | `/mcp` | `/minimal` | `/mcp` | `/mcp` |
+| `version` key | yes | yes | yes | yes | `version` in `opencode/package.json` | `version` in `installer/package.json` | yes, metadata only — a git install is tracked by commit |
+| Hooks | `hooks/hooks.json` discovered | manifest `hooks`, falls back to `hooks/hooks.json` | inline `hooks` array only — **no file discovery** | manifest `hooks`, falls back to `hooks/hooks.json` | **no `hooks.json`** — the plugin pushes the mandate into the system prompt | **no hooks file** — the extension adds the mandate as a prompt section on `before_agent_start` | `hooks/hooks.json` discovered, in Claude Code's `hooks`-wrapped shape |
+| Published schema | SchemaStore | `cursor/plugins` repo | none | none — prose docs only | `opencode.ai/config.json`, draft2020, `$ref`s `models.dev` — validates `mcp.opencode.json` | none | none — prose docs only |
+| Extras | `$schema` | — | `interface` block | `interface` block | no host-version gate for a local plugin; the minimum is documented | `pi-package` keyword lists it in the gallery; `pi.image` is the card's preview | the marketplace is named after the repo or directory, not the file's `name` |
 
 ## Per-route notes worth knowing before you add another
 

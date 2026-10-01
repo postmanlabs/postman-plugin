@@ -54,7 +54,7 @@ Every route needs one line in `scripts/routes.js`, the registry the guard
 reads. A **manifest** route goes in `MANIFEST_ROUTES`, keyed by its directory,
 with any server or header key that differs from `mcpServers`/`headers`. If that
 vendor discovers MCP from a fixed root file rather than a manifest pointer,
-add `mcpConfig` there too; Factory.ai uses this for root `mcp.json`. The
+add `mcpConfig` there too; Factory Droid uses this for root `mcp.json`. The
 guard globs `.*-plugin/plugin.json` and blocks on any directory missing from
 the table, rather than checking it against spellings the vendor may not read. A
 **package** route matches no such glob and goes in `PACKAGE_ROUTES`, giving its

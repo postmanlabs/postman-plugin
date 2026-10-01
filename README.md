@@ -7,11 +7,10 @@
 
 The Postman plugin brings filesystem-first API development and organization-wide
 API context to coding agents. It enables agents to design, mock, test, document,
-monitor, and ship APIs directly from Claude Code, Cursor, Codex, and Factory
-Droid. Every operation produces inspectable files or CLI commands that fit
-naturally into Git and CI, while the Postman Context Graph helps agents
-understand dependencies, ownership, runtime behavior, and the likely impact of
-a change.
+monitor, and ship APIs directly from Claude Code, Cursor, and Codex. Every
+operation produces inspectable files or CLI commands that fit naturally into
+Git and CI, while the Postman Context Graph helps agents understand
+dependencies, ownership, runtime behavior, and the likely impact of a change.
 
 [Install](#install) · [Highlights](#highlights)
 
@@ -25,7 +24,7 @@ Install Postman in every compatible coding agent detected on your machine:
 npx @postman/postman-plugin
 ```
 
-One command configures **Claude Code, Codex, Cursor, Factory.ai, Kimi Code,
+One command configures **Claude Code, Codex, Cursor, Factory Droid, Kimi Code,
 OpenCode and Pi**. Run it again to update, `status` to see what's installed,
 and `remove` to uninstall; `--agent <id>` limits any of them to one agent.
 
@@ -55,12 +54,16 @@ claude plugin install postman@postman
 codex plugin add postman@postman
 ```
 
-### Factory.ai
+### Factory Droid
 
 ```bash
-droid plugin marketplace add https://github.com/postmanlabs/postman-plugin
+droid plugin marketplace add postmanlabs/postman-plugin
 droid plugin install postman@postman-plugin --scope user
 ```
+
+`droid plugin marketplace update postman-plugin`, then
+`droid plugin update postman@postman-plugin --scope user`, updates it. Sign in
+to Postman's MCP server with `/mcp` inside a Droid session.
 
 ### Pi
 

@@ -40,10 +40,11 @@ should not be "fixed" to match the current directory list.
 
 Don't bump `version` in `.claude-plugin/plugin.json` (or the matching
 version fields in `.codex-plugin/plugin.json`, `.cursor-plugin/plugin.json`,
-`.kimi-plugin/plugin.json`, and the `X-Plugin-Version`/`User-Agent` headers in
-`mcp.*.json`) as part of a content change. Those bump together only as their
-own dedicated release commit/PR, decoupled from whatever skill or doc edit
-prompted the release — bundling a version bump into an unrelated fix makes
+`.kimi-plugin/plugin.json`, `.factory-plugin/plugin.json`, and the
+`X-Plugin-Version`/`User-Agent` headers in `mcp.*.json` and `mcp.json`) as
+part of a content change. Those bump together only as their own dedicated
+release commit/PR, decoupled from whatever skill or doc edit prompted the
+release — bundling a version bump into an unrelated fix makes
 the diff harder to review and conflates "what changed" with "what shipped."
 
 ## Anti-patterns to check for when writing or reviewing a skill

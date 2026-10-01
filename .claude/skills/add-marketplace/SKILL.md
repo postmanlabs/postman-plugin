@@ -270,8 +270,9 @@ node .claude/hooks/validate-manifests.js && echo "manifests consistent"
 # No other route's version may move: only your route's files may appear here.
 # Scope by file, not by grepping the diff - an added `"version": "1.0.0"` line
 # names no vendor and slips a text filter. Package routes match no
-# `*plugin.json`, so name their package manifest explicitly.
-git diff --name-only main -- '*plugin.json' 'mcp.*.json' opencode/package.json installer/package.json
+# `*plugin.json`, so name their package manifest explicitly, as Factory Droid's
+# fixed-name `mcp.json` matches no `mcp.*.json`.
+git diff --name-only main -- '*plugin.json' 'mcp.*.json' mcp.json opencode/package.json installer/package.json
 ```
 
 If the vendor publishes a schema, run the `schema` job's ajv command against the

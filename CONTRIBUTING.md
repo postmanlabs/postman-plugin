@@ -15,7 +15,7 @@ plugin route below — each route's manifest or package points back at the same
 | Cursor plugin | `.cursor-plugin/plugin.json` points at this repo's `skills/` dir | `mcp.cursor.json` | `postman-cursor-plugin` |
 | Kimi Code plugin | `.kimi-plugin/plugin.json` points at the same `skills/` dir | `mcpServers` in `.kimi-plugin/plugin.json` | `postman-kimi-plugin` |
 | Codex plugin | `.codex-plugin/plugin.json` points at the same `skills/` dir | `mcp.codex.json` | `postman-codex-plugin` |
-| Factory.ai plugin | `.factory-plugin/marketplace.json` installs this repo root as the plugin, so Droid reads the same root `skills/` dir | `mcp.json` | `postman-factory-plugin` |
+| Factory Droid plugin | `.factory-plugin/marketplace.json` installs this repo root as the plugin, so Droid reads the same root `skills/` dir | `mcp.json` | `postman-factory-plugin` |
 | OpenCode plugin | a clone of this repo, loaded by a one-line local plugin that re-exports `opencode/src/index.ts` | `mcp.opencode.json` | `postman-opencode-plugin` |
 | Pi package | `pi install npm:@postman/postman-plugin` — the installer's npm tarball, which carries `skills/`, `hooks/session-start-context.md` and `mcp.pi.json` staged at pack time | `mcp.pi.json`, registered by `installer/src/pi-extension.ts` | `postman-pi-plugin` |
 
@@ -63,8 +63,8 @@ it lands.
 .cursor-plugin/plugin.json        the Cursor plugin manifest
 .kimi-plugin/plugin.json          the Kimi Code plugin manifest — carries its MCP block inline
 .codex-plugin/plugin.json         the Codex plugin manifest
-.factory-plugin/marketplace.json  the Factory.ai marketplace
-.factory-plugin/plugin.json       the Factory.ai plugin metadata
+.factory-plugin/marketplace.json  the Factory Droid marketplace
+.factory-plugin/plugin.json       the Factory Droid plugin metadata
 .app.json                         maps the Codex plugin to its published ChatGPT app ID
 opencode/                         the OpenCode plugin — source, tests, install harness, routing evals
 installer/                        `npx @postman/postman-plugin` — one adapter per agent in src/hosts/ — and the Pi package
@@ -73,7 +73,7 @@ installer/src/pi-extension.ts     the Pi package's extension: the session-start 
 mcp.claude-code.json              Claude Code's MCP config
 mcp.cursor.json                   Cursor's MCP config
 mcp.codex.json                    Codex's MCP config — spells its headers `http_headers`
-mcp.json                          Factory.ai's MCP config — must keep this exact root filename
+mcp.json                          Factory Droid's MCP config — must keep this exact root filename
 mcp.opencode.json                 OpenCode's MCP config, read by the plugin at runtime
 mcp.pi.json                       Pi's MCP config, registered by the Pi extension at runtime
 skills/<name>/SKILL.md            one skill per directory — see skills/ for the current list
@@ -92,7 +92,7 @@ mcp.claude-code.json        <- .claude-plugin/plugin.json  "mcpServers": "./mcp.
 mcp.cursor.json             <- .cursor-plugin/plugin.json  "mcpServers": "./mcp.cursor.json"
 mcp.codex.json              <- .codex-plugin/plugin.json   "mcpServers": "./mcp.codex.json"
 .kimi-plugin/plugin.json       inline — Kimi documents no path form
-mcp.json                    <- Factory.ai reads this root filename from the installed plugin
+mcp.json                    <- Factory Droid reads this root filename from the installed plugin
 mcp.opencode.json           <- opencode/src/index.ts       read at runtime; opencode/package.json holds the version
 mcp.pi.json                 <- installer/src/pi-extension.ts   read at runtime; installer/package.json holds the version
 ```
@@ -126,7 +126,7 @@ There is no generator, deliberately: a tool whose job is to keep these
 identical is wrong once versions are per-route.
 
 Every route names its endpoint outright — `/mcp` for Claude Code, Cursor,
-Codex, Factory.ai and Pi, `/minimal` for Kimi Code and OpenCode. Don't reintroduce a `${POSTMAN_MCP_MODE:-...}`
+Codex, Factory Droid and Pi, `/minimal` for Kimi Code and OpenCode. Don't reintroduce a `${POSTMAN_MCP_MODE:-...}`
 placeholder to express the default: no route expands `${...}` inside an MCP URL,
 so the whole segment ships literally and the request never reaches the intended
 mode. `claude plugin list --json` reports the registered URL with the
@@ -209,6 +209,36 @@ The route's version is the installer's, so `X-Plugin-Version` and `User-Agent`
 in `mcp.pi.json` move with `installer/package.json` and `npm test` fails when
 they differ. A skill change reaches Pi with the next installer release.
 
+## The Factory Droid plugin
+
+Droid reads `.factory-plugin/marketplace.json` first and falls back to
+`.claude-plugin/marketplace.json`, so without this route it would install the
+Claude Code layout and report its traffic as Claude Code. Droid names the
+marketplace after the repository, `postman-plugin`, not after the file's `name`;
+the plugin installs as `postman@postman-plugin` and tracks the marketplace's
+commit, so `version` is only release metadata there. The headers still carry it.
+
+Droid has no manifest key for MCP: it reads `mcp.json` at the plugin root. That
+filename is also Cursor's default, which `.cursor-plugin/plugin.json`'s
+`mcpServers` overrides — remove that key and Cursor reports itself as Droid.
+
+Droid runs the shared `hooks/hooks.json` and sets both `CLAUDE_PLUGIN_ROOT` and
+`DROID_PLUGIN_ROOT`. Its skill names are un-namespaced and its Skill tool
+rejects `postman:api-engineer`, so when `DROID_PLUGIN_ROOT` is set the hook
+rewrites `` `postman:<skill>` `` to `` `<skill>` ``, as the OpenCode plugin does.
+
+`scripts/factory-harness.js` installs this checkout into Droid as a local
+marketplace under a throwaway home and runs one `droid exec` against a local
+stand-in for both the model and the MCP server. It checks that the session
+lists every skill and carries the mandate, that the mandated skill loads, and
+that the MCP requests carry `mcp.json`'s headers. CI's `factory` job runs it
+against a pinned Droid; the `Installer smoke` workflow runs it against the
+latest one nightly:
+
+```
+DROID_BIN=<path to droid> node scripts/factory-harness.js
+```
+
 ## The installer
 
 `installer/` is `npx @postman/postman-plugin`. It detects each supported agent
@@ -220,7 +250,7 @@ wherever one exists:
 | Claude Code | `claude plugin` against Anthropic's `claude-plugins-official` catalog, then uninstalls a user-scope `postman@postman` so skills don't load twice; a failed install leaves that copy in place |
 | Codex | `codex plugin` against this repo as the `postman` marketplace |
 | Cursor | a clone at `~/.cursor/plugins/local/postman`. A fresh install is skipped when the Cursor Marketplace copy is present, but an existing clone is kept and updated: Cursor keeps a disabled Marketplace copy on disk too, so the installer can't tell whether that copy is enabled |
-| Factory.ai | `droid plugin` against this repo as the `postman-plugin` marketplace |
+| Factory Droid | `droid plugin` against this repo as the `postman-plugin` marketplace |
 | Kimi Code | `npx --package=plugins@1.3.4 plugins add postmanlabs/postman-plugin --target kimi`, because Kimi installs plugins only from its TUI |
 | OpenCode | the clone and one-line file [opencode/README.md](opencode/README.md) documents |
 | Pi | `pi install npm:@postman/postman-plugin`, or `pi update` when it's installed, then `pi remove` for any git install of this repo, which would load the same skills twice |
@@ -244,7 +274,7 @@ node dist/cli.js install --dry-run   # the commands an install would run
 `npm test` fails when a route in `scripts/routes.js`, or any `.*-plugin/`
 directory, has no adapter whose `route` names it, so a new route can't ship
 without one. The `Installer smoke` workflow runs the installer against the
-latest Claude Code, Codex and Pi CLIs on every installer change and nightly, so
+latest Claude Code, Codex, Droid and Pi CLIs on every installer change and nightly, so
 a change to a CLI's commands or output fails CI even when nothing here
 changed.
 
@@ -279,7 +309,8 @@ pinned to `release.yml`.
    Kimi all three live in the manifest; for Codex the two headers sit under
    `http_headers`, not `headers`; for OpenCode the manifest is
    `opencode/package.json`; for Pi it is `installer/package.json`, so Pi's bump
-   is an installer release). Nothing verifies this, so check the route's
+   is an installer release; for Factory Droid the MCP config is the root
+   `mcp.json`). Nothing verifies this, so check the route's
    strings against each other before you commit. Don't skip the bump itself
    either: `claude plugin update` compares
    only that string against a version-keyed cache, so a release that changes
