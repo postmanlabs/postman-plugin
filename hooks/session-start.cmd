@@ -7,13 +7,13 @@ if "%~1"=="" if not defined CURSOR_PLUGIN_ROOT (
 )
 rem UTF-8 both ways, since Windows PowerShell 5.1 assumes ANSI. No `$` on the PowerShell lines: under
 rem Droid, a `-replace` group reference there came back empty and deleted the skill name.
-rem From its own directory, so no path, which may hold a quote, reaches PowerShell's source.
 set "mandate=(Get-Content -Raw -Encoding UTF8 -ErrorAction Stop -LiteralPath 'session-start-context.md').Replace('`postman:', '`')"
 rem No Droid root here means Cursor, which rejects stdout that isn't JSON.
 if "%~1"=="" set "mandate=(@{ additional_context = %mandate% } | ConvertTo-Json -Compress)"
 rem Started from pwsh, as Cursor does, 5.1 inherits PowerShell 7 module paths and can't load its cmdlets
 rem (about_PSModulePath); unset, 5.1 builds its own.
 set "PSModulePath="
+rem From its own directory, so no path, which may hold a quote, reaches PowerShell's source.
 pushd "%~dp0"
 powershell -NoProfile -NonInteractive -Command "[Console]::OutputEncoding = [Text.UTF8Encoding]::new(); [Console]::Out.Write(%mandate%)"
 set "status=%errorlevel%"
