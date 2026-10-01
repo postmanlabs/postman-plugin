@@ -142,14 +142,15 @@ echo "postman-plugin: ... no plugin-root variable resolved (tried ...)" >&2; exi
 
 Add this vendor's token to that list if it is not already there — never a second
 hooks file, never a copy of the markdown. Some vendors also need their own
-manifest to point at the shared file because they do not discover it; Kimi does
-not, and currently ships without the mandate.
+manifest to point at the shared file because they do not discover it.
 
 **A vendor with no hooks still gets the mandate.** Before recording "no hook
 support" as a limitation, look for a context-injection mechanism: an always-on
 instructions or rules file the vendor feeds to the model. Most agents have one,
-it takes the same shared markdown, and it beats nothing. OpenCode's
-`instructions` array is one such file. A package route runs code, so it can do
+it takes the same shared markdown, and it beats nothing — and prefer it even
+when the vendor has hooks, since it needs no shell and no plugin-root variable.
+Kimi's manifest `systemPromptPath` and OpenCode's `instructions` array are two
+such mechanisms. A package route runs code, so it can do
 the injection itself: the OpenCode plugin reads
 `hooks/session-start-context.md` and pushes it into the system prompt from its
 plugin hooks. Either way it is always-on context rather than a `SessionStart`
@@ -281,9 +282,10 @@ covers what each of these checks and — more usefully — what none of them do.
 ## What not to do
 
 - **Do not put a vendor-specific plugin-root variable in a hook command on its
-  own**, fork `hooks/hooks.json`, or copy `hooks/session-start-context.md` into
-  a route directory. Add the token to the shared chain; point at the shared file
-  from the vendor's manifest.
+  own**, fork `hooks/hooks.json`, or hand-copy `hooks/session-start-context.md`
+  into a route directory. Add the token to the shared chain; point at the shared
+  file from the vendor's manifest. A vendor that can only take a transformed
+  copy gets a generated one with a `--check` in CI, as Kimi does.
 - **Do not add a root-level file named `plugin.json`.** It looks like the
   portable thing to do and is the most destructive edit available here: Codex
   pattern-matches that filename and routes the whole plugin through its Agent

@@ -10,12 +10,12 @@ vendor has a manifest at all.
 | Route kind | manifest | manifest | manifest | manifest | **package** (npm) | **package** (npm) — the installer's own |
 | Manifest | `.claude-plugin/plugin.json` | `.cursor-plugin/plugin.json` | `.kimi-plugin/plugin.json` | `.codex-plugin/plugin.json` | `opencode/package.json` — no plugin-manifest format exists | the `pi` key in `installer/package.json` |
 | Skills pointer | *(implicit — no key)* | `"skills": "skills"` | `"skills": ["./skills"]` | `"skills": "./skills/"` | plugin code: v1 appends the packaged dir to `skills.paths`, v2 calls `skill.transform` | `"pi": { "skills": ["./skills"] }`, staged into the tarball at pack time |
-| MCP config | `"mcpServers": "./mcp.claude-code.json"` | `"mcpServers": "./mcp.cursor.json"` | inline object | `"mcpServers": "./mcp.codex.json"` | `mcp.opencode.json`, read by the plugin at runtime | `mcp.pi.json`, registered by the extension with `pi.registerMcpServer()` |
-| MCP header key | `headers` | `headers` | `headers` | `http_headers` | `headers` | `headers` |
-| Transport key | `"type": "http"` | *(none)* | `"transport": "http"`, `"auth": "oauth"` | `"type": "http"` | `"type": "remote"`, `"enabled": true` (v2 takes `"disabled": false`) | `"type": "http"` |
-| URL mode segment | `/mcp` | `/mcp` | `/minimal` | `/mcp` | `/minimal` | `/mcp` |
+| MCP config | `"mcpServers": "./mcp.claude-code.json"` | `"mcpServers": "./mcp.cursor.json"` | none — **skills only** (Kimi takes an inline object) | `"mcpServers": "./mcp.codex.json"` | `mcp.opencode.json`, read by the plugin at runtime | `mcp.pi.json`, registered by the extension with `pi.registerMcpServer()` |
+| MCP header key | `headers` | `headers` | *n/a — no MCP server* | `http_headers` | `headers` | `headers` |
+| Transport key | `"type": "http"` | *(none)* | *n/a — no MCP server* | `"type": "http"` | `"type": "remote"`, `"enabled": true` (v2 takes `"disabled": false`) | `"type": "http"` |
+| URL mode segment | `/mcp` | `/mcp` | *n/a — no MCP server* | `/mcp` | `/minimal` | `/mcp` |
 | `version` key | yes | yes | yes | yes | `version` in `opencode/package.json` | `version` in `installer/package.json` |
-| Hooks | `hooks/hooks.json` discovered | manifest `hooks`, falls back to `hooks/hooks.json` | inline `hooks` array only — **no file discovery** | manifest `hooks`, falls back to `hooks/hooks.json` | **no `hooks.json`** — the plugin pushes the mandate into the system prompt | **no hooks file** — the extension adds the mandate as a prompt section on `before_agent_start` |
+| Hooks | `hooks/hooks.json` discovered | manifest `hooks`, falls back to `hooks/hooks.json` | inline `hooks` array only — **no file discovery**; the mandate goes in through `systemPromptPath` instead | manifest `hooks`, falls back to `hooks/hooks.json` | **no `hooks.json`** — the plugin pushes the mandate into the system prompt | **no hooks file** — the extension adds the mandate as a prompt section on `before_agent_start` |
 | Published schema | SchemaStore | `cursor/plugins` repo | none | none — prose docs only | `opencode.ai/config.json`, draft2020, `$ref`s `models.dev` — validates `mcp.opencode.json` | none |
 | Extras | `$schema` | — | `interface` block | `interface` block | no host-version gate for a local plugin; the minimum is documented | `pi-package` keyword lists it in the gallery; `pi.image` is the card's preview |
 

@@ -13,7 +13,7 @@ plugin route below — each route's manifest or package points back at the same
 | --- | --- | --- | --- |
 | Claude Code plugin | `/plugin marketplace add postmanlabs/postman-plugin` clones this repo | `mcp.claude-code.json` | `postman-claude-code-plugin` |
 | Cursor plugin | `.cursor-plugin/plugin.json` points at this repo's `skills/` dir | `mcp.cursor.json` | `postman-cursor-plugin` |
-| Kimi Code plugin | `.kimi-plugin/plugin.json` points at the same `skills/` dir | `mcpServers` in `.kimi-plugin/plugin.json` | `postman-kimi-plugin` |
+| Kimi Code plugin | `.kimi-plugin/plugin.json` points at the same `skills/` dir | none — the route ships skills only | — |
 | Codex plugin | `.codex-plugin/plugin.json` points at the same `skills/` dir | `mcp.codex.json` | `postman-codex-plugin` |
 | OpenCode plugin | a clone of this repo, loaded by a one-line local plugin that re-exports `opencode/src/index.ts` | `mcp.opencode.json` | `postman-opencode-plugin` |
 | Pi package | `pi install npm:@postman/postman-plugin` — the installer's npm tarball, which carries `skills/`, `hooks/session-start-context.md` and `mcp.pi.json` staged at pack time | `mcp.pi.json`, registered by `installer/src/pi-extension.ts` | `postman-pi-plugin` |
@@ -60,7 +60,8 @@ it lands.
 .claude-plugin/marketplace.json   the marketplace Claude Code adds
 .claude-plugin/plugin.json        the Claude Code plugin manifest
 .cursor-plugin/plugin.json        the Cursor plugin manifest
-.kimi-plugin/plugin.json          the Kimi Code plugin manifest — carries its MCP block inline
+.kimi-plugin/plugin.json          the Kimi Code plugin manifest — skills only, no MCP server; loads
+                                  its generated session-start-context.md through `systemPromptPath`
 .codex-plugin/plugin.json         the Codex plugin manifest
 .app.json                         maps the Codex plugin to its published ChatGPT app ID
 opencode/                         the OpenCode plugin — source, tests, install harness, routing evals
@@ -80,14 +81,13 @@ scripts/routes.js                 every route, read by the pre-commit guard and 
 
 ## The MCP server config
 
-Each route has its own config file, so each can report itself in `X-Source` and
-traffic can be attributed to the agent it came from:
+Each route that ships an MCP server has its own config file, so each can report
+itself in `X-Source` and traffic can be attributed to the agent it came from:
 
 ```
 mcp.claude-code.json        <- .claude-plugin/plugin.json  "mcpServers": "./mcp.claude-code.json"
 mcp.cursor.json             <- .cursor-plugin/plugin.json  "mcpServers": "./mcp.cursor.json"
 mcp.codex.json              <- .codex-plugin/plugin.json   "mcpServers": "./mcp.codex.json"
-.kimi-plugin/plugin.json       inline — Kimi documents no path form
 mcp.opencode.json           <- opencode/src/index.ts       read at runtime; opencode/package.json holds the version
 mcp.pi.json                 <- installer/src/pi-extension.ts   read at runtime; installer/package.json holds the version
 ```
@@ -105,8 +105,8 @@ all:
   enforces that either — a mismatch is accepted at runtime and the traffic is
   filed under a version that was never cut.
 - **The URL's mode segment** (`/mcp` vs `/minimal`) selects a different tool
-  surface. Unifying it changes which tools the `/minimal` routes (Kimi Code,
-  opencode) get — a product decision, not a tidy-up.
+  surface. Unifying it changes which tools the `/minimal` route (OpenCode)
+  gets — a product decision, not a tidy-up.
 - **The header key is `headers` everywhere except Codex**, which spells it
   `http_headers`. Codex deserializes a plugin's MCP config into its own
   `RawMcpServerConfig`, which has only `http_headers` and carries
@@ -121,7 +121,7 @@ There is no generator, deliberately: a tool whose job is to keep these
 identical is wrong once versions are per-route.
 
 Every route names its endpoint outright — `/mcp` for Claude Code, Cursor,
-Codex and Pi, `/minimal` for Kimi Code and OpenCode. Don't reintroduce a `${POSTMAN_MCP_MODE:-...}`
+Codex and Pi, `/minimal` for OpenCode. Don't reintroduce a `${POSTMAN_MCP_MODE:-...}`
 placeholder to express the default: no route expands `${...}` inside an MCP URL,
 so the whole segment ships literally and the request never reaches the intended
 mode. `claude plugin list --json` reports the registered URL with the
@@ -153,8 +153,8 @@ npm run eval:skills            # live routing eval against a configured model
 
 `npm run eval:skills -- --case <id>` runs one case, and `--model provider/model`
 picks the model. The cases live in `opencode/evals/cases.json`. A routing fix
-belongs in the shared skill description or `hooks/session-start-context.md`, and
-both reach every route, so rerun the full set after changing either and don't
+belongs in the shared skill description or `hooks/session-start-context.md`
+(then run `node scripts/build-kimi-prompt.js`), and both reach every route, so rerun the full set after changing either and don't
 tune wording for OpenCode alone.
 
 Users run whatever their clone has checked out, so a change reaches them on
@@ -269,9 +269,9 @@ pinned to `release.yml`.
 3. Bump the version on every route that ships the change. Routes version
    independently — differing versions across routes are correct, not drift —
    so a bump means the three strings that one route owns: `version` in its
-   manifest, plus `X-Plugin-Version` and `User-Agent` in its MCP config (for
-   Kimi all three live in the manifest; for Codex the two headers sit under
-   `http_headers`, not `headers`; for OpenCode the manifest is
+   manifest, plus `X-Plugin-Version` and `User-Agent` in its MCP config (Kimi
+   ships no MCP server, so its bump is the manifest `version` alone; for
+   Codex the two headers sit under `http_headers`, not `headers`; for OpenCode the manifest is
    `opencode/package.json`; for Pi it is `installer/package.json`, so Pi's bump
    is an installer release). Nothing verifies this, so check the route's
    strings against each other before you commit. Don't skip the bump itself
