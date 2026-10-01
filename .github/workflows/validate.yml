@@ -5,7 +5,8 @@
 # it against the real agent CLIs), `pi` loads that package's tarball into Pi,
 # `factory` installs this checkout into Droid, `schema` checks each vendor
 # plugin manifest against that vendor's own published schema. The installer,
-# OpenCode, Pi and Droid jobs each run on Linux and Windows.
+# OpenCode, Pi and Droid jobs run on Linux, and on Windows too unless a pull
+# request changes only skills or docs (see `os`).
 name: Validate
 
 on:
@@ -13,7 +14,46 @@ on:
     branches: ['main']
   pull_request:
 
+# A new push to a pull request cancels the run it supersedes; main runs every commit.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
+  # The Windows legs take two to three times as long, so a pull request that changes
+  # only skills or docs skips them; Linux still loads every skill. A push runs both.
+  os:
+    name: Runners
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.pick.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+
+      - name: Windows too, unless a pull request changes only skills or docs
+        id: pick
+        env:
+          EVENT: ${{ github.event_name }}
+          # What a Windows leg runs or reads, short of skill content and the manifest of it.
+          CODE: '^(installer|opencode|scripts|hooks|\.github/workflows|\.factory-plugin)/|^mcp[^/]*\.json$|^\.gitattributes$'
+        run: |
+          linux='{"os":"ubuntu-latest","label":"Linux"}'
+          windows='{"os":"windows-latest","label":"Windows"}'
+          windows_too=true
+          if [ "$EVENT" = pull_request ]; then
+            # A pull request checks out its merge commit, whose first parent is the base.
+            changed=$(git diff --name-only HEAD^1 HEAD)
+            grep -qE "$CODE" <<< "$changed" || windows_too=false
+          fi
+          if [ "$windows_too" = true ]; then
+            echo "matrix={\"include\":[$linux,$windows]}" >> "$GITHUB_OUTPUT"
+          else
+            echo "matrix={\"include\":[$linux]}" >> "$GITHUB_OUTPUT"
+          fi
+
   skills:
     name: Skills
     runs-on: ubuntu-latest
@@ -65,14 +105,10 @@ jobs:
   opencode:
     name: OpenCode package / ${{ matrix.label }}
     runs-on: ${{ matrix.os }}
+    needs: os
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-latest
-            label: Linux
-          - os: windows-latest
-            label: Windows
+      matrix: ${{ fromJSON(needs.os.outputs.matrix) }}
     defaults:
       run:
         shell: bash
@@ -85,6 +121,8 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: lts/*
+          cache: npm
+          cache-dependency-path: opencode/package-lock.json
 
       - name: Install development dependencies
         run: npm ci
@@ -113,14 +151,10 @@ jobs:
   installer:
     name: Installer package / ${{ matrix.label }}
     runs-on: ${{ matrix.os }}
+    needs: os
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-latest
-            label: Linux
-          - os: windows-latest
-            label: Windows
+      matrix: ${{ fromJSON(needs.os.outputs.matrix) }}
     defaults:
       run:
         shell: bash
@@ -133,6 +167,8 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: lts/*
+          cache: npm
+          cache-dependency-path: installer/package-lock.json
 
       - name: Install development dependencies
         run: npm ci
@@ -158,14 +194,10 @@ jobs:
   pi:
     name: Pi package / ${{ matrix.label }}
     runs-on: ${{ matrix.os }}
+    needs: os
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-latest
-            label: Linux
-          - os: windows-latest
-            label: Windows
+      matrix: ${{ fromJSON(needs.os.outputs.matrix) }}
     defaults:
       run:
         shell: bash
@@ -178,6 +210,8 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: lts/*
+          cache: npm
+          cache-dependency-path: installer/package-lock.json
 
       - name: Install development dependencies
         run: npm ci
@@ -196,14 +230,10 @@ jobs:
   factory:
     name: Factory Droid plugin / ${{ matrix.label }}
     runs-on: ${{ matrix.os }}
+    needs: os
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-latest
-            label: Linux
-          - os: windows-latest
-            label: Windows
+      matrix: ${{ fromJSON(needs.os.outputs.matrix) }}
     defaults:
       run:
         shell: bash

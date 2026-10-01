@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // The deterministic half of the release-installer skill; SKILL.md says when to run each command.
-// `check`, `watch` and `verify` exit 1 when a check fails, and every command exits 2 when it
+// `check`, `smoke`, `watch` and `verify` exit 1 when a check fails, and every command exits 2 when it
 // can't reach npm, GitHub or origin: an unanswered lookup is never read as "absent".
 import { execFileSync, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -14,7 +14,7 @@ const NAME = '@postman/postman-plugin',
     // Everything the tarball ships or builds from; a change elsewhere reaches no user.
     SHIPPED = ['installer', 'skills', 'hooks/session-start-context.md', 'mcp.pi.json', 'README.md', 'LICENSE'],
     USAGE = 'usage: release.mjs status | suggest <rc|latest> [patch|minor|major] | check <version> [commit]' +
-        ' | bump <version> | watch <version> [--minutes N] [--new-run] | verify <version>',
+        ' | bump <version> | smoke <commit> [--minutes N] | watch <version> [--minutes N] [--new-run] | verify <version>',
     root = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim();
 
 function sh (command, args, options = {}) {
@@ -346,7 +346,7 @@ function failedSteps (id) {
     return out || `no failed step reported; read \`gh run view ${id} --log-failed\``;
 }
 
-function watchOptions (args) {
+function watchOptions (args, usage = 'watch <version> [--minutes N] [--new-run]') {
     const options = { minutes: 30, newRun: false };
 
     for (let at = 0; at < args.length; at++) {
@@ -362,10 +362,68 @@ function watchOptions (args) {
     }
 
     if (!(Number.isFinite(options.minutes) && options.minutes > 0)) {
-        throw new Error('usage: watch <version> [--minutes N] [--new-run]');
+        throw new Error(`usage: ${usage}`);
     }
 
     return options;
+}
+
+/** The newest dispatched smoke run created since `since`. */
+function smokeRunSince (since) {
+    const { code, out, err } = sh('gh', ['run', 'list', '--workflow', 'installer-smoke.yml', '--event', 'workflow_dispatch',
+        '--limit', '5', '--json', 'databaseId,status,conclusion,url,createdAt']);
+
+    if (code !== 0) {
+        throw new Error(`could not list installer-smoke.yml runs: ${firstLine(err)}`);
+    }
+
+    return JSON.parse(out || '[]').find((run) => Date.parse(run.createdAt) >= since) ?? null;
+}
+
+/** Runs installer-smoke.yml, every agent on Linux and Windows, on the commit about to be tagged. */
+async function smoke (commit, ...args) {
+    const { minutes } = watchOptions(args, 'smoke <commit> [--minutes N]'),
+        resolved = sh('git', ['rev-parse', '--verify', `${commit}^{commit}`]),
+        start = Date.now(),
+        deadline = start + minutes * 60 * 1000;
+
+    if (resolved.code !== 0) {
+        return report([`${commit} is not a commit here`]);
+    }
+
+    const sha = resolved.out;
+
+    // The runner checks the commit out from GitHub, so a commit only on this machine can't be tested.
+    if (sh('gh', ['api', `repos/{owner}/{repo}/commits/${sha}`, '--jq', '.sha']).out !== sha) {
+        return report([`${sha} is not on GitHub; push its branch first`]);
+    }
+
+    const dispatched = sh('gh', ['workflow', 'run', 'installer-smoke.yml', '--ref', 'main', '-f', `ref=${sha}`]);
+
+    if (dispatched.code !== 0) {
+        throw new Error(`could not dispatch installer-smoke.yml: ${firstLine(dispatched.err)}`);
+    }
+
+    // The run appears a few seconds after the dispatch, which the clocks may disagree about a little.
+    let run = await until(deadline, 5, () => smokeRunSince(start - 30 * 1000));
+
+    if (!run) {
+        return report([`timed out after ${minutes} minutes waiting for the dispatched smoke run`]);
+    }
+
+    console.log(`smoke ${sha.slice(0, 7)}: ${run.url}`);
+
+    run = await until(deadline, 30, () => {
+        const current = smokeRunSince(start - 30 * 1000);
+
+        return current?.status === 'completed' ? current : null;
+    });
+
+    if (!run) {
+        return report([`timed out after ${minutes} minutes waiting for the smoke run to finish`]);
+    }
+
+    report(run.conclusion === 'success' ? [] : [`smoke run ${run.databaseId} ended ${run.conclusion}: ${failedSteps(run.databaseId)}`]);
 }
 
 /** Follows the tag's release.yml run, then waits until npm serves the version and npx can run it. */
@@ -442,7 +500,7 @@ function report (problems) {
 }
 
 const [command, ...args] = process.argv.slice(2),
-    commands = { status, suggest, check, bump, watch, verify };
+    commands = { status, suggest, check, bump, smoke, watch, verify };
 
 if (!commands[command] || (command !== 'status' && !args[0])) {
     console.error(USAGE);

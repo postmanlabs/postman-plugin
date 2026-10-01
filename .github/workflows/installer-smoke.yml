@@ -5,8 +5,9 @@
 # They install from GitHub or npm, not from this checkout, so it tests the
 # installer, not a branch's skills; only the last three steps load this checkout,
 # as a tarball into Pi, as a marketplace into Droid and as a clone's files into
-# OpenCode. It also runs nightly,
-# because an agent release breaks the installer without anyone pushing here.
+# OpenCode. It also runs nightly, because an agent release breaks the installer
+# without anyone pushing here, and the release-installer skill dispatches it on
+# the commit it is about to tag.
 name: Installer smoke
 
 on:
@@ -17,10 +18,21 @@ on:
     paths: ['installer/**', 'opencode/**', 'scripts/lib/**', 'scripts/factory-harness.js', '.github/workflows/installer-smoke.yml']
   schedule:
     - cron: '23 4 * * *'
+  # The release-installer skill passes the exact commit it is about to tag.
   workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Commit, branch or tag to smoke-test; empty for the branch dispatched on.'
+        required: false
+        type: string
 
 permissions:
   contents: read
+
+# A new push to a pull request cancels the run it supersedes; nothing else is cancelled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   smoke:
@@ -45,11 +57,27 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: ${{ inputs.ref }}
           persist-credentials: false
 
       - uses: actions/setup-node@v7
         with:
           node-version: lts/*
+
+      # One cache of npm's download folder serves `npm ci` and the agent installs. Keyed by
+      # day: the nightly run on main saves that day's agent releases, and a pull request
+      # restores it. npm still resolves the latest version; it skips only the download.
+      - name: npm's cache folder and today's date
+        id: npm-cache
+        run: |
+          echo "dir=$(npm config get cache)" >> "$GITHUB_OUTPUT"
+          echo "day=$(date -u +%F)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@v6
+        with:
+          path: ${{ steps.npm-cache.outputs.dir }}
+          key: npm-smoke-${{ runner.os }}-${{ steps.npm-cache.outputs.day }}
+          restore-keys: npm-smoke-${{ runner.os }}-
 
       - name: Build
         run: npm ci && npm run build
@@ -117,5 +145,6 @@ jobs:
         # npm puts global bins in the prefix itself on Windows, in its bin/ elsewhere.
         run: |
           npm ci
-          export OPENCODE_BIN="$(node -p 'require("path").join(process.argv[1], process.platform === "win32" ? "opencode.cmd" : "bin/opencode")' "$(npm prefix -g)")"
+          OPENCODE_BIN=$(node -p 'require("path").join(process.argv[1], process.platform === "win32" ? "opencode.cmd" : "bin/opencode")' "$(npm prefix -g)")
+          export OPENCODE_BIN
           npm run test:harness
