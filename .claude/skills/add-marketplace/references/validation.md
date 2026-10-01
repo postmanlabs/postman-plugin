@@ -101,10 +101,11 @@ node .claude/hooks/validate-manifests.js && echo "manifests consistent"
 
 - **The URL mode segment** (`/mcp` vs `/minimal`) — a product decision about
   which tool surface the vendor gets.
-- **Everything about hooks.** Neither CI nor the pre-commit guard reads
-  `hooks/`. `scripts/check-hooks.sh` is the only check there is, and it covers
-  root resolution only — not whether the vendor discovers the file at all, nor
-  whether it spells the session-start event the way the file does. Pass `none`
+- **Hooks, for every vendor but Droid.** The pre-commit guard never reads
+  `hooks/`; in CI only `scripts/factory-harness.js` runs the hook, through
+  Droid. `scripts/check-hooks.sh` covers root resolution and Droid's bare skill
+  names — not whether a vendor discovers the file at all, nor whether it spells
+  the session-start event the way the file does. Pass `none`
   for a config-only or package vendor: it has no plugin-root variable, and the
   script reports `n/a` instead of a `FAIL` that reads like a regression.
 - **Whether a route delivers the session-start mandate by some other
