@@ -1,5 +1,5 @@
 {
-  "name": "postman",
+  "name": "postman-plugin",
   "description": "Develop, test, manage, and distribute APIs and services.",
   "owner": {
     "name": "Postman",
@@ -11,7 +11,7 @@
       "name": "postman",
       "description": "Work with Postman from your agent: bootstrap a repo's Postman setup, mock an API before it's implemented, run collection and governance checks in CI, monitor a live endpoint, deploy and debug Postman Flows, and publish generated API documentation.",
       "source": "./",
-      "homepage": "https://www.postmanlabs.com/skills/",
+      "homepage": "https://github.com/postmanlabs/postman-plugin",
       "category": "api-development",
       "tags": [
         "postman",

@@ -22,7 +22,7 @@ function factorySystem ({ marketplaces = [ours], plugins = [] } = {}) {
     });
 }
 
-test('detects Factory.ai by its CLI on PATH', async () => {
+test('detects Factory Droid by its CLI on PATH', async () => {
     assert.equal(await factory.detect(factorySystem()), true);
     assert.equal(await factory.detect(fakeSystem()), false);
 });

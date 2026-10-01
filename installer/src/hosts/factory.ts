@@ -6,7 +6,7 @@ import { type Host, result } from './types.js';
 const MARKETPLACE = 'postman-plugin',
     PLUGIN_ID = `postman@${MARKETPLACE}`,
     SCOPE = 'user',
-    NEXT = 'Restart Factory.ai for the change to take effect.';
+    NEXT = 'Restart Droid for the change to take effect.';
 
 function hasInstalledPlugin (text: string): boolean {
     return text.split('\n').some((line) => new RegExp(`^${PLUGIN_ID}\\s+\\[${SCOPE}\\]`).test(line.trimStart()));
@@ -50,7 +50,7 @@ async function refreshMarketplace (system: System): Promise<void> {
 
 export const factory: Host = {
     id: 'factory',
-    name: 'Factory.ai',
+    name: 'Factory Droid',
     route: '.factory-plugin',
 
     async detect (system) {
