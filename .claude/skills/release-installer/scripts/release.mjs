@@ -112,7 +112,13 @@ function increment (version, level) {
 
 /** True when `version` is newer than `than`, by the same semver release.yml runs. */
 function newer (version, than) {
-    return sh('npx', ['-y', SEMVER, '--include-prerelease', '--range', `>${than}`, version]).code === 0;
+    const { code, err } = sh('npx', ['-y', SEMVER, '--include-prerelease', '--range', `>${than}`, version]);
+
+    if (code !== 0 && err) {
+        throw new Error(`could not run ${SEMVER}: ${firstLine(err)}`);
+    }
+
+    return code === 0;
 }
 
 function status () {
@@ -190,7 +196,9 @@ function commitProblems (version, commit) {
         problems.push(`${commit} carries installer/package.json ${declared}, not ${version}`);
     }
 
-    if (read('installer/package-lock.json').version !== version) {
+    const lock = read('installer/package-lock.json');
+
+    if (lock.version !== version || lock.packages[''].version !== version) {
         problems.push(`${commit}'s installer/package-lock.json is not at ${version}; rerun bump`);
     }
 
@@ -328,8 +336,12 @@ function runFor (tag, since) {
 }
 
 function failedSteps (id) {
-    const { out } = sh('gh', ['run', 'view', String(id), '--json', 'jobs', '--jq',
+    const { code, out, err } = sh('gh', ['run', 'view', String(id), '--json', 'jobs', '--jq',
         '[.jobs[] | select(.conclusion == "failure") | "\\(.name): \\([.steps[] | select(.conclusion == "failure") | .name] | join(", "))"] | join("; ")']);
+
+    if (code !== 0) {
+        throw new Error(`could not read run ${id}: ${firstLine(err)}`);
+    }
 
     return out || `no failed step reported; read \`gh run view ${id} --log-failed\``;
 }
@@ -349,7 +361,7 @@ function watchOptions (args) {
         }
     }
 
-    if (!(options.minutes > 0)) {
+    if (!(Number.isFinite(options.minutes) && options.minutes > 0)) {
         throw new Error('usage: watch <version> [--minutes N] [--new-run]');
     }
 

@@ -3,7 +3,7 @@ name: release-installer
 description: Release @postman/postman-plugin, the npx installer and Pi package, to npm - a release candidate on the `next` dist-tag or a plain version on `latest`. Use when asked to cut, publish, tag or ship an installer release or rc, promote an rc to latest, resume a release in progress, or retry one that failed.
 argument-hint: rc | latest | <version>
 disable-model-invocation: true
-allowed-tools: Bash(node .claude/skills/release-installer/scripts/release.mjs:*), Bash(git fetch:*), Bash(git status:*), Bash(git ls-remote:*), Bash(git show:*), Bash(git worktree list:*), Bash(git worktree add:*), Bash(npm ci:*), Bash(npm test:*), Bash(npm audit:*), Bash(npm pack:*), Bash(npm run test:pi-harness:*), Bash(gh run list:*), Bash(gh run view:*), Bash(gh pr view:*)
+allowed-tools: Bash(node .claude/skills/release-installer/scripts/release.mjs:*), Bash(git fetch:*), Bash(git status:*), Bash(git ls-remote:*), Bash(git show:*), Bash(git worktree list:*), Bash(git worktree add:*), Bash(npm ci:*), Bash(npm test:*), Bash(npm audit:*), Bash(npm pack:*), Bash(npm run test:pi-harness:*), Bash(gh run list:*), Bash(gh run view:*), Bash(git push -u origin release/*), Bash(gh pr create:*), Bash(gh pr view:*)
 ---
 
 # Release @postman/postman-plugin
@@ -188,7 +188,7 @@ When the run fails, match the failed step:
 | would move the dist-tag back | a newer version shipped meanwhile; nothing was published | cut a higher version |
 | audit or tests | nothing was published | fix it on `main` in its own PR, then cut the next version |
 | the release page, after npm published | the package is live and only the page is missing | `gh workflow run release.yml --ref <tag> -f tag=<tag>`: it skips the publish and creates the page. Then `release.mjs watch <version> --new-run`, which follows the retry instead of the failed run |
-| the npm token exchange (404 on PUT) | the trusted-publisher link is broken, usually a renamed workflow | stop and tell the user; the npm package settings need an owner |
+| the npm token exchange (404 on PUT) | the trusted-publisher link is broken, usually a renamed workflow | stop and tell the user; the npm package settings need an owner. Once they have repaired it: `gh workflow run release.yml --ref <tag> -f tag=<tag>`, then `release.mjs watch <version> --new-run` |
 
 ## Step 6 — Verify what shipped
 
