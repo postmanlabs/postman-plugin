@@ -7,12 +7,12 @@
 #   .claude/skills/add-marketplace/scripts/check-hooks.sh KIMI_PLUGIN_ROOT ...
 #   .claude/skills/add-marketplace/scripts/check-hooks.sh none
 #
-# Each named variable is checked on its own, from an empty directory, so the
-# chain's `.` fallback cannot rescue a token that does not actually resolve.
-# Pass the new vendor's variable when adding a route.
+# Each named variable is checked on its own, from an empty directory, so only
+# a token the command really uses resolves. Pass the new vendor's variable when
+# adding a route; a FAIL means its manifest must point at hooks/session-start.
 #
 # Pass `none` for a config-only or package vendor: neither reads hooks.json, so
-# it has no token to add to the chain. Naming a variable that does not exist
+# it has no token to check. Naming a variable that does not exist
 # would report a FAIL that reads like a regression.
 set -uo pipefail
 
@@ -22,8 +22,8 @@ repo=$PWD
 cmd=$(node -p 'JSON.parse(require("fs").readFileSync("hooks/hooks.json","utf8")).hooks.SessionStart[0].hooks[0].command')
 status=0
 
-# Every root variable the chain knows about, so each check starts from nothing.
-clear_env=(env -u CLAUDE_PLUGIN_ROOT -u CURSOR_PLUGIN_ROOT -u KIMI_PLUGIN_ROOT -u PLUGIN_ROOT)
+# Every plugin-root variable a vendor sets, so each check starts from nothing.
+clear_env=(env -u CLAUDE_PLUGIN_ROOT -u CURSOR_PLUGIN_ROOT -u KIMI_PLUGIN_ROOT -u PLUGIN_ROOT -u DROID_PLUGIN_ROOT)
 
 check_resolves() {
   local var=$1 out rc
@@ -41,13 +41,22 @@ check_resolves CLAUDE_PLUGIN_ROOT
 
 for var in ${1+"$@"}; do
   # `none` is an answer, not a variable: this vendor has no plugin root and the
-  # chain is not supposed to grow a token for it.
+  # hook is not supposed to grow a token for it.
   if [ "$var" = none ]; then
     echo "n/a  this vendor has no plugin-root variable - paths resolve against the project root"
     continue
   fi
   check_resolves "$var"
 done
+
+# Droid fills in ${DROID_PLUGIN_ROOT} too, and its Skill tool rejects `postman:<skill>`.
+out=$(cd "$(mktemp -d)" && "${clear_env[@]}" CLAUDE_PLUGIN_ROOT="$repo" DROID_PLUGIN_ROOT="$repo" bash -c "$cmd" 2>&1) && rc=0 || rc=$?
+if [ "$rc" -eq 0 ] && [ -n "$out" ] && ! grep -q 'postman:' <<<"$out"; then
+  echo "ok   \$DROID_PLUGIN_ROOT -> the mandate with bare skill names"
+else
+  echo "FAIL \$DROID_PLUGIN_ROOT -> exit $rc; Droid needs the mandate with no \`postman:\` prefix"
+  status=1
+fi
 
 # With no root variable set the hook must fail loudly rather than
 # cat "/hooks/session-start-context.md" and leave no trace.

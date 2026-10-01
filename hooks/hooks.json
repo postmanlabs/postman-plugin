@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if [ -n \"${DROID_PLUGIN_ROOT}\" ]; then sed 's/`postman:\\([a-z0-9-]*\\)`/`\\1`/g' \"${DROID_PLUGIN_ROOT}/hooks/session-start-context.md\"; else cat \"${CLAUDE_PLUGIN_ROOT}/hooks/session-start-context.md\"; fi",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/session-start\" \"${DROID_PLUGIN_ROOT}\"",
             "shell": "bash",
             "async": false
           }
