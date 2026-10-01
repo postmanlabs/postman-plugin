@@ -39,7 +39,7 @@ npx @postman/postman-plugin [command] [options]
 | Option | What it does |
 | --- | --- |
 | `--agent <id>` | Only these agents; repeat or comma-separate: `claude-code`, `codex`, `cursor`, `kimi`, `opencode`, `pi` |
-| `-y`, `--yes` | Don't ask for confirmation (required when not in a terminal) |
+| `-y`, `--yes` | Don't ask before `install` or `remove` (required for them when not in a terminal, unless `--dry-run`) |
 | `--dry-run` | Print what would change without changing anything |
 | `-h`, `--help` | Show the help |
 | `-v`, `--version` | Show the version |
@@ -48,7 +48,7 @@ npx @postman/postman-plugin [command] [options]
 | --- | --- |
 | `0` | Done, or nothing needed doing |
 | `1` | Something failed or was blocked, you cancelled, or install found no agent |
-| `2` | Bad usage, or confirmation needed but no terminal (use `--yes`) |
+| `2` | Bad usage, or `install` or `remove` needed confirmation but had no terminal (use `--yes`) |
 | `3` | Done, except a step only you can do (printed as `next:`) |
 
 You can also use the following commands to install individually:
