@@ -98,16 +98,20 @@ jobs:
           grep -F '/plugins remove postman' "$RUNNER_TEMP/kimi-remove.txt"
           node scripts/smoke-check.js installed kimi
 
-      # The pinned harness in validate.yml, against the Pi release installed above.
+      # The pinned harness in validate.yml, against the Pi release installed above. Each harness
+      # runs even when one before it failed, so one agent's failure can't hide another's.
       - name: The latest Pi loads the packed tarball
+        if: ${{ !cancelled() }}
         run: npm run test:pi-harness
 
       # The pinned harness in validate.yml, against the Droid release installed above.
       - name: The latest Droid loads this checkout
+        if: ${{ !cancelled() }}
         run: node ../scripts/factory-harness.js
 
       # The pinned harness in validate.yml, against the OpenCode release installed above.
       - name: The latest OpenCode loads the skills
+        if: ${{ !cancelled() }}
         working-directory: opencode
         # npm puts global bins in the prefix itself on Windows, in its bin/ elsewhere.
         run: |
