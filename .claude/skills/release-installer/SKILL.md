@@ -3,7 +3,7 @@ name: release-installer
 description: Release @postman/postman-plugin, the npx installer and Pi package, to npm - a release candidate on the `next` dist-tag or a plain version on `latest`. Use when asked to cut, publish, tag or ship an installer release or rc, promote an rc to latest, resume a release in progress, or retry one that failed.
 argument-hint: rc | latest | <version>
 disable-model-invocation: true
-allowed-tools: Bash(node .claude/skills/release-installer/scripts/release.mjs:*), Bash(git fetch:*), Bash(git status:*), Bash(git ls-remote:*), Bash(git show:*), Bash(git worktree add:*), Bash(npm ci:*), Bash(npm test:*), Bash(npm pack:*), Bash(npm run test:pi-harness:*), Bash(gh run list:*), Bash(gh run view:*), Bash(gh pr view:*)
+allowed-tools: Bash(node .claude/skills/release-installer/scripts/release.mjs:*), Bash(git fetch:*), Bash(git status:*), Bash(git ls-remote:*), Bash(git show:*), Bash(git worktree list:*), Bash(git worktree add:*), Bash(npm ci:*), Bash(npm test:*), Bash(npm audit:*), Bash(npm pack:*), Bash(npm run test:pi-harness:*), Bash(gh run list:*), Bash(gh run view:*), Bash(gh pr view:*)
 ---
 
 # Release @postman/postman-plugin
@@ -55,13 +55,27 @@ Run `status`, then find the first matching state for the version and skip to it:
 | The tag is on origin (`git ls-remote --tags origin refs/tags/<tag>`) | Step 5; `watch` returns at once for a finished release |
 | `latest` only: the release PR is merged, but there's no tag yet | Step 4b, tagging |
 | `latest` only: the release PR is open | Step 4b, waiting |
-| A `release/postman-plugin-<version>` branch exists, locally or on origin | Step 3's checks, then Step 4 |
+| A `release/postman-plugin-<version>` branch exists, locally or on origin | [Resume a prepared release](#resume-a-prepared-release) |
 | None of these | Step 1 |
+
+### Resume a prepared release
+
+Pick up the commit the branch already has; never recreate the branch from
+`origin/main`, which would drop that commit. Use the first line that applies:
+
+```bash
+git worktree list | grep 'release/postman-plugin-<version>'           # a worktree has it: cd into that path
+git worktree add .claude/worktrees/release-<version> release/postman-plugin-<version>    # a local branch only
+git worktree add --track -b release/postman-plugin-<version> .claude/worktrees/release-<version> origin/release/postman-plugin-<version>    # origin only
+```
+
+In that worktree, `release.mjs check <version> HEAD` must pass. It also checks
+that the commit carries the version. Then run Step 3's tests, and go to Step 4.
 
 ## Step 1 — Pick the version
 
 ```bash
-release.mjs status                            # dist-tags, recent tags, what changed since the last latest
+release.mjs status                            # dist-tags, and what changed since npm's latest
 release.mjs suggest rc [patch|minor|major]
 release.mjs suggest latest [patch|minor|major]
 ```
@@ -86,7 +100,8 @@ release.mjs check <version>
 
 It fails when the version already exists on npm or origin, when it would move its
 dist-tag backwards, when `release.yml` can't map it to a dist-tag, or when `gh`
-isn't signed in. Fix every `FAIL` before going on.
+isn't signed in. Fix every `FAIL` before going on. Exit 2 means npm, GitHub or
+origin didn't answer; nothing was checked, so fix the connection and rerun it.
 
 ## Step 3 — Prepare the release commit
 
@@ -95,8 +110,11 @@ git fetch origin
 git worktree add .claude/worktrees/release-<version> -b release/postman-plugin-<version> origin/main
 cd .claude/worktrees/release-<version>
 node .claude/skills/release-installer/scripts/release.mjs bump <version>
-(cd installer && npm ci && npm test && npm pack --dry-run)
+(cd installer && npm ci && npm test && npm audit --omit=dev --audit-level=high && npm pack --dry-run)
 ```
+
+`release.yml` runs the same audit before publishing, so a finding there would
+otherwise fail only after the tag is pushed.
 
 Also run the Pi harness against a throwaway Pi. It is what CI's `pi` job runs:
 
@@ -111,8 +129,11 @@ PI_PREFIX=$(mktemp -d) && npm install --no-save --prefix "$PI_PREFIX" @earendil-
 ## Step 4a — Tag an rc
 
 ```bash
+node .claude/skills/release-installer/scripts/release.mjs check <version> HEAD
 git tag -a @postman/postman-plugin@<version> -m "@postman/postman-plugin <version>"
 ```
+
+Tag only when `check` passes.
 
 Confirm with the user, then `git push origin @postman/postman-plugin@<version>`.
 Go to Step 5.
@@ -129,15 +150,18 @@ checks Step 3 ran, and that the merge commit gets tagged next. Then stop. The PR
 needs an approval, so give the user the PR link and tell them to run
 `/release-installer <version>` again once it merges.
 
-Once it has merged, tag the merge commit, after checking it carries the version:
+Once it has merged, tag the merge commit. Rerun the checks against it first:
+the PR may have changed after Step 3, or another release may have shipped
+while it waited for approval.
 
 ```bash
 MERGE=$(gh pr view release/postman-plugin-<version> --json mergeCommit --jq .mergeCommit.oid)
-git fetch origin main && git show "$MERGE:installer/package.json" | grep '"version"'
+git fetch origin main
+release.mjs check <version> "$MERGE"
 git tag -a @postman/postman-plugin@<version> -m "@postman/postman-plugin <version>" "$MERGE"
 ```
 
-Confirm with the user, then push the tag.
+Tag only when `check` passes. Confirm with the user, then push the tag.
 
 ## Step 5 — Watch it until it's live
 
@@ -145,7 +169,7 @@ Start this right after pushing the tag. Run it with the Monitor tool, so each li
 reaches you as it prints, and wait for it to exit instead of polling yourself:
 
 ```bash
-release.mjs watch <version> [minutes]   # default 30
+release.mjs watch <version> [--minutes N]   # default 30
 ```
 
 It follows the tag's `release.yml` run to the end, then polls npm until the
@@ -163,7 +187,7 @@ When the run fails, match the failed step:
 | a latest release must be tagged on main | the tag is not on `main`; nothing was published | cut the next version from Step 1 |
 | would move the dist-tag back | a newer version shipped meanwhile; nothing was published | cut a higher version |
 | audit or tests | nothing was published | fix it on `main` in its own PR, then cut the next version |
-| the release page, after npm published | the package is live and only the page is missing | `gh workflow run release.yml -f tag=<tag>`: it skips the publish and creates the page |
+| the release page, after npm published | the package is live and only the page is missing | `gh workflow run release.yml --ref <tag> -f tag=<tag>`: it skips the publish and creates the page. Then `release.mjs watch <version> --new-run`, which follows the retry instead of the failed run |
 | the npm token exchange (404 on PUT) | the trusted-publisher link is broken, usually a renamed workflow | stop and tell the user; the npm package settings need an owner |
 
 ## Step 6 — Verify what shipped

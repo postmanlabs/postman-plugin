@@ -264,10 +264,11 @@ already under way:
 3. Never move a pushed tag; a release that went wrong gets the next version. To
    retry a tag, run the workflow by hand. A version already on npm is not
    published again, so a retry still creates a release page that failed the
-   first time: `gh workflow run release.yml -f tag=<tag>`. `-f dry_run=true`
-   needs the tag on origin already, and pushing a tag publishes it, so a new
-   version can't be rehearsed in CI: `npm pack --dry-run` in `installer/` is the
-   rehearsal.
+   first time: `gh workflow run release.yml --ref <tag> -f tag=<tag>`. On the
+   tag's ref, the retry is listed under the tag like the original run.
+   `-f dry_run=true` needs the tag on origin already, and pushing a tag
+   publishes it, so a new version can't be rehearsed in CI: `npm pack --dry-run`
+   in `installer/` is the rehearsal.
 
 Keep the workflow's filename: npm's trusted publisher for the package is
 pinned to `release.yml`.
