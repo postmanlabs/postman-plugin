@@ -3,17 +3,18 @@
 // home, and sends one prompt to a local stand-in for an OpenAI-compatible endpoint. It then checks
 // what Pi sent the model and what the extension registered. No model, account or network is used.
 import assert from 'node:assert/strict';
-import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { spawnCli, spawnCliSync } from '../../scripts/lib/cli.js';
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'),
     repoRoot = path.dirname(packageRoot),
     pi = process.env.PI_BIN || 'pi',
-    temporary = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'postman-pi-harness-'))),
+    // .native expands a Windows short name (RUNNER~1), which Pi reports in full.
+    temporary = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'postman-pi-harness-'))),
     home = path.join(temporary, 'home'),
     agentDir = path.join(temporary, 'agent'),
     project = path.join(temporary, 'project'),
@@ -32,7 +33,7 @@ const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '
     };
 
 function run (command, args, options = {}) {
-    const result = spawnSync(command, args, { encoding: 'utf8', env, timeout: 180000, ...options });
+    const result = spawnCliSync(command, args, { encoding: 'utf8', env, timeout: 180000, ...options });
 
     assert.equal(result.status, 0, [`${command} ${args.join(' ')} exited ${result.status}`, result.stdout, result.stderr, result.error?.message].filter(Boolean).join('\n'));
 
@@ -60,7 +61,7 @@ function startModel () {
 // Asynchronous, unlike `run`, so this process can serve the model while pi waits on it.
 function runPi (args) {
     return new Promise((resolve) => {
-        const child = spawn(pi, args, { cwd: project, env, stdio: ['ignore', 'pipe', 'pipe'], timeout: 120000 });
+        const child = spawnCli(pi, args, { cwd: project, env, stdio: ['ignore', 'pipe', 'pipe'], timeout: 120000 });
         let stdout = '',
             stderr = '';
 
@@ -86,7 +87,8 @@ try {
 
     const packed = JSON.parse(run('npm', ['pack', '--json', '--pack-destination', temporary], { cwd: packageRoot }))[0];
 
-    run('tar', ['-xzf', path.join(temporary, packed.filename), '-C', installed, '--strip-components=1']);
+    // Relative paths: GNU tar, which Git Bash puts first on Windows, reads `C:` as a remote host.
+    run('tar', ['-xzf', packed.filename, '-C', path.basename(installed), '--strip-components=1'], { cwd: temporary });
     run(pi, ['install', installed]);
 
     model = await startModel();

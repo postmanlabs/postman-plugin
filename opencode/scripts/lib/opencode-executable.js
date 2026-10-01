@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { spawnCliSync } from '../../../scripts/lib/cli.js';
 
 /** Resolve a working OpenCode CLI, preferring the version pinned by this repo. */
 export function resolveOpenCodeExecutable (root) {
@@ -18,7 +18,7 @@ export function resolveOpenCodeExecutable (root) {
             continue;
         }
 
-        const probe = spawnSync(candidate, ['--version'], {
+        const probe = spawnCliSync(candidate, ['--version'], {
             encoding: 'utf8',
             timeout: 10000
         });
