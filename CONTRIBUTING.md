@@ -225,10 +225,11 @@ filename is also Cursor's default, which `.cursor-plugin/plugin.json`'s
 `.claude/hooks/validate-manifests.js` fails on that removal, in CI's Manifest job
 and as the pre-commit guard.
 
-Droid runs the shared `hooks/hooks.json` and sets both `CLAUDE_PLUGIN_ROOT` and
-`DROID_PLUGIN_ROOT`. Its skill names are un-namespaced and its Skill tool
-rejects `postman:api-engineer`, so when `DROID_PLUGIN_ROOT` is set the hook
-rewrites `` `postman:<skill>` `` to `` `<skill>` ``, as the OpenCode plugin does.
+Droid runs the shared `hooks/hooks.json`, filling in both `${CLAUDE_PLUGIN_ROOT}`
+and `${DROID_PLUGIN_ROOT}`, through cmd.exe on Windows. Its skill names are
+un-namespaced and its Skill tool rejects `postman:api-engineer`, so when the
+hook gets Droid's root as its argument it rewrites `` `postman:<skill>` `` to
+`` `<skill>` ``, as the OpenCode plugin does.
 
 `scripts/factory-harness.js` installs this checkout into Droid as a local
 marketplace under a throwaway home and runs one `droid exec` against a local

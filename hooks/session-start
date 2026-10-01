@@ -1,0 +1,8 @@
+#!/bin/sh
+# Prints the session-start mandate. hooks.json passes Droid's plugin root as $1 only on Droid,
+# whose skills have no `postman:` prefix. session-start.cmd is this script for cmd.exe.
+if [ -n "$1" ]; then
+    sed 's/`postman:\([a-z0-9-]*\)`/`\1`/g' "${0%/*}/session-start-context.md"
+else
+    cat "${0%/*}/session-start-context.md"
+fi

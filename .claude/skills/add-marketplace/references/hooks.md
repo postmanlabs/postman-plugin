@@ -1,8 +1,9 @@
 # Hooks across vendors
 
 Reference for Step 3. Read this before editing anything under `hooks/`. Both
-failure modes documented here are silent, and nothing in CI or the pre-commit
-hook reads `hooks/` — the only symptom of either is an agent that never mentions
+failure modes documented here are silent: the pre-commit hook never reads
+`hooks/`, and in CI only the Droid harness runs it, through Droid. For every
+other vendor the only symptom of either is an agent that never mentions
 Postman.
 
 ## The plugin-root variable is the trap
@@ -25,35 +26,27 @@ install path. Every vendor names that differently, and only some substitute
 
 So a single vendor token is wrong on every other route, and forking the file per
 route re-creates the problem the shared `skills/` directory exists to avoid.
-`hooks/hooks.json` instead tries every token it knows, in order, ending with `.`
-for the vendors that set cwd to the plugin root. That works whether a vendor
-substitutes the token textually or merely exports the variable, because the
-command runs through `bash` either way.
+`hooks/hooks.json` runs one command everywhere:
 
-Four properties carry the design, and all four are easy to destroy while
-tidying:
+```
+"${CLAUDE_PLUGIN_ROOT}/hooks/session-start" "${DROID_PLUGIN_ROOT}"
+```
 
-- **`set +u` stays at the front.** Naming four variables when one is set is a
-  `nounset` violation, so under `-u` the command aborts before reading
-  anything — and the single-variable `cat` it replaced did not, making this a
-  regression rather than an inherited limit. Measured: without `set +u` the
-  chain fails under `-u` and `-eu` in bash, sh, zsh, dash and ksh, and `-u`
-  also swallows the loud failure below. With it, all five pass on both paths.
-- **`${CLAUDE_PLUGIN_ROOT}` stays first and stays spelled with bare braces.**
-  Vendors that substitute textually match that exact token;
-  `${CLAUDE_PLUGIN_ROOT:-}` or `${CLAUDE_PLUGIN_ROOT-}` does not, so a shell
-  default silently disables the substitution and leaves the hook depending on
-  the environment variable instead. `set +u` is what makes the bare form safe,
-  so the two travel together — keep one without the other and the problem is
-  back.
-- **The list is ordered most- to least-supported.** `${PLUGIN_ROOT}` is the
-  Agent Plugins standard name and still belongs *last*: fewer clients expand it
-  than expand `${CLAUDE_PLUGIN_ROOT}`, and Cursor explicitly does not, so
-  promoting it to "the standard one" is a regression.
-- **The loop ends on stderr with a non-zero exit.** Without the guard an
-  unresolved root becomes `cat "/hooks/session-start-context.md"`. Verified
-  through Claude Code: a plugin with the markdown removed reports
-  `exit_code: 1, outcome: "error"` and the message in `stderr`.
+- **It names a script, not shell syntax.** cmd.exe, which Droid uses on
+  Windows, resolves the extensionless path to `hooks/session-start.cmd`;
+  every POSIX shell runs `hooks/session-start`. Both read
+  `session-start-context.md` from their own directory, so neither needs the
+  root again.
+- **`${CLAUDE_PLUGIN_ROOT}` is the path token.** Claude Code, Cursor and Copilot
+  substitute it, Droid substitutes it as a compatibility alias, and Codex
+  exports it, which `sh` then expands.
+- **The second argument is how the scripts know they are on Droid.** Only Droid
+  substitutes `${DROID_PLUGIN_ROOT}`; elsewhere `sh` expands an unset variable
+  to `""`. Droid's own `DROID_PLUGIN_ROOT` *environment variable* can't be the
+  signal: on Windows it holds the placeholder `/PLUGIN_ROOT_NOT_EXPANDED_ERROR`.
+- **`hooks/session-start` must stay executable and LF.** The shell runs it by
+  path, so it needs its mode bit, and `.gitattributes` pins it to LF so a
+  Windows checkout with `core.autocrlf` doesn't hand bash a `\r` on every line.
 
 ## The context itself must stay agent-neutral
 
@@ -78,15 +71,20 @@ real and takes `"bash"` or `"powershell"`; this repo sets `"bash"`, which is
 what keeps Windows on Git Bash. It is ignored if `args` is ever added, since
 `args` switches to exec form and spawns the binary with no shell at all.
 
-The command therefore has to be POSIX-safe rather than bash-specific. Measured
-working in bash, sh, zsh, dash and ksh — dash matters most, being `/bin/sh` on
-Debian and Ubuntu. Untested: busybox `ash`, and Windows itself.
+Droid ignores `shell` on Windows and runs the command through cmd.exe, after
+substituting its root tokens itself; measured on `windows-latest`, with and
+without Git on PATH. A command written in shell syntax prints nothing there,
+which is why the command is a bare script path.
 
-One Windows caveat, before someone "fixes" it: a Windows box with no Git Bash
-cannot run a shell-form hook at all, and no amount of POSIX tidiness changes
-that. It is a pre-existing limit rather than something the vendor chain
-introduced — the `cat` one-liner needed a POSIX shell just as much. Supporting
-it means a separate PowerShell command to keep in step with this one.
+`hooks/session-start` must stay POSIX-safe rather than bash-specific: dash is
+`/bin/sh` on Debian and Ubuntu, and Codex has no `shell` field at all.
+`hooks/session-start.cmd` is its twin for cmd.exe and has to change with it;
+its `postman:` rewrite goes through Windows PowerShell, told UTF-8 both ways
+because 5.1 assumes ANSI and the mandate has non-ASCII text.
+
+Claude Code on a Windows box with no Git Bash falls back to PowerShell, where a
+quoted path is a string, not a command, so the hook prints the path instead of
+the mandate. Supporting it means a third, PowerShell form of the command.
 
 ## Some routes never look for the file
 
@@ -97,7 +95,7 @@ Discovery is the other half, and it is not uniform either:
 | Claude Code | `hooks/hooks.json` by default; a manifest `hooks` key can point elsewhere |
 | Cursor | manifest `hooks` (path string or inline object); falls back to `hooks/hooks.json` |
 | Codex | manifest `hooks`, resolved relative to the plugin root and required to stay inside it; otherwise `hooks/hooks.json` — its `DEFAULT_HOOKS_CONFIG_FILE` is that exact path, so the shared file is found with no `hooks` key in the manifest at all |
-| Factory Droid | `hooks/hooks.json` at the plugin root, in the same `hooks`-wrapped shape as Claude Code. The command takes its own branch when `DROID_PLUGIN_ROOT` is set: it reads the mandate from there and strips the `postman:` prefix, so it doesn't depend on Droid's `CLAUDE_PLUGIN_ROOT` alias. A top-level event key is the shape of a user's `.factory/hooks.json`, not a plugin's |
+| Factory Droid | `hooks/hooks.json` at the plugin root, in the same `hooks`-wrapped shape as Claude Code. It finds the scripts through Droid's `${CLAUDE_PLUGIN_ROOT}` alias and gets `${DROID_PLUGIN_ROOT}` as its argument, which is what makes the scripts strip the `postman:` prefix. A top-level event key is the shape of a user's `.factory/hooks.json`, not a plugin's |
 | Copilot / VS Code | layout-dependent — `hooks/hooks.json` for the Claude layout, `com.github.copilot/hooks/hooks.json` for Agent Plugins 1.0, `hooks.json` at the root for the Copilot layout |
 | Kimi Code | **nowhere.** Hooks are an inline `hooks` array in the manifest, entries shaped `event` / `matcher` / `command` / `timeout`, and Kimi documents no default file to discover |
 | OpenCode | **no `hooks.json`.** Nothing session-shaped in its config schema; the local plugin pushes the mandate into the system prompt from its own hooks — see item 1 below |
@@ -143,8 +141,9 @@ relative to the root it provides. Never a copy of the markdown.
    only because the command is POSIX-safe; keep it that way rather than relying
    on the key being honoured.
 5. Which plugin-root variable it provides, and whether it substitutes `${...}`
-   in `command` or only exports environment variables. If it is a name not
-   already in the chain, add it — one word in one file.
+   in `command` or only exports environment variables. If it offers neither
+   form of `CLAUDE_PLUGIN_ROOT`, its manifest points at `hooks/session-start`
+   with its own root instead.
 6. Whether hooks require the user to trust them before they run. Codex skips
    plugin-bundled hooks until the definition is reviewed and trusted, so "the
    hook did not fire" is not always a bug in the hook.
