@@ -85,9 +85,8 @@ description, author, homepage, repository, license, keywords) and the
 metadata, so most of those values have nowhere to go — do not invent keys to
 hold them.
 
-**A new route starts at `1.0.0`.** Routes version independently here, so the new
-number has no reason to match anyone else's, and the route ships the whole skill
-set on day one — there is no partial first release for a `0.x` to signal.
+**A new route starts at `0.1.0`.** Routes version independently here, so the new
+number has no reason to match anyone else's.
 
 That version goes everywhere the route carries it: the manifest `version`, plus
 `X-Plugin-Version` and `User-Agent` in Step 2. A route with no `version` key
@@ -268,7 +267,7 @@ node .claude/hooks/validate-manifests.js && echo "manifests consistent"
 .claude/skills/add-marketplace/scripts/check-hooks.sh <VENDOR>_PLUGIN_ROOT
 
 # No other route's version may move: only your route's files may appear here.
-# Scope by file, not by grepping the diff - an added `"version": "1.0.0"` line
+# Scope by file, not by grepping the diff - an added `"version": "0.1.0"` line
 # names no vendor and slips a text filter. Package routes match no
 # `*plugin.json`, so name their package manifest explicitly, as Factory Droid's
 # fixed-name `mcp.json` matches no `mcp.*.json`.
@@ -299,7 +298,7 @@ covers what each of these checks and — more usefully — what none of them do.
   version, header key and URL mode are deliberate per-route differences; a copy
   breaks all four at once.
 - **Do not bump any version.** `AGENTS.md` keeps bumps to a dedicated release
-  PR. The new route's `1.0.0` is its starting value, not a bump; every other
+  PR. The new route's `0.1.0` is its starting value, not a bump; every other
   route's strings come out of your diff untouched, which Step 7 checks.
 - **Do not run `node scripts/build-manifest.js` expecting a diff** *from the
   route itself*. `manifest.json` indexes the skill *files* and takes `plugin`
