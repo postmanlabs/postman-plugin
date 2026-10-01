@@ -5,5 +5,8 @@ rem Droid, a `-replace` group reference there came back empty and deleted the sk
 if "%~1"=="" (
     type "%~dp0session-start-context.md"
 ) else (
-    powershell -NoProfile -NonInteractive -Command "[Console]::OutputEncoding = [Text.UTF8Encoding]::new(); [Console]::Out.Write((Get-Content -Raw -Encoding UTF8 -LiteralPath '%~dp0session-start-context.md').Replace('`postman:', '`'))"
+    rem From its own directory, so no path, which may hold a quote, reaches PowerShell's source.
+    pushd "%~dp0"
+    powershell -NoProfile -NonInteractive -Command "[Console]::OutputEncoding = [Text.UTF8Encoding]::new(); [Console]::Out.Write((Get-Content -Raw -Encoding UTF8 -LiteralPath 'session-start-context.md').Replace('`postman:', '`'))"
+    popd
 )
