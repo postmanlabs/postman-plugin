@@ -1,8 +1,9 @@
 # Hooks across vendors
 
 Reference for Step 3. Read this before editing anything under `hooks/`. Both
-failure modes documented here are silent, and nothing in CI or the pre-commit
-hook reads `hooks/` — the only symptom of either is an agent that never mentions
+failure modes documented here are silent: the pre-commit hook never reads
+`hooks/`, and in CI only the Droid harness runs it, through Droid. For every
+other vendor the only symptom of either is an agent that never mentions
 Postman.
 
 ## The plugin-root variable is the trap

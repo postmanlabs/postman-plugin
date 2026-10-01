@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Exercise hooks/hooks.json's SessionStart command. Nothing in CI or the
-# pre-commit hook reads hooks/, so this is the only automated check there is.
+# Exercise hooks/hooks.json's SessionStart command. In CI only the Droid
+# harness runs it, through Droid, so for every other vendor this is the only check.
 #
 # Run from the repo root:
 #   .claude/skills/add-marketplace/scripts/check-hooks.sh
