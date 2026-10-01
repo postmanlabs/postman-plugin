@@ -153,7 +153,7 @@ the injection itself: the OpenCode plugin reads
 plugin hooks. Either way it is always-on context rather than a `SessionStart`
 event, but the effect on the session is the one that matters.
 
-Both failure modes here are silent and nothing in CI reads `hooks/`, so read
+Both failure modes here are silent, and in CI only the Droid harness runs `hooks/`, so read
 [references/hooks.md](references/hooks.md) before editing anything under
 `hooks/`: it carries the per-vendor variable and discovery tables, the load-bearing
 properties of that command, and the six things to establish for a
