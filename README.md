@@ -25,8 +25,31 @@ npx @postman/postman-plugin
 ```
 
 One command configures **Claude Code, Codex, Cursor, Kimi Code, OpenCode and Pi**.
-Run it again to update, `status` to see what's installed, and `remove` to
-uninstall; `--agent <id>` limits any of them to one agent.
+
+```text
+npx @postman/postman-plugin [command] [options]
+```
+
+| Command | What it does |
+| --- | --- |
+| `install` | Install into each detected agent, or update it there (default) |
+| `status` | Show which agents are detected and whether Postman is installed |
+| `remove` | Uninstall from each detected agent (alias: `uninstall`) |
+
+| Option | What it does |
+| --- | --- |
+| `--agent <id>` | Only these agents; repeat or comma-separate: `claude-code`, `codex`, `cursor`, `kimi`, `opencode`, `pi` |
+| `-y`, `--yes` | Don't ask for confirmation (required when not in a terminal) |
+| `--dry-run` | Print what would change without changing anything |
+| `-h`, `--help` | Show the help |
+| `-v`, `--version` | Show the version |
+
+| Exit code | Meaning |
+| --- | --- |
+| `0` | Done, or nothing needed doing |
+| `1` | Something failed or was blocked, you cancelled, or install found no agent |
+| `2` | Bad usage, or confirmation needed but no terminal (use `--yes`) |
+| `3` | Done, except a step only you can do (printed as `next:`) |
 
 You can also use the following commands to install individually:
 
