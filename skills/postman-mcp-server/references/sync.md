@@ -9,7 +9,7 @@ Keep Postman collections in sync with your API code. Create new collections from
 
 ## Prerequisites
 
-The Postman MCP Server must be connected. If MCP tools aren't available, tell the user: "Run `/postman:setup` to configure the Postman MCP Server."
+The Postman MCP Server must be connected. If MCP tools aren't available, follow `references/setup.md` to connect it.
 
 ## Workflow
 
@@ -77,9 +77,9 @@ Collection synced: "Pet Store API" (15 requests)
 
 ## Error Handling
 
-- **MCP not configured:** "Run `/postman:setup` to configure the Postman MCP Server."
+- **MCP not configured:** Follow `references/setup.md` to connect the Postman MCP Server.
 - **MCP timeout:** Retry once. If `generateCollection` or `syncCollectionWithSpec` times out, the spec may be too large. Suggest breaking it into smaller specs by domain.
-- **401 Unauthorized:** "Your Postman API key was rejected. Generate a new one at https://go.postman.co/settings/me/api-keys and run `/postman:setup`."
+- **401 Unauthorized:** "Your Postman API key was rejected. Generate a new one at https://go.postman.co/settings/me/api-keys." Then re-authenticate with `references/setup.md`.
 - **Invalid spec:** Report specific parse errors with line numbers. Offer to fix common YAML/JSON syntax issues.
 - **Async operation stuck:** If polling shows no progress after 30 seconds, inform the user and suggest checking the Postman app directly.
 - **Plan limitations:** "Workspace creation may be limited on free plans. Using your default workspace instead."

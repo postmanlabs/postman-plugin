@@ -61,7 +61,7 @@ test('adapts the shared session mandate to native OpenCode skill ids', () => {
 
 test('rewrites only backticked skill references', () => {
     assert.equal(toOpenCodeSessionContext('see `postman:bootstrap`'), 'see `bootstrap`');
-    assert.equal(toOpenCodeSessionContext('run /postman:setup'), 'run /postman:setup');
+    assert.equal(toOpenCodeSessionContext('run /postman:bootstrap'), 'run /postman:bootstrap');
 });
 
 test('exposes config and system hooks through the public plugin export', async () => {
