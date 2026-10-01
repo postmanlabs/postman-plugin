@@ -4,8 +4,8 @@
 # `installer` unit-tests `npx @postman/postman-plugin` (installer-smoke.yml runs
 # it against the real agent CLIs), `pi` loads that package's tarball into Pi,
 # `factory` installs this checkout into Droid, `schema` checks each vendor
-# plugin manifest against that vendor's own published schema. Every job that
-# runs code or an agent CLI runs on Linux and Windows.
+# plugin manifest against that vendor's own published schema. The installer,
+# OpenCode, Pi and Droid jobs each run on Linux and Windows.
 name: Validate
 
 on:
@@ -144,12 +144,14 @@ jobs:
         shell: pwsh
         run: npm run build && node --test --test-reporter=spec --test-reporter-destination=stdout --test-reporter=tap --test-reporter-destination=unit-tests.tap test/*.test.js
 
-      # A green run that skipped tests hid that Windows ran nothing end to end. Only a
-      # test of the Windows process layer may skip, and only off Windows.
+      # A green run that skipped tests hid that Windows ran nothing end to end. Windows
+      # skips nothing; elsewhere only a test of the Windows process layer may skip.
       - name: No unit test was skipped but a Windows-only one off Windows
+        env:
+          ALLOWED_SKIP: ${{ runner.os == 'Windows' && '^$' || '# SKIP Windows only$' }}
         run: |
           test -s unit-tests.tap
-          if grep -E '# SKIP' unit-tests.tap | grep -v '# SKIP Windows only$'; then exit 1; fi
+          if grep -E '# SKIP' unit-tests.tap | grep -v -E "$ALLOWED_SKIP"; then exit 1; fi
 
   # Pi installs the installer's npm tarball as a Pi package. The harness packs it,
   # installs it into a pinned Pi, and checks what Pi sends the model.
