@@ -3,14 +3,21 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 type McpServer = { url: string; headers: Record<string, string> };
-type BeforeAgentStart = { systemPromptOptions: { sections: Record<string, string>; skills: Array<{ name: string }> } };
+type BeforeAgentStart = {
+    systemPrompt: string;
+    systemPromptOptions: {
+        /** Pi 0.86.0 and later. */
+        sections?: Record<string, string>;
+        skills: Array<{ name: string }>;
+    };
+};
 type SessionContext = { ui: { notify (message: string, type: 'warning'): void } };
 
 /** The part of Pi's `ExtensionAPI` this extension calls. Pi's own types ship only inside its CLI package. */
 export interface PiExtensionApi {
     /** Pi 0.99.0 and later. */
     registerMcpServer? (name: string, config: McpServer): void;
-    on (event: 'before_agent_start', handler: (event: BeforeAgentStart) => void): void;
+    on (event: 'before_agent_start', handler: (event: BeforeAgentStart) => { systemPrompt: string } | void): void;
     on (event: 'session_start', handler: (event: unknown, ctx: SessionContext) => void): void;
 }
 
@@ -45,10 +52,22 @@ export function postmanExtension (root: string) {
 
         // Pi's stand-in for the SessionStart hook. The mandate routes to a skill, so it goes only
         // where that skill loaded; `pi config` can disable it.
-        pi.on('before_agent_start', ({ systemPromptOptions }) => {
-            if (systemPromptOptions.skills.some((skill) => skill.name === ENTRY_SKILL)) {
-                systemPromptOptions.sections[SECTION] = mandate;
+        pi.on('before_agent_start', (event) => {
+            const { sections, skills } = event.systemPromptOptions;
+
+            if (!skills.some((skill) => skill.name === ENTRY_SKILL)) {
+                return;
             }
+
+            if (sections) {
+                sections[SECTION] = mandate;
+
+                return;
+            }
+
+            // From Pi 0.86.0 a returned prompt replaces the sectioned one whole, so only a Pi
+            // without sections gets one.
+            return { systemPrompt: `${event.systemPrompt}\n\n<${SECTION}>\n${mandate}\n</${SECTION}>` };
         });
     };
 }

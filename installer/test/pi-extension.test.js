@@ -43,12 +43,23 @@ function startSession (host) {
     return notices;
 }
 
-function startAgent (host, skills) {
-    const event = { systemPromptOptions: { sections: {}, skills: skills.map((name) => ({ name })) } };
+/** What Pi sends `before_agent_start`. Prompt sections arrived in Pi 0.86.0. */
+function agentStartEvent (skills, { sections = true } = {}) {
+    return {
+        systemPrompt: 'base',
+        systemPromptOptions: { ...(sections && { sections: {} }), skills: skills.map((name) => ({ name })) }
+    };
+}
 
-    for (const handler of host.handlers.before_agent_start ?? []) {
-        handler(event);
-    }
+/** What each `before_agent_start` handler returns. */
+function agentStartResults (host, event) {
+    return (host.handlers.before_agent_start ?? []).map((handler) => handler(event));
+}
+
+function startAgent (host, skills) {
+    const event = agentStartEvent(skills);
+
+    agentStartResults(host, event);
 
     return event.systemPromptOptions.sections;
 }
@@ -67,6 +78,17 @@ test('adds the session-start mandate as a prompt section, naming skills as Pi do
 
 test('leaves the prompt alone when api-engineer is not loaded', () => {
     assert.deepEqual(startAgent(loadExtension(), ['api-testing']), {});
+});
+
+test('returns no prompt to a Pi with prompt sections, where it would replace them', () => {
+    assert.deepEqual(agentStartResults(loadExtension(), agentStartEvent(['api-engineer'])), [undefined]);
+});
+
+test('on a Pi without prompt sections, appends the mandate to the system prompt as a <postman> block', () => {
+    const host = loadExtension({ registersMcp: false });
+
+    assert.deepEqual(agentStartResults(host, agentStartEvent(['api-engineer'], { sections: false })), [{ systemPrompt: `base\n\n<postman>\n${toPiSessionContext(mandate)}\n</postman>` }]);
+    assert.deepEqual(agentStartResults(host, agentStartEvent(['api-testing'], { sections: false })), [undefined]);
 });
 
 test('shows no notice when Pi can register the MCP server', () => {
