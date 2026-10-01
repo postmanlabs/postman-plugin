@@ -8,10 +8,11 @@
 
 // Every manifest route, with its deviations from the default server and header
 // keys. An unlisted `.*-plugin/` directory is reported, not checked against guesses.
+// `defaultMcpConfig` is the file the vendor loads when the manifest names none.
 const MANIFEST_ROUTES = {
         '.claude-plugin': {},
         '.codex-plugin': { headerKey: 'http_headers' },
-        '.cursor-plugin': {},
+        '.cursor-plugin': { defaultMcpConfig: 'mcp.json' },
         '.factory-plugin': { mcpConfig: 'mcp.json' },
         '.kimi-plugin': {}
     },

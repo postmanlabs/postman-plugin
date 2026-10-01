@@ -221,6 +221,8 @@ commit, so `version` is only release metadata there. The headers still carry it.
 Droid has no manifest key for MCP: it reads `mcp.json` at the plugin root. That
 filename is also Cursor's default, which `.cursor-plugin/plugin.json`'s
 `mcpServers` overrides — remove that key and Cursor reports itself as Droid.
+`.claude/hooks/validate-manifests.js` fails on that removal, in CI's Manifest job
+and as the pre-commit guard.
 
 Droid runs the shared `hooks/hooks.json` and sets both `CLAUDE_PLUGIN_ROOT` and
 `DROID_PLUGIN_ROOT`. Its skill names are un-namespaced and its Skill tool

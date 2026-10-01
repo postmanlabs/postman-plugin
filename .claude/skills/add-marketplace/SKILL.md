@@ -289,7 +289,9 @@ covers what each of these checks and — more usefully — what none of them do.
   portable thing to do and is the most destructive edit available here: Codex
   pattern-matches that filename and routes the whole plugin through its Agent
   Plugins loader, which has no hooks component, so every hook in the repo goes
-  dead — including the ones that work today. The trigger is the filename, not
+  dead — including the ones that work today. Agent Plugins also reads root
+  `mcp.json`, so Codex, Cursor and Copilot CLI would all load Factory Droid's
+  server and report their traffic as Droid. The trigger is the filename, not
   root-level config in general: a config-only route's own file at the root, or
   a package route's `package.json` in its own directory, is a different name
   that Codex never looks at.

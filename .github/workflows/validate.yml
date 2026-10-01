@@ -51,6 +51,9 @@ jobs:
       - name: Every JSON file parses
         run: node scripts/check-json.js
 
+      - name: Routes agree with their MCP configs
+        run: node .claude/hooks/validate-manifests.js
+
       # SchemaStore's Claude Code schemas check structure and types but accept
       # invalid plugin names and unknown keys; Claude Code's own validator catches
       # those, so both run.

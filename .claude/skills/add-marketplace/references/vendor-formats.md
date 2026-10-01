@@ -36,6 +36,13 @@ in `mcp.codex.json` is dropped without an error, the server still connects, and
 every request goes out unattributed. It looks exactly like success. `headers` is
 right for every other route; do not normalize Codex to it.
 
+**Cursor's `mcpServers` pointer is load-bearing.** Without it Cursor discovers
+root `mcp.json`, which is Factory Droid's, and its traffic arrives as
+`postman-factory-plugin`. The pointer replaces that discovery rather than adding
+to it. `defaultMcpConfig` in `scripts/routes.js` makes the guard fail on a
+manifest that drops it. Claude Code is the opposite: its pointer loads alongside
+a root `.mcp.json`, so that file must not exist.
+
 **Kimi's `interface` block and Codex's are not the same thing** even though they
 share a name — each vendor defines its own fields. Check the vendor's docs
 rather than copying the block.

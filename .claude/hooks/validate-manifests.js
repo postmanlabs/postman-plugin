@@ -94,8 +94,21 @@ function manifestRoutesAgreeWithTheirMcpConfig () {
             keys = routeKeys(route),
             routeConfig = route.mcpConfig ? { [keys.serverKey]: route.mcpConfig } : manifest;
 
+        if (fallsBackToDefaultMcpConfig(route, manifest, keys.serverKey)) {
+            errors.push(`${manifestRel}: no \`${keys.serverKey}\`, so this vendor loads ${route.defaultMcpConfig} by default - point \`${keys.serverKey}\` at this route's own config, or that file's server and X-Source ship with this route`);
+        }
+
         checkRoute(routeConfig, manifestRel, keys, manifest && manifest.version);
     }
+}
+
+/** The fallback is silent, and the default file may be another route's config:
+ *  root mcp.json is Factory Droid's. */
+function fallsBackToDefaultMcpConfig (route, manifest, serverKey) {
+    return Boolean(route.defaultMcpConfig) &&
+        isObject(manifest) &&
+        manifest[serverKey] === undefined &&
+        exists(route.defaultMcpConfig);
 }
 
 /** The package manifest carries the version and the plugin code reads the MCP config,
