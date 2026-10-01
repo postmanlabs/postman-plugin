@@ -9,19 +9,34 @@ import { fileURLToPath } from 'node:url';
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'),
     cli = path.join(packageRoot, 'dist', 'cli.js'),
     { version } = JSON.parse(fs.readFileSync(path.join(packageRoot, 'package.json'), 'utf8')),
-    posixOnly = { skip: process.platform === 'win32' && 'fake CLIs are sh scripts' };
+    windows = process.platform === 'win32';
 
 // A stand-in `claude` that logs each call and flips to "installed" once `plugin install` runs.
-// PATH holds only the sandbox, so it may use shell builtins and nothing else.
-const FAKE_CLAUDE = `#!/bin/sh
-echo "$*" >> "$FAKE_LOG"
-case "$*" in
-  "plugin marketplace list --json") echo '[]' ;;
-  "plugin list --json")
-    if [ -f "$FAKE_STATE" ]; then echo '[{"id":"postman@claude-plugins-official","scope":"user"}]'; else echo '[]'; fi ;;
-  "plugin install "*) : > "$FAKE_STATE" ;;
-esac
+const FAKE_CLAUDE = `const fs = require('node:fs');
+const call = process.argv.slice(2).join(' ');
+
+fs.appendFileSync(process.env.FAKE_LOG, call + '\\n');
+
+if (call === 'plugin marketplace list --json') {
+    console.log('[]');
+}
+else if (call === 'plugin list --json') {
+    console.log(fs.existsSync(process.env.FAKE_STATE) ? '[{"id":"postman@claude-plugins-official","scope":"user"}]' : '[]');
+}
+else if (call.startsWith('plugin install ')) {
+    fs.writeFileSync(process.env.FAKE_STATE, '');
+}
 `;
+
+// Launched the way npm installs a CLI: a `.cmd` shim on Windows, so the run goes through cmd.exe.
+function writeLauncher (bin, name) {
+    if (windows) {
+        fs.writeFileSync(path.join(bin, `${name}.cmd`), `@"${process.execPath}" "%~dp0${name}.cjs" %*\r\n`);
+    }
+    else {
+        fs.writeFileSync(path.join(bin, name), `#!/bin/sh\nexec "${process.execPath}" "${path.join(bin, `${name}.cjs`)}" "$@"\n`, { mode: 0o755 });
+    }
+}
 
 function sandbox () {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'postman-plugin-cli-')),
@@ -35,6 +50,8 @@ function sandbox () {
         root,
         bin,
         env: {
+            // Node starts a `.cmd` through ComSpec, and Windows processes need SystemRoot.
+            ...(windows && { ComSpec: process.env.ComSpec, SystemRoot: process.env.SystemRoot }),
             PATH: bin,
             HOME: home,
             USERPROFILE: home,
@@ -43,7 +60,8 @@ function sandbox () {
             FAKE_STATE: path.join(root, 'installed')
         },
         addClaude () {
-            fs.writeFileSync(path.join(bin, 'claude'), FAKE_CLAUDE, { mode: 0o755 });
+            fs.writeFileSync(path.join(bin, 'claude.cjs'), FAKE_CLAUDE);
+            writeLauncher(bin, 'claude');
         },
         calls () {
             return fs.existsSync(this.env.FAKE_LOG) ? fs.readFileSync(this.env.FAKE_LOG, 'utf8').trim().split('\n') : [];
@@ -83,7 +101,7 @@ test('an --agent that names no agent is rejected, not read as "every agent"', ()
     }
 });
 
-test('finds nothing on a machine with no agents', posixOnly, () => {
+test('finds nothing on a machine with no agents', () => {
     // Cursor is left out: on macOS it is also detected by /Applications/Cursor.app, outside the sandbox.
     const box = sandbox(),
         status = cliRun(['status', '--agent', 'claude-code,codex,factory,kimi,opencode'], box.env);
@@ -92,7 +110,7 @@ test('finds nothing on a machine with no agents', posixOnly, () => {
     assert.match(status.stdout, /None of the requested agents was found/);
 });
 
-test('--dry-run runs only read-only probes', posixOnly, () => {
+test('--dry-run runs only read-only probes', () => {
     const box = sandbox();
 
     box.addClaude();
@@ -104,7 +122,7 @@ test('--dry-run runs only read-only probes', posixOnly, () => {
     assert.deepEqual(box.calls(), ['plugin list --json', 'plugin marketplace list --json', 'plugin list --json']);
 });
 
-test('--yes installs through the real process layer and verifies the result', posixOnly, () => {
+test('--yes installs through the real process layer and verifies the result', () => {
     const box = sandbox();
 
     box.addClaude();
@@ -118,7 +136,7 @@ test('--yes installs through the real process layer and verifies the result', po
     ]);
 });
 
-test('refuses to run unattended without --yes', posixOnly, () => {
+test('refuses to run unattended without --yes', () => {
     const box = sandbox();
 
     box.addClaude();

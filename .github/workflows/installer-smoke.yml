@@ -1,18 +1,20 @@
-# Runs `npx @postman/postman-plugin` against the latest Claude Code, Codex,
-# Droid and Pi CLIs. The unit tests pin the commands the installer sends; this
-# checks the CLIs still accept them. They install from GitHub or npm, not from
-# this checkout, so it tests the installer, not a branch's skills; only the last
-# two steps load this checkout, as a tarball into Pi and as a marketplace into
-# Droid. It also runs nightly, because a CLI release breaks the installer
-# without anyone pushing here.
+# Runs `npx @postman/postman-plugin` against the latest release of every agent
+# it supports, on Linux and Windows. The unit tests pin the commands the
+# installer sends; this checks the agents still accept them, and that each one
+# then reports Postman (Cursor has no CLI, so its files are checked instead).
+# They install from GitHub or npm, not from this checkout, so it tests the
+# installer, not a branch's skills; only the last three steps load this checkout,
+# as a tarball into Pi, as a marketplace into Droid and as a clone's files into
+# OpenCode. It also runs nightly,
+# because an agent release breaks the installer without anyone pushing here.
 name: Installer smoke
 
 on:
   push:
     branches: ['main']
-    paths: ['installer/**', '.github/workflows/installer-smoke.yml']
+    paths: ['installer/**', 'opencode/**', 'scripts/lib/**', 'scripts/factory-harness.js', '.github/workflows/installer-smoke.yml']
   pull_request:
-    paths: ['installer/**', '.github/workflows/installer-smoke.yml']
+    paths: ['installer/**', 'opencode/**', 'scripts/lib/**', 'scripts/factory-harness.js', '.github/workflows/installer-smoke.yml']
   schedule:
     - cron: '23 4 * * *'
   workflow_dispatch:
@@ -22,11 +24,23 @@ permissions:
 
 jobs:
   smoke:
-    name: Installer against real CLIs
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
+    name: Installer against real CLIs / ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            label: Linux
+          - os: windows-latest
+            label: Windows
+    env:
+      # Kimi Code has no uninstall command, so it is removed on its own below.
+      REMOVABLE: claude-code,codex,cursor,factory,opencode,pi
     defaults:
       run:
+        shell: bash
         working-directory: installer
     steps:
       - uses: actions/checkout@v7
@@ -41,32 +55,67 @@ jobs:
         run: npm ci && npm run build
 
       - name: Install the agent CLIs
-        run: npm install -g @anthropic-ai/claude-code @openai/codex droid @earendil-works/pi-coding-agent
+        run: npm install -g @anthropic-ai/claude-code @openai/codex droid @earendil-works/pi-coding-agent opencode-ai
+
+      - name: Install Kimi Code
+        if: runner.os != 'Windows'
+        run: |
+          curl -fsSL https://code.kimi.com/kimi-code/install.sh | bash
+          echo "$HOME/.kimi-code/bin" >> "$GITHUB_PATH"
+
+      - name: Install Kimi Code
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          irm https://code.kimi.com/kimi-code/install.ps1 | iex
+          "$HOME\.kimi-code\bin" >> $env:GITHUB_PATH
+
+      # Cursor is an editor, not a CLI; the installer finds it by its home directory.
+      - name: Give Cursor a home directory
+        run: |
+          node -e 'require("fs").mkdirSync(require("path").join(require("os").homedir(), ".cursor"), { recursive: true })'
+
+      - name: Kimi Code runs
+        run: kimi --version
 
       - name: Install, then re-run to take the update path
         run: |
-          node dist/cli.js install --yes --agent claude-code --agent codex --agent factory --agent pi
-          node dist/cli.js install --yes --agent claude-code --agent codex --agent factory --agent pi
+          node dist/cli.js install --yes --agent "$REMOVABLE,kimi"
+          node dist/cli.js install --yes --agent "$REMOVABLE,kimi"
 
-      - name: Each CLI lists the plugin
+      - name: Each agent has Postman
+        run: node scripts/smoke-check.js installed ${REMOVABLE//,/ } kimi
+
+      - name: Remove, and no agent has Postman
         run: |
-          claude plugin list --json | node -e 'const l=JSON.parse(require("fs").readFileSync(0,"utf8")); if(!l.some(p=>p.id==="postman@claude-plugins-official"&&p.scope==="user")){console.error(l);process.exit(1)}'
-          codex plugin list --json | node -e 'const l=JSON.parse(require("fs").readFileSync(0,"utf8")).installed; if(!l.some(p=>p.pluginId==="postman@postman")){console.error(l);process.exit(1)}'
-          droid plugin list --scope user | grep -E '^ *postman@postman-plugin +\[user\]'
-          pi list | grep -Fx '  npm:@postman/postman-plugin'
+          node dist/cli.js remove --yes --agent "$REMOVABLE"
+          node scripts/smoke-check.js removed ${REMOVABLE//,/ }
 
-      - name: Remove, and each CLI no longer lists it
+      - name: Kimi Code is left for its own /plugins command, which the installer says
         run: |
-          node dist/cli.js remove --yes --agent claude-code --agent codex --agent factory --agent pi
-          claude plugin list --json | node -e 'const l=JSON.parse(require("fs").readFileSync(0,"utf8")); if(l.some(p=>p.id.startsWith("postman@"))){console.error(l);process.exit(1)}'
-          codex plugin list --json | node -e 'const l=JSON.parse(require("fs").readFileSync(0,"utf8")).installed; if(l.some(p=>p.pluginId.startsWith("postman@"))){console.error(l);process.exit(1)}'
-          if droid plugin list --scope user | grep -F 'postman@'; then exit 1; fi
-          if pi list | grep -F 'npm:@postman/postman-plugin'; then exit 1; fi
+          status=0
+          node dist/cli.js remove --yes --agent kimi | tee "$RUNNER_TEMP/kimi-remove.txt" || status=$?
+          test "$status" -eq 3
+          grep -F '/plugins remove postman' "$RUNNER_TEMP/kimi-remove.txt"
+          node scripts/smoke-check.js installed kimi
 
-      # The pinned harness in validate.yml, against the Pi release the step above installed.
+      # The pinned harness in validate.yml, against the Pi release installed above. Each harness
+      # runs even when one before it failed, so one agent's failure can't hide another's.
       - name: The latest Pi loads the packed tarball
+        if: ${{ !cancelled() }}
         run: npm run test:pi-harness
 
       # The pinned harness in validate.yml, against the Droid release installed above.
       - name: The latest Droid loads this checkout
+        if: ${{ !cancelled() }}
         run: node ../scripts/factory-harness.js
+
+      # The pinned harness in validate.yml, against the OpenCode release installed above.
+      - name: The latest OpenCode loads the skills
+        if: ${{ !cancelled() }}
+        working-directory: opencode
+        # npm puts global bins in the prefix itself on Windows, in its bin/ elsewhere.
+        run: |
+          npm ci
+          export OPENCODE_BIN="$(node -p 'require("path").join(process.argv[1], process.platform === "win32" ? "opencode.cmd" : "bin/opencode")' "$(npm prefix -g)")"
+          npm run test:harness

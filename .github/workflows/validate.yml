@@ -1,11 +1,11 @@
 # Independent concerns, one parallel job each, so a failure names itself:
 # `skills` checks what Claude Code loads from skills/, `manifest` checks the
 # index `postman init` fetches, `opencode` builds and loads the OpenCode plugin,
-# `installer` and `installer-windows` unit-test `npx @postman/postman-plugin`
-# (installer-smoke.yml runs it against the real agent CLIs), `pi` loads that
-# package's tarball into Pi, `factory` installs this checkout into Droid,
-# `schema` checks each vendor plugin manifest against that vendor's own
-# published schema.
+# `installer` unit-tests `npx @postman/postman-plugin` (installer-smoke.yml runs
+# it against the real agent CLIs), `pi` loads that package's tarball into Pi,
+# `factory` installs this checkout into Droid, `schema` checks each vendor
+# plugin manifest against that vendor's own published schema. The installer,
+# OpenCode, Pi and Droid jobs each run on Linux and Windows.
 name: Validate
 
 on:
@@ -63,23 +63,44 @@ jobs:
   # The only route that runs code. Its harness installs the plugin as a user
   # does and has the pinned OpenCode CLI load every skill.
   opencode:
-    name: OpenCode package
-    runs-on: ubuntu-latest
+    name: OpenCode package / ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            label: Linux
+          - os: windows-latest
+            label: Windows
     defaults:
       run:
+        shell: bash
         working-directory: opencode
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
         with:
-          node-version: '22'
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
 
       - name: Install development dependencies
         run: npm ci
 
       - name: Unit tests
-        run: npm test
+        # `npm test` with both reporters; node reads them only ahead of the test files.
+        run: |
+          npm run build
+          node --test --test-reporter=spec --test-reporter-destination=stdout \
+            --test-reporter=tap --test-reporter-destination="$RUNNER_TEMP/unit-tests.tap" test/*.test.js
+
+      # A green run that skipped tests hid that Windows ran nothing end to end.
+      - name: No unit test was skipped
+        run: |
+          test -s "$RUNNER_TEMP/unit-tests.tap"
+          if grep -E '# SKIP' "$RUNNER_TEMP/unit-tests.tap"; then exit 1; fi
 
       - name: Packed-install harness
         run: npm run test:harness
@@ -87,11 +108,22 @@ jobs:
       - name: Eval cases cover every skill
         run: npm run eval:skills:validate
 
+  # On Windows npm installs the agent CLIs as `.cmd` shims, which system.ts
+  # starts through cmd.exe; only a Windows runner takes that path.
   installer:
-    name: Installer package
-    runs-on: ubuntu-latest
+    name: Installer package / ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            label: Linux
+          - os: windows-latest
+            label: Windows
     defaults:
       run:
+        shell: bash
         working-directory: installer
     steps:
       - uses: actions/checkout@v7
@@ -106,39 +138,37 @@ jobs:
         run: npm ci
 
       # Includes a test that fails when a route in scripts/routes.js has no installer adapter.
+      # `npm test` with both reporters, which node reads only ahead of the test files. Not in
+      # Git Bash: its runtime enables the backup privilege, which the ACL tests' deny bypasses.
       - name: Unit tests
-        run: npm test
+        shell: pwsh
+        run: npm run build && node --test --test-reporter=spec --test-reporter-destination=stdout --test-reporter=tap --test-reporter-destination=unit-tests.tap test/*.test.js
 
-  # npm installs the agent CLIs on Windows as `.cmd` shims, which system.ts starts
-  # through cmd.exe. Only a Windows runner takes that path.
-  installer-windows:
-    name: Installer package / Windows
-    runs-on: windows-latest
-    defaults:
-      run:
-        working-directory: installer
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          persist-credentials: false
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: lts/*
-
-      - name: Install development dependencies
-        run: npm ci
-
-      - name: Unit tests
-        run: npm test
+      # A green run that skipped tests hid that Windows ran nothing end to end. Windows
+      # skips nothing; elsewhere only a test of the Windows process layer may skip.
+      - name: No unit test was skipped but a Windows-only one off Windows
+        env:
+          ALLOWED_SKIP: ${{ runner.os == 'Windows' && '^$' || '# SKIP Windows only$' }}
+        run: |
+          test -s unit-tests.tap
+          if grep -E '# SKIP' unit-tests.tap | grep -v -E "$ALLOWED_SKIP"; then exit 1; fi
 
   # Pi installs the installer's npm tarball as a Pi package. The harness packs it,
   # installs it into a pinned Pi, and checks what Pi sends the model.
   pi:
-    name: Pi package
-    runs-on: ubuntu-latest
+    name: Pi package / ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            label: Linux
+          - os: windows-latest
+            label: Windows
     defaults:
       run:
+        shell: bash
         working-directory: installer
     steps:
       - uses: actions/checkout@v7
@@ -159,13 +189,24 @@ jobs:
       - name: Pi loads the skills, the mandate and the MCP server from the tarball
         run: npm run test:pi-harness
         env:
-          PI_BIN: ${{ runner.temp }}/pi/node_modules/.bin/pi
+          PI_BIN: ${{ runner.temp }}/pi/node_modules/.bin/pi${{ runner.os == 'Windows' && '.cmd' || '' }}
 
   # Droid installs this repo from its marketplace. The harness installs the checkout
   # into a pinned Droid and checks what Droid sends the model and the MCP server.
   factory:
-    name: Factory Droid plugin
-    runs-on: ubuntu-latest
+    name: Factory Droid plugin / ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            label: Linux
+          - os: windows-latest
+            label: Windows
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v7
         with:
@@ -182,7 +223,7 @@ jobs:
       - name: Droid loads the skills, the mandate and the MCP server from the marketplace
         run: node scripts/factory-harness.js
         env:
-          DROID_BIN: ${{ runner.temp }}/droid/node_modules/.bin/droid
+          DROID_BIN: ${{ runner.temp }}/droid/node_modules/.bin/droid${{ runner.os == 'Windows' && '.cmd' || '' }}
 
   # One check per official schema. Schemas are fetched from the vendor's source
   # on every run, so a vendor tightening its schema fails CI here rather than

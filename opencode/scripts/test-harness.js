@@ -3,13 +3,14 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { spawnCliSync } from '../../scripts/lib/cli.js';
 import { resolveOpenCodeExecutable } from './lib/opencode-executable.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'),
     repoRoot = path.dirname(root),
-    temporary = fs.realpathSync(
+    // .native expands a Windows short name (RUNNER~1), which OpenCode reports in full.
+    temporary = fs.realpathSync.native(
         fs.mkdtempSync(path.join(os.tmpdir(), 'postman-opencode-harness-'))
     ),
     configHome = path.join(temporary, 'xdg-config'),
@@ -23,7 +24,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'),
     shim = "export { default } from '../postman-plugin/opencode/src/index.ts';\n";
 
 function run (command, argumentsList, options = {}) {
-    const result = spawnSync(command, argumentsList, {
+    const result = spawnCliSync(command, argumentsList, {
         cwd: options.cwd || root,
         encoding: 'utf8',
         env: options.env || process.env,
