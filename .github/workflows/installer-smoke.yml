@@ -9,6 +9,8 @@
 # without anyone pushing here, and the release-installer skill dispatches it on
 # the commit it is about to tag.
 name: Installer smoke
+# A dispatched run is named after its commit, which release.mjs smoke finds it by.
+run-name: ${{ inputs.ref && format('Installer smoke on {0}', inputs.ref) || '' }}
 
 on:
   push:
@@ -29,10 +31,11 @@ on:
 permissions:
   contents: read
 
-# A new push to a pull request cancels the run it supersedes; nothing else is cancelled.
+# A new push to a pull request cancels the run it supersedes. Every other run gets a group
+# of its own: a group holds one pending run, so sharing one could drop a release's smoke run.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
   smoke:

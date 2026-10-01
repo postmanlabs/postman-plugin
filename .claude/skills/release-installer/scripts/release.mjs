@@ -368,16 +368,42 @@ function watchOptions (args, usage = 'watch <version> [--minutes N] [--new-run]'
     return options;
 }
 
-/** The newest dispatched smoke run created since `since`. */
-function smokeRunSince (since) {
+/** The dispatched smoke run for `sha` created since `since`, by the run name the workflow gives it. */
+function smokeRunFor (sha, since) {
     const { code, out, err } = sh('gh', ['run', 'list', '--workflow', 'installer-smoke.yml', '--event', 'workflow_dispatch',
-        '--limit', '5', '--json', 'databaseId,status,conclusion,url,createdAt']);
+        '--limit', '20', '--json', 'databaseId,displayTitle,createdAt']);
 
     if (code !== 0) {
         throw new Error(`could not list installer-smoke.yml runs: ${firstLine(err)}`);
     }
 
-    return JSON.parse(out || '[]').find((run) => Date.parse(run.createdAt) >= since) ?? null;
+    return JSON.parse(out || '[]')
+        .find((run) => run.displayTitle === `Installer smoke on ${sha}` && Date.parse(run.createdAt) >= since) ?? null;
+}
+
+function smokeRun (id) {
+    const { code, out, err } = sh('gh', ['run', 'view', String(id), '--json', 'databaseId,status,conclusion,url']);
+
+    if (code !== 0) {
+        throw new Error(`could not read smoke run ${id}: ${firstLine(err)}`);
+    }
+
+    return JSON.parse(out);
+}
+
+/** Whether GitHub has `sha`; GitHub answers 422 "No commit found" for one it doesn't. */
+function onGitHub (sha) {
+    const { code, out, err } = sh('gh', ['api', `repos/{owner}/{repo}/commits/${sha}`, '--jq', '.sha']);
+
+    if (code === 0) {
+        return out === sha;
+    }
+
+    if (/No commit found|HTTP 404/.test(err)) {
+        return false;
+    }
+
+    throw new Error(`could not look ${sha} up on GitHub: ${firstLine(err)}`);
 }
 
 /** Runs installer-smoke.yml, every agent on Linux and Windows, on the commit about to be tagged. */
@@ -394,7 +420,7 @@ async function smoke (commit, ...args) {
     const sha = resolved.out;
 
     // The runner checks the commit out from GitHub, so a commit only on this machine can't be tested.
-    if (sh('gh', ['api', `repos/{owner}/{repo}/commits/${sha}`, '--jq', '.sha']).out !== sha) {
+    if (!onGitHub(sha)) {
         return report([`${sha} is not on GitHub; push its branch first`]);
     }
 
@@ -405,19 +431,19 @@ async function smoke (commit, ...args) {
     }
 
     // The run appears a few seconds after the dispatch, which the clocks may disagree about a little.
-    let run = await until(deadline, 5, () => smokeRunSince(start - 30 * 1000));
+    const found = await until(deadline, 5, () => smokeRunFor(sha, start - 30 * 1000));
 
-    if (!run) {
+    if (!found) {
         return report([`timed out after ${minutes} minutes waiting for the dispatched smoke run`]);
     }
 
-    console.log(`smoke ${sha.slice(0, 7)}: ${run.url}`);
+    const run = await until(deadline, 30, () => {
+        const current = smokeRun(found.databaseId);
 
-    run = await until(deadline, 30, () => {
-        const current = smokeRunSince(start - 30 * 1000);
-
-        return current?.status === 'completed' ? current : null;
+        return current.status === 'completed' ? current : null;
     });
+
+    console.log(`smoke ${sha.slice(0, 7)}: ${run?.url ?? `run ${found.databaseId}`}`);
 
     if (!run) {
         return report([`timed out after ${minutes} minutes waiting for the smoke run to finish`]);

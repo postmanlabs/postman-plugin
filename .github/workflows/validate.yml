@@ -14,10 +14,11 @@ on:
     branches: ['main']
   pull_request:
 
-# A new push to a pull request cancels the run it supersedes; main runs every commit.
+# A new push to a pull request cancels the run it supersedes. Every other run gets a
+# group of its own: a group holds one pending run, so sharing one would drop pushes to main.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
   # The Windows legs take two to three times as long, so a pull request that changes
