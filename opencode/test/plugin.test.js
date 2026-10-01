@@ -138,6 +138,11 @@ test('exposes a default v2 definition while retaining the v1 server entrypoint',
     assert.match(event.system[0].text, /`api-engineer` skill/);
 });
 
+test('manifest.json lists api-engineer first, the skill postman init names in AGENTS.md', () => {
+    assert.equal(manifestSkills[0].name, 'api-engineer',
+        '`postman init` routes API work to the first skill; see ENTRY_SKILL in scripts/build-manifest.js');
+});
+
 test('reads the shared files from the repository root in a clone', () => {
     assert.equal(assetRoot, path.dirname(packageRoot));
     assert.equal(fs.existsSync(path.join(skillsDirectory, 'api-engineer', 'SKILL.md')), true);
