@@ -6,6 +6,7 @@ import { fakeSystem } from './fake-system.js';
 const MARKETPLACES = 'claude plugin marketplace list --json',
     PLUGINS = 'claude plugin list --json',
     official = { name: 'claude-plugins-official', source: 'github', repo: 'anthropics/claude-plugins-official' },
+    byUrl = (url, source = 'git') => ({ name: 'claude-plugins-official', source, url }),
     plugin = (id, scope = 'user', extra = {}) => ({ id, scope, version: '2.0.1', ...extra });
 
 function claude ({ marketplaces = [official], plugins = [], runs = {} } = {}) {
@@ -91,6 +92,37 @@ test('refuses to use a claude-plugins-official marketplace registered from somew
 
     assert.equal(outcome.outcome, 'blocked');
     assert.match(outcome.message, /someone\/fork/);
+    assert.deepEqual(system.commands, []);
+});
+
+test('accepts the official marketplace registered by repo, HTTPS URL with or without .git, or SSH', async () => {
+    for (const marketplace of [
+        official,
+        byUrl('https://github.com/anthropics/claude-plugins-official.git'),
+        byUrl('https://github.com/anthropics/claude-plugins-official'),
+        byUrl('git@github.com:anthropics/claude-plugins-official.git')
+    ]) {
+        const system = claude({ marketplaces: [marketplace] });
+
+        assert.equal((await claudeCode.install(system)).outcome, 'done', JSON.stringify(marketplace));
+        assert.equal(system.commands[0], 'claude plugin marketplace update claude-plugins-official');
+    }
+});
+
+test('refuses a git URL to another repo, without printing its credentials', async () => {
+    const system = claude({ marketplaces: [byUrl('https://x-access-token:ghp_secret@github.com/someone/fork.git')] }),
+        outcome = await claudeCode.install(system);
+
+    assert.equal(outcome.outcome, 'blocked');
+    assert.match(outcome.message, /registered from https:\/\/github\.com\/someone\/fork\.git,/);
+    assert.doesNotMatch(outcome.message, /ghp_secret/);
+    assert.deepEqual(system.commands, []);
+});
+
+test('refuses a url source, which fetches one marketplace.json, even at the official repo\'s URL', async () => {
+    const system = claude({ marketplaces: [byUrl('https://github.com/anthropics/claude-plugins-official', 'url')] });
+
+    assert.equal((await claudeCode.install(system)).outcome, 'blocked');
     assert.deepEqual(system.commands, []);
 });
 
