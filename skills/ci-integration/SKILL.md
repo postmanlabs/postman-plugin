@@ -8,7 +8,53 @@ description: Common CI integrations that can added as independent pass/fail gate
 ## Overview
 These are some common workflows that one can add in their CI pipeline leveraging postman cli.
 
-## Run a collection — a gated pipeline step
+## Default: one-command gate — `postman init --ci github` + `postman ci run`
+
+For "add Postman to CI," "run this collection on every PR," or "gate the
+build on this API's tests," reach for this pair first, not the manual
+`collection run`/`lint` assembly further down:
+
+```bash
+postman init --ci github --collection <path-or-id> [--environment <path-or-id>]
+```
+
+generates `.postman/ci.yaml` and a pinned, least-privilege GitHub Actions
+workflow that calls `postman ci run` on every PR. `ci run` itself does, in
+one command, what the rest of this skill otherwise walks through by hand:
+workspace lint (configurable, on by default once the repo is bound to a
+cloud workspace), the collection run, a quality gate on request/assertion
+counts, JSON+JUnit reports with secrets masked out, and a documented exit
+code per failure class (`2` bad config, `3` auth, `8` missing asset, `1` a
+failed check, `4` a check that couldn't run at all). Both commands are
+create-only/read-only — `init --ci github` never overwrites an existing
+file, and `ci run` never writes anything outside the configured report
+directory.
+
+**The one real limitation to know before reaching for this:** a run in
+`.postman/ci.yaml` can only reference a *whole* collection (`{path}` or
+`{id}`) — there is no folder/item scoping, no equivalent of `collection
+run`'s `-i <folder>`. If the collection you'd point at also contains
+folders unrelated to the gate — especially anything that calls a real,
+stateful backend (order-mutating endpoints, an orchestrator API, anything
+that isn't idempotent) — do **not** point `ci run` at it as-is. Either:
+
+- split the thing you actually want to gate on into its own dedicated
+  collection first (the safe default — confirm with the user before
+  restructuring a collection that already exists for other reasons), or
+- fall back to the manual gate below, which can scope to one folder via
+  `collection run <path> -i "<folder name>"`.
+
+Never discover this the hard way: before wiring `ci run` to an existing,
+multi-folder collection, open it and check what else is in there.
+
+## Manual gate — when the one-command path above doesn't fit
+
+Reach for this instead of `ci run` when you need folder/item scoping, a
+combined report across multiple heterogeneous checks the one-command path
+doesn't model, or you're integrating with a CI provider `postman init --ci`
+doesn't template (anything other than GitHub, for now).
+
+### Run a collection — a gated pipeline step
 
 `postman collection run <path/id>` exits nonzero on a failed `pm.test`
 assertion, which is what makes it a usable gate — see `api-testing` for how
@@ -18,7 +64,11 @@ build artifacts or test annotations, instead of leaving the result buried in
 a log. `--bail` stops the run early on the first failure when a fast signal
 matters more than a full report.
 
-## Lint — pick the target that matches the gate you want
+### Lint — pick the target that matches the gate you want
+
+(`ci run` already runs `workspace lint` as part of its one command above —
+reach for one of these directly only when you need a different verb's
+scope, or lint as its own standalone step outside `ci run`.)
 
 Three verbs look interchangeable and aren't — only two of them apply your
 organization's governance rules, and the CLI's own `-h` output is where that
@@ -69,10 +119,12 @@ collection generated from it yet.
 
 ## Critical Rules
 
-1. **Never collapse `run`, `lint`, and `ai-readiness` into one step, and
-   never pass `-x`/`--suppress-exit-code` to a CI run.** One combined exit
-   code hides which check broke; a suppressed one hides that anything broke
-   at all.
+1. **When hand-assembling the manual gate, never collapse `run`, `lint`, and
+   `ai-readiness` into one step, and never pass `-x`/`--suppress-exit-code`
+   to a CI run.** One combined exit code hides which check broke; a
+   suppressed one hides that anything broke at all. (`ci run` keeps each
+   check's result separate in its own output already — this rule is about
+   the manual path, not something to re-check there.)
 2. **Gate `workspace push` to the merge event, never a PR event.** Everything
    else in this skill is read-only against the cloud; this is the one
    command that writes to it, so a PR-triggered push ships an unmerged
