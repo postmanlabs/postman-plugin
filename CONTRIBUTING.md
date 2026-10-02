@@ -342,22 +342,23 @@ pinned to `release.yml`.
 
 1. Edit the file under `skills/<skill>/`.
 2. Run `node scripts/build-manifest.js`.
-3. Bump the version on every route that ships the change. Routes version
-   independently — differing versions across routes are correct, not drift —
-   so a bump means the three strings that one route owns: `version` in its
-   manifest, plus `X-Plugin-Version` and `User-Agent` in its MCP config (for
-   Kimi all three live in the manifest; for Codex the two headers sit under
-   `http_headers`, not `headers`; for OpenCode the manifest is
-   `opencode/package.json`; for Pi it is `installer/package.json`, so Pi's bump
-   is an installer release; for Factory Droid the MCP config is the root
-   `mcp.json`). Nothing verifies this, so check the route's
-   strings against each other before you commit. Don't skip the bump itself
-   either: `claude plugin update` compares
-   only that string against a version-keyed cache, so a release that changes
-   files without bumping it reports "already at the latest version" and
-   delivers nothing. Semver here is major for a breaking change to a skill's
-   contract, minor for a new skill, patch for wording or a bug fix.
-4. Commit all of it. CI runs `--check` and fails if you forget step 2.
+3. Commit all of it. CI runs `--check` and fails if you forget step 2.
+
+Don't bump a version in the change itself; each route's own release PR does
+that (see `AGENTS.md`). Routes version independently — differing versions
+across routes are correct, not drift — so a release bumps the three strings
+that one route owns: `version` in its manifest, plus `X-Plugin-Version` and
+`User-Agent` in its MCP config (for Kimi all three live in the manifest; for
+Codex the two headers sit under `http_headers`, not `headers`; for OpenCode
+the manifest is `opencode/package.json`; for Pi it is
+`installer/package.json`, so Pi's bump is an installer release; for Factory
+Droid the MCP config is the root `mcp.json`). Nothing verifies this, so check
+the route's strings against each other before you commit the release. Don't
+skip the release's bump either: `claude plugin update` compares only that
+string against a version-keyed cache, so a release that changes files
+without bumping it reports "already at the latest version" and delivers
+nothing. Semver here is major for a breaking change to a skill's contract,
+minor for a new skill, patch for wording or a bug fix.
 
 `marketplace.json` deliberately declares no version — it would override
 `plugin.json` and give that route a second source of truth.

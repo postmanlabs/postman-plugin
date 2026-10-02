@@ -5,9 +5,7 @@
 `CONTRIBUTING.md`'s `## Layout` section and its "Adding a skill" /
 "Removing a skill" sections describe `skills/` in prose, and `README.md`
 summarizes what the skills do. That prose does not update itself when a
-skill is added, renamed, or deleted — it has already drifted before (a
-`## Layout` line hardcoded five skill names and kept two of them long after
-those skills were replaced).
+skill is added, renamed, or deleted.
 
 Whenever a change to this repo adds, renames, or removes a directory under
 `skills/`:
@@ -29,12 +27,69 @@ Whenever a change to this repo adds, renames, or removes a directory under
    `opencode/evals/cases.json`, and drop cases for a removed one. This
    reference errors too: CI's `opencode` job fails on a skill
    with no case or a case naming a skill that no longer exists.
-4. Run `node scripts/build-manifest.js` and commit the regenerated
-   `manifest.json` alongside the skill change.
+4. Run `node scripts/build-manifest.js` and commit everything it
+   regenerates alongside the skill change.
 
 `intent.md` is a historical design record of how the current skill set was
 planned, not living documentation — its old skill names are not bugs and
 should not be "fixed" to match the current directory list.
+
+## Keep the README's install commands runnable
+
+Run every command you add to or change in `README.md`'s per-agent install
+sections as written, in a fresh container with only Node, Git and that
+agent's CLI, and keep it only if it works there. A command that runs only
+inside an app, like Cursor's `/add-plugin`, can't be run there; say so in
+the PR body.
+
+- Where the README and the installer drive the same agent CLI (Claude Code,
+  Codex, Factory Droid and Pi), the README names the same plugin ID,
+  marketplace and source as `installer/src/hosts/`. Change them together.
+- Give an agent this repo with a ref, such as
+  `https://github.com/postmanlabs/postman-plugin/tree/main`, wherever it
+  would otherwise resolve the bare URL to the latest GitHub release. Every
+  stable installer release becomes this repo's latest GitHub release, so such
+  an agent gets the installer's snapshot instead of `main`. Kimi Code can't
+  even parse the tag, `@postman/postman-plugin@<version>`, because of its `/`.
+- When a change alters anything a reader sees while installing (a command,
+  ID, minimum version, prompt, exit code or printed next step), list it under
+  a "Docs" heading in the PR body. The install page on learning.postman.com
+  keeps its own copy, which this repo can't update.
+
+## Minimum agent versions are measured
+
+A minimum agent version, in `README.md`, `opencode/README.md` or the
+installer, is the oldest release the route passes on. Find it by bisecting
+that agent's releases, once per install route, and cite the bisect in the
+PR. A changelog entry, the version CI pins and a number another doc states
+are not minimums. A change to a route's manifest can move it.
+
+## Check what a route delivers, not that it installed
+
+When you change how a route delivers Postman (`hooks/`, a route manifest
+under `.*-plugin/`, an `mcp*.json`, `manifest.json`'s format or order,
+`opencode/src/`, `installer/src/pi-extension.ts` or `installer/src/hosts/`),
+check that the route still delivers everything it did before:
+
+- the request the agent sends its model lists every skill in
+  `manifest.json` and carries the session-start mandate;
+- the agent registers or connects to the Postman MCP server from the route's
+  MCP config. The server's tools reach the model only after the user signs
+  in, because Postman's server answers 401 until then.
+
+An exit code, a `plugin list` entry or a file on disk shows none of this. A
+hook can exit 0 and still deliver nothing: Codex skips a hook the user
+hasn't trusted, Cursor rejects hook output that isn't JSON, and Kimi Code
+never shows hook output to the model.
+
+- Factory Droid's and Pi's harnesses check this against a local stand-in
+  model; `CONTRIBUTING.md`'s section on each route says how to run them.
+  OpenCode's harness only checks that every skill loads. For OpenCode and
+  the routes with no harness, check by hand against a local stand-in model
+  where the agent accepts one. Cursor's CLI talks only to Cursor's backend,
+  so a Cursor check needs a Cursor account.
+- Read `.claude/skills/add-marketplace/references/hooks.md` before editing
+  anything under `hooks/`.
 
 ## Version bumps happen only through a separate release
 
@@ -42,16 +97,15 @@ Don't bump `version` in `.claude-plugin/plugin.json` (or the matching
 version fields in `.codex-plugin/plugin.json`, `.cursor-plugin/plugin.json`,
 `.kimi-plugin/plugin.json`, `.factory-plugin/plugin.json`, and the
 `X-Plugin-Version`/`User-Agent` headers in `mcp.*.json` and `mcp.json`) as
-part of a content change. Those bump together only as their own dedicated
-release commit/PR, decoupled from whatever skill or doc edit prompted the
-release — bundling a version bump into an unrelated fix makes
-the diff harder to review and conflates "what changed" with "what shipped."
+part of a content change. A route's strings bump together, and only in
+that route's own release commit/PR. Routes version independently, so a
+release leaves every other route's strings alone. Bundling a version bump
+into an unrelated fix makes the diff harder to review and conflates "what
+changed" with "what shipped."
 
 ## Anti-patterns to check for when writing or reviewing a skill
 
-These came out of real review comments on specific skills, but the mistake
-generalizes — check for it whenever you touch any `SKILL.md` in this repo,
-not just the file the comment was originally about.
+Check every `SKILL.md` you write or review for these.
 
 1. **Don't gate a low-stakes, reversible action behind user approval.**
    Filing `postman feedback`, proposing next steps, or any other action with
@@ -80,3 +134,15 @@ not just the file the comment was originally about.
    needs it, gated on that branch's own condition. A reader shouldn't have
    to complete or dismiss a step that doesn't apply to the task they're
    actually doing.
+
+## Anti-patterns in code that loads inside an agent, and in tests
+
+1. **Feature-detect an agent API before calling it from code that loads
+   inside the agent.** In the Pi extension and the OpenCode plugin, skip the
+   feature when the API it needs is missing. Pi refuses every session when an
+   extension throws while it loads.
+2. **Start an install test from the state a new user has.** Don't create an
+   agent's config directory, register its marketplace, trust its hook or
+   disable its MCP server before the test runs. When a test needs such
+   state, to stay offline or because CI can't install the agent, keep
+   another case that starts without it; a unit test is enough.
