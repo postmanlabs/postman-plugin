@@ -5,6 +5,7 @@
 // on Cursor's model with `CURSOR_API_KEY`, and the model reports what reached it. The MCP server is a
 // local stand-in that records Cursor's headers.
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import {
@@ -26,7 +27,7 @@ const cursor = process.env.CURSOR_BIN || 'cursor-agent',
 const normalize = (text) => text.replace(/[`*_]/g, '').replace(/\s+/g, ' ').trim(),
     // One line: npm's and Cursor's Windows .cmd shims end an argument at its first newline.
     PROMPT = [
-        'Answer from your context only, using no tool except one that loads a skill.',
+        'Answer from what is already in your context: do not search or read files, except to load one skill if asked below, and answer null for anything your context does not have.',
         'Reply with only a JSON object with these keys:',
         `"mandate": the sentence in your context that ends with "${sentence.split(' ').slice(-6).join(' ')}", quoted exactly, or null;`,
         '"skill": the name of the skill the sentence before it tells you to load, exactly as written there, or null;',
@@ -47,6 +48,20 @@ async function ask () {
     }
 }
 
+const shellName = process.platform === 'win32' ? 'PowerShell, which Cursor runs hooks through on Windows' : '/bin/sh';
+
+/** The shared hooks/hooks.json command with Cursor's substitution, run through the shell Cursor uses. */
+function runHook () {
+    const [{ hooks: [{ command: template }] }] = readJson(path.join(plugin, 'hooks', 'hooks.json')).hooks.SessionStart,
+        command = template.replaceAll('${CLAUDE_PLUGIN_ROOT}', plugin).replaceAll('${CURSOR_PLUGIN_ROOT}', plugin),
+        options = { encoding: 'utf8', env: { ...env, CURSOR_PLUGIN_ROOT: plugin, CLAUDE_PLUGIN_ROOT: plugin }, timeout: 60000 },
+        result = process.platform === 'win32' ?
+            spawnSync('pwsh', ['-NoProfile', '-Command', command], options) :
+            spawnSync('/bin/sh', ['-c', command], options);
+
+    return [`$ ${command}`, `exit ${result.status}`, result.stdout?.slice(0, 600), result.stderr?.slice(0, 1500), result.error?.message].filter(Boolean).join('\n');
+}
+
 let standIn;
 
 try {
@@ -59,7 +74,7 @@ try {
         listed = (answer.skills ?? []).map((name) => String(name).replace(/^postman:/, ''));
 
     console.log(`Cursor's model replied:\n${reply}`);
-    assert.equal(normalize(answer.mandate ?? ''), normalize(sentence), `the session-start mandate did not reach Cursor's model:\n${reply}`);
+    assert.equal(normalize(answer.mandate ?? ''), normalize(sentence), `the session-start mandate did not reach Cursor's model:\n${reply}\nThe hook, run through ${shellName}:\n${runHook()}`);
     assert.equal(normalize(answer.skill ?? ''), ENTRY_SKILL, `Cursor's model did not name ${ENTRY_SKILL} as the mandate spells it for Cursor, without \`postman:\`:\n${reply}`);
     assert.equal(normalize(answer.firstLine ?? ''), normalize(skillExcerpt(ENTRY_SKILL)), `the mandated skill did not load from ${plugin}:\n${reply}`);
     assert.deepEqual(skills.filter((skill) => !listed.includes(skill)), [], `Cursor's model did not list every skill in manifest.json:\n${reply}`);
