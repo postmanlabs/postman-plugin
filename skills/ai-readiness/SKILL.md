@@ -30,8 +30,8 @@ npx postman-cli@1.66.0 collection ai-readiness ./postman/collections/My\ API
 ```
 
 Don't downgrade or reinstall the user's CLI to get the command back; every
-other skill needs the current release. Tell the user the score came from
-CLI 1.66.0.
+other skill needs the current release. When the score came from the
+fallback, tell the user it ran on CLI 1.66.0.
 
 ## Scoring
 
