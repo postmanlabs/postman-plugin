@@ -1,13 +1,13 @@
 # Independent concerns, one parallel job each, so a failure names itself:
 # `skills` checks what Claude Code loads from skills/ and that every
 # `postman:<name>` the repo ships names one of them, `manifest` checks the
-# index `postman init` fetches, `opencode` builds and loads the OpenCode plugin,
-# `installer` unit-tests `npx @postman/postman-plugin` (installer-smoke.yml runs
-# it against the real agent CLIs), `pi` loads that package's tarball into Pi,
-# `factory` installs this checkout into Droid, `schema` checks each vendor
-# plugin manifest against that vendor's own published schema. The installer,
-# OpenCode, Pi and Droid jobs run on Linux, and on Windows too unless a pull
-# request changes only skills or docs (see `os`).
+# index `postman init` fetches, `installer` unit-tests `npx @postman/postman-plugin`
+# (installer-smoke.yml runs it against the real agent CLIs), `schema` checks each
+# vendor plugin manifest against that vendor's own published schema. One job per
+# route installs this checkout into a pinned agent (Cursor: the latest) and checks what it sends
+# its model and the MCP server: `claude-code`, `codex`, `cursor`, `factory`, `kimi`,
+# `opencode` and `pi`. Every job but `skills`, `manifest` and `schema` runs on Linux,
+# and on Windows too unless a pull request changes only skills or docs (see `os`).
 name: Validate
 
 on:
@@ -40,7 +40,7 @@ jobs:
         env:
           EVENT: ${{ github.event_name }}
           # What a Windows leg runs or reads, short of skill content and the manifest of it.
-          CODE: '^(installer|opencode|scripts|hooks|\.github/workflows|\.factory-plugin)/|^mcp[^/]*\.json$|^\.gitattributes$'
+          CODE: '^(installer|opencode|scripts|hooks|\.github/workflows|\.[a-z]+-plugin)/|^mcp[^/]*\.json$|^\.gitattributes$'
         run: |
           linux='{"os":"ubuntu-latest","label":"Linux"}'
           windows='{"os":"windows-latest","label":"Windows"}'
@@ -114,8 +114,8 @@ jobs:
       - name: Claude Code accepts the marketplace and plugin manifests
         run: npx -y @anthropic-ai/claude-code plugin validate .
 
-  # The only route that runs code. Its harness installs the plugin as a user
-  # does and has the pinned OpenCode CLI load every skill.
+  # Its harness installs the plugin as a user does, has the pinned OpenCode CLI load
+  # every skill, and checks what OpenCode sends a stand-in model and MCP server.
   opencode:
     name: OpenCode package / ${{ matrix.label }}
     runs-on: ${{ matrix.os }}
@@ -262,6 +262,146 @@ jobs:
         run: node scripts/factory-harness.js
         env:
           DROID_BIN: ${{ runner.temp }}/droid/node_modules/.bin/droid${{ runner.os == 'Windows' && '.cmd' || '' }}
+
+  # Claude Code installs this checkout as a local marketplace. The harness checks what Claude Code
+  # sends a stand-in Anthropic API and MCP server: the skills, the hook's mandate and the skill it names.
+  claude-code:
+    name: Claude Code plugin / ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    needs: os
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.os.outputs.matrix) }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+
+      # Pinned so a Claude Code release can't fail a PR on its own; installer-smoke.yml runs the latest nightly.
+      - name: Install Claude Code
+        run: npm install --no-save --prefix "$RUNNER_TEMP/claude" @anthropic-ai/claude-code@2.1.285
+
+      - name: Claude Code loads the skills, the mandate and the MCP server from the marketplace
+        run: node scripts/claude-code-harness.js
+        env:
+          CLAUDE_BIN: ${{ runner.temp }}/claude/node_modules/.bin/claude${{ runner.os == 'Windows' && '.cmd' || '' }}
+
+  # Codex installs this checkout as a local marketplace. The harness checks what Codex sends a stand-in
+  # Responses API and MCP server, with the plugin's hook untrusted, as a new user has it, and trusted.
+  codex:
+    name: Codex plugin / ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    needs: os
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.os.outputs.matrix) }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+
+      # Pinned so a Codex release can't fail a PR on its own; installer-smoke.yml runs the latest nightly.
+      - name: Install Codex
+        run: npm install --no-save --prefix "$RUNNER_TEMP/codex" @openai/codex@0.159.0
+
+      - name: Codex loads the skills, the mandate and the MCP server from the marketplace
+        run: node scripts/codex-harness.js
+        env:
+          CODEX_BIN: ${{ runner.temp }}/codex/node_modules/.bin/codex${{ runner.os == 'Windows' && '.cmd' || '' }}
+
+  # Kimi Code gets this checkout from the `plugins` CLI, as the installer gives it the repo. The harness
+  # checks what Kimi sends a stand-in model and MCP server: the skills, the mandate and the skill it names.
+  kimi:
+    name: Kimi Code plugin / ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    needs: os
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.os.outputs.matrix) }}
+    defaults:
+      run:
+        shell: bash
+    # Pinned so a Kimi Code release can't fail a PR on its own; installer-smoke.yml runs the latest nightly.
+    env:
+      KIMI_VERSION: 2.1.1
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+
+      - name: Install Kimi Code
+        if: runner.os != 'Windows'
+        run: |
+          curl -fsSL https://code.kimi.com/kimi-code/install.sh | bash
+          echo "$HOME/.kimi-code/bin" >> "$GITHUB_PATH"
+
+      - name: Install Kimi Code
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          irm https://code.kimi.com/kimi-code/install.ps1 | iex
+          "$HOME\.kimi-code\bin" >> $env:GITHUB_PATH
+
+      - name: Kimi Code loads the skills, the mandate and the MCP server from the plugin
+        run: node scripts/kimi-harness.js
+
+  # The Cursor CLI talks only to Cursor's backend, so this harness runs on Cursor's model with a
+  # Cursor API key, which a fork's pull request doesn't get. Cursor's installer takes no version.
+  cursor:
+    name: Cursor plugin / ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    needs: os
+    if: github.event.pull_request.head.repo.fork != true
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.os.outputs.matrix) }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+
+      - name: Install the Cursor CLI
+        if: runner.os != 'Windows'
+        run: |
+          curl -fsSL https://cursor.com/install | bash
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Install the Cursor CLI
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          irm 'https://cursor.com/install?win32=true' | iex
+          "$env:LOCALAPPDATA\cursor-agent" >> $env:GITHUB_PATH
+
+      - name: Cursor delivers the mandate, loads the skill it names and connects to the MCP server
+        run: node scripts/cursor-harness.js
+        env:
+          CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
 
   # One check per official schema. Schemas are fetched from the vendor's source
   # on every run, so a vendor tightening its schema fails CI here rather than

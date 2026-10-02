@@ -82,12 +82,12 @@ hook can exit 0 and still deliver nothing: Codex skips a hook the user
 hasn't trusted, Cursor rejects hook output that isn't JSON, and Kimi Code
 never shows hook output to the model.
 
-- Factory Droid's and Pi's harnesses check this against a local stand-in
-  model; `CONTRIBUTING.md`'s section on each route says how to run them.
-  OpenCode's harness only checks that every skill loads. For OpenCode and
-  the routes with no harness, check by hand against a local stand-in model
-  where the agent accepts one. Cursor's CLI talks only to Cursor's backend,
-  so a Cursor check needs a Cursor account.
+- Every route has a harness that checks this, and CI runs each one;
+  `CONTRIBUTING.md`'s "Checking what each route delivers" says how to run
+  them. All but Cursor's use a local stand-in model. Cursor's CLI talks only
+  to Cursor's backend, so its harness needs a `CURSOR_API_KEY`. A new route
+  gets a harness of its own, and a new way to deliver Postman gets an
+  assertion in its route's harness.
 - Read `.claude/skills/add-marketplace/references/hooks.md` before editing
   anything under `hooks/`.
 
