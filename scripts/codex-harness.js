@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {
     ENTRY_SKILL, assertMandate, assertMcpHeaders, assertSkillsListed, copyCheckout, mandatedSkill, pointMcpAt,
-    readJson, repoRoot, run, runAgent, skills, startStandIn, workspace
+    readJson, repoRoot, run, runAgent, skillExcerpt, skills, startStandIn, workspace
 } from './lib/harness.js';
 
 const codex = process.env.CODEX_BIN || 'codex',
@@ -23,10 +23,14 @@ const event = (body) => `event: ${body.type}\ndata: ${JSON.stringify(body)}\n\n`
     usage = { input_tokens: 1, input_tokens_details: null, output_tokens: 1, output_tokens_details: null, total_tokens: 2 },
     say = (id) => event({ type: 'response.created', response: { id } }) +
         event({ type: 'response.output_item.done', item: { type: 'message', role: 'assistant', id: `${id}-message`, content: [{ type: 'output_text', text: 'ok' }] } }) +
+        event({ type: 'response.completed', response: { id, usage } }),
+    read = (id, file) => event({ type: 'response.created', response: { id } }) +
+        event({ type: 'response.output_item.done', item: { type: 'function_call', id: `${id}-call`, call_id: `${id}-call`, name: 'exec_command', arguments: JSON.stringify({ cmd: `cat "${file}"` }) } }) +
         event({ type: 'response.completed', response: { id, usage } });
 
-const inputText = (item) => (Array.isArray(item.content) ? item.content.map((part) => part.text ?? '').join('\n') : ''),
-    transcript = (body) => [body.instructions ?? '', ...(body.input ?? []).map(inputText)].join('\n');
+const inputText = (item) => (Array.isArray(item.content) ? item.content.map((part) => part.text ?? '').join('\n') : typeof item.output === 'string' ? item.output : JSON.stringify(item.output ?? '')),
+    transcript = (body) => [body.instructions ?? '', ...(body.input ?? []).map(inputText)].join('\n'),
+    hasCallOutput = (body) => (body.input ?? []).some((item) => item.type === 'function_call_output');
 
 /** Codex loads a skill by reading the file its listing names, so the mandated name has to have an entry. */
 function listedSkillFile (text, name) {
@@ -37,21 +41,32 @@ function listedSkillFile (text, name) {
     return rootPath && path.join(rootPath, rest);
 }
 
-async function session (standIn, extra) {
+/** With the mandate in the session, the first turn reads the skill it names from Codex's listing and the second says "ok". */
+function answer (request, body, requests) {
+    const text = transcript(body),
+        id = `harness-${requests.length}`;
+
+    return /<EXTREMELY_IMPORTANT>/.test(text) && !hasCallOutput(body) ?
+        { body: read(id, listedSkillFile(text, mandatedSkill(text)) ?? 'mandated-skill-not-listed') } :
+        { body: say(id) };
+}
+
+// The runner isolates the session; Codex's own sandbox needs user namespaces a CI runner may not allow.
+async function session (standIn, extra, expectedTurns) {
     const before = standIn.modelRequests.length,
-        result = await runAgent(codex, ['exec', '--skip-git-repo-check', '--ephemeral', '--json', ...extra, 'Say ok.'], { env, cwd: project }),
+        result = await runAgent(codex, ['exec', '--skip-git-repo-check', '--ephemeral', '--json', '--sandbox', 'danger-full-access', ...extra, 'Say ok.'], { env, cwd: project }),
         turns = standIn.modelRequests.slice(before).filter(({ url }) => url.startsWith('/v1/responses'));
 
     assert.equal(result.code, 0, `codex exited ${result.code}\n${result.stdout}\n${result.stderr}`);
-    assert.equal(turns.length, 1, `codex called the model ${turns.length} times, not once\n${result.stdout}\n${result.stderr}`);
+    assert.equal(turns.length, expectedTurns, `codex called the model ${turns.length} times, not ${expectedTurns}\n${result.stdout}\n${result.stderr}`);
 
-    return transcript(turns[0].body);
+    return turns.map(({ body }) => transcript(body));
 }
 
 let standIn;
 
 try {
-    standIn = await startStandIn((request, body, requests) => ({ body: say(`harness-${requests.length}`) }));
+    standIn = await startStandIn(answer);
     copyCheckout(marketplace);
     pointMcpAt(path.join(marketplace, 'mcp.codex.json'), standIn.mcpUrl);
 
@@ -73,12 +88,12 @@ try {
     const { installedPath } = JSON.parse(run(codex, ['plugin', 'add', PLUGIN_ID, '--json'], { env, cwd: project }));
 
     // Codex skips a plugin's hook until the user trusts it, so a new user's session has the skills and no mandate.
-    const untrusted = await session(standIn, []);
+    const [untrusted] = await session(standIn, [], 1);
 
     assertSkillsListed('Codex', untrusted, (skill) => new RegExp(`^- postman:${skill}: `, 'm'));
     assert.doesNotMatch(untrusted, /<EXTREMELY_IMPORTANT>/, 'Codex ran the plugin hook before the user trusted it; update this harness and CONTRIBUTING.md\'s Codex section');
 
-    const trusted = await session(standIn, ['--dangerously-bypass-hook-trust']);
+    const [trusted, afterRead] = await session(standIn, ['--dangerously-bypass-hook-trust'], 2);
 
     assertSkillsListed('Codex', trusted, (skill) => new RegExp(`^- postman:${skill}: `, 'm'));
     assertMandate('Codex', trusted, { namespaced: true });
@@ -86,7 +101,7 @@ try {
     const skillFile = listedSkillFile(trusted, mandatedSkill(trusted));
 
     assert.equal(skillFile && path.resolve(skillFile), path.resolve(installedPath, 'skills', ENTRY_SKILL, 'SKILL.md'), `the mandate names \`${mandatedSkill(trusted)}\`, which Codex lists at ${skillFile}, not as the installed ${ENTRY_SKILL}`);
-    assert.ok(fs.existsSync(skillFile), `Codex lists ${skillFile}, which does not exist`);
+    assert.ok(afterRead.includes(skillExcerpt(ENTRY_SKILL)), `the mandated skill did not load from ${skillFile}:\n${afterRead.slice(-800)}`);
     assertMcpHeaders('Codex', standIn.mcpRequests, headers);
 
     console.log(`${run(codex, ['--version'], { env }).trim()} loaded ${skills.length} skills, the mandate once its hook is trusted and the postman MCP server from ${PLUGIN_ID}`);

@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {
     ENTRY_SKILL, assertMcpHeaders, copyCheckout, pointMcpAt, readJson, repoRoot, run, runAgent, skillExcerpt,
-    startStandIn, workspace
+    skills, startStandIn, workspace
 } from './lib/harness.js';
 
 assert.ok(process.env.CURSOR_API_KEY, 'CURSOR_API_KEY is not set; the Cursor CLI has no offline mode, so this harness needs a Cursor API key');
@@ -28,6 +28,7 @@ const normalize = (text) => text.replace(/[`*_]/g, '').replace(/\s+/g, ' ').trim
         `1. Quote, exactly as written, the sentence in your context that ends with "${sentence.split(' ').slice(-6).join(' ')}"`,
         '2. On the next line, write the name of the skill the sentence before it tells you to load, exactly as it is written there, in backticks.',
         '3. Load that skill, then on the next line copy, verbatim, the first numbered line of its instructions.',
+        '4. On the last line, write "SKILLS:" followed by the name of every skill available to you from the Postman plugin, exactly as listed, comma-separated.',
         'If your context has no such sentence, reply NONE.'
     ].join('\n');
 
@@ -52,6 +53,10 @@ try {
     assert.doesNotMatch(reply, /postman:api-engineer/, `Cursor got the mandate with \`postman:\` skill names, which it cannot resolve:\n${reply}`);
     assert.ok(reply.includes(ENTRY_SKILL), `Cursor's model did not name ${ENTRY_SKILL}:\n${reply}`);
     assert.ok(reply.includes(normalize(skillExcerpt(ENTRY_SKILL))), `the mandated skill did not load from ${plugin}:\n${reply}`);
+
+    const listed = (reply.split('SKILLS:').pop() ?? '').split(/[,\s]+/).map((name) => name.replace(/^postman:/, '')).filter(Boolean);
+
+    assert.deepEqual(skills.filter((skill) => !listed.includes(skill)), [], `Cursor's model did not list every skill in manifest.json:\n${reply}`);
 
     console.log(`cursor-agent ${run(cursor, ['--version'], { env }).trim()} delivered the mandate, loaded ${ENTRY_SKILL} and connected to the postman MCP server from ${plugin}`);
 }
