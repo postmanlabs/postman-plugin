@@ -294,7 +294,11 @@ hook until the user trusts it, so its harness runs twice: untrusted, which must
 carry the skills and no mandate, and with `--dangerously-bypass-hook-trust`,
 which must carry both. Cursor's CLI has no stand-in model, so its harness asks
 Cursor's model to quote the mandate and the skill it names, and needs a
-`CURSOR_API_KEY`; CI reads it from the repository secret of that name.
+`CURSOR_API_KEY`; CI reads it from the repository secret of that name. It
+loads the plugin with `--plugin-dir`, because the CLI ignores
+`~/.cursor/plugins/local`, where the installer puts it
+([#82](https://github.com/postmanlabs/postman-plugin/issues/82)), so it checks
+the plugin, not the installer's Cursor install.
 
 ## The installer
 
