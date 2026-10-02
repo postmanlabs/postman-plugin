@@ -5,7 +5,6 @@
 // on Cursor's model with `CURSOR_API_KEY`, and the model reports what reached it. The MCP server is a
 // local stand-in that records Cursor's headers.
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import {
@@ -48,46 +47,41 @@ async function ask () {
     }
 }
 
-const shellName = process.platform === 'win32' ? 'PowerShell, which Cursor runs hooks through on Windows' : '/bin/sh';
-
-/** The hook `.cursor-plugin/plugin.json` names, run from the plugin's root through the shell Cursor uses. */
-function runHook () {
-    const [{ command }] = readJson(path.join(plugin, readJson(path.join(plugin, '.cursor-plugin', 'plugin.json')).hooks)).hooks.sessionStart,
-        options = { cwd: plugin, encoding: 'utf8', env: { ...env, CURSOR_PLUGIN_ROOT: plugin, CLAUDE_PLUGIN_ROOT: plugin }, timeout: 60000 },
-        result = process.platform === 'win32' ?
-            spawnSync('pwsh', ['-NoProfile', '-Command', command], options) :
-            spawnSync('/bin/sh', ['-c', command], options);
-
-    return [`$ ${command}`, `exit ${result.status}`, result.stdout?.slice(0, 600), result.stderr?.slice(0, 1500), result.error?.message].filter(Boolean).join('\n');
-}
-
 /**
- * On Windows only, after the mandate is missing: wraps the copy's session-start.cmd in one that logs how
- * Cursor started it, runs another session, and returns the log. Cursor itself reports nothing.
+ * Windows only, after the mandate is missing: one session with a user-level hook and an extra plugin hook,
+ * each a .cmd that writes a marker outside the plugin, tells whether Cursor runs either kind of hook there.
  */
-async function traceHookInCursor () {
+async function canaryHooks () {
     if (process.platform !== 'win32') {
         return '';
     }
 
-    const hooks = path.join(plugin, 'hooks'),
-        log = path.join(hooks, 'trace.log');
+    const markers = path.join(root, 'markers'),
+        canary = (name) => {
+            const file = path.join(root, `canary-${name}.cmd`);
 
-    fs.renameSync(path.join(hooks, 'session-start.cmd'), path.join(hooks, 'session-start.real.cmd'));
-    fs.writeFileSync(path.join(hooks, 'session-start.cmd'), [
-        '@echo off',
-        '>"%~dp0trace.log" (echo cwd=%CD%& echo args=[%*]& echo CURSOR_PLUGIN_ROOT=%CURSOR_PLUGIN_ROOT%& echo PATH=%PATH%& echo SystemRoot=%SystemRoot%& where powershell 2>&1)',
-        'call "%~dp0session-start.real.cmd" %* >"%~dp0trace.out" 2>>"%~dp0trace.log"',
-        'echo exit=%errorlevel%>>"%~dp0trace.log"',
-        'type "%~dp0trace.out"',
-        ''
-    ].join('\r\n'));
+            fs.writeFileSync(file, ['@echo off', `echo ran> "${path.join(markers, name)}"`, `echo {"additional_context":"CANARY-${name}"}`, ''].join('\r\n'));
 
-    const again = await ask().catch((error) => ({ error: error.message }));
+            return file;
+        },
+        pluginHooks = path.join(plugin, 'hooks', 'hooks.json'),
+        config = readJson(pluginHooks);
+
+    fs.mkdirSync(markers, { recursive: true });
+    fs.mkdirSync(path.join(home, '.cursor'), { recursive: true });
+    fs.copyFileSync(canary('plugin'), path.join(plugin, 'hooks', 'canary-plugin.cmd'));
+    config.hooks.SessionStart[0].hooks.push({ type: 'command', command: '"${CURSOR_PLUGIN_ROOT}/hooks/canary-plugin.cmd"' });
+    fs.writeFileSync(pluginHooks, JSON.stringify(config));
+    fs.writeFileSync(path.join(home, '.cursor', 'hooks.json'), JSON.stringify({ version: 1, hooks: { sessionStart: [{ command: `"${canary('user')}"` }] } }));
+
+    const session = await runAgent(cursor, ['-p', '--trust', '--plugin-dir', plugin, '--output-format', 'json', 'Reply with every line of your context that starts with CANARY, or NONE.'],
+        { env: { ...env, DEBUG: '*' }, cwd: project, timeout: 300000 });
 
     return [
-        '\nWith session-start.cmd traced, Cursor\'s model replied:', JSON.stringify(again),
-        fs.existsSync(log) ? `trace.log:\n${fs.readFileSync(log, 'utf8')}\ntrace.out:\n${fs.readFileSync(path.join(hooks, 'trace.out'), 'utf8').slice(0, 300)}` : 'Cursor never started session-start.cmd.'
+        '\nCanary session, with a user-level hook and an extra plugin hook:',
+        `markers written: ${JSON.stringify(fs.readdirSync(markers))}`,
+        `reply: ${session.stdout.slice(0, 400)}`,
+        ...session.stderr.split(/\r?\n/).filter((line) => /hook/i.test(line)).slice(0, 30)
     ].join('\n');
 }
 
@@ -103,7 +97,7 @@ try {
         listed = (answer.skills ?? []).map((name) => String(name).replace(/^postman:/, ''));
 
     console.log(`Cursor's model replied:\n${reply}`);
-    assert.equal(normalize(answer.mandate ?? ''), normalize(sentence), `the session-start mandate did not reach Cursor's model:\n${reply}\nThe hook, run through ${shellName}:\n${runHook()}${await traceHookInCursor()}`);
+    assert.equal(normalize(answer.mandate ?? ''), normalize(sentence), `the session-start mandate did not reach Cursor's model:\n${reply}${await canaryHooks()}`);
     assert.equal(normalize(answer.skill ?? ''), ENTRY_SKILL, `Cursor's model did not name ${ENTRY_SKILL} as the mandate spells it for Cursor, without \`postman:\`:\n${reply}`);
     assert.equal(normalize(answer.firstLine ?? ''), normalize(skillExcerpt(ENTRY_SKILL)), `the mandated skill did not load from ${plugin}:\n${reply}`);
     assert.deepEqual(skills.filter((skill) => !listed.includes(skill)), [], `Cursor's model did not list every skill in manifest.json:\n${reply}`);
