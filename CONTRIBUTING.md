@@ -216,8 +216,8 @@ Pi; the `Installer smoke` workflow runs it against the latest one nightly:
 
 ```
 npm test                                      # includes the tarball, extension and skill-rule tests
-PI_BIN=<path to pi> npm run test:pi-harness   # installs the packed tarball into Pi under a throwaway home and checks what Pi sends the model
-PI_PACKAGE=npm:@postman/postman-plugin@<version> PI_BIN=<path to pi> npm run test:pi-harness   # the same checks against a published version
+PI_BIN=<path to pi> npm run test:pi-harness   # installs the packed tarball into Pi under a throwaway home and checks what Pi sends the model and the MCP server
+PI_PACKAGE=npm:@postman/postman-plugin@<version> PI_BIN=<path to pi> npm run test:pi-harness   # the same checks against a published version, whose MCP server it checks only as registered
 ```
 
 The route's version is the installer's, so `X-Plugin-Version` and `User-Agent`

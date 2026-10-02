@@ -67,8 +67,8 @@ export function commit (target) {
 }
 
 /** A line of the skill's body, past its frontmatter, that only a loaded skill puts in the session. */
-export function skillExcerpt (skill) {
-    const body = fs.readFileSync(path.join(repoRoot, 'skills', skill, 'SKILL.md'), 'utf8').split(/^---\r?$/m).slice(2).join('---');
+export function skillExcerpt (skill, root = repoRoot) {
+    const body = fs.readFileSync(path.join(root, 'skills', skill, 'SKILL.md'), 'utf8').split(/^---\r?$/m).slice(2).join('---');
 
     return body.split(/\r?\n/).find((line) => line.trim().length > 40 && !line.startsWith('#')).trim();
 }
