@@ -32,7 +32,9 @@ test('fresh install clones this repo as a local plugin', async () => {
         outcome = await cursor.install(system);
 
     assert.equal(outcome.outcome, 'done');
-    assert.match(outcome.next, /Reload Window.*new Cursor CLI session/);
+    assert.match(outcome.next, /Reload Window/);
+    assert.ok(outcome.next.includes(`cursor-agent --plugin-dir "${local}"`), outcome.next);
+    assert.doesNotMatch(outcome.next, /new Cursor CLI session/);
     assert.deepEqual(system.commands, [`git clone --depth 1 --branch main ${GIT_URL} ${local}`]);
 });
 

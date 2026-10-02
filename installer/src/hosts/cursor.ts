@@ -3,11 +3,13 @@ import type { System } from '../system.js';
 import { guard, removeClone, syncClone } from './shared.js';
 import { type Host, result } from './types.js';
 
-// Cursor has no command to install a plugin, but loads any plugin folder under
-// plugins/local. Its Marketplace keeps its own copy under plugins/cache.
+// Cursor has no command to install a plugin, but its editor loads any plugin folder under
+// plugins/local; its CLI doesn't. Its Marketplace keeps its own copy under plugins/cache.
 const localClone = (system: System) => path.join(system.home, '.cursor', 'plugins', 'local', 'postman'),
     marketplaceCopy = (system: System) => path.join(system.home, '.cursor', 'plugins', 'cache', 'cursor-public', 'postman'),
-    NEXT = 'Reload the Cursor window (Developer: Reload Window), or start a new Cursor CLI session, for the change to take effect.',
+    NEXT = 'Reload the Cursor window (Developer: Reload Window) for the change to take effect.',
+    // Until https://github.com/postmanlabs/postman-plugin/issues/82 is fixed.
+    cliNext = (system: System) => `The Cursor CLI doesn't load plugins from there; start it with \`cursor-agent --plugin-dir "${localClone(system)}"\`.`,
     // Cursor keeps a disabled Marketplace copy on disk and records "enabled" only in its
     // private state database, so the copy being there doesn't mean Postman is active.
     CHECK_ENABLED = 'If Postman isn\'t active in Cursor, enable it in Cursor Settings > Plugins.',
@@ -59,7 +61,9 @@ export const cursor: Host = {
             // disabled: a duplicate is visible and fixable, deleting the working copy is not.
             const action = await syncClone(system, localClone(system));
 
-            return result('done', `${action} ${localClone(system)}`, fromMarketplace ? `${NEXT} ${MAYBE_TWICE}` : NEXT);
+            const next = `${NEXT} ${cliNext(system)}`;
+
+            return result('done', `${action} ${localClone(system)}`, fromMarketplace ? `${next} ${MAYBE_TWICE}` : next);
         });
     },
 
