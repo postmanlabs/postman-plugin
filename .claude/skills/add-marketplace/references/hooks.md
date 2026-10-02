@@ -4,7 +4,8 @@ Reference for Step 3. Read this before editing anything under `hooks/`. Both
 failure modes documented here are silent: the pre-commit hook never reads
 `hooks/`, and an agent that never finds or runs the hook still starts. CI's
 route harnesses (CONTRIBUTING.md's "Checking what each route delivers") run
-each agent on Linux and Windows and check that the mandate reaches its model;
+each agent on every OS its CI job covers and check that the mandate reaches its
+model; Cursor's runs on Linux only, until #83 is fixed;
 `installer/test/session-start-hook.test.js` runs the scripts directly.
 
 ## The plugin-root variable is the trap
@@ -100,10 +101,10 @@ and started with `PSModulePath` cleared because one inherited from `pwsh`,
 which Cursor prefers, points 5.1 at PowerShell 7 modules it can't load.
 
 Codex runs a hook through the shell of the session itself: the user's login
-shell on macOS and Linux, PowerShell on Windows, with `%COMSPEC%` only when it
-has no session shell. Its `commandWindows` replaces `command` on Windows, which
-is the only reason the route has its own `hooks/codex-hooks.json`. A Windows
-user whose Codex shell is Git Bash would get `/d` and `/c` rewritten as paths.
+shell on macOS and Linux, and on Windows always PowerShell, falling back to
+cmd.exe (`shell_detect.rs`'s `default_user_shell`). `cmd /d /c` runs from both.
+Its `commandWindows` replaces `command` on Windows, which is the only reason the
+route has its own `hooks/codex-hooks.json`.
 
 Claude Code on a Windows box with no Git Bash falls back to PowerShell, where a
 quoted path is a string, not a command, so the hook prints the path instead of
