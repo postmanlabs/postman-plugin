@@ -220,56 +220,56 @@
         {
           "target": "references/docs.md",
           "source": "skills/postman-mcp-server/references/docs.md",
-          "bytes": 3869,
-          "sha256": "c5045ab0e87beec17bfb4b63c1610f1c9554adcebd1c39bdf971591738a6e24f"
+          "bytes": 3866,
+          "sha256": "4418f4a024c71d1da0e57d28e5261d0fd634218b1c42f7499468d9e8db5824d3"
         },
         {
           "target": "references/learn.md",
           "source": "skills/postman-mcp-server/references/learn.md",
-          "bytes": 4750,
-          "sha256": "9c7d71939691f14ae27a035c9b1a062d97738dffef4a30d10ac102e51d35b95b"
+          "bytes": 4789,
+          "sha256": "79639072d0848d8244004e22bd51f099985b54467acc254e1caed7ea9c2642a5"
         },
         {
           "target": "references/mcp-limitations.md",
           "source": "skills/postman-mcp-server/references/mcp-limitations.md",
-          "bytes": 1704,
-          "sha256": "38f7558fde730622557c18336076ffa3d9f58d127b2b726e5ae661c14c85a798"
+          "bytes": 1691,
+          "sha256": "953620dd3367af85616d3b4daa46dbfaec27cfec360e58268d1af0617ab3212a"
         },
         {
           "target": "references/mock.md",
           "source": "skills/postman-mcp-server/references/mock.md",
-          "bytes": 4205,
-          "sha256": "2b89abd85d5d1fc2af68a549e39c22ed43efccd133dc05878db7d557892d17ba"
+          "bytes": 4202,
+          "sha256": "8d169839f6f550105fbbcc9dc449fd6bf509c3e41604179d157626c69eac05e4"
         },
         {
           "target": "references/search.md",
           "source": "skills/postman-mcp-server/references/search.md",
-          "bytes": 3955,
-          "sha256": "c1c6bbfd15fa74750b04d0d274767f74ec69ccbd96a8dfe2c4643b6b32cbfc7f"
+          "bytes": 3952,
+          "sha256": "676607eed6ae8ad44706d24fd8b9ed8a7aebf432eee9c2107df11dec8296b36c"
         },
         {
           "target": "references/security.md",
           "source": "skills/postman-mcp-server/references/security.md",
-          "bytes": 4979,
-          "sha256": "e0dd5439278cd67c1444f28b052b4a2854db36db3b476630a33e7cd53059be27"
+          "bytes": 4976,
+          "sha256": "2bbcfad1eaf36f62e30df087518387d54bd01b247e680cae45a043d2c736fd74"
         },
         {
           "target": "references/setup.md",
           "source": "skills/postman-mcp-server/references/setup.md",
-          "bytes": 5579,
-          "sha256": "565cb4cf09a0a5919acd368e2429b7744b5b8cbd23bfcd40e536c1707b620d11"
+          "bytes": 5738,
+          "sha256": "09f6e705eecdaf7e8d94846b64457eb478cb377ea6cc48069553a31aea188a6e"
         },
         {
           "target": "references/sync.md",
           "source": "skills/postman-mcp-server/references/sync.md",
-          "bytes": 4545,
-          "sha256": "05d1cb8acaf72203aeca4f280b56d68a4a94d251cc056281fa85634feeac3301"
+          "bytes": 4542,
+          "sha256": "9abbd773ff6726eeb38ce133570237a89f72d93e3dc2b168d036ef0afb7dddb1"
         },
         {
           "target": "references/test.md",
           "source": "skills/postman-mcp-server/references/test.md",
-          "bytes": 3332,
-          "sha256": "ed840f6ea3039cafe0e3f6ac3f26e8b9a91271ec37dba20260cd2feb5e71eb3e"
+          "bytes": 3376,
+          "sha256": "8a255aba5e6d06625c65c463ee7fe87249d4a77687c59cee59e0a6a72e59ad69"
         }
       ]
     }

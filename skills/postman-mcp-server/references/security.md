@@ -9,7 +9,7 @@ Audit your API for security issues: missing auth, exposed sensitive data, insecu
 
 ## Prerequisites
 
-For collection auditing, the Postman MCP Server must be connected. Local spec auditing works without MCP. If needed, tell the user: "Run `/postman:setup` to configure the Postman MCP Server."
+For collection auditing, the Postman MCP Server must be connected. Local spec auditing works without MCP. If needed, follow `references/setup.md` to connect it.
 
 ## Workflow
 
@@ -122,8 +122,8 @@ After fixes, re-run the audit to show improvement.
 
 ## Error Handling
 
-- **MCP not configured:** Local spec auditing works without MCP. For Postman-specific checks: "Run `/postman:setup` to configure the Postman MCP Server."
-- **401 Unauthorized:** "Your Postman API key was rejected. Generate a new one at https://go.postman.co/settings/me/api-keys and run `/postman:setup`."
+- **MCP not configured:** Local spec auditing works without MCP. For Postman-specific checks, follow `references/setup.md` to connect the Postman MCP Server.
+- **401 Unauthorized:** "Your Postman API key was rejected. Generate a new one at https://go.postman.co/settings/me/api-keys." Then re-authenticate with `references/setup.md`.
 - **No spec found:** Ask the user for the path. Offer to audit a Postman collection directly via MCP.
 - **Spec too large:** For large specs (100+ endpoints), audit in batches by tag or path prefix.
 - **Plan limitations:** "Some audit features may require a paid Postman plan. Check https://www.postman.com/pricing/"

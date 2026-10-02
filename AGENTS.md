@@ -23,11 +23,11 @@ Whenever a change to this repo adds, renames, or removes a directory under
    since other `SKILL.md` files reference each other by name in prose
    (descriptions, Critical Rules, "see `<skill>`" pointers), and
    `hooks/session-start-context.md` names skills too, not just frontmatter
-   or `manifest.json`. Fix every hit; a reference to a deleted skill fails
-   silently, it doesn't error.
+   or `manifest.json`. Fix every hit; a bare-name reference to a deleted
+   skill fails silently. Only a `postman:<name>` one fails CI's `skills` job.
 3. Give every added or renamed skill at least one case in
-   `opencode/evals/cases.json`, and drop cases for a removed one. This is
-   the one reference that does error: CI's `opencode` job fails on a skill
+   `opencode/evals/cases.json`, and drop cases for a removed one. This
+   reference errors too: CI's `opencode` job fails on a skill
    with no case or a case naming a skill that no longer exists.
 4. Run `node scripts/build-manifest.js` and commit the regenerated
    `manifest.json` alongside the skill change.

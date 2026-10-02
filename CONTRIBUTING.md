@@ -353,7 +353,8 @@ Delete `skills/<name>/`, then grep the rest of the repo for that name —
 `grep -rn "<name>" README.md CONTRIBUTING.md skills/ hooks/ intent.md opencode/evals/` —
 since other `SKILL.md` files, the session-start context and these docs can reference
 a skill by name in prose, not just in frontmatter. Most stale references fail
-silently; an eval case that still expects the skill fails CI. Fix or remove
+silently; a `postman:<name>` reference or an eval case that still expects the
+skill fails CI. Fix or remove
 what turns up, then run the manifest script.
 
 ## The bindings placeholder
