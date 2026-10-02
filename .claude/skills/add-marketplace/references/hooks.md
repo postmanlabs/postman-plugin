@@ -97,6 +97,12 @@ UTF-8 both ways because 5.1 assumes ANSI and the mandate has non-ASCII text,
 and started with `PSModulePath` cleared because one inherited from `pwsh`,
 which Cursor prefers, points 5.1 at PowerShell 7 modules it can't load.
 
+Codex runs a hook through the shell of the session itself: the user's login
+shell on macOS and Linux, PowerShell on Windows, with `%COMSPEC%` only when it
+has no session shell. Its `commandWindows` replaces `command` on Windows, which
+is the only reason the route has its own `hooks/codex-hooks.json`. A Windows
+user whose Codex shell is Git Bash would get `/d` and `/c` rewritten as paths.
+
 Claude Code on a Windows box with no Git Bash falls back to PowerShell, where a
 quoted path is a string, not a command, so the hook prints the path instead of
 the mandate. Supporting it means a third, PowerShell form of the command.
@@ -109,7 +115,7 @@ Discovery is the other half, and it is not uniform either:
 | --- | --- |
 | Claude Code | `hooks/hooks.json` by default; a manifest `hooks` key can point elsewhere |
 | Cursor | manifest `hooks` (path string or inline object); falls back to `hooks/hooks.json`, which it reads in Claude Code's shape and runs as `sessionStart` |
-| Codex | manifest `hooks`, resolved relative to the plugin root and required to stay inside it; otherwise `hooks/hooks.json`, its `DEFAULT_HOOKS_CONFIG_FILE`. This repo's `.codex-plugin/plugin.json` names `hooks/codex-hooks.json`: Codex runs a hook through `%COMSPEC% /C` on Windows and leaves `${DROID_PLUGIN_ROOT}` unexpanded there, so the shared command hands `session-start.cmd` a non-empty Droid argument, and on `windows-latest` Codex sent its model no mandate from it. Codex's own file gives Windows `commandWindows`, which names `session-start.cmd` with no argument, and keeps `postman:` names, which Codex resolves |
+| Codex | manifest `hooks`, resolved relative to the plugin root and required to stay inside it; otherwise `hooks/hooks.json`, its `DEFAULT_HOOKS_CONFIG_FILE`. This repo's `.codex-plugin/plugin.json` names `hooks/codex-hooks.json`, because the shared command is a quoted path, and Codex runs a hook through the session's shell, PowerShell on Windows, which prints a quoted path instead of running it. Codex's own file gives Windows `commandWindows`, `cmd /d /c` on `session-start.cmd` with no argument, which runs from PowerShell and cmd.exe alike and keeps the `postman:` names Codex resolves |
 | Factory Droid | `hooks/hooks.json` at the plugin root, in the same `hooks`-wrapped shape as Claude Code. It finds the scripts through Droid's `${CLAUDE_PLUGIN_ROOT}` alias and gets `${DROID_PLUGIN_ROOT}` as its argument, which is what makes the scripts strip the `postman:` prefix. A top-level event key is the shape of a user's `.factory/hooks.json`, not a plugin's |
 | Copilot / VS Code | layout-dependent — `hooks/hooks.json` for the Claude layout, `com.github.copilot/hooks/hooks.json` for Agent Plugins 1.0, `hooks.json` at the root for the Copilot layout |
 | Kimi Code | **nowhere.** Hooks are an inline `hooks` array in the manifest, entries shaped `event` / `matcher` / `command` / `timeout`, and Kimi documents no default file to discover. It also discards a SessionStart hook's output, so the mandate goes through the manifest's `systemPromptPath` instead |

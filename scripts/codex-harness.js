@@ -69,7 +69,7 @@ async function session (standIn, extra) {
 
 /**
  * The installed SessionStart hook run the way Codex runs it, for a failure to show: `commandWindows` on
- * Windows, Codex's own `${...}` substitutions, then `%COMSPEC% /C` or `$SHELL -lc`. Codex logs none of it.
+ * Windows, Codex's own `${...}` substitutions, then the session's shell, PowerShell on Windows.
  */
 function runHookAsCodex (installedPath) {
     const hooksFile = readJson(path.join(installedPath, '.codex-plugin', 'plugin.json')).hooks ?? 'hooks/hooks.json',
@@ -79,8 +79,8 @@ function runHookAsCodex (installedPath) {
             (process.platform === 'win32' && handler.commandWindows) || handler.command),
         options = { encoding: 'utf8', env: { ...env, ...variables }, timeout: 60000 },
         result = process.platform === 'win32' ?
-            spawnSync(env.ComSpec || env.COMSPEC || 'cmd.exe', ['/C', `"${command}"`], { ...options, windowsVerbatimArguments: true }) :
-            spawnSync(env.SHELL || '/bin/sh', ['-lc', command], options);
+            spawnSync('pwsh', ['-NoProfile', '-Command', command], options) :
+            spawnSync(env.SHELL || '/bin/sh', ['-c', command], options);
 
     return [`$ ${command}`, `exit ${result.status}`, result.stdout, result.stderr, result.error?.message].filter(Boolean).join('\n');
 }

@@ -7,7 +7,7 @@
           {
             "type": "command",
             "command": "\"${PLUGIN_ROOT}/hooks/session-start\"",
-            "commandWindows": "\"${PLUGIN_ROOT}/hooks/session-start.cmd\""
+            "commandWindows": "cmd /d /c \"${PLUGIN_ROOT}/hooks/session-start.cmd\""
           }
         ]
       }

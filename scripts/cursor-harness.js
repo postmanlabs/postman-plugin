@@ -23,14 +23,15 @@ const cursor = process.env.CURSOR_BIN || 'cursor-agent',
     env = { ...process.env, HOME: home, USERPROFILE: home };
 
 const normalize = (text) => text.replace(/[`*_]/g, '').replace(/\s+/g, ' ').trim(),
+    // One line: npm's and Cursor's Windows .cmd shims end an argument at its first newline.
     PROMPT = [
-        'Answer from your context only, using no tools except to load a skill.',
-        `1. Quote, exactly as written, the sentence in your context that ends with "${sentence.split(' ').slice(-6).join(' ')}"`,
-        '2. On the next line, write the name of the skill the sentence before it tells you to load, exactly as it is written there, in backticks.',
-        '3. Load that skill, then on the next line copy, verbatim, the first numbered line of its instructions.',
-        '4. On the last line, write "SKILLS:" followed by the name of every skill available to you from the Postman plugin, exactly as listed, comma-separated.',
-        'If your context has no such sentence, reply NONE.'
-    ].join('\n');
+        'Answer from your context only, using no tool except one that loads a skill.',
+        'Reply with only a JSON object with these keys:',
+        `"mandate": the sentence in your context that ends with "${sentence.split(' ').slice(-6).join(' ')}", quoted exactly, or null;`,
+        '"skill": the name of the skill the sentence before it tells you to load, exactly as written there, or null;',
+        '"firstLine": after loading that skill, the first numbered line of its instructions, verbatim, or null;',
+        '"skills": the name of every skill available to you that comes from the Postman plugin, exactly as listed.'
+    ].join(' ');
 
 let standIn;
 
@@ -43,24 +44,22 @@ try {
 
     assert.equal(session.code, 0, `cursor-agent exited ${session.code}\n${session.stdout}\n${session.stderr}`);
 
-    let reply;
+    let answer;
 
     try {
-        reply = normalize(JSON.parse(session.stdout).result ?? '');
+        answer = JSON.parse(JSON.parse(session.stdout).result.replace(/^[^{]*|[^}]*$/g, ''));
     }
     catch {
-        assert.fail(`cursor-agent did not print a JSON result:\n${session.stdout}\n${session.stderr}`);
+        assert.fail(`cursor-agent did not answer with JSON:\n${session.stdout}\n${session.stderr}`);
     }
 
+    const reply = JSON.stringify(answer, null, 2),
+        listed = (answer.skills ?? []).map((name) => String(name).replace(/^postman:/, ''));
+
     console.log(`Cursor's model replied:\n${reply}`);
-
-    assert.ok(reply.includes(normalize(sentence)), `the session-start mandate did not reach Cursor's model; it replied:\n${reply}`);
-    assert.doesNotMatch(reply, /postman:api-engineer/, `Cursor got the mandate with \`postman:\` skill names, which it cannot resolve:\n${reply}`);
-    assert.ok(reply.includes(ENTRY_SKILL), `Cursor's model did not name ${ENTRY_SKILL}:\n${reply}`);
-    assert.ok(reply.includes(normalize(skillExcerpt(ENTRY_SKILL))), `the mandated skill did not load from ${plugin}:\n${reply}`);
-
-    const listed = (reply.split('SKILLS:').pop() ?? '').split(/[,\s]+/).map((name) => name.replace(/^postman:/, '')).filter(Boolean);
-
+    assert.equal(normalize(answer.mandate ?? ''), normalize(sentence), `the session-start mandate did not reach Cursor's model:\n${reply}`);
+    assert.equal(normalize(answer.skill ?? ''), ENTRY_SKILL, `Cursor's model did not name ${ENTRY_SKILL} as the mandate spells it for Cursor, without \`postman:\`:\n${reply}`);
+    assert.equal(normalize(answer.firstLine ?? ''), normalize(skillExcerpt(ENTRY_SKILL)), `the mandated skill did not load from ${plugin}:\n${reply}`);
     assert.deepEqual(skills.filter((skill) => !listed.includes(skill)), [], `Cursor's model did not list every skill in manifest.json:\n${reply}`);
 
     if (!standIn.mcpRequests.length) {
