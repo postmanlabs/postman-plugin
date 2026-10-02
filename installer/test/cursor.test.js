@@ -38,6 +38,13 @@ test('fresh install clones this repo as a local plugin', async () => {
     assert.deepEqual(system.commands, [`git clone --depth 1 --branch main ${GIT_URL} ${local}`]);
 });
 
+test('names the Cursor CLI by its path when only ~/.local/bin has it', async () => {
+    const cli = path.join(home, '.local', 'bin', 'cursor-agent'),
+        outcome = await cursor.install(fakeSystem({ bins: ['git'], files: { [cli]: '' } }));
+
+    assert.ok(outcome.next.includes(`"${cli}" --plugin-dir "${local}"`), outcome.next);
+});
+
 test('re-run fast-forwards an existing clone of this repo', async () => {
     const system = fakeSystem({ bins: ['git'], dirs: [path.join(local, '.git')], probes: origin(GIT_URL) });
 

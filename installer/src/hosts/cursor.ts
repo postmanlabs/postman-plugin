@@ -8,12 +8,21 @@ import { type Host, result } from './types.js';
 const localClone = (system: System) => path.join(system.home, '.cursor', 'plugins', 'local', 'postman'),
     marketplaceCopy = (system: System) => path.join(system.home, '.cursor', 'plugins', 'cache', 'cursor-public', 'postman'),
     NEXT = 'Reload the Cursor window (Developer: Reload Window) for the change to take effect.',
-    // Until https://github.com/postmanlabs/postman-plugin/issues/82 is fixed.
-    cliNext = (system: System) => `The Cursor CLI doesn't load plugins from there; start it with \`cursor-agent --plugin-dir "${localClone(system)}"\`.`,
+    cliOffPath = (system: System) => path.join(system.home, '.local', 'bin', 'cursor-agent'),
     // Cursor keeps a disabled Marketplace copy on disk and records "enabled" only in its
     // private state database, so the copy being there doesn't mean Postman is active.
     CHECK_ENABLED = 'If Postman isn\'t active in Cursor, enable it in Cursor Settings > Plugins.',
     MAYBE_TWICE = 'The Cursor Marketplace copy is present too; if it\'s enabled, Postman loads twice, so disable one in Cursor Settings > Plugins.';
+
+// Until https://github.com/postmanlabs/postman-plugin/issues/82 is fixed. Names the CLI by its path when
+// it isn't on PATH, which detect() accepts.
+async function cliNext (system: System): Promise<string> {
+    const cli = (await system.which('cursor-agent')) === null && await system.exists(cliOffPath(system)) ?
+        `"${cliOffPath(system)}"` :
+        'cursor-agent';
+
+    return `The Cursor CLI doesn't load plugins from there; start it with \`${cli} --plugin-dir "${localClone(system)}"\`.`;
+}
 
 export const cursor: Host = {
     id: 'cursor',
@@ -25,7 +34,7 @@ export const cursor: Host = {
         // ~/.local/bin on the PATH of the shell that ran it. It also installs `agent`, a name
         // too generic to mean Cursor.
         return (await system.which('cursor')) !== null || (await system.which('cursor-agent')) !== null ||
-            await system.exists(path.join(system.home, '.local', 'bin', 'cursor-agent')) ||
+            await system.exists(cliOffPath(system)) ||
             (system.platform === 'darwin' && await system.exists('/Applications/Cursor.app')) ||
             await system.exists(path.join(system.home, '.cursor'));
     },
@@ -61,7 +70,7 @@ export const cursor: Host = {
             // disabled: a duplicate is visible and fixable, deleting the working copy is not.
             const action = await syncClone(system, localClone(system));
 
-            const next = `${NEXT} ${cliNext(system)}`;
+            const next = `${NEXT} ${await cliNext(system)}`;
 
             return result('done', `${action} ${localClone(system)}`, fromMarketplace ? `${next} ${MAYBE_TWICE}` : next);
         });
