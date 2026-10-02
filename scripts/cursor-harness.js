@@ -33,6 +33,28 @@ const normalize = (text) => text.replace(/[`*_]/g, '').replace(/\s+/g, ' ').trim
         '"skills": the name of every skill available to you that comes from the Postman plugin, exactly as listed.'
     ].join(' ');
 
+async function ask (extra = []) {
+    const session = await runAgent(cursor, ['-p', '--trust', '--approve-mcps', '--output-format', 'json', ...extra, PROMPT], { env, cwd: project, timeout: 300000 });
+
+    assert.equal(session.code, 0, `cursor-agent exited ${session.code}\n${session.stdout}\n${session.stderr}`);
+
+    try {
+        return JSON.parse(JSON.parse(session.stdout).result.replace(/^[^{]*|[^}]*$/g, ''));
+    }
+    catch {
+        assert.fail(`cursor-agent did not answer with JSON:\n${session.stdout}\n${session.stderr}`);
+    }
+}
+
+/** Paths under `dir`, three levels deep, skipping the copy of this checkout. */
+function tree (dir, depth = 3) {
+    return depth === 0 || !fs.existsSync(dir) ? [] : fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+        const full = path.join(dir, entry.name);
+
+        return full === plugin ? [`${full}/ (this checkout)`] : [full, ...(entry.isDirectory() ? tree(full, depth - 1) : [])];
+    });
+}
+
 let standIn;
 
 try {
@@ -40,23 +62,22 @@ try {
     copyCheckout(plugin);
     pointMcpAt(path.join(plugin, 'mcp.cursor.json'), standIn.mcpUrl);
 
-    const session = await runAgent(cursor, ['-p', '--trust', '--approve-mcps', '--output-format', 'json', PROMPT], { env, cwd: project, timeout: 300000 });
-
-    assert.equal(session.code, 0, `cursor-agent exited ${session.code}\n${session.stdout}\n${session.stderr}`);
-
-    let answer;
-
-    try {
-        answer = JSON.parse(JSON.parse(session.stdout).result.replace(/^[^{]*|[^}]*$/g, ''));
-    }
-    catch {
-        assert.fail(`cursor-agent did not answer with JSON:\n${session.stdout}\n${session.stderr}`);
-    }
-
-    const reply = JSON.stringify(answer, null, 2),
+    const answer = await ask(),
+        reply = JSON.stringify(answer, null, 2),
         listed = (answer.skills ?? []).map((name) => String(name).replace(/^postman:/, ''));
 
     console.log(`Cursor's model replied:\n${reply}`);
+
+    if (!listed.length) {
+        const withPluginDir = await ask(['--plugin-dir', plugin]);
+
+        assert.fail([
+            `Cursor loaded no Postman skill from ${plugin}.`,
+            `With --plugin-dir it listed: ${JSON.stringify(withPluginDir.skills ?? [])}.`,
+            `What Cursor wrote under ${home}:`,
+            ...tree(home)
+        ].join('\n'));
+    }
     assert.equal(normalize(answer.mandate ?? ''), normalize(sentence), `the session-start mandate did not reach Cursor's model:\n${reply}`);
     assert.equal(normalize(answer.skill ?? ''), ENTRY_SKILL, `Cursor's model did not name ${ENTRY_SKILL} as the mandate spells it for Cursor, without \`postman:\`:\n${reply}`);
     assert.equal(normalize(answer.firstLine ?? ''), normalize(skillExcerpt(ENTRY_SKILL)), `the mandated skill did not load from ${plugin}:\n${reply}`);
