@@ -2,11 +2,11 @@
 
 Reference for Step 3. Read this before editing anything under `hooks/`. Both
 failure modes documented here are silent: the pre-commit hook never reads
-`hooks/`, and in CI only the Droid harness runs it through an agent.
-`installer/test/session-start-hook.test.js` runs the scripts directly, which
-checks what each agent gets from them but not that the agent finds them. For
-every other vendor the only symptom of either is an agent that never mentions
-Postman.
+`hooks/`, and an agent that never finds or runs the hook still starts. CI's
+route harnesses (CONTRIBUTING.md's "Checking what each route delivers") run
+each agent on every OS its CI job covers and check that the mandate reaches its
+model; Cursor's runs on Linux only, until #83 is fixed;
+`installer/test/session-start-hook.test.js` runs the scripts directly.
 
 ## The plugin-root variable is the trap
 
@@ -19,7 +19,7 @@ install path. Every vendor names that differently, and only some substitute
 | Claude Code | `CLAUDE_PLUGIN_ROOT` | yes |
 | Cursor | `CURSOR_PLUGIN_ROOT`, plus `CLAUDE_PLUGIN_ROOT` as an explicit alias | yes — in `command`, `args`, `env` values and `cwd`. Not `${PLUGIN_ROOT}` |
 | Copilot / VS Code | `CLAUDE_PLUGIN_ROOT`, also injected into the hook's environment | yes |
-| Codex | `PLUGIN_ROOT` and `PLUGIN_DATA`, plus `CLAUDE_PLUGIN_ROOT`/`CLAUDE_PLUGIN_DATA` for compatibility | as environment variables |
+| Codex | `PLUGIN_ROOT` and `PLUGIN_DATA`, plus `CLAUDE_PLUGIN_ROOT`/`CLAUDE_PLUGIN_DATA` for compatibility | yes — those four only, and it exports them too. Any other `${...}`, like `${DROID_PLUGIN_ROOT}`, reaches the shell as written |
 | Factory Droid | `DROID_PLUGIN_ROOT`, plus `CLAUDE_PLUGIN_ROOT` for compatibility | yes — `${DROID_PLUGIN_ROOT}`, `$DROID_PLUGIN_ROOT`, `${CLAUDE_PLUGIN_ROOT}` and `$CLAUDE_PLUGIN_ROOT` |
 | Kimi Code | `KIMI_PLUGIN_ROOT`, and cwd is set to the plugin root | not documented |
 | Agent Plugins 1.0 (root `plugin.json`) | `PLUGIN_ROOT`, `PLUGIN_DATA` | **no** — the spec restricts expansion to `args`, `env` values and `cwd`, and defines no hooks component at all |
@@ -28,7 +28,7 @@ install path. Every vendor names that differently, and only some substitute
 
 So a single vendor token is wrong on every other route, and forking the file per
 route re-creates the problem the shared `skills/` directory exists to avoid.
-`hooks/hooks.json` runs one command everywhere:
+`hooks/hooks.json` runs one command everywhere but Codex (see below):
 
 ```
 "${CLAUDE_PLUGIN_ROOT}/hooks/session-start" "${DROID_PLUGIN_ROOT}"
@@ -40,8 +40,7 @@ route re-creates the problem the shared `skills/` directory exists to avoid.
   `session-start-context.md` from their own directory, so neither needs the
   root again.
 - **`${CLAUDE_PLUGIN_ROOT}` is the path token.** Claude Code, Cursor and Copilot
-  substitute it, Droid substitutes it as a compatibility alias, and Codex
-  exports it, which `sh` then expands.
+  substitute it, and Droid substitutes it as a compatibility alias.
 - **The second argument is how the scripts know they are on Droid.** Only Droid
   substitutes `${DROID_PLUGIN_ROOT}`; elsewhere `sh` expands an unset variable
   to `""`. Droid's own `DROID_PLUGIN_ROOT` *environment variable* can't be the
@@ -89,7 +88,9 @@ Cursor feeds the command its payload as a shell heredoc on macOS and Linux. On
 Windows it runs the command through PowerShell and resolves an extensionless
 script path by trying `.ps1`, `.exe`, `.bat` and `.cmd` beside it, so it runs
 `hooks/session-start.cmd`, and a `session-start.ps1` added there would win. Read
-from the bundles of Cursor CLI 2026.10.01, not measured on Windows.
+from the bundles of Cursor CLI 2026.10.01. Measured on `windows-latest`, that CLI
+runs no `sessionStart` hook headless at all, user-level or plugin
+([#83](https://github.com/postmanlabs/postman-plugin/issues/83)).
 
 `hooks/session-start` must stay POSIX-safe rather than bash-specific: dash is
 `/bin/sh` on Debian and Ubuntu, and Codex has no `shell` field at all.
@@ -98,6 +99,12 @@ its `postman:` rewrite and Cursor's JSON go through Windows PowerShell, told
 UTF-8 both ways because 5.1 assumes ANSI and the mandate has non-ASCII text,
 and started with `PSModulePath` cleared because one inherited from `pwsh`,
 which Cursor prefers, points 5.1 at PowerShell 7 modules it can't load.
+
+Codex runs a hook through the shell of the session itself: the user's login
+shell on macOS and Linux, and on Windows always PowerShell, falling back to
+cmd.exe (`shell_detect.rs`'s `default_user_shell`). `cmd /d /c` runs from both.
+Its `commandWindows` replaces `command` on Windows, which is the only reason the
+route has its own `hooks/codex-hooks.json`.
 
 Claude Code on a Windows box with no Git Bash falls back to PowerShell, where a
 quoted path is a string, not a command, so the hook prints the path instead of
@@ -110,8 +117,8 @@ Discovery is the other half, and it is not uniform either:
 | Vendor | Where it looks for the hook definition |
 | --- | --- |
 | Claude Code | `hooks/hooks.json` by default; a manifest `hooks` key can point elsewhere |
-| Cursor | manifest `hooks` (path string or inline object); falls back to `hooks/hooks.json`, which it reads in Claude Code's shape and runs as `sessionStart` |
-| Codex | manifest `hooks`, resolved relative to the plugin root and required to stay inside it; otherwise `hooks/hooks.json` — its `DEFAULT_HOOKS_CONFIG_FILE` is that exact path, so the shared file is found with no `hooks` key in the manifest at all |
+| Cursor | manifest `hooks` (path string or inline object); falls back to `hooks/hooks.json` |
+| Codex | manifest `hooks`, resolved relative to the plugin root and required to stay inside it; otherwise `hooks/hooks.json`, its `DEFAULT_HOOKS_CONFIG_FILE`. This repo's `.codex-plugin/plugin.json` names `hooks/codex-hooks.json`, because the shared command is a quoted path, and Codex runs a hook through the session's shell, PowerShell on Windows, which prints a quoted path instead of running it. Codex's own file gives Windows `commandWindows`, `cmd /d /c` on `session-start.cmd` with no argument, which runs from PowerShell and cmd.exe alike and keeps the `postman:` names Codex resolves |
 | Factory Droid | `hooks/hooks.json` at the plugin root, in the same `hooks`-wrapped shape as Claude Code. It finds the scripts through Droid's `${CLAUDE_PLUGIN_ROOT}` alias and gets `${DROID_PLUGIN_ROOT}` as its argument, which is what makes the scripts strip the `postman:` prefix. A top-level event key is the shape of a user's `.factory/hooks.json`, not a plugin's |
 | Copilot / VS Code | layout-dependent — `hooks/hooks.json` for the Claude layout, `com.github.copilot/hooks/hooks.json` for Agent Plugins 1.0, `hooks.json` at the root for the Copilot layout |
 | Kimi Code | **nowhere.** Hooks are an inline `hooks` array in the manifest, entries shaped `event` / `matcher` / `command` / `timeout`, and Kimi documents no default file to discover. It also discards a SessionStart hook's output, so the mandate goes through the manifest's `systemPromptPath` instead |

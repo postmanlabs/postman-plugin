@@ -3,9 +3,8 @@
 # installer sends; this checks the agents still accept them, and that each one
 # then reports Postman (Cursor isn't installed, so its files are checked instead).
 # They install from GitHub or npm, not from this checkout, so it tests the
-# installer, not a branch's skills; only the last three steps load this checkout,
-# as a tarball into Pi, as a marketplace into Droid and as a clone's files into
-# OpenCode. It also runs nightly, because an agent release breaks the installer
+# installer, not a branch's skills; only the route harness steps at the end load
+# this checkout, each into the latest release of its agent. It also runs nightly, because an agent release breaks the installer
 # without anyone pushing here, and the release-installer skill dispatches it on
 # the commit it is about to tag.
 name: Installer smoke
@@ -15,9 +14,9 @@ run-name: ${{ inputs.ref && format('Installer smoke on {0}', inputs.ref) || '' }
 on:
   push:
     branches: ['main']
-    paths: ['installer/**', 'opencode/**', 'scripts/lib/**', 'scripts/factory-harness.js', '.github/workflows/installer-smoke.yml']
+    paths: ['installer/**', 'opencode/**', 'scripts/lib/**', 'scripts/*-harness.js', '.github/workflows/installer-smoke.yml']
   pull_request:
-    paths: ['installer/**', 'opencode/**', 'scripts/lib/**', 'scripts/factory-harness.js', '.github/workflows/installer-smoke.yml']
+    paths: ['installer/**', 'opencode/**', 'scripts/lib/**', 'scripts/*-harness.js', '.github/workflows/installer-smoke.yml']
   schedule:
     - cron: '23 4 * * *'
   # The release-installer skill passes the exact commit it is about to tag.
@@ -76,7 +75,12 @@ jobs:
       - name: Install Kimi Code
         if: runner.os != 'Windows'
         run: |
-          curl -fsSL https://code.kimi.com/kimi-code/install.sh | bash
+          # The vendor's download host sometimes times out; a second try usually gets through.
+          for attempt in 1 2 3; do
+            curl -fsSL --retry 3 https://code.kimi.com/kimi-code/install.sh | bash && break
+            [ "$attempt" -lt 3 ] || exit 1
+            sleep 15
+          done
           echo "$HOME/.kimi-code/bin" >> "$GITHUB_PATH"
 
       - name: Install Kimi Code
@@ -125,6 +129,48 @@ jobs:
       - name: The latest Droid loads this checkout
         if: ${{ !cancelled() }}
         run: node ../scripts/factory-harness.js
+
+      # The pinned harnesses in validate.yml, against the releases installed above.
+      - name: The latest Claude Code loads this checkout
+        if: ${{ !cancelled() }}
+        run: node ../scripts/claude-code-harness.js
+
+      - name: The latest Codex loads this checkout
+        if: ${{ !cancelled() }}
+        run: node ../scripts/codex-harness.js
+
+      - name: The latest Kimi Code loads this checkout
+        if: ${{ !cancelled() }}
+        run: node ../scripts/kimi-harness.js
+
+      # Installed only now: before the installer ran, Cursor had to be found by its home directory alone.
+      # Linux only: the Cursor CLI on Windows runs no sessionStart hook headless
+      # (https://github.com/postmanlabs/postman-plugin/issues/83).
+      - name: Install the Cursor CLI
+        if: ${{ !cancelled() && runner.os != 'Windows' && github.event.pull_request.head.repo.fork != true }}
+        run: |
+          # The vendor's download host sometimes times out; a second try usually gets through.
+          for attempt in 1 2 3; do
+            curl -fsSL --retry 3 https://cursor.com/install | bash && break
+            [ "$attempt" -lt 3 ] || exit 1
+            sleep 15
+          done
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      # Windows, once https://github.com/postmanlabs/postman-plugin/issues/83 is fixed:
+      # - name: Install the Cursor CLI
+      #   if: ${{ !cancelled() && runner.os == 'Windows' && github.event.pull_request.head.repo.fork != true }}
+      #   shell: pwsh
+      #   run: |
+      #     irm 'https://cursor.com/install?win32=true' | iex
+      #     "$env:LOCALAPPDATA\cursor-agent" >> $env:GITHUB_PATH
+
+      # A fork's pull request gets no secrets, and the Cursor CLI runs only on Cursor's model.
+      - name: The latest Cursor CLI loads this checkout
+        if: ${{ !cancelled() && runner.os != 'Windows' && github.event.pull_request.head.repo.fork != true }}
+        run: node ../scripts/cursor-harness.js
+        env:
+          CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
 
       # The pinned harness in validate.yml, against the OpenCode release installed above.
       - name: The latest OpenCode loads the skills

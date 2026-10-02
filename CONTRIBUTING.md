@@ -45,7 +45,10 @@ session-start event, so the plugin pushes `hooks/session-start-context.md` into
 the system prompt, rewriting `` `postman:<skill>` `` to `` `<skill>` `` because
 OpenCode's skill names are un-namespaced. The harness installs the plugin the
 way a user does — the clone and the one-line file under an isolated global
-config directory — and has the pinned OpenCode 1 CLI load every skill.
+config directory — has the pinned OpenCode 1 CLI load every skill, and runs
+one session against a stand-in model to check the mandate reaches it. OpenCode
+finds its project from `$PWD`, so the harness sets it; inherited, it points at
+this clone, whose `.opencode/plugins/postman.ts` would load the plugin instead.
 OpenCode 2 is covered only by unit tests against a mock host.
 
 Inside a clone, `.opencode/plugins/postman.ts` is that same one-line file, so
@@ -151,7 +154,7 @@ needs a model:
 ```
 npm ci
 npm test                       # builds, then unit-tests the v1 and v2 entry points
-npm run test:harness           # installs it as a user does, then has the pinned CLI load every skill
+npm run test:harness           # installs it as a user does, has the pinned CLI load every skill and checks what a session sends the model
 npm run eval:skills:validate   # every skill has at least one positive routing case
 npm run eval:skills            # live routing eval against a configured model
 ```
@@ -213,8 +216,8 @@ Pi; the `Installer smoke` workflow runs it against the latest one nightly:
 
 ```
 npm test                                      # includes the tarball, extension and skill-rule tests
-PI_BIN=<path to pi> npm run test:pi-harness   # installs the packed tarball into Pi under a throwaway home and checks what Pi sends the model
-PI_PACKAGE=npm:@postman/postman-plugin@<version> PI_BIN=<path to pi> npm run test:pi-harness   # the same checks against a published version
+PI_BIN=<path to pi> npm run test:pi-harness   # installs the packed tarball into Pi under a throwaway home and checks what Pi sends the model and the MCP server
+PI_PACKAGE=npm:@postman/postman-plugin@<version> PI_BIN=<path to pi> npm run test:pi-harness   # the same checks against a published version, whose MCP server it checks only as registered
 ```
 
 The route's version is the installer's, so `X-Plugin-Version` and `User-Agent`
@@ -264,6 +267,40 @@ latest one nightly:
 ```
 DROID_BIN=<path to droid> node scripts/factory-harness.js
 ```
+
+## Checking what each route delivers
+
+Each route has a harness that installs this checkout the way a user gets it,
+under a throwaway home, and checks what the agent sends its model and the MCP
+server: every skill in `manifest.json` listed, the session-start mandate in the
+form that agent resolves (`postman:` names for Claude Code and Codex, bare names
+elsewhere), the skill the mandate names loaded, and the route's MCP headers.
+`scripts/lib/harness.js` holds the stand-in they share. CI's job per route runs
+each harness against a pinned agent; the `Installer smoke` workflow runs it
+against the latest one nightly.
+
+```
+CLAUDE_BIN=<path to claude> node scripts/claude-code-harness.js
+CODEX_BIN=<path to codex> node scripts/codex-harness.js
+KIMI_BIN=<path to kimi> node scripts/kimi-harness.js
+CURSOR_API_KEY=<key> CURSOR_BIN=<path to cursor-agent> node scripts/cursor-harness.js
+DROID_BIN=<path to droid> node scripts/factory-harness.js
+(cd opencode && npm run test:harness)
+(cd installer && PI_BIN=<path to pi> npm run test:pi-harness)
+```
+
+Each `*_BIN` defaults to the agent's command on `PATH`. Codex skips a plugin's
+hook until the user trusts it, so its harness runs twice: untrusted, which must
+carry the skills and no mandate, and with `--dangerously-bypass-hook-trust`,
+which must carry both. Cursor's CLI has no stand-in model, so its harness asks
+Cursor's model to quote the mandate and the skill it names, and needs a
+`CURSOR_API_KEY`; CI reads it from the repository secret of that name. It
+loads the plugin with `--plugin-dir`, because the CLI ignores
+`~/.cursor/plugins/local`, where the installer puts it
+([#82](https://github.com/postmanlabs/postman-plugin/issues/82)), so it checks
+the plugin, not the installer's Cursor install. It runs on Linux only: the
+Cursor CLI on Windows runs no `sessionStart` hook headless
+([#83](https://github.com/postmanlabs/postman-plugin/issues/83)).
 
 ## The installer
 
