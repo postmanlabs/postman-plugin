@@ -32,8 +32,17 @@ test('fresh install clones this repo as a local plugin', async () => {
         outcome = await cursor.install(system);
 
     assert.equal(outcome.outcome, 'done');
-    assert.match(outcome.next, /Reload Window.*new Cursor CLI session/);
+    assert.match(outcome.next, /Reload Window/);
+    assert.ok(outcome.next.includes(`cursor-agent --plugin-dir "${local}"`), outcome.next);
+    assert.doesNotMatch(outcome.next, /new Cursor CLI session/);
     assert.deepEqual(system.commands, [`git clone --depth 1 --branch main ${GIT_URL} ${local}`]);
+});
+
+test('names the Cursor CLI by its path when only ~/.local/bin has it', async () => {
+    const cli = path.join(home, '.local', 'bin', 'cursor-agent'),
+        outcome = await cursor.install(fakeSystem({ bins: ['git'], files: { [cli]: '' } }));
+
+    assert.ok(outcome.next.includes(`"${cli}" --plugin-dir "${local}"`), outcome.next);
 });
 
 test('re-run fast-forwards an existing clone of this repo', async () => {
@@ -88,9 +97,12 @@ test('blocks without git', async () => {
 });
 
 test('remove deletes our clone', async () => {
-    const system = fakeSystem({ bins: ['git'], dirs: [path.join(local, '.git')], probes: origin(GIT_URL) });
+    const system = fakeSystem({ bins: ['git'], dirs: [path.join(local, '.git')], probes: origin(GIT_URL) }),
+        outcome = await cursor.remove(system);
 
-    assert.equal((await cursor.remove(system)).outcome, 'done');
+    assert.equal(outcome.outcome, 'done');
+    assert.match(outcome.next, /Reload Window/);
+    assert.doesNotMatch(outcome.next, /CLI|--plugin-dir/);
     assert.deepEqual(system.commands, [`remove ${local}`]);
 });
 
