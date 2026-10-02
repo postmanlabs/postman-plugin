@@ -46,6 +46,8 @@ async function ask (extra = []) {
     }
 }
 
+const readText = (file) => (fs.existsSync(file) && fs.statSync(file).isFile() ? fs.readFileSync(file, 'utf8').slice(0, 2000) : '(directory or missing)');
+
 /** Paths under `dir`, three levels deep, skipping the copy of this checkout. */
 function tree (dir, depth = 3) {
     return depth === 0 || !fs.existsSync(dir) ? [] : fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -73,9 +75,9 @@ try {
 
         assert.fail([
             `Cursor loaded no Postman skill from ${plugin}.`,
-            `With --plugin-dir it listed: ${JSON.stringify(withPluginDir.skills ?? [])}.`,
-            `What Cursor wrote under ${home}:`,
-            ...tree(home)
+            `With --plugin-dir it answered: ${JSON.stringify(withPluginDir, null, 2)}`,
+            ...['cli-config.json', 'agent-cli-state.json'].map((file) => `${file}: ${readText(path.join(home, '.cursor', file))}`),
+            ...tree(path.join(home, '.cursor', 'managed')).map((file) => `${file}: ${readText(file)}`)
         ].join('\n'));
     }
     assert.equal(normalize(answer.mandate ?? ''), normalize(sentence), `the session-start mandate did not reach Cursor's model:\n${reply}`);
