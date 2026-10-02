@@ -61,10 +61,12 @@ folding it into the same step as `run` or one of the `lint` verbs above
 hides which kind of check actually failed when the job goes red. Pick the
 verb that matches what's checked into the repo — `collection ai-readiness`
 for a git-synced collection, `spec ai-readiness` for an OpenAPI spec with no
-collection generated from it yet.
+collection generated from it yet. Current CLI releases don't ship either
+verb, so pin the step to the release that does (see `ai-readiness`'s "Which
+CLI runs it"):
 
 ```yaml
-- run: postman collection ai-readiness ./postman/collections/My\ API --min-score 70
+- run: npx postman-cli@1.66.0 collection ai-readiness ./postman/collections/My\ API --min-score 70
 ```
 
 ## Critical Rules

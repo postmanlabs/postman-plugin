@@ -17,7 +17,21 @@ Two ways to run this check, same rubric family, different target — pick by wha
 - `spec ai-readiness <spec>` scores an OpenAPI specification directly — by
   cloud ID or local file path — with no collection involved at all.
 
+## Which CLI runs it
 
+Postman CLI 1.67.0 and later don't ship either `ai-readiness` command;
+1.66.0 is the last release that does. Check `postman spec --help` first. If
+`ai-readiness` isn't listed, run the command through 1.66.0 instead of the
+installed CLI, with the same arguments:
+
+```bash
+npx postman-cli@1.66.0 spec ai-readiness ./openapi.yaml
+npx postman-cli@1.66.0 collection ai-readiness ./postman/collections/My\ API
+```
+
+Don't downgrade or reinstall the user's CLI to get the command back; every
+other skill needs the current release. When the score came from the
+fallback, tell the user it ran on CLI 1.66.0.
 
 ## Scoring
 

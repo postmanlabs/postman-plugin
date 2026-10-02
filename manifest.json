@@ -22,8 +22,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/ai-readiness/SKILL.md",
-          "bytes": 2432,
-          "sha256": "b6a398918babc3dbfe35c1107c25d8de80644c599566ce2da40123c54560b1f3"
+          "bytes": 3051,
+          "sha256": "69c2f309e8cd649418f41ab4f6111fdae4a22ca9cd8391edea632a3ba8f77f3c"
         }
       ]
     },
@@ -131,8 +131,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/ci-integration/SKILL.md",
-          "bytes": 6282,
-          "sha256": "5133310bc4a81b49192987cc6568fbfc46f7b12fe8fa50fc42a5ee26bb21d4c0"
+          "bytes": 6427,
+          "sha256": "28f1a6fe6570973ae5973b26838cac283791a2ba6077fa8231fa6f768f3248c4"
         }
       ]
     },
