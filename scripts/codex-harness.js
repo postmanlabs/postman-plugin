@@ -4,6 +4,7 @@
 // Postman's MCP server: once as a new user has it, with the plugin's hook not yet trusted, and once
 // trusted. It then checks what Codex sent each of them. No account is used.
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import {
@@ -52,15 +53,31 @@ function answer (request, body, requests) {
 }
 
 // The runner isolates the session; Codex's own sandbox needs user namespaces a CI runner may not allow.
-async function session (standIn, extra, expectedTurns) {
+async function session (standIn, extra) {
     const before = standIn.modelRequests.length,
         result = await runAgent(codex, ['exec', '--skip-git-repo-check', '--ephemeral', '--json', '--sandbox', 'danger-full-access', ...extra, 'Say ok.'], { env, cwd: project }),
-        turns = standIn.modelRequests.slice(before).filter(({ url }) => url.startsWith('/v1/responses'));
+        turns = standIn.modelRequests.slice(before).filter(({ url }) => url.startsWith('/v1/responses')).map(({ body }) => transcript(body));
 
     assert.equal(result.code, 0, `codex exited ${result.code}\n${result.stdout}\n${result.stderr}`);
-    assert.equal(turns.length, expectedTurns, `codex called the model ${turns.length} times, not ${expectedTurns}\n${result.stdout}\n${result.stderr}`);
 
-    return turns.map(({ body }) => transcript(body));
+    return { turns, output: `${result.stdout}\n${result.stderr}` };
+}
+
+/**
+ * The installed SessionStart hook run the way Codex runs it, for a failure to show: `commandWindows` on
+ * Windows, Codex's own `${...}` substitutions, then `%COMSPEC% /C` or `$SHELL -lc`. Codex logs none of it.
+ */
+function runHookAsCodex (installedPath) {
+    const [{ hooks: [handler] }] = readJson(path.join(installedPath, 'hooks', 'hooks.json')).hooks.SessionStart,
+        variables = { PLUGIN_ROOT: installedPath, CLAUDE_PLUGIN_ROOT: installedPath },
+        command = Object.entries(variables).reduce((line, [key, value]) => line.replaceAll(`\${${key}}`, value),
+            (process.platform === 'win32' && handler.commandWindows) || handler.command),
+        options = { encoding: 'utf8', env: { ...env, ...variables }, timeout: 60000 },
+        result = process.platform === 'win32' ?
+            spawnSync(env.ComSpec || env.COMSPEC || 'cmd.exe', ['/C', `"${command}"`], { ...options, windowsVerbatimArguments: true }) :
+            spawnSync(env.SHELL || '/bin/sh', ['-lc', command], options);
+
+    return [`$ ${command}`, `exit ${result.status}`, result.stdout, result.stderr, result.error?.message].filter(Boolean).join('\n');
 }
 
 let standIn;
@@ -88,15 +105,21 @@ try {
     const { installedPath } = JSON.parse(run(codex, ['plugin', 'add', PLUGIN_ID, '--json'], { env, cwd: project }));
 
     // Codex skips a plugin's hook until the user trusts it, so a new user's session has the skills and no mandate.
-    const [untrusted] = await session(standIn, [], 1);
+    const { turns: untrustedTurns, output: untrustedOutput } = await session(standIn, []),
+        [untrusted] = untrustedTurns;
+
+    assert.equal(untrustedTurns.length, 1, `codex called the model ${untrustedTurns.length} times, not once\n${untrustedOutput}`);
 
     assertSkillsListed('Codex', untrusted, (skill) => new RegExp(`^- postman:${skill}: `, 'm'));
     assert.doesNotMatch(untrusted, /<EXTREMELY_IMPORTANT>/, 'Codex ran the plugin hook before the user trusted it; update this harness and CONTRIBUTING.md\'s Codex section');
 
-    const [trusted, afterRead] = await session(standIn, ['--dangerously-bypass-hook-trust'], 2);
+    const { turns: trustedTurns, output: trustedOutput } = await session(standIn, ['--dangerously-bypass-hook-trust']),
+        [trusted, afterRead] = trustedTurns;
 
     assertSkillsListed('Codex', trusted, (skill) => new RegExp(`^- postman:${skill}: `, 'm'));
+    assert.match(trusted, /<EXTREMELY_IMPORTANT>/, `the session-start mandate is not in what Codex sent the model. The hook, run as Codex runs it:\n${runHookAsCodex(installedPath)}`);
     assertMandate('Codex', trusted, { namespaced: true });
+    assert.equal(trustedTurns.length, 2, `codex called the model ${trustedTurns.length} times, not twice\n${trustedOutput}`);
 
     const skillFile = listedSkillFile(trusted, mandatedSkill(trusted));
 
