@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Exercise hooks/hooks.json's SessionStart command. In CI only the Droid
-# harness runs it, through Droid, so for every other vendor this is the only check.
+# harness runs it, through Droid, so for every other vendor this is the only check
+# that it resolves the root; installer/test/session-start-hook.test.js checks what the scripts print.
 #
 # Run from the repo root:
 #   .claude/skills/add-marketplace/scripts/check-hooks.sh

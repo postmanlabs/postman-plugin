@@ -1,8 +1,15 @@
 #!/bin/sh
-# Prints the session-start mandate. hooks.json passes Droid's plugin root as $1 only on Droid,
-# whose skills have no `postman:` prefix. session-start.cmd is this script for cmd.exe.
+# Prints the session-start mandate. hooks.json passes Droid's plugin root as $1 only on Droid, and only
+# Cursor sets CURSOR_PLUGIN_ROOT, rejecting stdout that isn't JSON. Neither prefixes skills with `postman:`.
+# session-start.cmd is this script for cmd.exe.
+context="${0%/*}/session-start-context.md"
+bare_names='s/`postman:\([a-z0-9-]*\)`/`\1`/g'
 if [ -n "$1" ]; then
-    sed 's/`postman:\([a-z0-9-]*\)`/`\1`/g' "${0%/*}/session-start-context.md"
+    sed "$bare_names" "$context"
+elif [ -n "$CURSOR_PLUGIN_ROOT" ]; then
+    tab=$(printf '\t') cr=$(printf '\r')
+    text=$(sed -e "$bare_names" -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e "s/$tab/\\\\t/g" -e "s/$cr/\\\\r/g" -e 's/$/\\n/' "$context") || exit
+    printf '{"additional_context":"%s"}' "$text" | tr -d '\n'
 else
-    cat "${0%/*}/session-start-context.md"
+    cat "$context"
 fi
