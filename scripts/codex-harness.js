@@ -56,12 +56,15 @@ function answer (request, body, requests) {
 async function session (standIn, extra) {
     const before = standIn.modelRequests.length,
         result = await runAgent(codex, ['exec', '--skip-git-repo-check', '--ephemeral', '--sandbox', 'danger-full-access', ...extra, 'Say ok.'], { env, cwd: project }),
-        turns = standIn.modelRequests.slice(before).filter(({ url }) => url.startsWith('/v1/responses')).map(({ body }) => transcript(body));
+        requests = standIn.modelRequests.slice(before).filter(({ url }) => url.startsWith('/v1/responses')),
+        turns = requests.map(({ body }) => transcript(body)),
+        // What each request carried, item by item, for a failure to show where Codex put the hook's output.
+        items = requests.map(({ body }, turn) => (body.input ?? []).map((item) => `turn ${turn + 1} ${item.role ?? item.type}: ${JSON.stringify(inputText(item).slice(0, 120))}`).join('\n')).join('\n');
 
     assert.equal(result.code, 0, `codex exited ${result.code}\n${result.stdout}\n${result.stderr}`);
 
     // Without --json, exec reports each hook's run on stderr as `hook: <event> <status>`.
-    return { turns, output: `${result.stdout}\n${result.stderr}`, hookRuns: result.stderr.split(/\r?\n/).filter((line) => /^hook: /.test(line.replace(/\x1b\[[0-9;]*m/g, ''))) };
+    return { turns, items, output: `${result.stdout}\n${result.stderr}`, hookRuns: result.stderr.split(/\r?\n/).filter((line) => /^hook: /.test(line.replace(/\x1b\[[0-9;]*m/g, ''))) };
 }
 
 /**
@@ -115,11 +118,11 @@ try {
     assertSkillsListed('Codex', untrusted, (skill) => new RegExp(`^- postman:${skill}: `, 'm'));
     assert.doesNotMatch(untrusted, /<EXTREMELY_IMPORTANT>/, 'Codex ran the plugin hook before the user trusted it; update this harness and CONTRIBUTING.md\'s Codex section');
 
-    const { turns: trustedTurns, output: trustedOutput, hookRuns } = await session(standIn, ['--dangerously-bypass-hook-trust']),
+    const { turns: trustedTurns, items: trustedItems, output: trustedOutput, hookRuns } = await session(standIn, ['--dangerously-bypass-hook-trust']),
         [trusted, afterRead] = trustedTurns;
 
     assertSkillsListed('Codex', trusted, (skill) => new RegExp(`^- postman:${skill}: `, 'm'));
-    assert.match(trusted, /<EXTREMELY_IMPORTANT>/, `the session-start mandate is not in what Codex sent the model. Codex reported ${hookRuns.length ? hookRuns.join('; ') : 'no hook run'}. The hook, run as Codex runs it:\n${runHookAsCodex(installedPath)}`);
+    assert.match(trusted, /<EXTREMELY_IMPORTANT>/, `the session-start mandate is not in what Codex sent the model. Codex reported ${hookRuns.length ? hookRuns.join('; ') : 'no hook run'}. Codex sent:\n${trustedItems}\nThe hook, run as Codex runs it:\n${runHookAsCodex(installedPath)}`);
     assertMandate('Codex', trusted, { namespaced: true });
     assert.equal(trustedTurns.length, 2, `codex called the model ${trustedTurns.length} times, not twice\n${trustedOutput}`);
 

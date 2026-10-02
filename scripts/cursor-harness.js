@@ -39,15 +39,20 @@ try {
     copyCheckout(plugin);
     pointMcpAt(path.join(plugin, 'mcp.cursor.json'), standIn.mcpUrl);
 
-    // Connecting is enough for the stand-in to see the headers; the 401 it answers fails the listing.
-    await runAgent(cursor, ['mcp', 'list-tools', 'postman'], { env, cwd: project });
-    assertMcpHeaders('Cursor', standIn.mcpRequests, headers);
-
-    const session = await runAgent(cursor, ['-p', '--trust', '--output-format', 'json', PROMPT], { env, cwd: project, timeout: 300000 });
+    const session = await runAgent(cursor, ['-p', '--trust', '--approve-mcps', '--output-format', 'json', PROMPT], { env, cwd: project, timeout: 300000 });
 
     assert.equal(session.code, 0, `cursor-agent exited ${session.code}\n${session.stdout}\n${session.stderr}`);
 
-    const reply = normalize(JSON.parse(session.stdout).result ?? '');
+    let reply;
+
+    try {
+        reply = normalize(JSON.parse(session.stdout).result ?? '');
+    }
+    catch {
+        assert.fail(`cursor-agent did not print a JSON result:\n${session.stdout}\n${session.stderr}`);
+    }
+
+    console.log(`Cursor's model replied:\n${reply}`);
 
     assert.ok(reply.includes(normalize(sentence)), `the session-start mandate did not reach Cursor's model; it replied:\n${reply}`);
     assert.doesNotMatch(reply, /postman:api-engineer/, `Cursor got the mandate with \`postman:\` skill names, which it cannot resolve:\n${reply}`);
@@ -57,6 +62,13 @@ try {
     const listed = (reply.split('SKILLS:').pop() ?? '').split(/[,\s]+/).map((name) => name.replace(/^postman:/, '')).filter(Boolean);
 
     assert.deepEqual(skills.filter((skill) => !listed.includes(skill)), [], `Cursor's model did not list every skill in manifest.json:\n${reply}`);
+
+    if (!standIn.mcpRequests.length) {
+        const listing = await runAgent(cursor, ['mcp', 'list'], { env, cwd: project });
+
+        assert.fail(`Cursor never connected to the Postman MCP server. \`cursor-agent mcp list\` exited ${listing.code}:\n${listing.stdout}\n${listing.stderr}`);
+    }
+    assertMcpHeaders('Cursor', standIn.mcpRequests, headers);
 
     console.log(`cursor-agent ${run(cursor, ['--version'], { env }).trim()} delivered the mandate, loaded ${ENTRY_SKILL} and connected to the postman MCP server from ${plugin}`);
 }
