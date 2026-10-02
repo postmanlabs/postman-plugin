@@ -53,7 +53,7 @@ function runChecks () {
 
     // These accumulate, so one commit surfaces every problem at once. Uniqueness
     // runs last because the route checks are what populate `sources`.
-    manifestIsInSyncWithSkillFiles();
+    generatedFilesAreInSync();
     manifestRoutesAgreeWithTheirMcpConfig();
     packageRoutesAgreeWithTheirMcpConfig();
     noTwoRoutesShareAnXSource();
@@ -70,7 +70,7 @@ function everyTrackedJsonParses () {
     }
 }
 
-function manifestIsInSyncWithSkillFiles () {
+function generatedFilesAreInSync () {
     try {
         execFileSync('node', [path.join(ROOT, 'scripts', 'build-manifest.js'), '--check'], {
             cwd: ROOT,
@@ -78,7 +78,7 @@ function manifestIsInSyncWithSkillFiles () {
         });
     }
     catch (e) {
-        errors.push('manifest.json is stale. Run `node scripts/build-manifest.js` and stage the result.');
+        errors.push('manifest.json or .kimi-plugin/session-start-context.md is stale. Run `node scripts/build-manifest.js` and stage the result.');
     }
 }
 
