@@ -1,6 +1,6 @@
 @echo off
-rem hooks/session-start for cmd.exe, which Droid runs hooks through on Windows. Cursor's PowerShell
-rem runs it there too, resolving the extensionless path to .ps1, .exe, .bat, then .cmd.
+rem hooks/session-start for cmd.exe, which Droid and Codex run hooks through on Windows. Cursor's
+rem PowerShell runs it there too, resolving the extensionless path to .ps1, .exe, .bat, then .cmd.
 if "%~1"=="" if not defined CURSOR_PLUGIN_ROOT (
     type "%~dp0session-start-context.md"
     exit /b

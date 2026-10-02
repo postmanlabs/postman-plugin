@@ -68,7 +68,8 @@ async function session (standIn, extra) {
  * Windows, Codex's own `${...}` substitutions, then `%COMSPEC% /C` or `$SHELL -lc`. Codex logs none of it.
  */
 function runHookAsCodex (installedPath) {
-    const [{ hooks: [handler] }] = readJson(path.join(installedPath, 'hooks', 'hooks.json')).hooks.SessionStart,
+    const hooksFile = readJson(path.join(installedPath, '.codex-plugin', 'plugin.json')).hooks ?? 'hooks/hooks.json',
+        [{ hooks: [handler] }] = readJson(path.join(installedPath, hooksFile)).hooks.SessionStart,
         variables = { PLUGIN_ROOT: installedPath, CLAUDE_PLUGIN_ROOT: installedPath },
         command = Object.entries(variables).reduce((line, [key, value]) => line.replaceAll(`\${${key}}`, value),
             (process.platform === 'win32' && handler.commandWindows) || handler.command),
