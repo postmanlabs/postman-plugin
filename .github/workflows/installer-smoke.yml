@@ -5,9 +5,12 @@
 # They install from GitHub or npm, not from this checkout, so it tests the
 # installer, not a branch's skills; only the last three steps load this checkout,
 # as a tarball into Pi, as a marketplace into Droid and as a clone's files into
-# OpenCode. It also runs nightly,
-# because an agent release breaks the installer without anyone pushing here.
+# OpenCode. It also runs nightly, because an agent release breaks the installer
+# without anyone pushing here, and the release-installer skill dispatches it on
+# the commit it is about to tag.
 name: Installer smoke
+# A dispatched run is named after its commit, which release.mjs smoke finds it by.
+run-name: ${{ inputs.ref && format('Installer smoke on {0}', inputs.ref) || '' }}
 
 on:
   push:
@@ -17,10 +20,22 @@ on:
     paths: ['installer/**', 'opencode/**', 'scripts/lib/**', 'scripts/factory-harness.js', '.github/workflows/installer-smoke.yml']
   schedule:
     - cron: '23 4 * * *'
+  # The release-installer skill passes the exact commit it is about to tag.
   workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Commit, branch or tag to smoke-test; empty for the branch dispatched on.'
+        required: false
+        type: string
 
 permissions:
   contents: read
+
+# A new push to a pull request cancels the run it supersedes. Every other run gets a group
+# of its own: a group holds one pending run, so sharing one could drop a release's smoke run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
   smoke:
@@ -45,6 +60,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: ${{ inputs.ref }}
           persist-credentials: false
 
       - uses: actions/setup-node@v7
@@ -117,5 +133,6 @@ jobs:
         # npm puts global bins in the prefix itself on Windows, in its bin/ elsewhere.
         run: |
           npm ci
-          export OPENCODE_BIN="$(node -p 'require("path").join(process.argv[1], process.platform === "win32" ? "opencode.cmd" : "bin/opencode")' "$(npm prefix -g)")"
+          OPENCODE_BIN=$(node -p 'require("path").join(process.argv[1], process.platform === "win32" ? "opencode.cmd" : "bin/opencode")' "$(npm prefix -g)")
+          export OPENCODE_BIN
           npm run test:harness

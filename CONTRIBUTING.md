@@ -288,9 +288,9 @@ node dist/cli.js install --dry-run   # the commands an install would run
 `npm test` fails when a route in `scripts/routes.js`, or any `.*-plugin/`
 directory, has no adapter whose `route` names it, so a new route can't ship
 without one. The `Installer smoke` workflow runs the installer against the
-latest Claude Code, Codex, Droid and Pi CLIs on every installer change and nightly, so
-a change to a CLI's commands or output fails CI even when nothing here
-changed.
+latest release of every agent it supports, on Linux and Windows, on every
+installer change, nightly, and before every release, so a change to an agent's
+commands or output fails CI even when nothing here changed.
 
 To release it, run `/release-installer rc`, `/release-installer latest` or
 `/release-installer <version>` in Claude Code. The skill in
@@ -303,14 +303,18 @@ already under way:
    `mcp.pi.json`. Commit a release candidate (`-rc.N`) on a
    `release/postman-plugin-<version>` branch that never merges, so `main`
    carries only plain versions. Merge a plain version as its own PR.
-2. Push an annotated tag `@postman/postman-plugin@<version>` on that commit: the
+2. Run `node .claude/skills/release-installer/scripts/release.mjs smoke <commit>`
+   on the commit you will tag. It dispatches `Installer smoke` on exactly that
+   commit and exits 0 only when it is green. It runs before the tag because a
+   pushed tag is the release: a failure after it would burn the version.
+3. Push an annotated tag `@postman/postman-plugin@<version>` on that commit: the
    rc branch's commit, or the PR's merge commit. `release.yml` checks that the tag matches `package.json`,
    runs the tests, and publishes with npm trusted publishing and provenance: a
    release candidate goes to the `next` dist-tag (`npx @postman/postman-plugin@next`),
    `-alpha.N`, `-beta.N` and `-canary.N` go to a dist-tag of that name, and a plain
    version goes to `latest` and must be tagged on `main`. Any other prerelease, and
    any version older than the one its dist-tag already points at, is refused.
-3. Never move a pushed tag; a release that went wrong gets the next version. To
+4. Never move a pushed tag; a release that went wrong gets the next version. To
    retry a tag, run the workflow by hand. A version already on npm is not
    published again, so a retry still creates a release page that failed the
    first time: `gh workflow run release.yml --ref <tag> -f tag=<tag>`. On the

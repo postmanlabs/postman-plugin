@@ -35,8 +35,13 @@ Below, `release.mjs <command>` means that line.
   and `git tag` out on purpose, so the push also asks for permission.
 - **Never move or delete a pushed tag.** A release that went wrong gets the next
   version.
-- **An rc is tagged on a `release/` branch that never merges.** Push only the
-  tag; it carries the commit. `main` only ever carries plain versions.
+- **An rc is tagged on a `release/` branch that never merges.** Its branch is
+  pushed only so the smoke run can check its commit out; never open a PR for it.
+  `main` only ever carries plain versions.
+- **Tag only a commit whose smoke run is green.** `release.mjs smoke <commit>`
+  installs every agent's latest release on Linux and Windows against that exact
+  commit. It runs before the tag because a pushed tag can't be retried away: a
+  failure there would burn the version.
 - **A `latest` release goes through a PR.** `main` needs an approval, and
   `release.yml` refuses a `latest` tag that isn't on `main`. Tag the PR's merge
   commit.
@@ -129,11 +134,15 @@ PI_PREFIX=$(mktemp -d) && npm install --no-save --prefix "$PI_PREFIX" @earendil-
 ## Step 4a — Tag an rc
 
 ```bash
+git push -u origin release/postman-plugin-<version>
 node .claude/skills/release-installer/scripts/release.mjs check <version> HEAD
+node .claude/skills/release-installer/scripts/release.mjs smoke HEAD
 git tag -a @postman/postman-plugin@<version> -m "@postman/postman-plugin <version>"
 ```
 
-Tag only when `check` passes.
+Run `smoke` with the Monitor tool; it takes about seven minutes and exits 0 on
+green. Tag only when `check` and `smoke` both pass; for a red `smoke`, see
+[When smoke fails](#when-smoke-fails).
 
 Confirm with the user, then `git push origin @postman/postman-plugin@<version>`.
 Go to Step 5.
@@ -158,10 +167,24 @@ while it waited for approval.
 MERGE=$(gh pr view release/postman-plugin-<version> --json mergeCommit --jq .mergeCommit.oid)
 git fetch origin main
 release.mjs check <version> "$MERGE"
+release.mjs smoke "$MERGE"
 git tag -a @postman/postman-plugin@<version> -m "@postman/postman-plugin <version>" "$MERGE"
 ```
 
-Tag only when `check` passes. Confirm with the user, then push the tag.
+Tag only when `check` and `smoke` both pass. Confirm with the user, then push the tag.
+
+### When smoke fails
+
+`smoke` names the failed job and step. Read it with
+`gh run view <id> --log-failed` before deciding:
+
+| Failed | Likely cause | Do |
+| --- | --- | --- |
+| an install, list or remove step | an agent's latest release changed a command the installer sends | stop and tell the user; fix the installer on `main` in its own PR, then release from the new commit |
+| a harness step | the latest Pi, Droid or OpenCode loads the package differently | stop and tell the user; same as above |
+| Kimi's install script, or a download | network or the vendor's host | rerun `smoke` once; tell the user if it fails again |
+
+Nothing has been tagged at this point, so a red `smoke` costs no version.
 
 ## Step 5 — Watch it until it's live
 
