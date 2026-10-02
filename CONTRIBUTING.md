@@ -193,6 +193,16 @@ It adds the section only while `api-engineer` is loaded, because `pi config`
 can turn skills off. A `postman` server in the user's own `mcp.json` takes
 precedence over the registration.
 
+`pi.registerMcpServer` arrived in Pi 0.99.0, and an extension that throws while
+loading stops every Pi session from starting. On an older Pi the extension
+skips the registration and, on `session_start`, tells the user through
+`ctx.ui.notify` that the MCP server needs Pi 0.99.0.
+
+Prompt sections arrived in Pi 0.86.0. On Pi 0.74.0 to 0.85.x the extension
+returns the system prompt with the `<postman>` section appended instead. It
+returns no prompt on 0.86.0 and later, where a returned prompt replaces the
+sectioned one.
+
 The extension declares the few Pi types it uses instead of importing Pi's,
 which ship only inside Pi's CLI package. Don't add Pi to `peerDependencies`:
 npm installs peers, so every `npx @postman/postman-plugin` would download Pi.
