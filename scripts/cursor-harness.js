@@ -61,6 +61,36 @@ function runHook () {
     return [`$ ${command}`, `exit ${result.status}`, result.stdout?.slice(0, 600), result.stderr?.slice(0, 1500), result.error?.message].filter(Boolean).join('\n');
 }
 
+/**
+ * On Windows only, after the mandate is missing: wraps the copy's session-start.cmd in one that logs how
+ * Cursor started it, runs another session, and returns the log. Cursor itself reports nothing.
+ */
+async function traceHookInCursor () {
+    if (process.platform !== 'win32') {
+        return '';
+    }
+
+    const hooks = path.join(plugin, 'hooks'),
+        log = path.join(hooks, 'trace.log');
+
+    fs.renameSync(path.join(hooks, 'session-start.cmd'), path.join(hooks, 'session-start.real.cmd'));
+    fs.writeFileSync(path.join(hooks, 'session-start.cmd'), [
+        '@echo off',
+        '>"%~dp0trace.log" (echo cwd=%CD%& echo args=[%*]& echo CURSOR_PLUGIN_ROOT=%CURSOR_PLUGIN_ROOT%& echo PATH=%PATH%& echo SystemRoot=%SystemRoot%& where powershell 2>&1)',
+        'call "%~dp0session-start.real.cmd" %* >"%~dp0trace.out" 2>>"%~dp0trace.log"',
+        'echo exit=%errorlevel%>>"%~dp0trace.log"',
+        'type "%~dp0trace.out"',
+        ''
+    ].join('\r\n'));
+
+    const again = await ask().catch((error) => ({ error: error.message }));
+
+    return [
+        '\nWith session-start.cmd traced, Cursor\'s model replied:', JSON.stringify(again),
+        fs.existsSync(log) ? `trace.log:\n${fs.readFileSync(log, 'utf8')}\ntrace.out:\n${fs.readFileSync(path.join(hooks, 'trace.out'), 'utf8').slice(0, 300)}` : 'Cursor never started session-start.cmd.'
+    ].join('\n');
+}
+
 let standIn;
 
 try {
@@ -73,7 +103,7 @@ try {
         listed = (answer.skills ?? []).map((name) => String(name).replace(/^postman:/, ''));
 
     console.log(`Cursor's model replied:\n${reply}`);
-    assert.equal(normalize(answer.mandate ?? ''), normalize(sentence), `the session-start mandate did not reach Cursor's model:\n${reply}\nThe hook, run through ${shellName}:\n${runHook()}`);
+    assert.equal(normalize(answer.mandate ?? ''), normalize(sentence), `the session-start mandate did not reach Cursor's model:\n${reply}\nThe hook, run through ${shellName}:\n${runHook()}${await traceHookInCursor()}`);
     assert.equal(normalize(answer.skill ?? ''), ENTRY_SKILL, `Cursor's model did not name ${ENTRY_SKILL} as the mandate spells it for Cursor, without \`postman:\`:\n${reply}`);
     assert.equal(normalize(answer.firstLine ?? ''), normalize(skillExcerpt(ENTRY_SKILL)), `the mandated skill did not load from ${plugin}:\n${reply}`);
     assert.deepEqual(skills.filter((skill) => !listed.includes(skill)), [], `Cursor's model did not list every skill in manifest.json:\n${reply}`);

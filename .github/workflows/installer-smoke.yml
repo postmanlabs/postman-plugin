@@ -75,7 +75,12 @@ jobs:
       - name: Install Kimi Code
         if: runner.os != 'Windows'
         run: |
-          curl -fsSL https://code.kimi.com/kimi-code/install.sh | bash
+          # The vendor's download host sometimes times out; a second try usually gets through.
+          for attempt in 1 2 3; do
+            curl -fsSL --retry 3 https://code.kimi.com/kimi-code/install.sh | bash && break
+            [ "$attempt" -lt 3 ] || exit 1
+            sleep 15
+          done
           echo "$HOME/.kimi-code/bin" >> "$GITHUB_PATH"
 
       - name: Install Kimi Code
@@ -142,7 +147,12 @@ jobs:
       - name: Install the Cursor CLI
         if: ${{ !cancelled() && runner.os != 'Windows' && github.event.pull_request.head.repo.fork != true }}
         run: |
-          curl -fsSL https://cursor.com/install | bash
+          # The vendor's download host sometimes times out; a second try usually gets through.
+          for attempt in 1 2 3; do
+            curl -fsSL --retry 3 https://cursor.com/install | bash && break
+            [ "$attempt" -lt 3 ] || exit 1
+            sleep 15
+          done
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Install the Cursor CLI
