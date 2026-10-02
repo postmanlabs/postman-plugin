@@ -1,7 +1,7 @@
 # Runs `npx @postman/postman-plugin` against the latest release of every agent
 # it supports, on Linux and Windows. The unit tests pin the commands the
 # installer sends; this checks the agents still accept them, and that each one
-# then reports Postman (Cursor has no CLI, so its files are checked instead).
+# then reports Postman (Cursor isn't installed, so its files are checked instead).
 # They install from GitHub or npm, not from this checkout, so it tests the
 # installer, not a branch's skills; only the last three steps load this checkout,
 # as a tarball into Pi, as a marketplace into Droid and as a clone's files into
@@ -86,7 +86,7 @@ jobs:
           irm https://code.kimi.com/kimi-code/install.ps1 | iex
           "$HOME\.kimi-code\bin" >> $env:GITHUB_PATH
 
-      # Cursor is an editor, not a CLI; the installer finds it by its home directory.
+      # Cursor isn't installed; the installer finds it by the home directory its app or CLI creates on first run.
       - name: Give Cursor a home directory
         run: |
           node -e 'require("fs").mkdirSync(require("path").join(require("os").homedir(), ".cursor"), { recursive: true })'
