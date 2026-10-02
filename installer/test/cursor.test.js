@@ -97,9 +97,12 @@ test('blocks without git', async () => {
 });
 
 test('remove deletes our clone', async () => {
-    const system = fakeSystem({ bins: ['git'], dirs: [path.join(local, '.git')], probes: origin(GIT_URL) });
+    const system = fakeSystem({ bins: ['git'], dirs: [path.join(local, '.git')], probes: origin(GIT_URL) }),
+        outcome = await cursor.remove(system);
 
-    assert.equal((await cursor.remove(system)).outcome, 'done');
+    assert.equal(outcome.outcome, 'done');
+    assert.match(outcome.next, /Reload Window/);
+    assert.doesNotMatch(outcome.next, /CLI|--plugin-dir/);
     assert.deepEqual(system.commands, [`remove ${local}`]);
 });
 
