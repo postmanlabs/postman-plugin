@@ -43,13 +43,13 @@ inside an app, like Cursor's `/add-plugin`, can't be run there; say so in
 the PR body.
 
 - Where the README and the installer drive the same agent CLI (Claude Code,
-  Codex, Factory Droid, OpenCode and Pi), the README names the same plugin
-  ID, marketplace and source as `installer/src/hosts/`. Change them together.
+  Codex, Factory Droid and Pi), the README names the same plugin ID,
+  marketplace and source as `installer/src/hosts/`. Change them together.
 - Give an agent this repo with a ref, such as
   `https://github.com/postmanlabs/postman-plugin/tree/main`, wherever it
   would otherwise resolve the bare URL to the latest GitHub release. Every
-  installer release becomes this repo's latest GitHub release, so such an
-  agent gets the installer's snapshot instead of `main`. Kimi Code can't
+  stable installer release becomes this repo's latest GitHub release, so such
+  an agent gets the installer's snapshot instead of `main`. Kimi Code can't
   even parse the tag, `@postman/postman-plugin@<version>`, because of its `/`.
 - When a change alters anything a reader sees while installing (a command,
   ID, minimum version, prompt, exit code or printed next step), list it under
