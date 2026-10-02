@@ -144,6 +144,8 @@ jobs:
         run: node ../scripts/kimi-harness.js
 
       # Installed only now: before the installer ran, Cursor had to be found by its home directory alone.
+      # Linux only: the Cursor CLI on Windows runs no sessionStart hook headless
+      # (https://github.com/postmanlabs/postman-plugin/issues/83).
       - name: Install the Cursor CLI
         if: ${{ !cancelled() && runner.os != 'Windows' && github.event.pull_request.head.repo.fork != true }}
         run: |
@@ -155,16 +157,17 @@ jobs:
           done
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
-      - name: Install the Cursor CLI
-        if: ${{ !cancelled() && runner.os == 'Windows' && github.event.pull_request.head.repo.fork != true }}
-        shell: pwsh
-        run: |
-          irm 'https://cursor.com/install?win32=true' | iex
-          "$env:LOCALAPPDATA\cursor-agent" >> $env:GITHUB_PATH
+      # Windows, once https://github.com/postmanlabs/postman-plugin/issues/83 is fixed:
+      # - name: Install the Cursor CLI
+      #   if: ${{ !cancelled() && runner.os == 'Windows' && github.event.pull_request.head.repo.fork != true }}
+      #   shell: pwsh
+      #   run: |
+      #     irm 'https://cursor.com/install?win32=true' | iex
+      #     "$env:LOCALAPPDATA\cursor-agent" >> $env:GITHUB_PATH
 
       # A fork's pull request gets no secrets, and the Cursor CLI runs only on Cursor's model.
       - name: The latest Cursor CLI loads this checkout
-        if: ${{ !cancelled() && github.event.pull_request.head.repo.fork != true }}
+        if: ${{ !cancelled() && runner.os != 'Windows' && github.event.pull_request.head.repo.fork != true }}
         run: node ../scripts/cursor-harness.js
         env:
           CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}

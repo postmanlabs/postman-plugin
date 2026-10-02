@@ -47,44 +47,6 @@ async function ask () {
     }
 }
 
-/**
- * Windows only, after the mandate is missing: one session with a user-level hook and an extra plugin hook,
- * each a .cmd that writes a marker outside the plugin, tells whether Cursor runs either kind of hook there.
- */
-async function canaryHooks () {
-    if (process.platform !== 'win32') {
-        return '';
-    }
-
-    const markers = path.join(root, 'markers'),
-        canary = (name) => {
-            const file = path.join(root, `canary-${name}.cmd`);
-
-            fs.writeFileSync(file, ['@echo off', `echo ran> "${path.join(markers, name)}"`, `echo {"additional_context":"CANARY-${name}"}`, ''].join('\r\n'));
-
-            return file;
-        },
-        pluginHooks = path.join(plugin, 'hooks', 'hooks.json'),
-        config = readJson(pluginHooks);
-
-    fs.mkdirSync(markers, { recursive: true });
-    fs.mkdirSync(path.join(home, '.cursor'), { recursive: true });
-    fs.copyFileSync(canary('plugin'), path.join(plugin, 'hooks', 'canary-plugin.cmd'));
-    config.hooks.SessionStart[0].hooks.push({ type: 'command', command: '"${CURSOR_PLUGIN_ROOT}/hooks/canary-plugin.cmd"' });
-    fs.writeFileSync(pluginHooks, JSON.stringify(config));
-    fs.writeFileSync(path.join(home, '.cursor', 'hooks.json'), JSON.stringify({ version: 1, hooks: { sessionStart: [{ command: `"${canary('user')}"` }] } }));
-
-    const session = await runAgent(cursor, ['-p', '--trust', '--plugin-dir', plugin, '--output-format', 'json', 'Reply with every line of your context that starts with CANARY, or NONE.'],
-        { env: { ...env, DEBUG: '*' }, cwd: project, timeout: 300000 });
-
-    return [
-        '\nCanary session, with a user-level hook and an extra plugin hook:',
-        `markers written: ${JSON.stringify(fs.readdirSync(markers))}`,
-        `reply: ${session.stdout.slice(0, 400)}`,
-        ...session.stderr.split(/\r?\n/).filter((line) => /hook/i.test(line)).slice(0, 30)
-    ].join('\n');
-}
-
 let standIn;
 
 try {
@@ -97,7 +59,7 @@ try {
         listed = (answer.skills ?? []).map((name) => String(name).replace(/^postman:/, ''));
 
     console.log(`Cursor's model replied:\n${reply}`);
-    assert.equal(normalize(answer.mandate ?? ''), normalize(sentence), `the session-start mandate did not reach Cursor's model:\n${reply}${await canaryHooks()}`);
+    assert.equal(normalize(answer.mandate ?? ''), normalize(sentence), `the session-start mandate did not reach Cursor's model:\n${reply}`);
     assert.equal(normalize(answer.skill ?? ''), ENTRY_SKILL, `Cursor's model did not name ${ENTRY_SKILL} as the mandate spells it for Cursor, without \`postman:\`:\n${reply}`);
     assert.equal(normalize(answer.firstLine ?? ''), normalize(skillExcerpt(ENTRY_SKILL)), `the mandated skill did not load from ${plugin}:\n${reply}`);
     assert.deepEqual(skills.filter((skill) => !listed.includes(skill)), [], `Cursor's model did not list every skill in manifest.json:\n${reply}`);

@@ -87,7 +87,9 @@ Cursor feeds the command its payload as a shell heredoc on macOS and Linux. On
 Windows it runs the command through PowerShell and resolves an extensionless
 script path by trying `.ps1`, `.exe`, `.bat` and `.cmd` beside it, so it runs
 `hooks/session-start.cmd`, and a `session-start.ps1` added there would win. Read
-from the bundles of Cursor CLI 2026.10.01, not measured on Windows.
+from the bundles of Cursor CLI 2026.10.01. Measured on `windows-latest`, that CLI
+runs no `sessionStart` hook headless at all, user-level or plugin
+([#83](https://github.com/postmanlabs/postman-plugin/issues/83)).
 
 `hooks/session-start` must stay POSIX-safe rather than bash-specific: dash is
 `/bin/sh` on Debian and Ubuntu, and Codex has no `shell` field at all.

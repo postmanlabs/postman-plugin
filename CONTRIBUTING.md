@@ -298,7 +298,9 @@ Cursor's model to quote the mandate and the skill it names, and needs a
 loads the plugin with `--plugin-dir`, because the CLI ignores
 `~/.cursor/plugins/local`, where the installer puts it
 ([#82](https://github.com/postmanlabs/postman-plugin/issues/82)), so it checks
-the plugin, not the installer's Cursor install.
+the plugin, not the installer's Cursor install. It runs on Linux only: the
+Cursor CLI on Windows runs no `sessionStart` hook headless
+([#83](https://github.com/postmanlabs/postman-plugin/issues/83)).
 
 ## The installer
 

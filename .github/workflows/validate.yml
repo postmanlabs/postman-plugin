@@ -6,7 +6,7 @@
 # vendor plugin manifest against that vendor's own published schema. One job per
 # route installs this checkout into a pinned agent (Cursor: the latest) and checks what it sends
 # its model and the MCP server: `claude-code`, `codex`, `cursor`, `factory`, `kimi`,
-# `opencode` and `pi`. Every job but `skills`, `manifest` and `schema` runs on Linux,
+# `opencode` and `pi`. Every job but `skills`, `manifest`, `schema` and `cursor` runs on Linux,
 # and on Windows too unless a pull request changes only skills or docs (see `os`).
 name: Validate
 
@@ -370,14 +370,13 @@ jobs:
 
   # The Cursor CLI talks only to Cursor's backend, so this harness runs on Cursor's model with a
   # Cursor API key, which a fork's pull request doesn't get. Cursor's installer takes no version.
+  # Linux only: the Cursor CLI on Windows runs no sessionStart hook headless, so the mandate can't
+  # reach its model there (https://github.com/postmanlabs/postman-plugin/issues/83). Put the `os`
+  # matrix and the Windows install step below back once it does.
   cursor:
-    name: Cursor plugin / ${{ matrix.label }}
-    runs-on: ${{ matrix.os }}
-    needs: os
+    name: Cursor plugin / Linux
+    runs-on: ubuntu-latest
     if: github.event.pull_request.head.repo.fork != true
-    strategy:
-      fail-fast: false
-      matrix: ${{ fromJSON(needs.os.outputs.matrix) }}
     defaults:
       run:
         shell: bash
@@ -391,7 +390,6 @@ jobs:
           node-version: lts/*
 
       - name: Install the Cursor CLI
-        if: runner.os != 'Windows'
         run: |
           # The vendor's download host sometimes times out; a second try usually gets through.
           for attempt in 1 2 3; do
@@ -401,12 +399,13 @@ jobs:
           done
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
-      - name: Install the Cursor CLI
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          irm 'https://cursor.com/install?win32=true' | iex
-          "$env:LOCALAPPDATA\cursor-agent" >> $env:GITHUB_PATH
+      # Windows, once https://github.com/postmanlabs/postman-plugin/issues/83 is fixed:
+      # - name: Install the Cursor CLI
+      #   if: runner.os == 'Windows'
+      #   shell: pwsh
+      #   run: |
+      #     irm 'https://cursor.com/install?win32=true' | iex
+      #     "$env:LOCALAPPDATA\cursor-agent" >> $env:GITHUB_PATH
 
       - name: Cursor delivers the mandate, loads the skill it names and connects to the MCP server
         run: node scripts/cursor-harness.js
