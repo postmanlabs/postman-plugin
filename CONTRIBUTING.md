@@ -67,6 +67,7 @@ it lands.
 .factory-plugin/plugin.json       the Factory Droid plugin metadata
 .app.json                         maps the Codex plugin to its published ChatGPT app ID
 opencode/                         the OpenCode plugin — source, tests, install harness, routing evals
+demos/opencode-simulation-panel/  a demo OpenCode v2 panel streaming a running `postman simulate run` — not shipped
 installer/                        `npx @postman/postman-plugin` — one adapter per agent in src/hosts/ — and the Pi package
 installer/src/pi-extension.ts     the Pi package's extension: the session-start mandate and the MCP server
 .opencode/plugins/postman.ts      loads that plugin from source when OpenCode runs inside a clone

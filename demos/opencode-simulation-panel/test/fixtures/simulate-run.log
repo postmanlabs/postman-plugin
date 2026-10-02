@@ -1,0 +1,54 @@
+
+╔══════════════════════════════════════════════════════════════╗
+║  Simulation: checkout-degraded                               ║
+╚══════════════════════════════════════════════════════════════╝
+
+▸ Setup
+  13:15:18.172  mock started        cart            Mock server "cart" active on :4611
+  13:15:18.172  scenario applied    cart            simulation configured — latency (300ms)
+  13:15:18.232  mock started        payments        Mock server "payments" active on :4612
+  13:15:18.232  scenario applied    payments        simulation configured — chaos (40% failure)
+  13:15:18.232  scenario applied    payments        simulation configured — rate_limit (5/min)
+
+Press Ctrl+C to stop all mock servers
+  13:15:21.312  request sent        cart            GET http://localhost:4611/cart
+  13:15:21.672  scenario applied    cart            simulation configured — latency (300ms)
+  13:15:21.672  request completed   cart            GET http://localhost:4611/cart 200 360ms
+  13:15:21.690  request sent        cart            GET http://localhost:4611/cart/items
+  13:15:21.998  scenario applied    cart            simulation configured — latency (300ms)
+  13:15:21.998  request completed   cart            GET http://localhost:4611/cart/items 404 308ms
+  13:15:22.029  request sent        cart            POST http://localhost:4611/cart/items
+  13:15:22.341  scenario applied    cart            simulation configured — latency (300ms)
+  13:15:22.341  request completed   cart            POST http://localhost:4611/cart/items 201 312ms
+  13:15:22.368  request sent        payments        POST http://localhost:4612/checkout
+  13:15:22.412  scenario applied    payments        simulation configured — chaos (40% failure)
+  13:15:22.412  scenario applied    payments        simulation configured — rate_limit (5/min)
+  13:15:22.412  request completed   payments        POST http://localhost:4612/checkout 201 45ms
+  13:15:22.422  request sent        payments        POST http://localhost:4612/checkout
+  13:15:22.422  scenario applied    payments        simulation configured — chaos (40% failure)
+  13:15:22.422  scenario applied    payments        simulation configured — rate_limit (5/min)
+  13:15:22.422  request completed   payments        POST http://localhost:4612/checkout 500 0ms
+  13:15:22.430  request sent        payments        POST http://localhost:4612/checkout
+  13:15:22.436  scenario applied    payments        simulation configured — chaos (40% failure)
+  13:15:22.436  scenario applied    payments        simulation configured — rate_limit (5/min)
+  13:15:22.436  request completed   payments        POST http://localhost:4612/checkout 400 6ms
+  13:15:22.444  request sent        payments        POST http://localhost:4612/checkout
+  13:15:22.446  scenario applied    payments        simulation configured — chaos (40% failure)
+  13:15:22.446  scenario applied    payments        simulation configured — rate_limit (5/min)
+  13:15:22.446  request completed   payments        POST http://localhost:4612/checkout 400 2ms
+  13:15:22.454  request sent        payments        POST http://localhost:4612/checkout
+  13:15:22.454  scenario applied    payments        simulation configured — chaos (40% failure)
+  13:15:22.454  scenario applied    payments        simulation configured — rate_limit (5/min)
+  13:15:22.454  request completed   payments        POST http://localhost:4612/checkout 500 0ms
+  13:15:22.461  request sent        payments        POST http://localhost:4612/checkout
+  13:15:22.462  scenario applied    payments        simulation configured — chaos (40% failure)
+  13:15:22.462  scenario applied    payments        simulation configured — rate_limit (5/min)
+  13:15:22.462  request completed   payments        POST http://localhost:4612/checkout 400 2ms
+  13:15:22.469  request sent        payments        POST http://localhost:4612/checkout
+  13:15:22.469  scenario applied    payments        simulation configured — chaos (40% failure)
+  13:15:22.469  scenario applied    payments        simulation configured — rate_limit (5/min)
+  13:15:22.469  request completed   payments        POST http://localhost:4612/checkout 500 0ms
+
+Received SIGINT, stopping simulation...
+  13:15:23.558  mock stopped        cart            Mock server "cart" stopped
+  13:15:23.559  mock stopped        payments        Mock server "payments" stopped
