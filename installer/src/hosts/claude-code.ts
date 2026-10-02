@@ -1,4 +1,4 @@
-import { redact } from '../source.js';
+import { isSameRepo, redact } from '../source.js';
 import type { System } from '../system.js';
 import { blocked, failed, guard, mustProbeJson, mustRun, parseJson } from './shared.js';
 import { type Host, result } from './types.js';
@@ -15,6 +15,12 @@ type Marketplace = { name: string; source?: string; repo?: string; url?: string;
 type InstalledPlugin = { id: string; scope: string; version?: string; projectPath?: string };
 
 const isOurs = (plugin: InstalledPlugin) => plugin.id === PLUGIN_ID || SHADOW_IDS.includes(plugin.id);
+
+// A `url` source fetches one marketplace.json instead of cloning, so a URL names the repo only in a `git` source.
+function isOfficialSource (marketplace: Marketplace): boolean {
+    return isSameRepo(marketplace.repo, MARKETPLACE.repo) ||
+        (marketplace.source === 'git' && isSameRepo(marketplace.url, MARKETPLACE.repo));
+}
 
 function listPlugins (system: System): Promise<InstalledPlugin[]> {
     return mustProbeJson<InstalledPlugin[]>(system, 'claude', ['plugin', 'list', '--json']);
@@ -41,7 +47,7 @@ async function refreshMarketplace (system: System): Promise<void> {
         return;
     }
 
-    if (existing.repo !== MARKETPLACE.repo) {
+    if (!isOfficialSource(existing)) {
         const source = existing.repo ?? existing.url ?? existing.path;
 
         blocked(`marketplace ${MARKETPLACE.name} is registered from ${source ? redact(source) : 'an unknown source'}, not ${MARKETPLACE.repo}`);
