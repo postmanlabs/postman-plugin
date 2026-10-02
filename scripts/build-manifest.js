@@ -22,7 +22,10 @@ const ROOT = path.join(__dirname, '..'),
     SKILLS_DIR = path.join(ROOT, 'skills'),
     PLUGIN_MANIFEST = path.join(ROOT, '.claude-plugin', 'plugin.json'),
     MANIFEST = path.join(ROOT, 'manifest.json'),
-    SCHEMA_VERSION = 1;
+    SCHEMA_VERSION = 1,
+
+    // `postman init` writes AGENTS.md naming the manifest's first skill as the entry point.
+    ENTRY_SKILL = 'api-engineer';
 
 /**
  * Lists every file under a directory, depth first, as POSIX-relative paths.
@@ -139,6 +142,14 @@ function build () {
             })
         });
     }
+
+    const entry = skills.findIndex((skill) => skill.name === ENTRY_SKILL);
+
+    if (entry === -1) {
+        throw new Error(`${ENTRY_SKILL}: no such skill, so \`postman init\` would route API work to ${skills[0]?.name}. If it was renamed, update ENTRY_SKILL in scripts/build-manifest.js`);
+    }
+
+    skills.unshift(...skills.splice(entry, 1));
 
     return { schemaVersion: SCHEMA_VERSION, skills };
 }
