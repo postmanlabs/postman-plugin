@@ -20,5 +20,6 @@
     "flows"
   ],
   "skills": "skills",
+  "hooks": "./hooks/cursor-hooks.json",
   "mcpServers": "./mcp.cursor.json"
 }

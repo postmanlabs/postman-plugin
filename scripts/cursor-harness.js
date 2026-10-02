@@ -50,11 +50,10 @@ async function ask () {
 
 const shellName = process.platform === 'win32' ? 'PowerShell, which Cursor runs hooks through on Windows' : '/bin/sh';
 
-/** The shared hooks/hooks.json command with Cursor's substitution, run through the shell Cursor uses. */
+/** The hook `.cursor-plugin/plugin.json` names, run from the plugin's root through the shell Cursor uses. */
 function runHook () {
-    const [{ hooks: [{ command: template }] }] = readJson(path.join(plugin, 'hooks', 'hooks.json')).hooks.SessionStart,
-        command = template.replaceAll('${CLAUDE_PLUGIN_ROOT}', plugin).replaceAll('${CURSOR_PLUGIN_ROOT}', plugin),
-        options = { encoding: 'utf8', env: { ...env, CURSOR_PLUGIN_ROOT: plugin, CLAUDE_PLUGIN_ROOT: plugin }, timeout: 60000 },
+    const [{ command }] = readJson(path.join(plugin, readJson(path.join(plugin, '.cursor-plugin', 'plugin.json')).hooks)).hooks.sessionStart,
+        options = { cwd: plugin, encoding: 'utf8', env: { ...env, CURSOR_PLUGIN_ROOT: plugin, CLAUDE_PLUGIN_ROOT: plugin }, timeout: 60000 },
         result = process.platform === 'win32' ?
             spawnSync('pwsh', ['-NoProfile', '-Command', command], options) :
             spawnSync('/bin/sh', ['-c', command], options);
