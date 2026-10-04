@@ -86,8 +86,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-monitoring/SKILL.md",
-          "bytes": 7790,
-          "sha256": "e26e7d2a44cd844acda124a38188f5364da0aba15ad3efc70a6462d8d5e684ae"
+          "bytes": 7834,
+          "sha256": "162bce15e16336d6af8447bdab7b3d11285530250400e0e2826e0217ff324dea"
         }
       ]
     },
@@ -99,8 +99,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-testing/SKILL.md",
-          "bytes": 5598,
-          "sha256": "1fe04e33dc59b1a6f61fd1a937aacafe178b91e6922c06101a608c03a16c2402"
+          "bytes": 5665,
+          "sha256": "cec4b60578fb71adca30fefdcd9ed1f76aa56d79f54113c8d89d9d16e2099f1e"
         }
       ]
     },
@@ -188,8 +188,8 @@
         {
           "target": "reference/flow_cli_flags.md",
           "source": "skills/flows/reference/flow_cli_flags.md",
-          "bytes": 5616,
-          "sha256": "94bb1431e3f5312fbd7e6b5f63ddfa52424aa41415ebf10df8d8323d958c1932"
+          "bytes": 5598,
+          "sha256": "f880a4398e038e7bdd4748048570131fad18bbdbe84148bfa54b541adc19dba2"
         }
       ]
     },
