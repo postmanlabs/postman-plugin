@@ -81,23 +81,27 @@ dependency and no failure mode to exercise.
    service actually behaves; one generated locally reflects only what this
    agent inferred.
 
-   **A producer's mock lives in a Git-connected workspace, and a name match is
-   not ownership.** A bare keyword search ranks on name across every workspace
+   **Ownership is the test, and neither a name match nor a Git connection
+   establishes it.** A bare keyword search ranks on name across every workspace
    in the organization, so it surfaces personal and demo-workspace mocks that
    merely share a word with the dependency — searching `identity` returned five,
-   none of them the internal Identity service. Filter on the Git connection,
-   because a repo-backed workspace is what makes a mock the producer's rather
-   than somebody's scratch copy:
+   none of them the internal Identity service. `isGitConnected=true` filters out
+   the obvious scratch copies and is worth adding, but it is not sufficient:
+   searching for a user-management mock returned a Git-connected mock whose name
+   matched exactly, owned by an unrelated workspace, while the dependency's own
+   workspaces sat elsewhere in the results. Adopting it would have wired the
+   simulation to a stranger's mock with the appearance of the producer's.
 
    ```bash
    postman search mocks "access control" --ownership organization \
      --filter "isGitConnected=true"
    ```
 
-   Narrow to one workspace with `--filter "workspaceId=<id> AND isGitConnected=true"`
-   once the graph has named the owner. A mock from a workspace with no Git
-   connection is not producer-endorsed, however well its name matches — adopt
-   it only if the user says to, and say where it came from.
+   So resolve the owner first and filter on it:
+   `--filter "workspaceId=<the dependency's workspace id> AND isGitConnected=true"`,
+   using the owner the graph named in step 1. With no owner confirmed, report
+   the candidate as unverified and generate instead — do not promote a name
+   match to "the producer's mock", and say where whatever you used came from.
 
    Only when no mock exists for a dependency, generate one —
    `postman mock generate <SOURCE> -n <name>-sim` against that dependency's
