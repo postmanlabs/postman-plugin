@@ -21,7 +21,7 @@ One file holds the environment: `postman/simulations/NAME.sim.yaml`, listing
 mocks that already exist on disk. `api-mocking` creates those members; this
 skill composes and runs them. Composing and running a simulation is entirely
 local and works signed out. Three things below do need `postman login`:
-asking the Context Graph what a service depends on (step 1), finding a mock
+asking the Context Graph who owns a dependency (step 1), finding a mock
 the dependency's own team published (step 2), and recording a run against a
 workspace (`-w` with `--simulation`). Each has a signed-out path, noted where
 it comes up.
@@ -33,24 +33,38 @@ dependency and no failure mode to exercise.
 
 ## Process
 
-1. **Map the dependency surface before writing anything.** Ask the Context
-   Graph one specific question, then confirm it against the code — the graph
-   answers for HTTP services it has ingested, and a dependency it misses costs
-   a whole run to discover mid-flight.
+1. **Build the dependency list from the service's own config first.** The
+   upstreams a service calls are declared where it resolves their base URLs,
+   and that is the authoritative list — grep for `baseUrl`, `*_URL`,
+   `*_BASEURL`, or a `config/` directory:
 
    ```bash
-   postman context-graph ask "What services and APIs does workspace-service call?" --wait
+   grep -rnoE '[A-Z_]*BASE_?URL|baseUrl' config/
    ```
 
-   Then grep the service's own configuration for upstream base URLs
-   (`baseUrl`, `*_URL`, `*_BASEURL`, a `config/` directory) and reconcile the
-   two lists. See `api-discovery` for the graph's scope and its caveats.
+   **Then ask the Context Graph for what the code can't tell you** — chiefly
+   which workspace owns each dependency, which step 2 needs, and who calls
+   this service:
 
-   `context-graph ask` needs `postman login`. Signed out — or in a repository
-   whose services aren't ingested yet — the grep is the whole of this step;
-   report that the dependency list came from this repository alone, because a
-   dependency reached through a shared client library or resolved at runtime
-   won't appear in it.
+   ```bash
+   postman context-graph ask "Which team and Postman workspace own the ACS API?" --wait
+   ```
+
+   **A graph answer naming no dependencies is not evidence there are none.**
+   Asked what a service calls, the graph answers from `CALLS`,
+   `CALLS_EXTERNAL`, `BACKED_BY` and `DEPENDS_ON` edges; where a repository's
+   outbound calls haven't been ingested there are no such edges, and the answer
+   comes back as a confident "this service does not call any other services"
+   rather than as an error. That was the measured result for a service whose
+   own config names four HTTP upstreams. Treat the graph as additive to the
+   code, never as a reason to stop. `api-discovery` has its full scope and
+   caveats.
+
+   `context-graph ask` needs `postman login`, takes roughly 20–40s, and
+   defaults to a 300s timeout. Signed out, the grep is the whole of this step;
+   report that the list came from this repository alone, because a dependency
+   reached through a shared client library or resolved at runtime won't appear
+   in it.
 
    **Name the non-HTTP dependencies out loud in this step.** `postman simulate`
    starts HTTP servers only. A dependency that speaks gRPC, a message queue, or
@@ -64,10 +78,22 @@ dependency and no failure mode to exercise.
    actually behaves; one generated locally reflects only what this agent
    inferred. Look for the former first:
 
+   **A name match is not a producer mock.** A bare keyword search ranks on
+   name across every workspace in the organization, so it surfaces demo and
+   sales-demo mocks that merely share a word with the dependency — searching
+   `identity` returned five, none of them the internal Identity service. Wiring
+   a simulation to one of those is worse than generating a mock, because it
+   looks like it came from the producer. Confirm ownership with the workspace
+   id from step 1:
+
    ```bash
-   postman search mocks "access control" --ownership organization
+   postman search mocks "access control" --ownership organization \
+     --filter "workspaceId=<the dependency's workspace id>"
    postman dependency add mock <entityId>
    ```
+
+   A mock in the dependency's own workspace is the producer's. One that only
+   matches by name is a third party's mock of something else.
 
    Only when no mock exists for a dependency, generate one —
    `postman mock generate <SOURCE> -n <name>-sim` against that dependency's
