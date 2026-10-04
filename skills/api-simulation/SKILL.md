@@ -21,7 +21,7 @@ One file holds the environment: `postman/simulations/NAME.sim.yaml`, listing
 mocks that already exist on disk. `api-mocking` creates those members; this
 skill composes and runs them. Composing and running a simulation is entirely
 local and works signed out. Three things below do need `postman login`:
-asking the Context Graph who owns a dependency (step 1), finding a mock
+asking the Context Graph what a service depends on (step 1), finding a mock
 the dependency's own team published (step 2), and recording a run against a
 workspace (`-w` with `--simulation`). Each has a signed-out path, noted where
 it comes up.
@@ -33,38 +33,41 @@ dependency and no failure mode to exercise.
 
 ## Process
 
-1. **Build the dependency list from the service's own config first.** The
-   upstreams a service calls are declared where it resolves their base URLs,
-   and that is the authoritative list — grep for `baseUrl`, `*_URL`,
-   `*_BASEURL`, or a `config/` directory:
+1. **Resolve the service's name as the graph knows it, then ask the graph.**
+   The Context Graph identifies an API by the name of the Git-connected
+   repository behind it, not by a colloquial service name. Asking about
+   `workspace-service` when the graph holds `postman-workspaces` returns a
+   confident "this service does not call any other services" — a wrong name
+   produces a negative answer, never an error, so it is indistinguishable from
+   a genuine absence of dependencies. The repository is already bound: take the
+   workspace from `.postman/resources.yaml` and the API name from the
+   repository itself rather than inventing one.
+
+   ```bash
+   postman context-graph ask "What APIs and external services does the postman-workspaces API call or depend on? List them." --wait
+   ```
+
+   Named correctly, this returns the internal APIs with the specific endpoints
+   this service calls on each, plus external services (managed Kafka, secrets,
+   feature flags, telemetry). The called endpoints are what a mock has to
+   answer, so carry them into step 2.
+
+   **Then cross-check against the service's own config** — the two are
+   complementary, not redundant. The graph reports call sites across the whole
+   repository; the config reports what this service resolves at runtime, and
+   one code path usually touches a subset:
 
    ```bash
    grep -rnoE '[A-Z_]*BASE_?URL|baseUrl' config/
    ```
 
-   **Then ask the Context Graph for what the code can't tell you** — chiefly
-   which workspace owns each dependency, which step 2 needs, and who calls
-   this service:
-
-   ```bash
-   postman context-graph ask "Which team and Postman workspace own the ACS API?" --wait
-   ```
-
-   **A graph answer naming no dependencies is not evidence there are none.**
-   Asked what a service calls, the graph answers from `CALLS`,
-   `CALLS_EXTERNAL`, `BACKED_BY` and `DEPENDS_ON` edges; where a repository's
-   outbound calls haven't been ingested there are no such edges, and the answer
-   comes back as a confident "this service does not call any other services"
-   rather than as an error. That was the measured result for a service whose
-   own config names four HTTP upstreams. Treat the graph as additive to the
-   code, never as a reason to stop. `api-discovery` has its full scope and
-   caveats.
+   Simulate the intersection that the path under test actually calls. Each list
+   holding entries the other misses is normal and is not a sign either is wrong.
 
    `context-graph ask` needs `postman login`, takes roughly 20–40s, and
    defaults to a 300s timeout. Signed out, the grep is the whole of this step;
-   report that the list came from this repository alone, because a dependency
-   reached through a shared client library or resolved at runtime won't appear
-   in it.
+   say the list came from this repository alone, since a dependency reached
+   through a shared client library or resolved at runtime won't appear in it.
 
    **Name the non-HTTP dependencies out loud in this step.** `postman simulate`
    starts HTTP servers only. A dependency that speaks gRPC, a message queue, or
@@ -74,36 +77,38 @@ dependency and no failure mode to exercise.
    which dependencies fall outside the simulation before running it, not after.
 
 2. **Resolve each dependency to a mock — the producer's, if one exists.** A
-   mock published by the team that owns the dependency reflects how that service
-   actually behaves; one generated locally reflects only what this agent
-   inferred. Look for the former first:
+   mock published by the team that owns the dependency reflects how that
+   service actually behaves; one generated locally reflects only what this
+   agent inferred.
 
-   **A name match is not a producer mock.** A bare keyword search ranks on
-   name across every workspace in the organization, so it surfaces demo and
-   sales-demo mocks that merely share a word with the dependency — searching
-   `identity` returned five, none of them the internal Identity service. Wiring
-   a simulation to one of those is worse than generating a mock, because it
-   looks like it came from the producer. Confirm ownership with the workspace
-   id from step 1:
+   **A producer's mock lives in a Git-connected workspace, and a name match is
+   not ownership.** A bare keyword search ranks on name across every workspace
+   in the organization, so it surfaces personal and demo-workspace mocks that
+   merely share a word with the dependency — searching `identity` returned five,
+   none of them the internal Identity service. Filter on the Git connection,
+   because a repo-backed workspace is what makes a mock the producer's rather
+   than somebody's scratch copy:
 
    ```bash
    postman search mocks "access control" --ownership organization \
-     --filter "workspaceId=<the dependency's workspace id>"
-   postman dependency add mock <entityId>
+     --filter "isGitConnected=true"
    ```
 
-   A mock in the dependency's own workspace is the producer's. One that only
-   matches by name is a third party's mock of something else.
+   Narrow to one workspace with `--filter "workspaceId=<id> AND isGitConnected=true"`
+   once the graph has named the owner. A mock from a workspace with no Git
+   connection is not producer-endorsed, however well its name matches — adopt
+   it only if the user says to, and say where it came from.
 
    Only when no mock exists for a dependency, generate one —
    `postman mock generate <SOURCE> -n <name>-sim` against that dependency's
-   spec or collection, or sourceless for a throwaway. State per dependency
-   which of the two it was; "all four upstreams are mocked" hides that three
-   were endorsed by their owners and one was invented here.
+   spec or collection, or sourceless for a throwaway, then make it answer the
+   endpoints step 1 reported. State per dependency which of the two it was;
+   "all four upstreams are mocked" hides that three were endorsed by their
+   owners and one was invented here.
 
-   Both commands above need `postman login`. Signed out, generating is the only
-   path available — say that a published mock may exist but wasn't searched
-   for, which is not the same as reporting that none exists.
+   Both search commands need `postman login`. Signed out, generating is the
+   only path available — say that a published mock may exist but wasn't
+   searched for, which is not the same as reporting that none exists.
 
 3. **Give every member a distinct port.** `postman mock generate` writes port
    `4500` into every `config.yaml` it creates, so two generated mocks in one
