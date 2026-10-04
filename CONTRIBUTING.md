@@ -104,8 +104,9 @@ Maintained by hand, and they are not interchangeable copies. Four things
 differ per route on purpose, and copying one file over another breaks them
 all:
 
-- **`X-Source` must be unique per route.** It is the dimension telemetry keys
-  on, so two routes sharing a value collapse into one bucket — which reads
+- **`X-Source` must be unique per route.** It is the dimension route
+  attribution keys on, so two routes sharing a value collapse into one bucket
+  — which reads
   exactly like an agent nobody uses. Nothing checks this — verify it by eye.
 - **Versions are independent.** Each route ships on its own cadence, so
   differing versions across routes are correct rather than drift. Within a
