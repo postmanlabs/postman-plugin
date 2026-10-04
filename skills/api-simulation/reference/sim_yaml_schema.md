@@ -74,6 +74,19 @@ Error: Duplicate mock port: 4500 (used by both 'acs-sim' and 'features-sim')
 
 Set `port:` per entry to fix it without editing each mock's `config.yaml`.
 
+A second, distinct port failure names the port rather than a pair of mocks:
+
+```
+Error: Port 4901 is already in use (needed by mock 'payments-sim')
+```
+
+That one is something outside this simulation holding the port — most often a
+previous simulation that is still running. Note that the installed `postman` is
+a wrapper that spawns a nested platform binary, so killing the shell job can
+leave the mock servers bound and orphaned; Ctrl+C, or a signal that reaches the
+whole process group, is what actually stops them. Confirm the ports are free
+before blaming the file.
+
 ## `scenarios`
 
 Must be an array (`'scenarios' must be an array`), and each element a mapping.

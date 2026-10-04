@@ -167,6 +167,11 @@ dependency and no failure mode to exercise.
    that served it, so the log is the evidence that traffic reached the
    dependencies — see Verification.
 
+   Stop it with Ctrl+C, which stops every member together. Killing the shell
+   job instead can orphan the mock servers — `postman` is a wrapper around a
+   nested platform binary — and the next run then fails with
+   `Port <N> is already in use`. In a script, signal the process group.
+
    **Wait for every member before starting the service, and don't use `curl
    -f`.** Members bind one at a time, so the first port to answer does not mean
    the rest are listening; poll each one, or wait for as many `mock started`
