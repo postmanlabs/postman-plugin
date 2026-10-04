@@ -9,7 +9,7 @@ description: Stands up a fake backend that behaves like a real API — from a co
 
 This skill covers the Postman CLI (`postman mock`) for **Code Mocks** — the
 code-based mock product. It is not the postman-app UI (Local Mode sidebar,
-Agent Mode tools, Simulations), nor the older classic/collection mocks that
+Agent Mode tools, the Simulations surface), nor the older classic/collection mocks that
 serve saved collection examples from a `*.mock.pstmn.io` URL — that's a
 different product (the MCP `createMock` flow), not this skill.
 
@@ -95,6 +95,10 @@ skip the repo copy.
 To point real request/assertion runs at a mock instead of hand-editing
 base-URL variables, see the `api-testing` skill's `--use-mock`/`--mock` flags
 on `collection run`.
+
+To start several of these mocks together as one environment - every upstream a
+service depends on, with latency, error, rate-limit or chaos faults injected
+per dependency - see the `api-simulation` skill and `postman simulate run`.
 
 ## The two ids that matter
 

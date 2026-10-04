@@ -9,8 +9,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-engineer/SKILL.md",
-          "bytes": 2402,
-          "sha256": "c46e31bc7f966b9b02f4eef8ef8f4ad1c6224003b1f71f00b7e6397e826d009f"
+          "bytes": 2646,
+          "sha256": "97abb8f7c7eec2c17494394a27c921c070ed500bc214613600e3523a1405be71"
         }
       ]
     },
@@ -73,8 +73,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-mocking/SKILL.md",
-          "bytes": 8955,
-          "sha256": "6ce9c0cd72953bc947f183ec682793c47a0a8bf59331261f595870bbc53946fe"
+          "bytes": 9200,
+          "sha256": "d46ef018b088e0770e43020fd02db4fcc77c03916543d260b4bfbb0b85376286"
         }
       ]
     },
@@ -88,6 +88,25 @@
           "source": "skills/api-monitoring/SKILL.md",
           "bytes": 7790,
           "sha256": "e26e7d2a44cd844acda124a38188f5364da0aba15ad3efc70a6462d8d5e684ae"
+        }
+      ]
+    },
+    {
+      "name": "api-simulation",
+      "plugin": "postman",
+      "description": "Boots every upstream a service depends on as one simulated environment — a `.sim.yaml` that starts several mocks together and injects latency, error, rate-limit, or chaos faults per dependency — so the real service under test can be exercised against mocked upstreams instead of a staging environment. Use when the user asks to \"simulate my dependencies,\" \"spin up a sandbox for this service,\" \"test against a simulated environment,\" \"mock everything this service calls,\" or \"what happens when <dependency> is down or slow.\" Covers `postman simulate run`. Builds on api-mocking for the member mocks and api-discovery for working out what to mock; running a simulation locally needs nothing from bootstrap.",
+      "files": [
+        {
+          "target": "SKILL.md",
+          "source": "skills/api-simulation/SKILL.md",
+          "bytes": 12880,
+          "sha256": "c3bf16d8bf513f24007115fdd192604c6f75f998eadc5945bf37c3152abd9bb6"
+        },
+        {
+          "target": "reference/sim_yaml_schema.md",
+          "source": "skills/api-simulation/reference/sim_yaml_schema.md",
+          "bytes": 7766,
+          "sha256": "09c65b67c3132d391cf391d80d8749bfad70b909a24c7544e5e5db0c89f984f6"
         }
       ]
     },

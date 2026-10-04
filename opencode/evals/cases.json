@@ -21,6 +21,13 @@
     ]
   },
   {
+    "id": "api-simulation",
+    "prompt": "My service calls four upstream APIs that I can't reach from my laptop. Stand them all up locally so I can run the real service against them, and show me what happens when one of them starts returning 503.",
+    "expected": [
+      "api-simulation"
+    ]
+  },
+  {
     "id": "api-testing",
     "prompt": "Run this Postman collection and verify that the API still satisfies its assertions.",
     "expected": [

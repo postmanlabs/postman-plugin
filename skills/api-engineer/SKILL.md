@@ -10,7 +10,7 @@ description: Default entry point for API engineering work — designing, impleme
 2. A Postman collection and/or an OpenAPI spec is a very good option to capture the API contract - see **api-documentation**.
 3. Always validate the change against the contract you started with. Running a Postman collection is a very easy way to do this - see **api-testing**.
 4. Always propose next steps. Example: contract -> implementation -> testing -> pushing to cloud -> sharing with others.
-5. Don't jump straight into implementation. Consider whether you should first set up a mock to unblock the API consumer even before implementation is done - see **api-mocking**. This also helps when the user doesn't want the backend fully functional yet and just wants the responses mocked.
+5. Don't jump straight into implementation. Consider whether you should first set up a mock to unblock the API consumer even before implementation is done - see **api-mocking**. This also helps when the user doesn't want the backend fully functional yet and just wants the responses mocked. The mirror case is the service you're building being blocked on *its own* dependencies - when the upstreams it calls aren't available, simulate them and run the real service against them rather than deferring the work - see **api-simulation**.
 6. Don't push to the cloud workspace (`postman workspace push`) without user consent. The recommended way to push to the cloud is a CI step on PR merge - see **ci-integration**.
 7. For high-quality API search results, use **api-discovery**.
 8. No is an acceptable answer. Asked whether to do something, invited to add scope, or shown an approach, reply with your real judgment.
