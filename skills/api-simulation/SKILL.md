@@ -33,6 +33,17 @@ dependency and no failure mode to exercise.
 
 ## Process
 
+**If a `.sim.yaml` already exists, do not skip to step 6.** An existing
+simulation encodes the dependency set as it stood when someone wrote it, and a
+member list that is one dependency short still starts cleanly and still goes
+green — the missing call just leaves for the real upstream, or fails for a
+reason that looks unrelated. Nothing in the file records when its mocks were
+generated or from what, so an inherited sandbox is not a verified one. Run
+step 1 against the current code and graph and compare the result with the
+file's members. Report a dependency with no member, and a member the service no
+longer calls, rather than quietly adding or deleting one. Then continue from
+step 3.
+
 1. **Resolve the service's name as the graph knows it, then ask the graph.**
    The Context Graph identifies an API by the name of the Git-connected
    repository behind it, not by a colloquial service name. Asking about
@@ -224,29 +235,34 @@ dependency and no failure mode to exercise.
 
 ## Critical Rules
 
-1. **The service under test is never a member of the simulation.** Mocking it
+1. **An existing simulation is a claim, not a verified environment.** Finding
+   the mocks and the `.sim.yaml` already written is not evidence that they still
+   describe what the service calls today. Re-derive the dependency set before
+   running it; a stale member list produces a green run that proves less than it
+   appears to.
+2. **The service under test is never a member of the simulation.** Mocking it
    alongside its dependencies produces a run that proves nothing. If no real
    process is under test, this is a set of mocks, not a simulation — use
    `api-mocking`.
-2. **Distinct ports, or the run fails closed.** Every generated mock declares
+3. **Distinct ports, or the run fails closed.** Every generated mock declares
    `4500`. Override with `port:` per entry in the `.sim.yaml`.
-3. **A scenario entry with no `overrides.conditions` injects nothing.** A bare
+4. **A scenario entry with no `overrides.conditions` injects nothing.** A bare
    `- path: ../mocks/x/config.yaml` under `scenarios:` parses, starts, and
    applies zero faults. It reads like a configured scenario and is a no-op;
    omit `scenarios:` entirely for a healthy member.
-4. **Faults apply to the whole member, not one route.** An injected `error`
+5. **Faults apply to the whole member, not one route.** An injected `error`
    answers every request to that mock. To fail one endpoint while others
    succeed, put that endpoint in its own mock.
-5. **`id:` and `routing:` keys are ignored by the CLI.** They may appear in a
+6. **`id:` and `routing:` keys are ignored by the CLI.** They may appear in a
    `.sim.yaml` written by the Postman app. Do not add them expecting behavior,
    and do not report header-based routing as configured.
-6. **`overrides.bypass` is not supported** — the CLI warns and ignores it.
+7. **`overrides.bypass` is not supported** — the CLI warns and ignores it.
    Proxying a route through to the real dependency is not available here; don't
    write a simulation whose correctness depends on it.
-7. **Prefer the producer's mock to a generated one, and say which you used.**
+8. **Prefer the producer's mock to a generated one, and say which you used.**
    A locally generated mock encodes this agent's assumptions about the
    dependency, which is the failure mode simulations exist to prevent.
-8. **Recording history needs both `-w` and `--simulation`.** A local
+9. **Recording history needs both `-w` and `--simulation`.** A local
    `.sim.yaml` has a name, not an id, so `-w` alone records nothing. Use
    `--no-history` when a run shouldn't be recorded at all.
 
