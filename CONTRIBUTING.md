@@ -140,6 +140,13 @@ all:
   attribution keys on, so two routes sharing a value collapse into one bucket
   — which reads
   exactly like an agent nobody uses. Nothing checks this — verify it by eye.
+- **One `X-Source` per agent route, whichever way it was installed.** The OpenCode
+  plugin reaches users through `github:postmanlabs/postman-plugin`, through
+  `@postman/postman-plugin` on npm and through a clone, and all three read the same
+  `mcp.opencode.json`. They report `postman-opencode-plugin` and the version in
+  `opencode/package.json`, so traffic from the npm package carries that version
+  and not the installer's own. The header says which agent sent the request, not
+  how it was installed.
 - **Versions are independent.** Each route ships on its own cadence, so
   differing versions across routes are correct rather than drift. Within a
   route the manifest `version` and both header strings must agree, and nothing
@@ -353,7 +360,7 @@ wherever one exists:
 | Cursor | a clone at `~/.cursor/plugins/local/postman`. A fresh install is skipped when the Cursor Marketplace copy is present, but an existing clone is kept and updated: Cursor keeps a disabled Marketplace copy on disk too, so the installer can't tell whether that copy is enabled |
 | Factory Droid | `droid plugin` against this repo as the `postman-plugin` marketplace |
 | Kimi Code | `npx --package=plugins@1.3.4 plugins add postmanlabs/postman-plugin --target kimi`, because Kimi installs plugins only from its TUI |
-| OpenCode | the clone and one-line file [opencode/README.md](opencode/README.md) documents |
+| OpenCode | `opencode plugin add github:postmanlabs/postman-plugin` on OpenCode 2.0.4 or later, `opencode plugin --global …` on OpenCode 1.14.33 or later. It reads the global config (`plugins`, or `plugin` on OpenCode 1, in `opencode.json` or `opencode.jsonc`) to see what is installed, removes with `opencode plugin remove` on OpenCode 2 and by editing the config entry on OpenCode 1, and then deletes an older clone-and-loader install so no skill loads twice. It updates by re-running with `--force` on OpenCode 1 and, on OpenCode 2, by deleting the cached copy under `<cache>/opencode/npm/git-postman-plugin-*` and adding again: `plugin add` reuses that cache, and `plugin update`, `list` and `check` need OpenCode's background service, which a second instance on the same port or a cold start answers wrongly. An npm-installed entry is left for `opencode plugin update`. `POSTMAN_PLUGIN_OPENCODE_REF` installs a ref of this repo instead of its default branch, which installer smoke uses to test a pull request |
 | Pi | `pi install npm:@postman/postman-plugin`, or `pi update` when it's installed, then `pi remove` for any git install of this repo, which would load the same skills twice |
 
 Every agent but Pi gets the plugin from GitHub, not from the npm package, so a

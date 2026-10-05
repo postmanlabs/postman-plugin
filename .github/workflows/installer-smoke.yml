@@ -72,6 +72,10 @@ jobs:
       - name: Install the agent CLIs
         run: npm install -g @anthropic-ai/claude-code @openai/codex droid @earendil-works/pi-coding-agent opencode-ai
 
+      # OpenCode 2 is its own CLI, installed apart so both majors are tested: `opencode-ai` above is OpenCode 1.
+      - name: Install OpenCode 2 beside OpenCode 1
+        run: npm install --prefix "$RUNNER_TEMP/opencode2" @opencode/cli@latest
+
       - name: Install Kimi Code
         if: runner.os != 'Windows'
         run: |
@@ -99,6 +103,10 @@ jobs:
         run: kimi --version
 
       - name: Install, then re-run to take the update path
+        env:
+          # The bare `github:` spec is this repo's default branch, which has no root package.json until a change
+          # that adds it merges; a pull request installs its own commit, as does a dispatch for a given ref.
+          POSTMAN_PLUGIN_OPENCODE_REF: ${{ (github.event.pull_request.head.repo.fork != true && github.event.pull_request.head.sha) || inputs.ref || '' }}
         run: |
           node dist/cli.js install --yes --agent "$REMOVABLE,kimi"
           node dist/cli.js install --yes --agent "$REMOVABLE,kimi"
@@ -201,7 +209,6 @@ jobs:
           PR_SHA: ${{ github.event.pull_request.head.sha }}
           INPUT_REF: ${{ inputs.ref }}
         run: |
-          npm install --prefix "$RUNNER_TEMP/opencode2" @opencode/cli@latest
           # npm puts global bins in the prefix itself on Windows, in its bin/ elsewhere.
           OPENCODE1=$(node -p 'require("path").join(process.argv[1], process.platform === "win32" ? "opencode.cmd" : "bin/opencode")' "$(npm prefix -g)")
           OPENCODE2=$(node -p 'require("path").join(process.argv[1], "node_modules", ".bin", process.platform === "win32" ? "opencode.cmd" : "opencode")' "$RUNNER_TEMP/opencode2")
@@ -228,3 +235,21 @@ jobs:
               OPENCODE_BIN="$opencode" node scripts/test-plugin-add.js registry
             fi
           done
+
+      # The installer drives whichever `opencode` is first on PATH, which was OpenCode 1 above. Last, because
+      # a PATH entry added through GITHUB_PATH holds for every step after it.
+      - name: Put OpenCode 2 first on PATH
+        if: ${{ !cancelled() }}
+        run: node -p 'require("path").join(process.argv[1], "node_modules", ".bin")' "$RUNNER_TEMP/opencode2" >> "$GITHUB_PATH"
+
+      - name: The installer installs, updates and removes Postman in OpenCode 2
+        if: ${{ !cancelled() }}
+        env:
+          POSTMAN_PLUGIN_OPENCODE_REF: ${{ (github.event.pull_request.head.repo.fork != true && github.event.pull_request.head.sha) || inputs.ref || '' }}
+        run: |
+          opencode --version
+          node dist/cli.js install --yes --agent opencode
+          node dist/cli.js install --yes --agent opencode
+          node scripts/smoke-check.js installed opencode
+          node dist/cli.js remove --yes --agent opencode
+          node scripts/smoke-check.js removed opencode

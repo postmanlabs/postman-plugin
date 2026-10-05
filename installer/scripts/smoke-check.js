@@ -6,7 +6,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnCliSync } from '../../scripts/lib/cli.js';
-import { OPENCODE_SHIM } from '../dist/source.js';
+import { parseJsonc } from '../dist/hosts/opencode-config.js';
+import { OPENCODE_SHIM, OPENCODE_SPEC } from '../dist/source.js';
 
 const [mode, ...agents] = process.argv.slice(2),
     home = os.homedir(),
@@ -52,8 +53,19 @@ const AGENTS = {
             .map(({ id }) => id).filter((id) => id === 'postman')
     },
     opencode: {
-        expected: [path.join(openCodeConfig, 'postman-plugin', 'opencode', 'src', 'index.ts'), path.join(openCodeConfig, 'plugins', 'postman.ts')],
+        expected: [OPENCODE_SPEC],
+        // The plugin's entry in the global config (`plugin` on OpenCode 1, `plugins` on OpenCode 2, in `.json` or `.jsonc`),
+        // and anything left of the older clone-and-loader install.
         found: () => [
+            ...['opencode.json', 'opencode.jsonc'].flatMap((name) => {
+                const file = path.join(openCodeConfig, name),
+                    config = fs.existsSync(file) ? parseJsonc(fs.readFileSync(file, 'utf8')) : null;
+
+                return ['plugin', 'plugins'].flatMap((key) => (Array.isArray(config?.[key]) ? config[key] : []))
+                    .map((entry) => (typeof entry === 'string' ? entry : entry?.package))
+                    .filter((spec) => typeof spec === 'string' && /postman-plugin/.test(spec))
+                    .map((spec) => spec.split('#')[0]);
+            }),
             ...present(path.join(openCodeConfig, 'postman-plugin', 'opencode', 'src', 'index.ts')),
             ...present(path.join(openCodeConfig, 'plugins', 'postman.ts'))
                 .filter((shim) => fs.readFileSync(shim, 'utf8') === OPENCODE_SHIM)

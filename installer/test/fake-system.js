@@ -51,6 +51,19 @@ export function fakeSystem ({
             return file in system.files ? system.files[file] : null;
         },
 
+        async readDir (dir) {
+            const prefix = dir + path.sep,
+                names = new Set();
+
+            for (const entry of [...Object.keys(system.files), ...system.dirs]) {
+                if (entry.startsWith(prefix)) {
+                    names.add(entry.slice(prefix.length).split(path.sep)[0]);
+                }
+            }
+
+            return [...names];
+        },
+
         async probe (command, args) {
             return respond(system.probes, [command, ...args].join(' '), { code: 1, stdout: '', stderr: 'no probe stubbed' });
         },

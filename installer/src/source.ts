@@ -7,7 +7,13 @@ export const BRANCH = 'main';
 /** Unpinned, so `pi update` moves it with each `latest` release; test/pi-package.test.js checks the name. */
 export const PI_SOURCE = 'npm:@postman/postman-plugin';
 
-/** Must stay byte-identical to the shim in opencode/README.md; test/routes.test.js enforces it. */
+/** What `opencode plugin add` installs: this repo's default branch, whose root package.json is the plugin. */
+export const OPENCODE_SPEC = `github:${REPO}`;
+
+/** The first OpenCode release of each major that installs `OPENCODE_SPEC`, found by bisecting the harness in opencode/scripts/test-plugin-add.js. */
+export const OPENCODE_MINIMUM: Record<number, [number, number, number]> = { 1: [1, 14, 33], 2: [2, 0, 4] };
+
+/** Pre-`plugin add` installs: a clone of the repo plus this one-line loader file. Must stay byte-identical to the shim in opencode/README.md; test/routes.test.js enforces it. */
 export const OPENCODE_SHIM = "export { default } from '../postman-plugin/opencode/src/index.ts';\n";
 
 /** Pinned: this third-party CLI writes Kimi's plugin store for us, and an unpinned npx would run whatever is latest. */

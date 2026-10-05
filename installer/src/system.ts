@@ -21,6 +21,8 @@ export interface System {
     exists (file: string): Promise<boolean>;
     /** `null` only when the file does not exist; any other read error is thrown, not read as "absent". */
     readFile (file: string): Promise<string | null>;
+    /** The names in a directory; empty when it is missing or not a directory, and any other error is thrown, like `readFile`. */
+    readDir (dir: string): Promise<string[]>;
     probe (command: string, args: string[]): Promise<ExecResult>;
     run (command: string, args: string[], options?: ExecOptions): Promise<ExecResult>;
     writeFile (file: string, content: string): Promise<void>;
@@ -126,6 +128,18 @@ export function createSystem ({ dryRun = false, log = (line: string) => console.
             catch (error) {
                 if (ABSENT.includes((error as NodeJS.ErrnoException).code ?? '')) {
                     return null;
+                }
+
+                throw error;
+            }
+        },
+        async readDir (dir) {
+            try {
+                return await fs.readdir(dir);
+            }
+            catch (error) {
+                if (ABSENT.includes((error as NodeJS.ErrnoException).code ?? '')) {
+                    return [];
                 }
 
                 throw error;
