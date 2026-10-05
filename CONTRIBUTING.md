@@ -65,14 +65,22 @@ config directory — has the pinned OpenCode 1 CLI load every skill, and runs
 one session against a stand-in model to check the mandate reaches it. OpenCode
 finds its project from `$PWD`, so the harness sets it; inherited, it points at
 this clone, whose `.opencode/plugins/postman.ts` would load the plugin instead.
-`scripts/test-plugin-add.js` covers the two `plugin add` routes the same way:
-`git` installs a one-commit copy of the checkout, `npm` packs the installer and
-serves the tarball from a local registry, both under a throwaway home with no
-config directory. It then runs `opencode run` against the stand-in and checks
-the skill list, the mandate, that the entry skill loads and that the MCP server
-is reached. It runs on OpenCode 1 (`opencode plugin <spec>`) and OpenCode 2
-(`opencode plugin add <spec>`); the clone route's harness above runs only on 1,
-because OpenCode 2 has no `debug skill`.
+`scripts/test-plugin-add.js` covers the `plugin` routes the same way, each under
+a throwaway home with no config directory:
+
+| Route | Installs | Runs in |
+| --- | --- | --- |
+| `git` | a one-commit copy of the checkout | `validate.yml` and `installer-smoke.yml` |
+| `npm` | the installer packed, served by a local registry | both |
+| `github` | `github:postmanlabs/postman-plugin` from GitHub, at the pull request's head commit (`PLUGIN_ADD_SPEC` sets the spec) | `installer-smoke.yml`; not for a fork's pull request, which prints a notice |
+| `registry` | `@postman/postman-plugin` from npm | `installer-smoke.yml`, nightly only; it fails until the first installer release that ships the OpenCode entrypoint |
+
+It then runs `opencode run` against the stand-in and checks the skill list the
+installed copy declares, the mandate, that the entry skill loads and that the
+MCP server is reached, and on OpenCode 2 that `plugin remove` takes the entry
+out of the config. It runs on OpenCode 1 (`opencode plugin --global <spec>`) and
+OpenCode 2 (`opencode plugin add <spec>`), on Linux and Windows; the clone
+route's harness above runs only on 1, because OpenCode 2 has no `debug skill`.
 
 Inside a clone, `.opencode/plugins/postman.ts` is that same one-line file, so
 OpenCode running in this repository loads the plugin from source.
@@ -182,6 +190,8 @@ npm test                       # builds, then unit-tests the v1 and v2 entry poi
 npm run test:harness           # installs it as a user does, has the pinned CLI load every skill and checks what a session sends the model
 node scripts/test-plugin-add.js git   # the same for `opencode plugin add` from a Git commit; needs `npm ci` in installer/ and, for OpenCode 2, OPENCODE_BIN=<path to its opencode>
 node scripts/test-plugin-add.js npm   # and from the installer's packed tarball behind a local registry
+node scripts/test-plugin-add.js github   # and from GitHub: PLUGIN_ADD_SPEC=github:postmanlabs/postman-plugin#<commit> before this is on main
+node scripts/test-plugin-add.js registry   # and from npm: PLUGIN_ADD_SPEC=@postman/postman-plugin@<version> for one release
 npm run eval:skills:validate   # every skill has at least one positive routing case
 npm run eval:skills            # live routing eval against a configured model
 ```

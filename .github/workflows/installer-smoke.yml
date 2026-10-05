@@ -184,15 +184,43 @@ jobs:
           npm run test:harness
 
       # The pinned plugin-add harness in validate.yml, against the latest OpenCode 1 installed above and the
-      # latest OpenCode 2, so a release that stops loading Postman through `opencode plugin` fails here.
-      # Linux only, like the pinned step.
+      # latest OpenCode 2, so a release that stops loading Postman through `opencode plugin` fails here. Beyond
+      # the local copy and the packed tarball it installs what users run: `github:postmanlabs/postman-plugin`
+      # from GitHub and, nightly, `@postman/postman-plugin` from npm.
       - name: The latest OpenCode installs Postman with `plugin`
-        if: ${{ !cancelled() && runner.os == 'Linux' }}
+        if: ${{ !cancelled() }}
         working-directory: opencode
+        env:
+          EVENT: ${{ github.event_name }}
+          FORK: ${{ github.event.pull_request.head.repo.fork }}
+          PR_SHA: ${{ github.event.pull_request.head.sha }}
+          INPUT_REF: ${{ inputs.ref }}
         run: |
+          npm ci
           npm install --prefix "$RUNNER_TEMP/opencode2" @opencode/cli@latest
-          for opencode in "$(npm prefix -g)/bin/opencode" "$RUNNER_TEMP/opencode2/node_modules/.bin/opencode"; do
+          # npm puts global bins in the prefix itself on Windows, in its bin/ elsewhere.
+          OPENCODE1=$(node -p 'require("path").join(process.argv[1], process.platform === "win32" ? "opencode.cmd" : "bin/opencode")' "$(npm prefix -g)")
+          OPENCODE2=$(node -p 'require("path").join(process.argv[1], "node_modules", ".bin", process.platform === "win32" ? "opencode.cmd" : "opencode")' "$RUNNER_TEMP/opencode2")
+
+          # A pull request installs its own head commit; a dispatch, the commit it was given; main and the
+          # nightly run, the bare command the README documents.
+          spec=github:postmanlabs/postman-plugin
+          if [ -n "$PR_SHA" ]; then spec="$spec#$PR_SHA"; elif [ -n "$INPUT_REF" ]; then spec="$spec#$INPUT_REF"; fi
+
+          for opencode in "$OPENCODE1" "$OPENCODE2"; do
             for route in git npm; do
               OPENCODE_BIN="$opencode" node scripts/test-plugin-add.js "$route"
             done
+
+            if [ "$FORK" = true ]; then
+              echo "::notice::the github route is not run for a fork's pull request: its head commit is not on postmanlabs/postman-plugin"
+            else
+              OPENCODE_BIN="$opencode" PLUGIN_ADD_SPEC="$spec" node scripts/test-plugin-add.js github
+            fi
+
+            # The published package changes only when the installer is released, so only the nightly run asks
+            # for it. It fails until the first release that ships the OpenCode entrypoint.
+            if [ "$EVENT" = schedule ]; then
+              OPENCODE_BIN="$opencode" node scripts/test-plugin-add.js registry
+            fi
           done

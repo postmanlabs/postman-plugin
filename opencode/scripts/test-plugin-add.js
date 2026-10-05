@@ -1,7 +1,11 @@
 #!/usr/bin/env node
-// Installs Postman with `opencode plugin add <spec>` under a throwaway home, from a Git commit
-// (`git`) or from the installer's packed tarball behind a local registry (`npm`), then runs one
-// session against a stand-in model and Postman MCP server and checks what OpenCode sent them.
+// Installs Postman with OpenCode's own `plugin` command under a throwaway home, then runs one session
+// against a stand-in model and Postman MCP server and checks what OpenCode sent them. The route is:
+//   git       a one-commit copy of this checkout
+//   npm       the installer's packed tarball, behind a local registry
+//   github    `github:postmanlabs/postman-plugin`, or PLUGIN_ADD_SPEC, from GitHub
+//   registry  `@postman/postman-plugin`, or PLUGIN_ADD_SPEC, from npm
+// `github` and `registry` install what is published, so they check the skills the installed copy declares.
 // Needs an OpenCode with a `plugin` install command: OPENCODE_BIN, else the pinned CLI in node_modules, else
 // `opencode` on PATH. No account is used.
 import assert from 'node:assert/strict';
@@ -9,14 +13,15 @@ import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
-    ENTRY_SKILL, assertMandate, assertMcpHeaders, assertSkillsListed, chatCompletion, commit, copyCheckout,
-    mandatedSkill, pointMcpAt, readJson, repoRoot, run, runAgent, skillExcerpt, startStandIn, workspace
+    ENTRY_SKILL, assertMandate, assertMcpHeaders, chatCompletion, commit, copyCheckout,
+    mandatedSkill, pointMcpAt, readJson, repoRoot, run, runAgent, skillExcerpt, skills, startStandIn, workspace
 } from '../../scripts/lib/harness.js';
 import { resolveOpenCodeExecutable } from './lib/opencode-executable.js';
 
-const ROUTES = ['git', 'npm'],
+const PUBLISHED = { github: 'github:postmanlabs/postman-plugin', registry: '@postman/postman-plugin' },
+    ROUTES = ['git', 'npm', ...Object.keys(PUBLISHED)],
     route = process.argv[2],
     openCode = resolveOpenCodeExecutable(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')),
     installerRoot = path.join(repoRoot, 'installer'),
@@ -27,10 +32,12 @@ const ROUTES = ['git', 'npm'],
 
 assert.ok(ROUTES.includes(route), `usage: node scripts/test-plugin-add.js ${ROUTES.join('|')}`);
 
+const installerManifest = readJson(path.join(installerRoot, 'package.json'));
+
 /** A registry serving only `tarball`, enough for `plugin add <name>` to resolve and fetch it. */
 function startRegistry (tarball) {
     const buffer = fs.readFileSync(tarball),
-        manifest = JSON.parse(run('tar', ['xzOf', tarball, 'package/package.json'])),
+        manifest = installerManifest,
         file = `${manifest.name.split('/')[1]}-${manifest.version}.tgz`,
         server = http.createServer((request, response) => {
             if (request.url.endsWith('.tgz')) {
@@ -111,7 +118,10 @@ try {
 
         copyCheckout(copy);
         commit(copy);
-        spec = `git+file://${copy.split(path.sep).join('/')}`;
+        spec = `git+${pathToFileURL(copy).href}`;
+    }
+    else if (route in PUBLISHED) {
+        spec = process.env.PLUGIN_ADD_SPEC || PUBLISHED[route];
     }
     else {
         registry = await startRegistry(packInstaller(root));
@@ -138,6 +148,14 @@ try {
     assert.ok(installedMcp, 'the installed package has no mcp.opencode.json beside the entrypoint');
     const mcpConfig = readJson(installedMcp);
 
+    const installedRoot = path.dirname(installedMcp),
+        installedSkills = readJson(path.join(installedRoot, 'manifest.json')).skills.map((skill) => skill.name);
+
+    // Packing or copying must not drop a skill the checkout declares.
+    if (!(route in PUBLISHED)) {
+        assert.deepEqual(installedSkills, skills, 'the installed package declares other skills than this checkout');
+    }
+
     pointMcpAt(installedMcp, standIn.mcpUrl, 'mcp');
     fs.writeFileSync(path.join(project, 'opencode.json'), `${JSON.stringify({
         $schema: 'https://opencode.ai/config.json',
@@ -160,12 +178,23 @@ try {
 
     const [first, second] = turns.map(({ body }) => chatCompletion.transcript(body));
 
-    assertSkillsListed('OpenCode', first, (skill) => new RegExp(`<name>${skill}</name>`));
+    for (const skill of installedSkills) {
+        assert.match(first, new RegExp(`<name>${skill}</name>`), `the skill ${skill} is not in the skill list OpenCode sent the model`);
+    }
+
     assertMandate('OpenCode', first, { namespaced: false });
-    assert.ok(second.includes(skillExcerpt(ENTRY_SKILL)), `the mandated skill did not load:\n${second.slice(-800)}`);
+    assert.ok(second.includes(skillExcerpt(ENTRY_SKILL, installedRoot)), `the mandated skill did not load:\n${second.slice(-800)}`);
     assertMcpHeaders('OpenCode', standIn.mcpRequests, mcpConfig.mcp.postman.headers);
 
-    console.log(`\`opencode ${ADD.join(' ')}\` from ${route} installed Postman; OpenCode sent the model the mandate and every skill, and connected to the MCP server.`);
+    // OpenCode 1 has no remove command; its entry is deleted from the config by hand (see opencode/README.md).
+    if (openCodeMajor >= 2) {
+        const removed = await runAgent(openCode, ['plugin', 'remove', spec], { cwd: nested, env: environment });
+
+        assert.equal(removed.code, 0, `opencode plugin remove ${spec} exited ${removed.code}\n${removed.stdout}\n${removed.stderr}`);
+        assert.ok(!fs.readFileSync(configFile, 'utf8').includes(spec), `plugin remove left ${spec} in ${configFile}`);
+    }
+
+    console.log(`\`opencode ${ADD.join(' ')}\` from ${route} (${spec}) installed Postman; OpenCode sent the model the mandate and every skill, and connected to the MCP server.`);
 }
 finally {
     standIn?.server.close();
