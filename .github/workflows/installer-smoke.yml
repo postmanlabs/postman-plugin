@@ -246,7 +246,8 @@ jobs:
 
       - name: The installer is not run on OpenCode for a fork's pull request
         if: ${{ !cancelled() && github.event.pull_request.head.repo.fork == true }}
-        run: echo "::notice::OpenCode is left out of the installer steps for a fork's pull request: its head commit is not on postmanlabs/postman-plugin for 'opencode plugin' to install"
+        run: |
+          echo "::notice::OpenCode is left out of the installer steps for a fork's pull request: its head commit is not on postmanlabs/postman-plugin for 'opencode plugin' to install"
 
       - name: The installer installs, updates and removes Postman in OpenCode 2
         if: ${{ !cancelled() && github.event.pull_request.head.repo.fork != true }}
