@@ -22,7 +22,7 @@ export function workspace (name) {
     fs.mkdirSync(home, { recursive: true });
     fs.mkdirSync(project, { recursive: true });
 
-    return { root, home, project, remove: () => fs.rmSync(root, { recursive: true, force: true }) };
+    return { root, home, project, remove: () => fs.rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }) };
 }
 
 // Some agents find their project from $PWD rather than the working directory they are started in.

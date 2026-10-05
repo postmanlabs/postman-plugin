@@ -180,7 +180,8 @@ needs a model:
 npm ci
 npm test                       # builds, then unit-tests the v1 and v2 entry points
 npm run test:harness           # installs it as a user does, has the pinned CLI load every skill and checks what a session sends the model
-node scripts/test-plugin-add.js git|npm   # the same for `opencode plugin add`; needs `npm ci` in installer/ and, for OpenCode 2, OPENCODE_BIN=<path to its opencode>
+node scripts/test-plugin-add.js git   # the same for `opencode plugin add` from a Git commit; needs `npm ci` in installer/ and, for OpenCode 2, OPENCODE_BIN=<path to its opencode>
+node scripts/test-plugin-add.js npm   # and from the installer's packed tarball behind a local registry
 npm run eval:skills:validate   # every skill has at least one positive routing case
 npm run eval:skills            # live routing eval against a configured model
 ```

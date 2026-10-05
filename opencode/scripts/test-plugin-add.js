@@ -19,7 +19,7 @@ const ROUTES = ['git', 'npm'],
     installerRoot = path.join(repoRoot, 'installer'),
     // OpenCode 2 is its own CLI (`@opencode/cli`) with `plugin add`; OpenCode 1's command is `plugin <module>`.
     openCodeMajor = Number(run(openCode, ['--version']).match(/(\d+)\.\d+\.\d+/)[1]),
-    ADD = openCodeMajor >= 2 ? ['plugin', 'add'] : ['plugin'],
+    ADD = openCodeMajor >= 2 ? ['plugin', 'add'] : ['plugin', '--global'],
     STANDALONE = openCodeMajor >= 2 ? ['--standalone'] : [];
 
 assert.ok(ROUTES.includes(route), `usage: node scripts/test-plugin-add.js ${ROUTES.join('|')}`);
@@ -123,13 +123,11 @@ try {
     assert.equal(added.code, 0, `opencode ${ADD.join(' ')} ${spec} exited ${added.code}\n${added.stdout}\n${added.stderr}`);
     assert.match(added.stdout, openCodeMajor >= 2 ? /installed and added/ : /Plugin config updated/, added.stdout);
 
-    // OpenCode 2 records it in the global config, OpenCode 1 in the project's `.opencode/`; the harness's own config is not written yet.
-    const configFile = findFile(root, 'opencode.json'),
-        config = readJson(configFile);
+    // Both record it in the global config, as `opencode.json` or `opencode.jsonc`; the harness's own project config is not written yet.
+    const configFile = findFile(root, 'opencode.json') || findFile(root, 'opencode.jsonc');
 
     assert.ok(configFile, 'plugin add wrote no opencode.json');
-
-    assert.equal((config.plugins ?? config.plugin)?.length, 1, `plugin add did not record the plugin in ${configFile}: ${JSON.stringify(config)}`);
+    assert.ok(fs.readFileSync(configFile, 'utf8').includes(spec), `plugin add did not record ${spec} in ${configFile}`);
 
     // Offline: the installed copy's MCP server and the model are both the local stand-in.
     const installedMcp = findFile(xdg.XDG_CACHE_HOME, 'mcp.opencode.json');
