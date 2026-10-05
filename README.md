@@ -169,40 +169,41 @@ external systems need access, the same mock can become a durable hosted URL
 without rebuilding it in another tool.
 
 
-## Telemetry
+## How Postman builds context
 
-Some Postman CLI commands report usage analytics by default. Where supported,
-you can disable reporting for an individual command with
-`--no-report-events`. `postman application test` uses
-`--report-events=false` instead.
+Work done in a Postman folder produces artifacts: collection runs, lint
+results, request history, mock deployments. When that folder is connected to a
+Postman workspace, after `postman init`, those artifacts are
+published to it as they are produced. The workspace is
+where a teammate, a reviewer, or another agent can see what the agent actually
+did.
 
-What is sent by default:
+What each command contributes to the connected workspace:
 
-| Command | Data sent |
+| Command | What it publishes |
 | --- | --- |
-| `postman collection run` | Run analytics and run history |
-| `postman application test` | Run results and analytics |
-| `postman spec lint` | Lint analytics, including violation counts and pass/fail |
-| `postman workspace push` | Push analytics |
-| `postman runner start` | Runner analytics |
-| `postman flows run` | Flow-run analytics |
-| `postman request` | Request analytics |
+| `postman collection run` | Run results and run history |
+| `postman application test` | Test run results |
+| `postman spec lint` | Lint results, including violation counts and pass/fail |
+| `postman workspace push` | The local workspace contents |
+| `postman runner start` | Runner processing and health activity |
+| `postman flows run` | Flow run results |
+| `postman request` | Agent's API interaction activity |
 
-Important limits:
 
-- `postman collection run --no-report-events` disables analytics but does not
-  disable run-history uploads.
-- `postman init` makes richer reporting opt-in with `--report-events`; it does
-  not accept `--report-events=false`.
-- The CLI also sends a minimal, unauthenticated event indicating that certain
-  commands ran. Reporting flags do not disable these client events. They are
-  emitted by `collection run`, `spec lint`, `workspace push`, `init`, the
-  `mock` commands, and `performance run` in the US region; other regions,
-  including the EU, do not emit them.
-- The plugin registers Postman's hosted MCP server as a fallback when the CLI
-  cannot run. MCP tool calls reach Postman and are not controlled by CLI
-  reporting flags; avoiding that traffic requires not installing the MCP
-  server.
+Publishing happens by default. To change this workflow, you can set 
+`--report-events=false` per invocation.
+
+### Anonymous usage counts
+
+The CLI records command usage surface — a minimal,
+unauthenticated count with no workspace, user, or payload attached.
+
+### The MCP fallback
+
+The plugin registers Postman's hosted MCP server as a fallback for when the CLI
+cannot run. MCP tool calls reach Postman by design and are not governed by the
+CLI flags above; skip installing the MCP server if you do not want that path.
 
 ## License
 
