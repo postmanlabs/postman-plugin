@@ -92,12 +92,27 @@ step 3.
    say the list came from this repository alone, since a dependency reached
    through a shared client library or resolved at runtime won't appear in it.
 
-   **Name the non-HTTP dependencies out loud in this step.** `postman simulate`
-   starts HTTP servers only. A dependency that speaks gRPC, a message queue, or
-   a workflow engine (Temporal) cannot be simulated here — it needs a real local
-   instance, and if the service awaits it without a try/catch, leaving it down
-   fails every request for reasons that have nothing to do with the mocks. Say
-   which dependencies fall outside the simulation before running it, not after.
+   **Split the dependency list by wire protocol, and say so before running
+   anything.** A code mock serves `http` or `https` and nothing else — that is
+   the only `protocol` its manifest accepts, and the generator has one emitter.
+   So the line is the protocol, not whether a dependency is internal or
+   third-party:
+
+   - **Simulatable** — anything speaking HTTP, including third-party APIs. A
+     feature-flag service, an error tracker, a chat webhook and an internal
+     microservice are all the same kind of member.
+   - **Not simulatable** — gRPC, message queues and brokers, databases, caches.
+     A workflow engine (Temporal), a managed Kafka, MySQL and Redis each need a
+     real local instance; no HTTP mock can stand in for the client's connection.
+
+   The second group is where a simulation quietly stops meaning anything. If the
+   service awaits one of them without a try/catch, leaving it down fails every
+   request for a reason that has nothing to do with the mocks — a workflow
+   client that is disabled rather than absent throws on first use, and every
+   row gets rolled back after its upstream writes already succeeded. Run those
+   dependencies for real (a local dev server is usually enough), and state which
+   dependencies fell outside the simulation when reporting the result, so nobody
+   reads a green run as covering them.
 
 2. **Resolve each dependency to a mock — the producer's, if one exists.** A
    mock published by the team that owns the dependency reflects how that
