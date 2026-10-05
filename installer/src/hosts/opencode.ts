@@ -28,7 +28,8 @@ const KEYS = ['plugin', 'plugins'],
         `git-${REPO.split('/')[1]}-${createHash('sha256').update(spec).digest('hex').slice(0, 12)}`
     ),
     // `plugin add` and `plugin remove` act on OPENCODE_CONFIG_DIR when it is set, wherever our entry was found.
-    inConfigOf = (system: System, entry: Entry) => (system.env.OPENCODE_CONFIG_DIR && system.env.OPENCODE_CONFIG_DIR !== path.dirname(entry.file) ?
+    // Compared as paths, not strings: Windows spells the same directory with either slash, in any case.
+    inConfigOf = (system: System, entry: Entry) => (system.env.OPENCODE_CONFIG_DIR && path.relative(system.env.OPENCODE_CONFIG_DIR, path.dirname(entry.file)) !== '' ?
         { env: { OPENCODE_CONFIG_DIR: path.dirname(entry.file) } } :
         undefined),
     // The older install: a clone of this repo next to a one-line loader file that imports it.
