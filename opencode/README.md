@@ -1,8 +1,10 @@
 # Postman for OpenCode
 
-Postman's agent skills for OpenCode, built on the Postman CLI: design, mock,
-test, monitor and document APIs, and deploy and debug Postman Flows from your
-OpenCode session, using the same `postman` commands you would run yourself.
+**API Engineering for Agents.** Postman brings agentic software development to
+APIs. It equips OpenCode with specialized skills for the complete API lifecycle:
+discover, design, test, document, mock, monitor, and improve APIs through
+agent-friendly, filesystem-first workflows, built on the same `postman` CLI
+commands you would run yourself.
 
 ## Install
 
