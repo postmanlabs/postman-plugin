@@ -182,3 +182,17 @@ jobs:
           OPENCODE_BIN=$(node -p 'require("path").join(process.argv[1], process.platform === "win32" ? "opencode.cmd" : "bin/opencode")' "$(npm prefix -g)")
           export OPENCODE_BIN
           npm run test:harness
+
+      # The pinned plugin-add harness in validate.yml, against the latest OpenCode 1 installed above and the
+      # latest OpenCode 2, so a release that stops loading Postman through `opencode plugin` fails here.
+      # Linux only, like the pinned step.
+      - name: The latest OpenCode installs Postman with `plugin`
+        if: ${{ !cancelled() && runner.os == 'Linux' }}
+        working-directory: opencode
+        run: |
+          npm install --prefix "$RUNNER_TEMP/opencode2" @opencode/cli@latest
+          for opencode in "$(npm prefix -g)/bin/opencode" "$RUNNER_TEMP/opencode2/node_modules/.bin/opencode"; do
+            for route in git npm; do
+              OPENCODE_BIN="$opencode" node scripts/test-plugin-add.js "$route"
+            done
+          done
