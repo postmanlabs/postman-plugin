@@ -22,7 +22,7 @@
   },
   {
     "id": "api-simulation",
-    "prompt": "My service calls four upstream APIs that I can't reach from my laptop. Stand them all up locally so I can run the real service against them, and show me what happens when one of them starts returning 503.",
+    "prompt": "I just added a new endpoint but it calls four upstream services I cannot reach from my laptop, so I have no way to run it. Get me a working sandbox where the real endpoint runs against stand-ins for those services.",
     "expected": [
       "api-simulation"
     ]

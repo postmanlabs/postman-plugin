@@ -94,13 +94,13 @@
     {
       "name": "api-simulation",
       "plugin": "postman",
-      "description": "Boots every upstream a service depends on as one simulated environment — a `.sim.yaml` that starts several mocks together and injects latency, error, rate-limit, or chaos faults per dependency — so the real service under test can be exercised against mocked upstreams instead of a staging environment. Use when the user asks to \"simulate my dependencies,\" \"spin up a sandbox for this service,\" \"test against a simulated environment,\" \"mock everything this service calls,\" or \"what happens when <dependency> is down or slow.\" Covers `postman simulate run`. Builds on api-mocking for the member mocks and api-discovery for working out what to mock; running a simulation locally needs nothing from bootstrap.",
+      "description": "Stands up every upstream a service depends on as one local environment, so you can build and run the real service when its dependencies are unreachable, unbuilt, or behind an auth wall — a `.sim.yaml` starts all the mocks together, and can inject latency, error, rate-limit or chaos faults per dependency once the happy path works. Use when the user asks to \"get me a working sandbox,\" \"I can't reach <dependency> from my laptop,\" \"let me build against these services before they exist,\" \"simulate my dependencies,\" \"mock everything this service calls,\" or \"what happens when <dependency> is down or slow.\" Covers `postman simulate run`. Builds on api-mocking for the member mocks and api-discovery for working out what to mock; running a simulation locally needs nothing from bootstrap.",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/api-simulation/SKILL.md",
-          "bytes": 18687,
-          "sha256": "58618985affce54cc60468011a353d3cbd1cb0239740a6ef9eaa507f92198f09"
+          "bytes": 23265,
+          "sha256": "ff7ac62b1edcf58bc5e75a91250dcd11cbb5e7d0911efd47c5da08153ad4f432"
         },
         {
           "target": "reference/sim_yaml_schema.md",

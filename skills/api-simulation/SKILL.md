@@ -1,6 +1,6 @@
 ---
 name: api-simulation
-description: Boots every upstream a service depends on as one simulated environment — a `.sim.yaml` that starts several mocks together and injects latency, error, rate-limit, or chaos faults per dependency — so the real service under test can be exercised against mocked upstreams instead of a staging environment. Use when the user asks to "simulate my dependencies," "spin up a sandbox for this service," "test against a simulated environment," "mock everything this service calls," or "what happens when <dependency> is down or slow." Covers `postman simulate run`. Builds on api-mocking for the member mocks and api-discovery for working out what to mock; running a simulation locally needs nothing from bootstrap.
+description: Stands up every upstream a service depends on as one local environment, so you can build and run the real service when its dependencies are unreachable, unbuilt, or behind an auth wall — a `.sim.yaml` starts all the mocks together, and can inject latency, error, rate-limit or chaos faults per dependency once the happy path works. Use when the user asks to "get me a working sandbox," "I can't reach <dependency> from my laptop," "let me build against these services before they exist," "simulate my dependencies," "mock everything this service calls," or "what happens when <dependency> is down or slow." Covers `postman simulate run`. Builds on api-mocking for the member mocks and api-discovery for working out what to mock; running a simulation locally needs nothing from bootstrap.
 ---
 
 # API Simulation
@@ -9,8 +9,14 @@ description: Boots every upstream a service depends on as one simulated environm
 
 A mock is one fake server standing in for one dependency. A **simulation** is
 the set of them a service needs in order to run at all, started as one process
-from one file, with failure conditions attached per member. Mocks are the
-individual servers; the simulation is the environment they add up to.
+from one file. Mocks are the individual servers; the simulation is the
+environment they add up to.
+
+The job this does is unblocking development: the service you are building calls
+things you cannot reach — not written yet, behind an auth wall, rate-limited, or
+simply not something to point at from a laptop — so you stand them up locally
+and build against them. Injecting faults comes later and is optional; getting
+the real service running at all is the point.
 
 The service under test is **never** a member. It runs for real — its own
 process, its own database — and only the upstreams it calls are mocked. That
@@ -136,17 +142,42 @@ step 3.
    ```
 
    So resolve the owner first and filter on it:
-   `--filter "workspaceId=<the dependency's workspace id> AND isGitConnected=true"`,
-   using the owner the graph named in step 1. With no owner confirmed, report
-   the candidate as unverified and generate instead — do not promote a name
-   match to "the producer's mock", and say where whatever you used came from.
+   `--filter "workspaceId=<the dependency's workspace id> AND isGitConnected=true"`.
+   Ask the graph for the owner — it returns the owning team and the Postman
+   workspaces linked to a service, with their ids. Expect more than one; pick
+   the workspace whose name is the service, not the consumer. With no owner
+   confirmed, report the candidate as unverified and generate instead — never
+   promote a name match to "the producer's mock", and say where whatever you
+   used came from.
 
-   Only when no mock exists for a dependency, generate one —
-   `postman mock generate <SOURCE> -n <name>-sim` against that dependency's
-   spec or collection, or sourceless for a throwaway, then make it answer the
-   endpoints step 1 reported. State per dependency which of the two it was;
-   "all four upstreams are mocked" hides that three were endorsed by their
-   owners and one was invented here.
+   **An empty result here is inconclusive, because `--filter` is applied to a
+   page that `--limit` has already capped.** The same filter returns nothing at
+   `-n 2`, three matches at `-n 5`, and twenty-three at `-n 25`. The default is
+   10, so a published mock can exist and the search still say it doesn't.
+   Always pass `-n 25` with a filter, and report "didn't find one" rather than
+   "none exists".
+
+   **When you generate, build the handler from three sources, not one.** A mock
+   is only useful if the real client accepts it:
+
+   - *The contract* — the dependency's spec or collection gives the shape:
+     `postman mock generate <SOURCE> -n <name>-sim`, or sourceless for a
+     throwaway skeleton.
+   - *The calling code* — the client in the consumer that reads the response is
+     what actually judges it, and clients are strict in ways a plausible mock
+     fails. Measured: an auth client accepted a session only when wrapped under
+     a `session` key, and a permission client ANDed results over exactly the
+     keys it had sent, so a fixed `{"allowed": true}` was rejected. Read the
+     client before writing the handler; a mock that satisfies the spec and not
+     the client costs a debugging round trip that looks like a bug in your own
+     code.
+   - *The path under test* — model the endpoints this code path calls, from
+     step 1's code reading. Everything else should fail loudly, not plausibly
+     (below).
+
+   State per dependency which of the two routes it took; "all four upstreams
+   are mocked" hides that three were endorsed by their owners and one was
+   invented here.
 
    Both search commands need `postman login`. Signed out, generating is the
    only path available — say that a published mock may exist but wasn't
@@ -162,6 +193,17 @@ step 3.
    had. Note also that the member will answer plain HTTP while the vendor is
    `https://` — fine if the client takes a full base URL, a problem if it
    forces TLS.
+
+   **Make a route the mock does not model fail loudly.** While building you
+   will discover upstream calls you did not know about, and a mock that answers
+   an unknown route with a plausible `200` hides them — the service carries on
+   against a fake and the missing dependency surfaces much later, somewhere
+   else. Return an explicit error (a `501` is clear, and an unmodelled
+   *dependency* can simply be left pointing at a closed port) so the gap shows
+   up the moment it is hit. Two real bugs surfaced exactly this way in testing:
+   an async workflow calling an endpoint nobody had modelled, and a feature-flag
+   map keyed by constant names instead of the wire ids, which had been silently
+   reading `false` for every flag.
 
 3. **Give every member a distinct port.** `postman mock generate` writes port
    `4500` into every `config.yaml` it creates, so two generated mocks in one
@@ -200,8 +242,18 @@ step 3.
    (`APP_ENV=sandbox`) that inherits the normal development config and replaces
    only the base URLs.
 
-   Two traps worth checking before trusting the run: a service that merges
-   static config objects may read `process.env` zero times, so exported
+   **The dependencies you did not mock are shared state — do not scribble on
+   them.** The database, cache and queue are real, and usually the same ones
+   your other work uses. A sandbox that seeds rows into your working database,
+   or flushes a cache another service is using, is a sandbox that costs you
+   something every time you run it. Point the service at a dedicated instance
+   (a throwaway container on its own port is cheapest), or at minimum seed from
+   a fixture you can re-apply and clean up after. Measured: one run stood up
+   its own datastores on separate ports and left nothing behind; another reused
+   the live local ones and left stray rows in them.
+
+   Two further traps worth checking before trusting the run: a service that
+   merges static config objects may read `process.env` zero times, so exported
    variables silently do nothing; and **authentication often resolves through a
    different key than the upstream list** — a session or identity middleware
    with its own configured URL will keep authenticating against the real remote
@@ -238,7 +290,29 @@ step 3.
    done
    ```
 
-7. **Add a failure variant once the baseline passes.** Copy the baseline to a
+7. **Iterate: this is where most of the time goes.** Once the sandbox answers,
+   the loop is edit code, restart, look. Three things about it are not obvious:
+
+   - **The mocks outlive your service restarts.** Leave the simulation running
+     and restart only `node app.js` (or equivalent) as you change the service.
+     That is the fast loop.
+   - **There is no hot reload on a mock.** Editing a handler changes nothing
+     until you stop the simulation and `simulate run` it again — the running
+     process keeps serving the old code, so a fix that "didn't work" may simply
+     not be loaded. Expect to restart the simulation every time you teach a
+     mock a new endpoint, which while building is often.
+   - **A broken handler looks like a network problem.** A handler that throws
+     on load answers every request with
+     `{"error":"Proxy error: connect ECONNREFUSED 127.0.0.1:<ephemeral>","simulation":true}`
+     and a `502`. The real cause — a `ReferenceError`, a bad require — appears
+     only in the simulation's own log, tagged with the member name. Read that
+     log before suspecting the port, the config or the service.
+
+   Each new upstream call you discover is normal, not a mistake: add it to that
+   member's handler, restart the simulation, continue. The mock's endpoint list
+   growing as you build is the process working.
+
+8. **Add a failure variant once the baseline passes.** Copy the baseline to a
    second `.sim.yaml` and attach a condition to one member. Keep them as
    separate files rather than editing faults in and out of one — the pair is
    what shows a reviewer the failure was reproduced and the fix held.
@@ -262,7 +336,7 @@ step 3.
    known from telemetry, use those numbers — a simulation set to the
    dependency's actual 1.2% error rate tests something the service will meet.
 
-8. **Keep it as a CI gate.** The same two commands — boot the simulation, boot
+9. **Keep it as a CI gate.** The same two commands — boot the simulation, boot
    the real service against it, run the collection at the real route — make a
    regression gate scoped to the paths that can break it. Use the readiness loop
    from step 6 rather than a fixed sleep, which is how this job goes flaky —
