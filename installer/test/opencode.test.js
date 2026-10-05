@@ -224,23 +224,28 @@ test('a failed `plugin add` leaves the older install in place', async () => {
     assert.ok(shim in system.files);
 });
 
-test('an older clone with local changes, another branch or unpushed commits is kept, and says so after the plugin is in', async () => {
+test('an older clone with local changes, another branch or unpushed commits stops the install before the plugin goes in', async () => {
     for (const probes of [cloneProbes({ changes: ' M skills/bootstrap/SKILL.md\n' }), cloneProbes({ branch: 'feat/old-work\n' }), cloneProbes({ ahead: '1' })]) {
         const system = fakeSystem({ probes: withProbes(V2, probes), bins: ['git'], ...ourClone() }),
             outcome = await opencode.install(system);
 
         assert.equal(outcome.outcome, 'blocked');
-        assert.deepEqual(system.commands, [ADD2]);
+        assert.deepEqual(system.commands, [], 'nothing runs, so two copies never load the same skills');
     }
+
+    const refresh = fakeSystem({ probes: withProbes(V2, cloneProbes({ ahead: '1' })), bins: ['git'], ...ourClone({ files: { [shim]: OPENCODE_SHIM, [json]: plugins(OPENCODE_SPEC) } }) });
+
+    assert.equal((await opencode.install(refresh)).outcome, 'blocked');
+    assert.deepEqual(refresh.commands, []);
 });
 
-test('a plugins/postman.ts it did not write is never removed, even with a clone beside it', async () => {
+test('a plugins/postman.ts it did not write is never removed, and with a clone beside it the install stops first', async () => {
     const system = fakeSystem({ probes: withProbes(V2, cloneProbes()), bins: ['git'], ...ourClone({ files: { [shim]: 'export { default } from "../postman-plugin/opencode/src/index.ts"\n' } }) }),
         outcome = await opencode.install(system);
 
     assert.equal(outcome.outcome, 'blocked');
     assert.match(outcome.message, /may load/);
-    assert.deepEqual(system.commands, [ADD2]);
+    assert.deepEqual(system.commands, []);
 });
 
 test('a plugins/postman.ts with other contents and no clone is none of our business', async () => {
@@ -357,6 +362,15 @@ test('commands act on the config directory the entry was found in, not on a cust
     assert.deepEqual(remove.commands, [`opencode plugin remove ${OPENCODE_SPEC}`]);
     assert.deepEqual(remove.runEnv[`opencode plugin remove ${OPENCODE_SPEC}`], { OPENCODE_CONFIG_DIR: config });
     assert.deepEqual(refresh.runEnv[ADD2], { OPENCODE_CONFIG_DIR: config });
+});
+
+test('OpenCode 1 forces its re-run in the config directory the entry was found in', async () => {
+    const system = fakeSystem({ env: { OPENCODE_CONFIG_DIR: '/custom' }, probes: V1, files: { [json]: plugin(OPENCODE_SPEC) } });
+
+    await opencode.install(system);
+
+    assert.deepEqual(system.commands, [`opencode plugin --global --force ${OPENCODE_SPEC}`]);
+    assert.deepEqual(system.runEnv[`opencode plugin --global --force ${OPENCODE_SPEC}`], { OPENCODE_CONFIG_DIR: config });
 });
 
 test('commands leave the environment alone when the entry is in the directory OpenCode already uses', async () => {

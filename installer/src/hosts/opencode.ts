@@ -184,7 +184,7 @@ async function removeFromConfig (system: System, entry: Entry): Promise<void> {
  */
 async function refreshEntry (system: System, version: Version, entry: Entry): Promise<void> {
     if (version.major < 2) {
-        await mustRun(system, 'opencode', ['plugin', '--global', '--force', entry.spec]);
+        await mustRun(system, 'opencode', ['plugin', '--global', '--force', entry.spec], inConfigOf(system, entry));
 
         return;
     }
@@ -261,6 +261,9 @@ export const opencode: Host = {
             if (refresh && entries[0].spec.split('#')[0].startsWith(NPM_NAME)) {
                 return result('manual', `${entries[0].spec} was installed from npm`, `Run \`opencode plugin update\`, or on OpenCode 1 \`opencode plugin --global --force ${entries[0].spec}\`.`);
             }
+
+            // Both copies would load the same skills, so an older install that cannot be deleted whole stops us before the new one goes in.
+            await preflightLegacy(system);
 
             // Replacement first: if it fails, the older install is still a working one.
             if (refresh) {

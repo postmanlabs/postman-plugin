@@ -28,6 +28,13 @@ test('comments do not glue neighbouring tokens into a different value', () => {
     assert.deepEqual(parseJsonc('{"n":1e2}'), { n: 100 });
 });
 
+test('a block comment that is never closed makes the file invalid, not shorter', () => {
+    assert.equal(parseJsonc(`{"plugin":["${SPEC}"]} /*`), null);
+    assert.equal(parseJsonc(`{"plugin":["${SPEC}"]} /* trailing`), null);
+    assert.equal(withoutArrayString(`{"plugin":["${SPEC}"]} /*`, 'plugin', SPEC), null);
+    assert.deepEqual(parseJsonc(`{"plugin":["${SPEC}"]} /* closed */`), { plugin: [SPEC] });
+});
+
 test('text that is not JSONC parses as null', () => {
     assert.equal(parseJsonc('{ "plugin": [ '), null);
     assert.equal(parseJsonc('not json'), null);

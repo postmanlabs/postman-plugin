@@ -24,7 +24,13 @@ function tokenize (text: string): Token[] {
         else if (text.startsWith('/*', index)) {
             const close = text.indexOf('*/', index + 2);
 
-            index = close === -1 ? text.length : close + 2;
+            if (close === -1) {
+                // An unterminated comment is not valid JSONC; keep it as a token JSON.parse will reject.
+                tokens.push({ kind: 'other', start: index, end: text.length, text: text.slice(index) });
+                break;
+            }
+
+            index = close + 2;
         }
         else if (char === '"') {
             let end = index + 1;
