@@ -58,10 +58,21 @@ step 3.
    postman context-graph ask "What APIs and external services does the postman-workspaces API call or depend on? List them." --wait
    ```
 
-   Named correctly, this returns the internal APIs with the specific endpoints
-   this service calls on each, plus external services (managed Kafka, secrets,
-   feature flags, telemetry). The called endpoints are what a mock has to
-   answer, so carry them into step 2.
+   Named correctly, this returns the internal APIs, plus external services
+   (managed Kafka, secrets, feature flags, telemetry), and often the specific
+   endpoints called on each.
+
+   **Those endpoints belong to the repository, not to your code path.** The
+   graph aggregates call sites across the whole service, so the endpoints it
+   names may be the ones some other route calls. Measured: asked about this
+   service, it returned one dependency and named that dependency's create and
+   destroy endpoints — while the route under test calls five different ones on
+   it, and three further dependencies the answer omitted entirely. A mock built
+   from that list answers the wrong calls and the route fails for a reason that
+   looks like the service's fault. The answer also shifts with how the question
+   is phrased, so two runs can disagree. Use the graph for *which* dependencies
+   exist and who owns them; read the code for *which endpoints this path
+   actually calls*.
 
    **Then cross-check against the service's own config** — the two are
    complementary, not redundant. The graph reports call sites across the whole
@@ -72,8 +83,9 @@ step 3.
    grep -rnoE '[A-Z_]*BASE_?URL|baseUrl' config/
    ```
 
-   Simulate the intersection that the path under test actually calls. Each list
-   holding entries the other misses is normal and is not a sign either is wrong.
+   Simulate what the path under test actually calls, taking the endpoint list
+   from the code. Each source holding entries the other misses is normal and is
+   not a sign either is wrong — they answer different questions.
 
    `context-graph ask` needs `postman login`, takes roughly 20–40s, and
    defaults to a 300s timeout. Signed out, the grep is the whole of this step;
