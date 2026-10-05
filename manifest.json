@@ -99,14 +99,14 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-simulation/SKILL.md",
-          "bytes": 17992,
-          "sha256": "139e2de8c9dea977eb50d000142617c9498594ca5a9109e03a067b5771d8151b"
+          "bytes": 18687,
+          "sha256": "58618985affce54cc60468011a353d3cbd1cb0239740a6ef9eaa507f92198f09"
         },
         {
           "target": "reference/sim_yaml_schema.md",
           "source": "skills/api-simulation/reference/sim_yaml_schema.md",
-          "bytes": 8339,
-          "sha256": "c37d7644e1357413bb999e9daba3d9f59206ee975513e19187dc45a442d1c0ca"
+          "bytes": 9044,
+          "sha256": "bb02d1966c466364a4fd124c5a9f2ca145df12a7e16719d0d62729aa08fdd4a0"
         }
       ]
     },

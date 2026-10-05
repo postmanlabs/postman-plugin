@@ -74,6 +74,19 @@ Error: Duplicate mock port: 4500 (used by both 'acs-sim' and 'features-sim')
 
 Set `port:` per entry to fix it without editing each mock's `config.yaml`.
 
+### `protocol:` in the manifest is accepted but inert
+
+A mock's `config.yaml` takes `protocol: http` or `https`, defaulting to `http`.
+Only `http` is implemented: the generated handler is `http.createServer`, there
+is one emitter, and the only TLS in the mock code is the daemon's internal mTLS
+for engine certificates — nothing serves a mock over TLS. So `protocol: https`
+joins `id:` and `routing:` as a key that parses and changes nothing.
+
+This matters when the member stands in for an `https://` third party. The mock
+answers plain HTTP on `http://127.0.0.1:PORT`, so it works when the client takes
+a full base URL including the scheme, and fails when the client forces TLS or
+pins a certificate.
+
 A second, distinct port failure names the port rather than a pair of mocks:
 
 ```

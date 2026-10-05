@@ -152,6 +152,17 @@ step 3.
    only path available — say that a published mock may exist but wasn't
    searched for, which is not the same as reporting that none exists.
 
+   **For a third-party dependency, look harder before generating.** A public
+   API's contract is usually published — on the API Network, or through Orbit,
+   which returns the paths, auth header names, required fields and known
+   gotchas for an external API without loading its whole spec (see
+   `api-discovery`). Generating a mock of a vendor API from memory is the
+   failure this step exists to prevent, and unlike an internal service whose
+   team may have published nothing, the real contract is usually there to be
+   had. Note also that the member will answer plain HTTP while the vendor is
+   `https://` — fine if the client takes a full base URL, a problem if it
+   forces TLS.
+
 3. **Give every member a distinct port.** `postman mock generate` writes port
    `4500` into every `config.yaml` it creates, so two generated mocks in one
    simulation always collide. The run fails closed rather than binding one of
