@@ -28,6 +28,7 @@
     "opencode",
     "agent-plugin"
   ],
+  "main": "./opencode/src/index.ts",
   "bin": {
     "postman-plugin": "dist/cli.js"
   },
@@ -35,7 +36,10 @@
     "dist/",
     "skills/",
     "hooks/session-start-context.md",
-    "mcp.pi.json"
+    "mcp.pi.json",
+    "mcp.opencode.json",
+    "manifest.json",
+    "opencode/src/index.ts"
   ],
   "pi": {
     "extensions": [

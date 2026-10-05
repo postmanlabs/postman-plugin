@@ -10,7 +10,7 @@ const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '
     repoRoot = path.dirname(packageRoot),
     manifest = JSON.parse(fs.readFileSync(path.join(packageRoot, 'package.json'), 'utf8')),
     skillIndex = JSON.parse(fs.readFileSync(path.join(repoRoot, 'manifest.json'), 'utf8')).skills,
-    TOP_LEVEL = ['LICENSE', 'README.md', 'dist', 'hooks', 'mcp.pi.json', 'package.json', 'skills'],
+    TOP_LEVEL = ['LICENSE', 'README.md', 'dist', 'hooks', 'manifest.json', 'mcp.opencode.json', 'mcp.pi.json', 'opencode', 'package.json', 'skills'],
     // What `pi.extensions` and the extension itself read from the tarball.
     PI_FILES = ['dist/pi-extension.js', 'hooks/session-start-context.md', 'mcp.pi.json'],
     // Pi's own limits, from the Agent Skills spec; a skill past them loads with a warning on every start.
@@ -102,5 +102,15 @@ test('staging replaces a staged copy left behind by an interrupted pack', () => 
     }
     finally {
         stage('clean');
+    }
+});
+
+test('ships the OpenCode plugin entrypoint and the files it reads, for `opencode plugin add @postman/postman-plugin`', () => {
+    assert.equal(manifest.main, './opencode/src/index.ts');
+
+    const listed = JSON.parse(packDryRun().stdout)[0].files.map((file) => file.path);
+
+    for (const file of ['opencode/src/index.ts', 'manifest.json', 'mcp.opencode.json', 'hooks/session-start-context.md', 'skills/api-engineer/SKILL.md']) {
+        assert.ok(listed.includes(file), `the tarball does not ship ${file}`);
     }
 });

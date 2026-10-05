@@ -1,0 +1,14 @@
+{
+  "name": "@postman/opencode-plugin",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Postman skills and MCP integration for OpenCode, installed with `opencode plugin add github:postmanlabs/postman-plugin`.",
+  "license": "Apache-2.0",
+  "main": "./opencode/src/index.ts",
+  "exports": {
+    "./server": "./opencode/src/index.ts"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

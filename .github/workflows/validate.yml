@@ -155,6 +155,19 @@ jobs:
       - name: Packed-install harness
         run: npm run test:harness
 
+      # Both `opencode plugin` routes, on OpenCode 1 (the pinned CLI) and OpenCode 2. Linux only: the
+      # harness packs the installer with tar and installs a `git+file://` copy of this checkout.
+      - name: Plugin-add harness
+        if: runner.os == 'Linux'
+        run: |
+          npm ci --prefix ../installer
+          npm install --prefix "$RUNNER_TEMP/opencode2" @opencode/cli@2.0.23
+          for opencode in "$PWD/node_modules/.bin/opencode" "$RUNNER_TEMP/opencode2/node_modules/.bin/opencode"; do
+            for route in git npm; do
+              OPENCODE_BIN="$opencode" node scripts/test-plugin-add.js "$route"
+            done
+          done
+
       - name: Eval cases cover every skill
         run: npm run eval:skills:validate
 
