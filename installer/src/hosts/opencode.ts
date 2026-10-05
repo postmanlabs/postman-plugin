@@ -1,8 +1,9 @@
+import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { OPENCODE_MINIMUM, OPENCODE_SHIM, OPENCODE_SPEC, REPO, isSameRepo, redact } from '../source.js';
 import type { System } from '../system.js';
 import { parseJsonc, withoutArrayString } from './opencode-config.js';
-import { blocked, failed, guard, mustRun, removeClone } from './shared.js';
+import { assertCloneRemovable, blocked, failed, guard, mustRun, removeClone } from './shared.js';
 import { type Host, result } from './types.js';
 
 type Version = { major: number; text: string };
@@ -19,9 +20,17 @@ const KEYS = ['plugin', 'plugins'],
     configDir = (system: System) => path.join(system.env.XDG_CONFIG_HOME || path.join(system.home, '.config'), 'opencode'),
     // `opencode plugin add` writes to OPENCODE_CONFIG_DIR instead when it is set.
     configDirs = (system: System) => [...new Set([system.env.OPENCODE_CONFIG_DIR, configDir(system)].filter((dir): dir is string => Boolean(dir)))],
-    // OpenCode 2 keeps one cached copy of each git plugin here, named for the repo and a hash of the spec.
-    cachedCopies = (system: System) => path.join(system.env.XDG_CACHE_HOME || path.join(system.home, '.cache'), 'opencode', 'npm'),
-    OUR_CACHED_COPY = /^git-postman-plugin-[0-9a-f]+$/,
+    // OpenCode 2 keeps one cached copy of each git plugin here, named `git-<repo>-<first 12 hex of sha256(spec)>`.
+    cachedCopy = (system: System, spec: string) => path.join(
+        system.env.XDG_CACHE_HOME || path.join(system.home, '.cache'),
+        'opencode',
+        'npm',
+        `git-${REPO.split('/')[1]}-${createHash('sha256').update(spec).digest('hex').slice(0, 12)}`
+    ),
+    // `plugin add` and `plugin remove` act on OPENCODE_CONFIG_DIR when it is set, wherever our entry was found.
+    inConfigOf = (system: System, entry: Entry) => (system.env.OPENCODE_CONFIG_DIR && system.env.OPENCODE_CONFIG_DIR !== path.dirname(entry.file) ?
+        { env: { OPENCODE_CONFIG_DIR: path.dirname(entry.file) } } :
+        undefined),
     // The older install: a clone of this repo next to a one-line loader file that imports it.
     cloneDir = (system: System) => path.join(configDir(system), 'postman-plugin'),
     shimFile = (system: System) => path.join(configDir(system), 'plugins', 'postman.ts'),
@@ -116,6 +125,18 @@ async function legacyState (system: System) {
     return { cloned, shim, loadable: cloned && await system.exists(shimTarget(system)) };
 }
 
+/** Throws `blocked` when the older install cannot be deleted whole, changing nothing. */
+async function preflightLegacy (system: System): Promise<void> {
+    const { cloned, shim } = await legacyState(system);
+
+    // A loader we didn't write may still import the clone; deleting it would break that file.
+    if (cloned && shim !== null && shim !== OPENCODE_SHIM) {
+        blocked(`${shimFile(system)} has other contents and may load ${cloneDir(system)}; move it aside and re-run`);
+    }
+
+    await assertCloneRemovable(system, cloneDir(system));
+}
+
 /** Deletes the clone and loader of the older install, refusing anything that is not ours. */
 async function removeLegacy (system: System): Promise<string[]> {
     const { cloned, shim } = await legacyState(system);
@@ -157,20 +178,40 @@ async function removeFromConfig (system: System, entry: Entry): Promise<void> {
 /**
  * OpenCode 2 caches a git plugin by its spec and `plugin add` reuses the cache, so a moved branch only
  * arrives when the cached copy is gone; `plugin update` would do it but needs OpenCode's background
- * service, which a second instance or a cold start answers wrongly. OpenCode 1 re-resolves on a forced re-run.
+ * service, which a second instance or a cold start answers wrongly. The copy is moved aside, not deleted,
+ * so a failed fetch leaves the plugin as it was. OpenCode 1 re-resolves on a forced re-run.
  */
-async function refreshEntry (system: System, version: Version, spec: string): Promise<void> {
+async function refreshEntry (system: System, version: Version, entry: Entry): Promise<void> {
     if (version.major < 2) {
-        await mustRun(system, 'opencode', ['plugin', '--global', '--force', spec]);
+        await mustRun(system, 'opencode', ['plugin', '--global', '--force', entry.spec]);
 
         return;
     }
 
-    for (const name of (await system.readDir(cachedCopies(system))).filter((entry) => OUR_CACHED_COPY.test(entry))) {
-        await system.remove(path.join(cachedCopies(system), name));
+    const copy = cachedCopy(system, entry.spec),
+        previous = `${copy}.previous`,
+        cached = await system.exists(copy);
+
+    if (cached) {
+        await system.remove(previous);
+        await system.rename(copy, previous);
     }
 
-    await mustRun(system, 'opencode', ['plugin', 'add', spec]);
+    try {
+        await mustRun(system, 'opencode', ['plugin', 'add', entry.spec], inConfigOf(system, entry));
+    }
+    catch (error) {
+        if (cached) {
+            await system.remove(copy);
+            await system.rename(previous, copy);
+        }
+
+        throw error;
+    }
+
+    if (cached) {
+        await system.remove(previous);
+    }
 }
 
 function summary (action: string, spec: string, removed: string[]): string {
@@ -222,7 +263,7 @@ export const opencode: Host = {
 
             // Replacement first: if it fails, the older install is still a working one.
             if (refresh) {
-                await refreshEntry(system, version, entries[0].spec);
+                await refreshEntry(system, version, entries[0]);
             }
             else {
                 await mustRun(system, 'opencode', addArgs(version, specToInstall(system)));
@@ -243,13 +284,15 @@ export const opencode: Host = {
                 return result('skipped', 'not installed');
             }
 
-            // The plugin first: a refusal about the older install must not leave a half-removed state behind.
+            // Everything that can refuse is checked before anything is removed, so a refusal leaves no half-removed state.
+            await preflightLegacy(system);
+
             const removed: string[] = [];
 
             for (const entry of entries) {
                 // OpenCode 2 lists plugins under `plugins` and removes them itself; OpenCode 1 has no command for it.
                 if (entry.key === 'plugins') {
-                    await mustRun(system, 'opencode', ['plugin', 'remove', entry.spec]);
+                    await mustRun(system, 'opencode', ['plugin', 'remove', entry.spec], inConfigOf(system, entry));
                 }
                 else {
                     await removeFromConfig(system, entry);

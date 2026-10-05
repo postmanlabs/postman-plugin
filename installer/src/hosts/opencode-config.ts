@@ -67,7 +67,7 @@ export function parseJsonc<T> (text: string): T | null {
             return;
         }
 
-        json += token.text;
+        json += `${token.text} `;
     });
 
     try {

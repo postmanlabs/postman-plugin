@@ -50,8 +50,10 @@ jobs:
           - os: windows-latest
             label: Windows
     env:
-      # Kimi Code has no uninstall command, so it is removed on its own below.
-      REMOVABLE: claude-code,codex,cursor,factory,opencode,pi
+      # Kimi Code has no uninstall command, so it is removed on its own below. A fork's pull request leaves OpenCode out:
+      # its head commit is not on postmanlabs/postman-plugin for `opencode plugin` to install, and the default branch has
+      # no root package.json until a change that adds it merges (the notice below says so).
+      REMOVABLE: ${{ github.event.pull_request.head.repo.fork == true && 'claude-code,codex,cursor,factory,pi' || 'claude-code,codex,cursor,factory,opencode,pi' }}
     defaults:
       run:
         shell: bash
@@ -242,8 +244,12 @@ jobs:
         if: ${{ !cancelled() }}
         run: node -p 'require("path").join(process.argv[1], "node_modules", ".bin")' "$RUNNER_TEMP/opencode2" >> "$GITHUB_PATH"
 
+      - name: The installer is not run on OpenCode for a fork's pull request
+        if: ${{ !cancelled() && github.event.pull_request.head.repo.fork == true }}
+        run: echo "::notice::OpenCode is left out of the installer steps for a fork's pull request: its head commit is not on postmanlabs/postman-plugin for 'opencode plugin' to install"
+
       - name: The installer installs, updates and removes Postman in OpenCode 2
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && github.event.pull_request.head.repo.fork != true }}
         env:
           POSTMAN_PLUGIN_OPENCODE_REF: ${{ (github.event.pull_request.head.repo.fork != true && github.event.pull_request.head.sha) || inputs.ref || '' }}
         run: |

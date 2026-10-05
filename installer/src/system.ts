@@ -27,6 +27,8 @@ export interface System {
     run (command: string, args: string[], options?: ExecOptions): Promise<ExecResult>;
     writeFile (file: string, content: string): Promise<void>;
     remove (file: string): Promise<void>;
+    /** Moves a file or directory; a dry run prints it instead. */
+    rename (from: string, to: string): Promise<void>;
     log (line: string): void;
 }
 
@@ -170,6 +172,13 @@ export function createSystem ({ dryRun = false, log = (line: string) => console.
 
             if (!dryRun) {
                 await fs.rm(file, { recursive: true, force: true });
+            }
+        },
+        async rename (from, to) {
+            log(`  rename ${from} ${to}`);
+
+            if (!dryRun) {
+                await fs.rename(from, to);
             }
         },
         log

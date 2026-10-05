@@ -122,7 +122,8 @@ export async function syncClone (system: System, dir: string): Promise<'cloned' 
     return 'cloned';
 }
 
-export async function removeClone (system: System, dir: string): Promise<void> {
+/** Throws `blocked` unless `dir` is absent or a clean clone of this repo on `main` with nothing unpushed. */
+export async function assertCloneRemovable (system: System, dir: string): Promise<void> {
     if (!(await system.exists(dir))) {
         return;
     }
@@ -143,7 +144,14 @@ export async function removeClone (system: System, dir: string): Promise<void> {
     if (ahead.code !== 0 || ahead.stdout.trim() !== '0') {
         blocked(`${dir} has commits that aren't on origin/${BRANCH}; push or drop them, or delete it yourself`);
     }
+}
 
+export async function removeClone (system: System, dir: string): Promise<void> {
+    if (!(await system.exists(dir))) {
+        return;
+    }
+
+    await assertCloneRemovable(system, dir);
     await system.remove(dir);
 }
 

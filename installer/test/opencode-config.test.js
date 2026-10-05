@@ -22,6 +22,12 @@ test('a // or /* inside a string is not a comment', () => {
     assert.deepEqual(parseJsonc('{"url": "https://example.com/a/*b*/", "plugin": ["x"]}'), { url: 'https://example.com/a/*b*/', plugin: ['x'] });
 });
 
+test('comments do not glue neighbouring tokens into a different value', () => {
+    assert.equal(parseJsonc('{"n":1/*c*/e2}'), null);
+    assert.equal(parseJsonc('{"a":tr/**/ue}'), null);
+    assert.deepEqual(parseJsonc('{"n":1e2}'), { n: 100 });
+});
+
 test('text that is not JSONC parses as null', () => {
     assert.equal(parseJsonc('{ "plugin": [ '), null);
     assert.equal(parseJsonc('not json'), null);

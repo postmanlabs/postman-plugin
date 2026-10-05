@@ -105,6 +105,28 @@ export function fakeSystem ({
             }
         },
 
+        async rename (from, to) {
+            system.commands.push(`rename ${from} ${to}`);
+
+            if (!dryRun) {
+                const prefix = from + path.sep;
+
+                for (const key of Object.keys(system.files)) {
+                    if (key === from || key.startsWith(prefix)) {
+                        system.files[to + key.slice(from.length)] = system.files[key];
+                        delete system.files[key];
+                    }
+                }
+
+                for (const dir of [...system.dirs]) {
+                    if (dir === from || dir.startsWith(prefix)) {
+                        system.dirs.add(to + dir.slice(from.length));
+                        system.dirs.delete(dir);
+                    }
+                }
+            }
+        },
+
         log (line) {
             system.lines.push(line);
         }
