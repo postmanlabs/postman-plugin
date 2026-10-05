@@ -29,7 +29,7 @@ CLI.
 | Command | `opencode plugin add <spec>` | `opencode plugin --global <spec>` |
 | `github:postmanlabs/postman-plugin` needs | 2.0.4 | 1.14.33 |
 | `@postman/postman-plugin` needs | 2.0.4 | 1.14.22 |
-| Remove | `opencode plugin remove <spec>` | delete the entry from `plugin` in `~/.config/opencode/opencode.json`, then restart |
+| Remove | `opencode plugin remove <spec>` | delete the entry from `plugin` in whichever of `~/.config/opencode/opencode.json` or `opencode.jsonc` holds it, then restart |
 
 Both need `git` only for the `github:` form. Install it one way: the older
 clone below, or `plugin add` twice, registers every skill twice.

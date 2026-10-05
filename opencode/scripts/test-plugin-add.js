@@ -2,20 +2,23 @@
 // Installs Postman with `opencode plugin add <spec>` under a throwaway home, from a Git commit
 // (`git`) or from the installer's packed tarball behind a local registry (`npm`), then runs one
 // session against a stand-in model and Postman MCP server and checks what OpenCode sent them.
-// Needs an OpenCode with `plugin add` (OPENCODE_BIN, else `opencode` on PATH). No account is used.
+// Needs an OpenCode with a `plugin` install command: OPENCODE_BIN, else the pinned CLI in node_modules, else
+// `opencode` on PATH. No account is used.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { fileURLToPath } from 'node:url';
 import {
     ENTRY_SKILL, assertMandate, assertMcpHeaders, assertSkillsListed, chatCompletion, commit, copyCheckout,
     mandatedSkill, pointMcpAt, readJson, repoRoot, run, runAgent, skillExcerpt, startStandIn, workspace
 } from '../../scripts/lib/harness.js';
+import { resolveOpenCodeExecutable } from './lib/opencode-executable.js';
 
 const ROUTES = ['git', 'npm'],
     route = process.argv[2],
-    openCode = process.env.OPENCODE_BIN || 'opencode',
+    openCode = resolveOpenCodeExecutable(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')),
     installerRoot = path.join(repoRoot, 'installer'),
     // OpenCode 2 is its own CLI (`@opencode/cli`) with `plugin add`; OpenCode 1's command is `plugin <module>`.
     openCodeMajor = Number(run(openCode, ['--version']).match(/(\d+)\.\d+\.\d+/)[1]),
