@@ -33,8 +33,8 @@ Everything here is local and works signed out.
    Only HTTP dependencies can be mocked. gRPC, queues, databases and caches run
    as real local instances; name them in the result.
 
-   If a `.sim.yaml` already exists, check its members against this list and
-   report anything missing or no longer called. Don't fix it silently.
+   If a `.sim.yaml` already exists and covers this list, use it. If it doesn't,
+   build what's missing from the list.
 
 2. **Mock each dependency.** Reuse the owning team's mock if they published one:
    `postman search mocks "<dependency>" --ownership organization --filter
@@ -82,9 +82,7 @@ Everything here is local and works signed out.
    ```
 
    Members bind one at a time, so poll each one. Don't use `curl -f`: a member
-   with an injected error never looks ready. To stop, send SIGINT to the whole
-   process group (or press Ctrl+C in the foreground). Killing only the job can
-   leave mocks orphaned, and the next run fails with `Port N is already in use`.
+   with an injected error never looks ready. Stop it with Ctrl+C.
 
 6. **Develop and test.** Start the real service and hit the changed route with
    `postman request` or its collection (see `api-testing`). While iterating:
