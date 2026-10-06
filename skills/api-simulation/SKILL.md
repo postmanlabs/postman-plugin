@@ -1,6 +1,6 @@
 ---
 name: api-simulation
-description: The local development loop for a service that calls other APIs — mock every upstream it depends on, start them together from one `.sim.yaml`, run the real service against them, test the change, and ship it with the simulation in the PR. Can also inject latency, error, rate-limit or chaos per dependency. Use when the user is building or changing an endpoint that calls other services, or asks to "simulate my dependencies," "mock everything this service calls," "set up a local sandbox," or "run this end to end locally." Covers `postman simulate run`. Builds on api-mocking for the member mocks; running locally needs nothing from bootstrap.
+description: The local development loop for a service that calls other APIs — mock every upstream it depends on, start them together from one `.sim.yaml`, run the real service against them, test the change, and ship it with the simulation in the PR. Can also inject latency, error, rate-limit or chaos per dependency. Use when the user is building or changing an endpoint that calls other services, or asks to "simulate my dependencies," "mock everything this service calls," or "run this end to end locally." Covers `postman simulate run`. Builds on api-mocking for the member mocks; running locally needs nothing from bootstrap.
 ---
 
 # API Simulation

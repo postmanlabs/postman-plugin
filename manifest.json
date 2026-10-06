@@ -94,13 +94,13 @@
     {
       "name": "api-simulation",
       "plugin": "postman",
-      "description": "The local development loop for a service that calls other APIs — mock every upstream it depends on, start them together from one `.sim.yaml`, run the real service against them, test the change, and ship it with the simulation in the PR. Can also inject latency, error, rate-limit or chaos per dependency. Use when the user is building or changing an endpoint that calls other services, or asks to \"simulate my dependencies,\" \"mock everything this service calls,\" \"set up a local sandbox,\" or \"run this end to end locally.\" Covers `postman simulate run`. Builds on api-mocking for the member mocks; running locally needs nothing from bootstrap.",
+      "description": "The local development loop for a service that calls other APIs — mock every upstream it depends on, start them together from one `.sim.yaml`, run the real service against them, test the change, and ship it with the simulation in the PR. Can also inject latency, error, rate-limit or chaos per dependency. Use when the user is building or changing an endpoint that calls other services, or asks to \"simulate my dependencies,\" \"mock everything this service calls,\" or \"run this end to end locally.\" Covers `postman simulate run`. Builds on api-mocking for the member mocks; running locally needs nothing from bootstrap.",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/api-simulation/SKILL.md",
-          "bytes": 6990,
-          "sha256": "0425ec0cebcef2022a36380382e9804c439aa05faff44bb0817e6d79a2e79de9"
+          "bytes": 6964,
+          "sha256": "bfb21cb5fa9731c98769122ffb8ba4b232e493b40c963bcd4971398a2ee48421"
         },
         {
           "target": "reference/sim_yaml_schema.md",
