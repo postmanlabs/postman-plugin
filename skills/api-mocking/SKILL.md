@@ -96,9 +96,8 @@ To point real request/assertion runs at a mock instead of hand-editing
 base-URL variables, see the `api-testing` skill's `--use-mock`/`--mock` flags
 on `collection run`.
 
-To start several of these mocks together as one environment - every upstream a
-service depends on, with latency, error, rate-limit or chaos faults injected
-per dependency - see the `api-simulation` skill and `postman simulate run`.
+To develop a service against mocks of every upstream it calls, started together
+as one simulation, see the `api-simulation` skill and `postman simulate run`.
 
 ## The two ids that matter
 

@@ -9,8 +9,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-engineer/SKILL.md",
-          "bytes": 2646,
-          "sha256": "97abb8f7c7eec2c17494394a27c921c070ed500bc214613600e3523a1405be71"
+          "bytes": 2590,
+          "sha256": "758f771020491592749a063156ab16145ccfee25f3d7a3c0c8ddd1ba6f5aae9e"
         }
       ]
     },
@@ -73,8 +73,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-mocking/SKILL.md",
-          "bytes": 9200,
-          "sha256": "d46ef018b088e0770e43020fd02db4fcc77c03916543d260b4bfbb0b85376286"
+          "bytes": 9126,
+          "sha256": "cb368be876e7c8e681079aa315bbf80e8d28618eb18e046ed0f150db03d8cfc2"
         }
       ]
     },
@@ -94,19 +94,19 @@
     {
       "name": "api-simulation",
       "plugin": "postman",
-      "description": "Stands up every upstream a service depends on as one local environment, so you can build and run the real service when its dependencies are unreachable, unbuilt, or behind an auth wall — a `.sim.yaml` starts all the mocks together, and can inject latency, error, rate-limit or chaos faults per dependency once the happy path works. Use when the user asks to \"get me a working sandbox,\" \"I can't reach <dependency> from my laptop,\" \"let me build against these services before they exist,\" \"simulate my dependencies,\" \"mock everything this service calls,\" or \"what happens when <dependency> is down or slow.\" Covers `postman simulate run`. Builds on api-mocking for the member mocks and api-discovery for working out what to mock; running a simulation locally needs nothing from bootstrap.",
+      "description": "The local development loop for a service that calls other APIs — mock every upstream it depends on, start them together from one `.sim.yaml`, run the real service against them, test the change, and ship it with the simulation in the PR. Can also inject latency, error, rate-limit or chaos per dependency. Use when the user is building or changing an endpoint that calls other services, or asks to \"simulate my dependencies,\" \"mock everything this service calls,\" \"set up a local sandbox,\" or \"run this end to end locally.\" Covers `postman simulate run`. Builds on api-mocking for the member mocks; running locally needs nothing from bootstrap.",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/api-simulation/SKILL.md",
-          "bytes": 23265,
-          "sha256": "ff7ac62b1edcf58bc5e75a91250dcd11cbb5e7d0911efd47c5da08153ad4f432"
+          "bytes": 6990,
+          "sha256": "0425ec0cebcef2022a36380382e9804c439aa05faff44bb0817e6d79a2e79de9"
         },
         {
           "target": "reference/sim_yaml_schema.md",
           "source": "skills/api-simulation/reference/sim_yaml_schema.md",
-          "bytes": 9044,
-          "sha256": "bb02d1966c466364a4fd124c5a9f2ca145df12a7e16719d0d62729aa08fdd4a0"
+          "bytes": 8336,
+          "sha256": "759d24166d95a8a02ec88f9c558852d4e83f9c29b8a09b9eb4ae7cd214e0e807"
         }
       ]
     },

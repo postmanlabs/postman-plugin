@@ -22,7 +22,7 @@
   },
   {
     "id": "api-simulation",
-    "prompt": "I just added a new endpoint but it calls four upstream services I cannot reach from my laptop, so I have no way to run it. Get me a working sandbox where the real endpoint runs against stand-ins for those services.",
+    "prompt": "I'm adding a new endpoint that calls four upstream services. Mock them all so I can run and test the real endpoint locally before I push.",
     "expected": [
       "api-simulation"
     ]

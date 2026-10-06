@@ -168,23 +168,20 @@ The mock stays local until you choose to push and deploy it. When teammates or
 external systems need access, the same mock can become a durable hosted URL
 without rebuilding it in another tool.
 
-### Simulated environments for the dependencies you can't reach
+### Develop against simulated dependencies
 
-A mock stands in for one dependency. The [`api-simulation`](skills/api-simulation/)
-skill composes the set of them a service needs to run at all, declared in one
-`.sim.yaml` and started as a single process:
+The [`api-simulation`](skills/api-simulation/) skill is the local loop for a
+service change: mock every dependency the service calls, start them together
+from one `.sim.yaml`, run the real service against them, test, and push:
 
 ```bash
-postman simulate run postman/simulations/checkout-sandbox.sim.yaml
+postman simulate run postman/simulations/orders-dev.sim.yaml
 ```
 
-The service under test is never mocked. It runs for real against mocked
-upstreams, so a passing run means the endpoint itself works rather than that a
-mock of it answered. Each dependency can carry injected latency, error,
-rate-limit, or chaos conditions, which lets the agent reproduce a downstream
-failure, apply a fix, and show both in the same pull request. The Context Graph
-supplies the dependency list, and a mock published by the team that owns a
-dependency is preferred over one generated locally.
+The service under test is never mocked. It runs for real, so a passing run
+means the change works. The same simulation runs in CI, and any dependency can
+take injected latency, error, rate-limit, or chaos conditions to exercise
+failure paths.
 
 
 ## Telemetry

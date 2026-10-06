@@ -35,7 +35,7 @@ app and carry **no CLI behavior**:
 
 `name`, when given. Otherwise the referenced file's basename without its
 extension — except that a file named `config` is named after its **parent
-directory** instead, so `../mocks/acs-sim/config.yaml` becomes `acs-sim`
+directory** instead, so `../mocks/payments-sim/config.yaml` becomes `payments-sim`
 rather than every member collapsing to `config`.
 
 Duplicate names are rejected: `Duplicate mock name: '<name>'`.
@@ -69,7 +69,7 @@ creates, two generated mocks in one simulation collide. The run aborts before
 binding anything:
 
 ```
-Error: Duplicate mock port: 4500 (used by both 'acs-sim' and 'features-sim')
+Error: Duplicate mock port: 4500 (used by both 'payments-sim' and 'inventory-sim')
 ```
 
 Set `port:` per entry to fix it without editing each mock's `config.yaml`.
@@ -109,7 +109,7 @@ Two forms are accepted.
 
 ```yaml
 scenarios:
-  - path: ../mocks/acs-sim/default.js
+  - path: ../mocks/payments-sim/default.js
     overrides:
       conditions:
         error:
@@ -149,7 +149,7 @@ nothing.
 
 ### An entry with neither form applies no fault
 
-A bare `- path: ../mocks/acs-sim/config.yaml` under `scenarios:` is a valid
+A bare `- path: ../mocks/payments-sim/config.yaml` under `scenarios:` is a valid
 selection carrying no `overrides`, so it parses, starts, and injects nothing.
 Omit `scenarios:` altogether for a healthy member rather than leaving an entry
 that looks configured.
@@ -167,7 +167,7 @@ A condition applies to the **whole member**, not a single route. To fail one
 endpoint while its siblings succeed, split that endpoint into its own mock.
 
 Each fault's `config` is validated with a message naming the mock, e.g.
-`Mock 'acs-sim': scenario type 'latency' requires config.delay_ms (positive number)`.
+`Mock 'payments-sim': scenario type 'latency' requires config.delay_ms (positive number)`.
 
 ## Run output
 
@@ -175,46 +175,14 @@ Startup prints a banner, then one line per member:
 
 ```
 ▸ Setup
-  12:00:33.643  mock started        acs-sim         Mock server "acs-sim" active on :4901
-  12:00:33.644  scenario applied    acs-sim         simulation configured — error (503)
+  12:00:33.643  mock started        payments-sim         Mock server "payments-sim" active on :4901
+  12:00:33.644  scenario applied    payments-sim         simulation configured — error (503)
 ```
 
 Each request adds `request sent`, `scenario applied` when a fault fires, and
 `request completed` with status and elapsed time, all tagged with the member
 that served it. `Press Ctrl+C to stop all mock servers` — one process owns
 every member port, and SIGINT/SIGTERM stops them together.
-
-## Worked example
-
-Two files, one healthy and one degraded, over the same two members:
-
-```yaml
-# postman/simulations/checkout-sandbox.sim.yaml
-simulation: checkout-sandbox
-mocks:
-  - path: ../mocks/payments-sim/config.yaml
-    port: 4901
-  - path: ../mocks/inventory-sim/config.yaml
-    port: 4902
-```
-
-```yaml
-# postman/simulations/checkout-payments-degraded.sim.yaml
-simulation: checkout-payments-degraded
-mocks:
-  - path: ../mocks/payments-sim/config.yaml
-    port: 4901
-    scenarios:
-      - path: ../mocks/payments-sim/default.js
-        overrides:
-          conditions:
-            latency:
-              delay_ms: 900
-            rate_limit:
-              requests_per_minute: 30
-  - path: ../mocks/inventory-sim/config.yaml
-    port: 4902
-```
 
 ## `simulate run` flags
 
