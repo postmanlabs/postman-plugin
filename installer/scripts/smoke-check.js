@@ -11,6 +11,8 @@ import { OPENCODE_SHIM, OPENCODE_SPEC } from '../dist/source.js';
 
 const [mode, ...agents] = process.argv.slice(2),
     home = os.homedir(),
+    // The spec the installer was told to install instead of the mirror, as installer smoke does for a pull request.
+    openCodeSpec = process.env.POSTMAN_PLUGIN_OPENCODE_SPEC || OPENCODE_SPEC,
     openCodeConfig = path.join(process.env.XDG_CONFIG_HOME || path.join(home, '.config'), 'opencode'),
     kimiStore = path.join(process.env.KIMI_CODE_HOME || path.join(home, '.kimi-code'), 'plugins', 'installed.json');
 
@@ -53,7 +55,7 @@ const AGENTS = {
             .map(({ id }) => id).filter((id) => id === 'postman')
     },
     opencode: {
-        expected: [OPENCODE_SPEC],
+        expected: [openCodeSpec],
         // The plugin's entry in the global config (`plugin` on OpenCode 1, `plugins` on OpenCode 2, in `.json` or `.jsonc`),
         // and anything left of the older clone-and-loader install.
         found: () => [
@@ -63,7 +65,7 @@ const AGENTS = {
 
                 return ['plugin', 'plugins'].flatMap((key) => (Array.isArray(config?.[key]) ? config[key] : []))
                     .map((entry) => (typeof entry === 'string' ? entry : entry?.package))
-                    .filter((spec) => typeof spec === 'string' && /postman-plugin/.test(spec))
+                    .filter((spec) => typeof spec === 'string' && (spec === openCodeSpec || /opencode-plugin/.test(spec)))
                     .map((spec) => spec.split('#')[0]);
             }),
             ...present(path.join(openCodeConfig, 'postman-plugin', 'opencode', 'src', 'index.ts')),

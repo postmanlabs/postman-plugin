@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 // Installs Postman with OpenCode's own `plugin` command under a throwaway home, then runs one session
 // against a stand-in model and Postman MCP server and checks what OpenCode sent them. The route is:
-//   git       a one-commit copy of this checkout
-//   npm       the installer's packed tarball, behind a local registry
-//   github    `github:postmanlabs/postman-plugin`, or PLUGIN_ADD_SPEC, from GitHub
-//   registry  `@postman/postman-plugin`, or PLUGIN_ADD_SPEC, from npm
+//   git       a one-commit repository of the mirror scripts/build-mirror.js builds from this checkout
+//   npm       that mirror, packed, behind a local registry
+//   github    `github:postmanlabs/opencode-plugin`, or PLUGIN_ADD_SPEC, from GitHub
+//   registry  `@postman/opencode-plugin`, or PLUGIN_ADD_SPEC, from npm
 // `github` and `registry` install what is published, so they check the skills the installed copy declares.
 // Needs an OpenCode with a `plugin` install command: OPENCODE_BIN, else the pinned CLI in node_modules, else
 // `opencode` on PATH. No account is used.
@@ -15,16 +15,16 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
-    ENTRY_SKILL, assertMandate, assertMcpHeaders, chatCompletion, commit, copyCheckout,
-    mandatedSkill, pointMcpAt, readJson, repoRoot, run, runAgent, skillExcerpt, skills, startStandIn, workspace
+    ENTRY_SKILL, assertMandate, assertMcpHeaders, chatCompletion, commit,
+    mandatedSkill, pointMcpAt, readJson, run, runAgent, skillExcerpt, skills, startStandIn, workspace
 } from '../../scripts/lib/harness.js';
+import { MIRROR_REPO, buildMirror } from './build-mirror.js';
 import { resolveOpenCodeExecutable } from './lib/opencode-executable.js';
 
-const PUBLISHED = { github: 'github:postmanlabs/postman-plugin', registry: '@postman/postman-plugin' },
+const PUBLISHED = { github: `github:${MIRROR_REPO}`, registry: '@postman/opencode-plugin' },
     ROUTES = ['git', 'npm', ...Object.keys(PUBLISHED)],
     route = process.argv[2],
     openCode = resolveOpenCodeExecutable(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')),
-    installerRoot = path.join(repoRoot, 'installer'),
     // OpenCode 2 is its own CLI (`@opencode/cli`) with `plugin add`; OpenCode 1's command is `plugin <module>`.
     openCodeMajor = Number(run(openCode, ['--version']).match(/(\d+)\.\d+\.\d+/)[1]),
     ADD = openCodeMajor >= 2 ? ['plugin', 'add'] : ['plugin', '--global'],
@@ -32,12 +32,9 @@ const PUBLISHED = { github: 'github:postmanlabs/postman-plugin', registry: '@pos
 
 assert.ok(ROUTES.includes(route), `usage: node scripts/test-plugin-add.js ${ROUTES.join('|')}`);
 
-const installerManifest = readJson(path.join(installerRoot, 'package.json'));
-
 /** A registry serving only `tarball`, enough for `plugin add <name>` to resolve and fetch it. */
-function startRegistry (tarball) {
+function startRegistry (tarball, manifest) {
     const buffer = fs.readFileSync(tarball),
-        manifest = installerManifest,
         file = `${manifest.name.split('/')[1]}-${manifest.version}.tgz`,
         server = http.createServer((request, response) => {
             if (request.url.endsWith('.tgz')) {
@@ -64,9 +61,9 @@ function startRegistry (tarball) {
     return new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve({ server, url: `http://127.0.0.1:${server.address().port}`, name: manifest.name })));
 }
 
-/** The installer's tarball, built and staged by its own `prepack`, as `npm publish` would ship it. */
-function packInstaller (into) {
-    const output = run('npm', ['pack', '--pack-destination', into, '--json'], { cwd: installerRoot, env: { ...process.env, NPM_CONFIG_USERCONFIG: path.join(into, 'npmrc') } });
+/** The mirror's tarball, as `npm publish` in release.yml ships it. */
+function packMirror (mirror, into) {
+    const output = run('npm', ['pack', '--pack-destination', into, '--json'], { cwd: mirror, env: { ...process.env, NPM_CONFIG_USERCONFIG: path.join(into, 'npmrc') } });
 
     return path.join(into, JSON.parse(output)[0].filename);
 }
@@ -113,21 +110,24 @@ try {
     const environment = { ...process.env, HOME: home, USERPROFILE: home, ...xdg, PWD: nested, NPM_CONFIG_USERCONFIG: path.join(root, 'npmrc'), OPENCODE_DISABLE_CLAUDE_CODE_SKILLS: '1', OPENCODE_DISABLE_EXTERNAL_SKILLS: '1' };
     let spec;
 
-    if (route === 'git') {
-        const copy = path.join(root, 'checkout');
-
-        copyCheckout(copy);
-        commit(copy);
-        spec = `git+${pathToFileURL(copy).href}`;
-    }
-    else if (route in PUBLISHED) {
+    if (route in PUBLISHED) {
         spec = process.env.PLUGIN_ADD_SPEC || PUBLISHED[route];
     }
     else {
-        registry = await startRegistry(packInstaller(root));
-        spec = registry.name;
-        environment.NPM_CONFIG_REGISTRY = registry.url;
-        environment.npm_config_registry = registry.url;
+        const mirror = path.join(root, MIRROR_REPO.split('/')[1]);
+
+        buildMirror(mirror);
+
+        if (route === 'git') {
+            commit(mirror);
+            spec = `git+${pathToFileURL(mirror).href}`;
+        }
+        else {
+            registry = await startRegistry(packMirror(mirror, root), readJson(path.join(mirror, 'package.json')));
+            spec = registry.name;
+            environment.NPM_CONFIG_REGISTRY = registry.url;
+            environment.npm_config_registry = registry.url;
+        }
     }
 
     // Asynchronous: the registry this process serves must answer while `plugin add` waits on it.

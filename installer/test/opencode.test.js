@@ -43,11 +43,20 @@ test('a fresh install runs `opencode plugin add` on OpenCode 2 and `plugin --glo
     assert.deepEqual(v1.commands, [ADD1]);
 });
 
-test('POSTMAN_PLUGIN_OPENCODE_REF installs a ref of the repo instead of its default branch', async () => {
-    const system = fakeSystem({ probes: V2, env: { POSTMAN_PLUGIN_OPENCODE_REF: 'abc123' } });
+test('POSTMAN_PLUGIN_OPENCODE_SPEC installs that spec instead of the mirror, and status and remove find it', async () => {
+    const spec = 'git+file:///tmp/build/opencode-plugin',
+        env = { POSTMAN_PLUGIN_OPENCODE_SPEC: spec },
+        system = fakeSystem({ probes: V2, env });
 
-    assert.match((await opencode.install(system)).message, /^installed github:postmanlabs\/postman-plugin#abc123/);
-    assert.deepEqual(system.commands, [`${ADD2}#abc123`]);
+    assert.ok((await opencode.install(system)).message.startsWith(`installed ${spec}`));
+    assert.deepEqual(system.commands, [`opencode plugin add ${spec}`]);
+
+    const installed = fakeSystem({ probes: V2, env, files: { [json]: plugins(spec) } });
+
+    assert.equal((await opencode.status(installed)).installed, true);
+    assert.equal((await opencode.status(fakeSystem({ files: { [json]: plugins(spec) } }))).installed, false, 'only while the variable names it');
+    assert.equal((await opencode.remove(installed)).outcome, 'done');
+    assert.deepEqual(installed.commands, [`opencode plugin remove ${spec}`]);
 });
 
 test('refuses an OpenCode older than the first release of its major that installs Postman, running nothing', async () => {
@@ -84,11 +93,11 @@ test('status reads the global config: `plugins` for OpenCode 2, `plugin` in .jso
     assert.equal((await at({ [jsonc]: `{\n  // mine\n  "plugin": ["x", "${OPENCODE_SPEC}",],\n}\n` })).installed, true);
     assert.match((await at({ [json]: plugins(OPENCODE_SPEC) })).detail, /opencode\.json/);
 
-    for (const spec of [`${OPENCODE_SPEC}#abc123`, '@postman/postman-plugin', '@postman/postman-plugin@0.3.0', 'git+https://github.com/postmanlabs/postman-plugin.git#main']) {
+    for (const spec of [`${OPENCODE_SPEC}#abc123`, '@postman/opencode-plugin', '@postman/opencode-plugin@0.3.0', 'git+https://github.com/postmanlabs/opencode-plugin.git#main']) {
         assert.equal((await at({ [json]: plugins(spec) })).installed, true, spec);
     }
 
-    for (const other of ['github:someone/postman-plugin', '@postman/other', 'git+file:///tmp/postman-plugin']) {
+    for (const other of ['github:someone/opencode-plugin', 'github:postmanlabs/postman-plugin', '@postman/postman-plugin', '@postman/other', 'git+file:///tmp/opencode-plugin']) {
         assert.equal((await at({ [json]: plugins(other, 'x') })).installed, false, other);
     }
 
@@ -120,7 +129,7 @@ test('a config that does not parse is unknown, and install leaves it alone', asy
 });
 
 const cached = path.join('/home/user', '.cache', 'opencode', 'npm'),
-    copyOf = (spec, root = cached) => path.join(root, `git-postman-plugin-${createHash('sha256').update(spec).digest('hex').slice(0, 12)}`);
+    copyOf = (spec, root = cached, slug = 'opencode-plugin') => path.join(root, `git-${slug}-${createHash('sha256').update(spec).digest('hex').slice(0, 12)}`);
 
 test('install on an installed plugin refreshes it: OpenCode 2 sets its cached copy aside and adds again, OpenCode 1 forces a re-run', async () => {
     const copy = copyOf(OPENCODE_SPEC),
@@ -131,11 +140,11 @@ test('install on an installed plugin refreshes it: OpenCode 2 sets its cached co
         }),
         v1 = fakeSystem({ probes: V1, files: { [json]: plugin(OPENCODE_SPEC) } });
 
-    assert.match((await opencode.install(v2)).message, /^updated github:postmanlabs\/postman-plugin/);
+    assert.match((await opencode.install(v2)).message, /^updated github:postmanlabs\/opencode-plugin/);
     assert.deepEqual(v2.commands, [`remove ${copy}.previous`, `rename ${copy} ${copy}.previous`, ADD2, `remove ${copy}.previous`]);
     assert.ok(await v2.exists(copyOf(`${OPENCODE_SPEC}#other`)), 'the copy of another ref is not touched');
     assert.ok(await v2.exists(path.join(cached, 'git-other-repo-abc123def456')), 'the copy of another repo is not touched');
-    assert.match((await opencode.install(v1)).message, /^updated github:postmanlabs\/postman-plugin/);
+    assert.match((await opencode.install(v1)).message, /^updated github:postmanlabs\/opencode-plugin/);
     assert.deepEqual(v1.commands, [`opencode plugin --global --force ${OPENCODE_SPEC}`]);
 });
 
@@ -173,6 +182,16 @@ test('install refreshes the spec the plugin is configured with, ref included, an
     assert.deepEqual(system.commands, [`remove ${copy}.previous`, `rename ${copy} ${copy}.previous`, `${ADD2}#abc`, `remove ${copy}.previous`]);
 });
 
+test('the cached copy is named by the spec\'s last path segment, as OpenCode 2 names it', async () => {
+    const spec = 'git+file:///C:/build/Opencode%20Plugin.git',
+        copy = copyOf(spec, cached, 'Opencode-Plugin'),
+        system = fakeSystem({ probes: V2, env: { POSTMAN_PLUGIN_OPENCODE_SPEC: spec }, files: { [json]: plugins(spec) }, dirs: [path.join(copy, 'ts')] });
+
+    await opencode.install(system);
+
+    assert.deepEqual(system.commands, [`remove ${copy}.previous`, `rename ${copy} ${copy}.previous`, `opencode plugin add ${spec}`, `remove ${copy}.previous`]);
+});
+
 test('install with nothing cached just adds again', async () => {
     const system = fakeSystem({ probes: V2, files: { [json]: plugins(OPENCODE_SPEC) } });
 
@@ -183,7 +202,7 @@ test('install with nothing cached just adds again', async () => {
 
 test('a plugin installed from npm is left for OpenCode to update, and nothing is run', async () => {
     for (const probes of [V1, V2]) {
-        const system = fakeSystem({ probes, files: { [json]: plugins('@postman/postman-plugin') } }),
+        const system = fakeSystem({ probes, files: { [json]: plugins('@postman/opencode-plugin') } }),
             outcome = await opencode.install(system);
 
         assert.equal(outcome.outcome, 'manual');

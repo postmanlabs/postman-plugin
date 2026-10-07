@@ -3,7 +3,8 @@
 # installer sends; this checks the agents still accept them, and that each one
 # then reports Postman (Cursor isn't installed, so its files are checked instead).
 # They install from GitHub or npm, not from this checkout, so it tests the
-# installer, not a branch's skills; only the route harness steps at the end load
+# installer, not a branch's skills; OpenCode, on a pull request or a dispatch, installs
+# the mirror built from this checkout, and the route harness steps at the end load
 # this checkout, each into the latest release of its agent. It also runs nightly, because an agent release breaks the installer
 # without anyone pushing here, and the release-installer skill dispatches it on
 # the commit it is about to tag.
@@ -50,10 +51,8 @@ jobs:
           - os: windows-latest
             label: Windows
     env:
-      # Kimi Code has no uninstall command, so it is removed on its own below. A fork's pull request leaves OpenCode out:
-      # its head commit is not on postmanlabs/postman-plugin for `opencode plugin` to install, and the default branch has
-      # no root package.json until a change that adds it merges (the notice below says so).
-      REMOVABLE: ${{ github.event.pull_request.head.repo.fork == true && 'claude-code,codex,cursor,factory,pi' || 'claude-code,codex,cursor,factory,opencode,pi' }}
+      # Kimi Code has no uninstall command, so it is removed on its own below.
+      REMOVABLE: claude-code,codex,cursor,factory,opencode,pi
     defaults:
       run:
         shell: bash
@@ -104,11 +103,19 @@ jobs:
       - name: Kimi Code runs
         run: kimi --version
 
+      # postmanlabs/opencode-plugin holds main, so a pull request or a dispatched ref has the installer install
+      # the mirror built from its own commit, as a one-commit repository; main and the nightly run install the real one.
+      - name: Build the OpenCode mirror from this commit
+        if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+        run: |
+          mirror="$RUNNER_TEMP/opencode-plugin"
+          node ../opencode/scripts/build-mirror.js "$mirror"
+          git -C "$mirror" init --quiet
+          git -C "$mirror" add --all
+          git -C "$mirror" -c user.name=smoke -c user.email=smoke@localhost -c commit.gpgsign=false commit --quiet --message smoke
+          echo "POSTMAN_PLUGIN_OPENCODE_SPEC=git+$(node -p 'require("url").pathToFileURL(process.argv[1]).href' "$mirror")" >> "$GITHUB_ENV"
+
       - name: Install, then re-run to take the update path
-        env:
-          # The bare `github:` spec is this repo's default branch, which has no root package.json until a change
-          # that adds it merges; a pull request installs its own commit, as does a dispatch for a given ref.
-          POSTMAN_PLUGIN_OPENCODE_REF: ${{ (github.event.pull_request.head.repo.fork != true && github.event.pull_request.head.sha) || inputs.ref || '' }}
         run: |
           node dist/cli.js install --yes --agent "$REMOVABLE,kimi"
           node dist/cli.js install --yes --agent "$REMOVABLE,kimi"
@@ -200,39 +207,24 @@ jobs:
 
       # The pinned plugin-add harness in validate.yml, against the latest OpenCode 1 installed above and the
       # latest OpenCode 2, so a release that stops loading Postman through `opencode plugin` fails here. Beyond
-      # the local copy and the packed tarball it installs what users run: `github:postmanlabs/postman-plugin`
-      # from GitHub and, nightly, `@postman/postman-plugin` from npm.
+      # the built mirror as a Git repository and as a tarball it installs what users run:
+      # `github:postmanlabs/opencode-plugin` from GitHub and, nightly, `@postman/opencode-plugin` from npm.
       - name: The latest OpenCode installs Postman with `plugin`
         if: ${{ !cancelled() }}
         working-directory: opencode
         env:
           EVENT: ${{ github.event_name }}
-          FORK: ${{ github.event.pull_request.head.repo.fork }}
-          PR_SHA: ${{ github.event.pull_request.head.sha }}
-          INPUT_REF: ${{ inputs.ref }}
         run: |
           # npm puts global bins in the prefix itself on Windows, in its bin/ elsewhere.
           OPENCODE1=$(node -p 'require("path").join(process.argv[1], process.platform === "win32" ? "opencode.cmd" : "bin/opencode")' "$(npm prefix -g)")
           OPENCODE2=$(node -p 'require("path").join(process.argv[1], "node_modules", ".bin", process.platform === "win32" ? "opencode.cmd" : "opencode")' "$RUNNER_TEMP/opencode2")
 
-          # A pull request installs its own head commit; a dispatch, the commit it was given; main and the
-          # nightly run, the bare command the README documents.
-          spec=github:postmanlabs/postman-plugin
-          if [ -n "$PR_SHA" ]; then spec="$spec#$PR_SHA"; elif [ -n "$INPUT_REF" ]; then spec="$spec#$INPUT_REF"; fi
-
           for opencode in "$OPENCODE1" "$OPENCODE2"; do
-            for route in git npm; do
+            for route in git npm github; do
               OPENCODE_BIN="$opencode" node scripts/test-plugin-add.js "$route"
             done
 
-            if [ "$FORK" = true ]; then
-              echo "::notice::the github route is not run for a fork's pull request: its head commit is not on postmanlabs/postman-plugin"
-            else
-              OPENCODE_BIN="$opencode" PLUGIN_ADD_SPEC="$spec" node scripts/test-plugin-add.js github
-            fi
-
-            # The published package changes only when the installer is released, so only the nightly run asks
-            # for it. It fails until the first release that ships the OpenCode entrypoint.
+            # The published package changes only when the OpenCode plugin is released, so only the nightly run asks for it.
             if [ "$EVENT" = schedule ]; then
               OPENCODE_BIN="$opencode" node scripts/test-plugin-add.js registry
             fi
@@ -244,15 +236,8 @@ jobs:
         if: ${{ !cancelled() }}
         run: node -p 'require("path").join(process.argv[1], "node_modules", ".bin")' "$RUNNER_TEMP/opencode2" >> "$GITHUB_PATH"
 
-      - name: The installer is not run on OpenCode for a fork's pull request
-        if: ${{ !cancelled() && github.event.pull_request.head.repo.fork == true }}
-        run: |
-          echo "::notice::OpenCode is left out of the installer steps for a fork's pull request: its head commit is not on postmanlabs/postman-plugin for 'opencode plugin' to install"
-
       - name: The installer installs, updates and removes Postman in OpenCode 2
-        if: ${{ !cancelled() && github.event.pull_request.head.repo.fork != true }}
-        env:
-          POSTMAN_PLUGIN_OPENCODE_REF: ${{ (github.event.pull_request.head.repo.fork != true && github.event.pull_request.head.sha) || inputs.ref || '' }}
+        if: ${{ !cancelled() }}
         run: |
           opencode --version
           node dist/cli.js install --yes --agent opencode

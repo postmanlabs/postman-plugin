@@ -86,11 +86,11 @@ Postman's MCP server with `/mcp-config login plugin-postman:postman`.
 ### OpenCode
 
 ```bash
-opencode plugin add github:postmanlabs/postman-plugin
+opencode plugin add github:postmanlabs/opencode-plugin
 ```
 
 That is OpenCode 2.0.4 or later. On OpenCode 1.14.33 or later the command is
-`opencode plugin --global github:postmanlabs/postman-plugin`.
+`opencode plugin --global github:postmanlabs/opencode-plugin`.
 [opencode/README.md](opencode/README.md#install) has the npm form, the
 minimum versions per route, how to remove it, and the older clone-and-loader
 install.

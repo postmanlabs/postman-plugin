@@ -8,18 +8,18 @@ commands you would run yourself.
 
 ## Install
 
-Install it with OpenCode's own plugin command, from this repository:
+Install it with OpenCode's own plugin command, from
+[postmanlabs/opencode-plugin](https://github.com/postmanlabs/opencode-plugin),
+which follows `main`:
 
 ```bash
-opencode plugin add github:postmanlabs/postman-plugin
+opencode plugin add github:postmanlabs/opencode-plugin
 ```
 
-or from npm, which carries the latest installer release rather than `main`.
-This works from the first installer release after 0.2.1, which is the first to
-ship the plugin entrypoint:
+or from npm, which carries the latest release:
 
 ```bash
-opencode plugin add @postman/postman-plugin
+opencode plugin add @postman/opencode-plugin
 ```
 
 Restart OpenCode after either. To check it loaded, ask OpenCode to "set up
@@ -29,8 +29,8 @@ CLI.
 | | OpenCode 2 (`@opencode/cli`) | OpenCode 1 (`opencode-ai`) |
 | --- | --- | --- |
 | Command | `opencode plugin add <spec>` | `opencode plugin --global <spec>` |
-| `github:postmanlabs/postman-plugin` needs | 2.0.4 | 1.14.33 |
-| `@postman/postman-plugin` needs | 2.0.4 | 1.14.22 |
+| `github:postmanlabs/opencode-plugin` needs | 2.0.4 | 1.14.33 |
+| `@postman/opencode-plugin` needs | 2.0.4 | 1.14.22 |
 | Remove | `opencode plugin remove <spec>` | delete the entry from `plugin` in whichever of `~/.config/opencode/opencode.json` or `opencode.jsonc` holds it, then restart |
 
 Both need `git` only for the `github:` form. Install it one way: the older

@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { buildMirror } from '../scripts/build-mirror.js';
 import PostmanPluginDefinition, {
     applyPostmanConfig, assetRoot, mcpConfigFile, PostmanPlugin, sessionContextFile,
     skillsDirectory, toOpenCodeSessionContext
@@ -20,15 +22,42 @@ test('mcp.opencode.json carries this package version in both headers', () => {
     assert.equal(headers['User-Agent'], `postman-opencode-plugin/${packageVersion}`);
 });
 
-test('the repo root is installable with `opencode plugin add github:...` and versions with this package', () => {
-    const root = JSON.parse(fs.readFileSync(path.join(assetRoot, 'package.json'), 'utf8'));
+test('the mirror is a package `opencode plugin add` can install, versioned with this one', (t) => {
+    const out = fs.mkdtempSync(path.join(os.tmpdir(), 'opencode-mirror-'));
 
-    assert.equal(root.version, packageVersion);
-    assert.equal(root.exports['./server'], './opencode/src/index.ts');
-    assert.equal(root.main, root.exports['./server']);
-    assert.ok(fs.existsSync(path.join(assetRoot, root.main)), `${root.main} does not exist`);
-    assert.equal(root.scripts, undefined, 'npm runs prepare/install scripts of a Git dependency in every user\'s install');
-    assert.equal(root.dependencies, undefined);
+    t.after(() => fs.rmSync(out, { recursive: true, force: true }));
+    buildMirror(out);
+
+    const mirror = JSON.parse(fs.readFileSync(path.join(out, 'package.json'), 'utf8'));
+
+    assert.equal(mirror.name, '@postman/opencode-plugin');
+    assert.equal(mirror.version, packageVersion);
+    assert.equal(mirror.private, undefined);
+    assert.equal(mirror.main, mirror.exports['./server']);
+    assert.equal(mirror.scripts, undefined, 'npm runs prepare/install scripts of a Git dependency in every user\'s install');
+    assert.equal(mirror.dependencies, undefined);
+    assert.equal(mirror.repository.url, 'git+https://github.com/postmanlabs/postman-plugin.git', 'npm provenance needs the repository it is published from');
+
+    for (const file of [mirror.main, 'manifest.json', 'mcp.opencode.json', 'hooks/session-start-context.md', 'LICENSE', 'README.md']) {
+        assert.ok(fs.existsSync(path.join(out, file)), `the mirror has no ${file}`);
+    }
+
+    assert.deepEqual(fs.readdirSync(path.join(out, 'skills')).sort(), manifestSkills.map((skill) => skill.name).sort());
+    assert.equal(fs.readFileSync(path.join(out, 'src', 'index.ts'), 'utf8'), fs.readFileSync(path.join(packageRoot, 'src', 'index.ts'), 'utf8'));
+});
+
+test('the entrypoint reads the shared files beside itself in the mirror', async (t) => {
+    // Resolved, as import.meta.url is: macOS's temporary directory is a symlink.
+    const out = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'opencode-mirror-')));
+
+    t.after(() => fs.rmSync(out, { recursive: true, force: true }));
+    buildMirror(out);
+    fs.copyFileSync(path.join(packageRoot, 'dist', 'index.js'), path.join(out, 'src', 'index.mjs'));
+
+    const mirrored = await import(pathToFileURL(path.join(out, 'src', 'index.mjs')).href);
+
+    assert.equal(mirrored.assetRoot, out);
+    assert.equal(mirrored.skillsDirectory, path.join(out, 'skills'));
 });
 
 test('registers the skills directory and Postman MCP server', () => {

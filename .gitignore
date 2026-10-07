@@ -20,6 +20,3 @@ installer/skills/
 installer/hooks/
 installer/mcp.pi.json
 
-installer/mcp.opencode.json
-installer/manifest.json
-installer/opencode/

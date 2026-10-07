@@ -1,10 +1,7 @@
 #!/usr/bin/env node
 // `npm pack` takes files only from installer/, so the repo files the tarball ships are staged
-// here (`stage`, from prepack) and removed after (`clean`, from postpack). README and LICENSE are
-// for the registry page; mcp.pi.json and the hook's mandate are for Pi, which installs this tarball
-// as a Pi package (the `pi` key in package.json); `opencode/src/index.ts`, `manifest.json` and
-// `mcp.opencode.json` are for `opencode plugin add`, which loads `main` and finds the shared files
-// beside `opencode/`.
+// here (`stage`, from prepack) and removed after (`clean`, from postpack). All but README and
+// LICENSE are for Pi, which installs this tarball as a Pi package (the `pi` key in package.json).
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -13,7 +10,7 @@ const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '
     repoRoot = path.dirname(packageRoot),
     BLOB = 'https://github.com/postmanlabs/postman-plugin/blob/main/',
     RAW = 'https://raw.githubusercontent.com/postmanlabs/postman-plugin/main/',
-    STAGED = ['README.md', 'LICENSE', 'skills', 'hooks', 'mcp.pi.json', 'mcp.opencode.json', 'manifest.json', 'opencode'],
+    STAGED = ['README.md', 'LICENSE', 'skills', 'hooks', 'mcp.pi.json'],
     SESSION_CONTEXT = path.join('hooks', 'session-start-context.md'),
     // A target that already has a scheme, is protocol-relative or root-relative, or is an in-page anchor.
     NOT_RELATIVE = '(?![a-z][a-z0-9+.-]*:|/|#)(?:\\./)?';
@@ -39,9 +36,6 @@ function stage () {
     copyFromRepo('LICENSE');
     copyFromRepo(SESSION_CONTEXT);
     copyFromRepo('mcp.pi.json');
-    copyFromRepo('mcp.opencode.json');
-    copyFromRepo('manifest.json');
-    copyFromRepo(path.join('opencode', 'src', 'index.ts'));
     // Dot-directories such as skills/.quarantine/ are local and gitignored, never published.
     fs.cpSync(path.join(repoRoot, 'skills'), path.join(packageRoot, 'skills'), {
         recursive: true,

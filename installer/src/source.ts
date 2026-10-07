@@ -7,8 +7,11 @@ export const BRANCH = 'main';
 /** Unpinned, so `pi update` moves it with each `latest` release; test/pi-package.test.js checks the name. */
 export const PI_SOURCE = 'npm:@postman/postman-plugin';
 
-/** What `opencode plugin add` installs: this repo's default branch, whose root package.json is the plugin. */
-export const OPENCODE_SPEC = `github:${REPO}`;
+/** Generated from this repo's `main` by .github/workflows/opencode-mirror.yml; its root package.json is the plugin. */
+export const OPENCODE_REPO = 'postmanlabs/opencode-plugin';
+
+/** What `opencode plugin add` installs: the mirror's default branch. */
+export const OPENCODE_SPEC = `github:${OPENCODE_REPO}`;
 
 /** The first OpenCode release of each major that installs `OPENCODE_SPEC`, found by bisecting the harness in opencode/scripts/test-plugin-add.js. */
 export const OPENCODE_MINIMUM: Record<number, [number, number, number]> = { 1: [1, 14, 33], 2: [2, 0, 4] };

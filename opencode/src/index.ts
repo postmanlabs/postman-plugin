@@ -6,8 +6,8 @@ import type { Config, Plugin } from '@opencode-ai/plugin';
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-/** The plugin runs from a clone of this repository and reads the shared files from its root. */
-export const assetRoot = path.dirname(packageRoot);
+/** The shared files: beside this package in postmanlabs/opencode-plugin and on npm, one level up in a clone of postmanlabs/postman-plugin. */
+export const assetRoot = fs.existsSync(path.join(packageRoot, 'manifest.json')) ? packageRoot : path.dirname(packageRoot);
 export const skillsDirectory = path.join(assetRoot, 'skills');
 export const sessionContextFile = path.join(assetRoot, 'hooks', 'session-start-context.md');
 export const mcpConfigFile = path.join(assetRoot, 'mcp.opencode.json');

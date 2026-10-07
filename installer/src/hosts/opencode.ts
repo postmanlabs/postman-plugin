@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import path from 'node:path';
-import { OPENCODE_MINIMUM, OPENCODE_SHIM, OPENCODE_SPEC, REPO, isSameRepo, redact } from '../source.js';
+import { OPENCODE_MINIMUM, OPENCODE_REPO, OPENCODE_SHIM, OPENCODE_SPEC, isSameRepo, redact } from '../source.js';
 import type { System } from '../system.js';
 import { parseJsonc, withoutArrayString } from './opencode-config.js';
 import { assertCloneRemovable, blocked, failed, guard, mustRun, removeClone } from './shared.js';
@@ -12,20 +12,20 @@ type Entry = { file: string; key: string; spec: string };
 // OpenCode 1 lists its plugins under `plugin`, OpenCode 2 under `plugins`; either may sit in `.json` or `.jsonc`.
 const KEYS = ['plugin', 'plugins'],
     CONFIG_FILES = ['opencode.json', 'opencode.jsonc'],
-    NPM_NAME = '@postman/postman-plugin',
+    NPM_NAME = '@postman/opencode-plugin',
     NEXT = 'Restart OpenCode for the change to take effect.',
-    // Installs a branch, tag or commit of this repo instead of its default branch, for testing a change before it merges.
-    REF_VARIABLE = 'POSTMAN_PLUGIN_OPENCODE_REF',
-    specToInstall = (system: System) => (system.env[REF_VARIABLE] ? `${OPENCODE_SPEC}#${system.env[REF_VARIABLE]}` : OPENCODE_SPEC),
+    // Installs another spec instead of the mirror's default branch, such as a mirror built from a change before it merges.
+    SPEC_VARIABLE = 'POSTMAN_PLUGIN_OPENCODE_SPEC',
+    specToInstall = (system: System) => system.env[SPEC_VARIABLE] || OPENCODE_SPEC,
     configDir = (system: System) => path.join(system.env.XDG_CONFIG_HOME || path.join(system.home, '.config'), 'opencode'),
     // `opencode plugin add` writes to OPENCODE_CONFIG_DIR instead when it is set.
     configDirs = (system: System) => [...new Set([system.env.OPENCODE_CONFIG_DIR, configDir(system)].filter((dir): dir is string => Boolean(dir)))],
-    // OpenCode 2 keeps one cached copy of each git plugin here, named `git-<repo>-<first 12 hex of sha256(spec)>`.
+    // OpenCode 2 keeps one cached copy of each git plugin here, named `git-<slug>-<first 12 hex of sha256(spec)>`.
     cachedCopy = (system: System, spec: string) => path.join(
         system.env.XDG_CACHE_HOME || path.join(system.home, '.cache'),
         'opencode',
         'npm',
-        `git-${REPO.split('/')[1]}-${createHash('sha256').update(spec).digest('hex').slice(0, 12)}`
+        `git-${gitSlug(spec)}-${createHash('sha256').update(spec).digest('hex').slice(0, 12)}`
     ),
     // `plugin add` and `plugin remove` act on OPENCODE_CONFIG_DIR when it is set, wherever our entry was found.
     // Compared as paths, not strings: Windows spells the same directory with either slash, in any case.
@@ -37,15 +37,29 @@ const KEYS = ['plugin', 'plugins'],
     shimFile = (system: System) => path.join(configDir(system), 'plugins', 'postman.ts'),
     shimTarget = (system: System) => path.join(cloneDir(system), 'opencode', 'src', 'index.ts');
 
-/** This repo through `github:`, a git URL or npm, at any ref or version. */
-function isOurSpec (spec: string): boolean {
+/** OpenCode 2's name for a git spec's cache: its last path segment, as `gitSlug` in packages/util/src/npm.ts derives it. */
+function gitSlug (spec: string): string {
+    let target = spec.split('#')[0];
+
+    try {
+        target = decodeURIComponent(target);
+    }
+    catch {
+        // OpenCode falls back to the undecoded spec too.
+    }
+
+    return target.replace(/\.git$/i, '').split(/[/:\\]/).at(-1)?.replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '') || 'repository';
+}
+
+/** The mirror through `github:`, a git URL or npm, at any ref or version, or the spec POSTMAN_PLUGIN_OPENCODE_SPEC installs. */
+function isOurSpec (system: System, spec: string): boolean {
     const bare = spec.split('#')[0];
 
-    if (bare === NPM_NAME || bare.startsWith(`${NPM_NAME}@`)) {
+    if (spec === system.env[SPEC_VARIABLE] || bare === NPM_NAME || bare.startsWith(`${NPM_NAME}@`)) {
         return true;
     }
 
-    return bare.startsWith('github:') ? isSameRepo(bare.slice('github:'.length), REPO) : isSameRepo(bare.replace(/^git\+/, ''), REPO);
+    return bare.startsWith('github:') ? isSameRepo(bare.slice('github:'.length), OPENCODE_REPO) : isSameRepo(bare.replace(/^git\+/, ''), OPENCODE_REPO);
 }
 
 /** True when the dotted version `found` precedes `minimum`. */
@@ -103,7 +117,7 @@ async function configured (system: System): Promise<{ entries: Entry[]; unreadab
             for (const item of Array.isArray(list) ? list : []) {
                 const spec = typeof item === 'string' ? item : (item as { package?: unknown } | null)?.package;
 
-                if (typeof spec === 'string' && isOurSpec(spec)) {
+                if (typeof spec === 'string' && isOurSpec(system, spec)) {
                     entries.push({ file, key, spec });
                 }
             }
