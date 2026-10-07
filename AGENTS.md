@@ -134,6 +134,7 @@ Check every `SKILL.md` you write or review for these.
    needs it, gated on that branch's own condition. A reader shouldn't have
    to complete or dismiss a step that doesn't apply to the task they're
    actually doing.
+5. Don't mention all skills in the start hooks. Only core skills should be mentioned. 
 
 ## Anti-patterns in code that loads inside an agent, and in tests
 
