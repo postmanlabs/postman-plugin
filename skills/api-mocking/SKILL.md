@@ -97,7 +97,25 @@ base-URL variables, see the `api-testing` skill's `--use-mock`/`--mock` flags
 on `collection run`.
 
 To develop a service against mocks of every upstream it calls, started together
-as one simulation, see the `api-simulation` skill and `postman simulate run`.
+as one simulation, see the `api-simulation` skill and `postman simulation run`.
+
+## Stateful mocks
+
+A generated mock replays its examples, so a `POST` and a later `GET` share
+nothing. To make a mock remember, keep its records in `pm.state` inside
+`default.js`. `mock run` and `simulation run` provide it, and a deployed mock
+server keeps it too.
+
+- `pm.state` is an async key-value store: `get`, `set`, `delete`, `has`,
+  `keys` and `clear`.
+- Set `interceptRequests: true` in `config.yaml` so `req.body` and `req.query`
+  arrive parsed.
+- Seed the starting records on first use, and add a reset route that clears
+  and reseeds them, so a test can start clean.
+- Answer an unknown id with the real service's 404, not an empty `200`.
+- Every caller shares one state unless it sends `x-mock-session`. Locally that
+  needs `interceptRequests: true`; a deployed server reads it only when the
+  mock has sessions enabled.
 
 ## The two ids that matter
 

@@ -171,11 +171,12 @@ without rebuilding it in another tool.
 ### Develop against simulated dependencies
 
 The [`api-simulation`](skills/api-simulation/) skill is the local loop for a
-service change: mock every dependency the service calls, start them together
-from one `.sim.yaml`, run the real service against them, test, and push:
+service change: find every dependency the service calls, mock each one (reusing
+the owning team's mock when they publish one), serve them on one port from one
+`.sim.yaml`, run the real service against them, test, and push:
 
 ```bash
-postman simulate run postman/simulations/orders-dev.sim.yaml
+postman simulation run postman/simulations/orders-dev.sim.yaml --port 4900
 ```
 
 The service under test is never mocked. It runs for real, so a passing run

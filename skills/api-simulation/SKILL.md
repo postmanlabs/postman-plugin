@@ -1,144 +1,142 @@
 ---
 name: api-simulation
-description: The local development loop for a service that calls other APIs — mock every upstream it depends on, start them together from one `.sim.yaml`, run the real service against them, test the change, and ship it with the simulation in the PR. Can also inject latency, error, rate-limit or chaos per dependency. Use when the user is building or changing an endpoint that calls other services, or asks to "simulate my dependencies," "mock everything this service calls," or "run this end to end locally." Covers `postman simulate run`. Builds on api-mocking for the member mocks; running locally needs nothing from bootstrap.
+description: The local development loop for a service that calls other APIs — find its dependencies with the Context Graph, give each one a mock (the owning team's, or one generated from its contract), serve them together from one `.sim.yaml` on one port, run the real service against it, test the change, and ship it with the simulation in the PR. Can also inject latency, error, rate-limit or chaos per dependency. Use when the user is building or changing an endpoint that calls other services, or asks to "simulate my dependencies," "mock everything this service calls," or "run this end to end locally." Covers `postman simulation`. Builds on api-discovery for finding dependencies and their owners' mocks, and on api-mocking for the rest.
 ---
 
 # API Simulation
 
 ## Overview
 
-This is how a service change gets developed: mock every dependency the service
-calls, start them together as one simulation, run the real service against it,
-test, push. Dependencies are not expected to exist locally — the simulation is
-how the service runs on a laptop and in CI.
+A simulation serves several mocks on one local port. Each member has a
+**routeKey**, its address: with `routing: path` (the default) a dependency
+lives at `http://localhost:<port>/<routeKey>`, and the routeKey is stripped
+before the mock sees the request. The service under test runs for real and is
+never a member.
 
-- **Mock** — one fake upstream in `postman/mocks/NAME/` (see `api-mocking`).
-- **Simulation** — every mock the service needs, listed in
-  `postman/simulations/NAME.sim.yaml` and started by one `postman simulate run`.
-- **Service under test** — runs for real. It is never a member.
+```yaml
+# postman/simulations/feeds-dev.sim.yaml
+simulation: feeds-dev
+routing: path
+mocks:
+  - routeKey: acs
+    path: ../mocks/acs/config.yaml
+  - routeKey: workspaces
+    path: ../.dependencies/mocks/workspace-service/config.yaml
+```
 
-Everything here is local and works signed out.
+Running a simulation is local and works signed out. The Context Graph,
+`search`, `dependency` and anything in a workspace need `postman login`.
+`postman simulation` needs CLI `1.69.0-beta-261006-114452` or a later release;
+stable 1.69.0 has only the older `postman simulate run`.
+
+## Commands
+
+Every `postman simulation` command takes a `.sim.yaml` path, a simulation id
+from a workspace, or both:
+
+| Command | With a `.sim.yaml` path | With a simulation id |
+| --- | --- | --- |
+| `create -n <name> --mock <ref>=<routeKey>` | Writes `postman/simulations/<name>.sim.yaml` from mock paths | Creates one in the workspace from mock ids (`-w`). Don't mix the two |
+| `list` | Lists `postman/simulations/` | `-w <workspaceId>` lists the workspace's |
+| `get <pathOrId>` | Reads the file | Fetches it |
+| `run <pathOrId>` | Serves the members on one port | Fetches the members, then serves them locally |
+| `push <path>` | Uploads each member mock, then the simulation, to the linked workspace. A member pulled with `dependency add` goes up as a copy | — |
+| `deploy <id>` | — | Serves it at a URL, **public by default**. `--private` requires an API key |
+| `delete <pathOrId>` | Deletes the file, not its mocks | Deletes it and takes its URL down |
 
 ## Process
 
-1. **List what the changed path calls.** Read the code: the clients the route
-   uses and the upstream base URLs in config
-   (`grep -rnoE '[A-Z_]*BASE_?URL|baseUrl' config/`). The code decides which
-   endpoints to mock. Signed in, `postman context-graph ask "What APIs does
-   <repo-name> call?" --wait` adds dependencies hidden behind shared libraries,
-   and their owners. Ask with the repository's name: a wrong name answers "no
-   dependencies", not an error. Its endpoint lists cover the whole repo, not
-   your path.
+1. **Find what the change calls.**
+   `postman context-graph ask "What services and APIs does <repo-name> call?" --wait`
+   lists each upstream, the endpoints called and the call sites. Use the
+   repository's name: a wrong name answers "no dependencies", not an error.
+   The graph can miss a call, so check its list against the path you're
+   changing and add any call the change introduces. Only HTTP dependencies
+   become members; queues, databases and caches run as real local instances.
+   If a `.sim.yaml` already covers the list, use it. Otherwise add what's
+   missing.
 
-   Only HTTP dependencies can be mocked. gRPC, queues, databases and caches run
-   as real local instances; name them in the result.
+2. **Give each dependency a mock.** Prefer the owner's. Ask the graph "Which
+   Postman workspace holds the API for <service>?", list that workspace's
+   mocks with `postman search mocks --filter "workspaceId=<id>"`, and pull one
+   with `postman dependency add mock <mockId>` (see `api-discovery`). A name
+   match in another workspace is not ownership. If the owner has none,
+   generate one from their spec or collection (see `api-mocking`), and make it
+   stateful when the change writes something and reads it back. Keep the
+   endpoints this path calls and answer `501` for the rest, so a missed call
+   fails loudly.
 
-   If a `.sim.yaml` already exists and covers this list, use it. If it doesn't,
-   build what's missing from the list.
-
-2. **Mock each dependency.** Reuse the owning team's mock if they published one:
-   `postman search mocks "<dependency>" --ownership organization --filter
-   "workspaceId=<owner-workspace-id> AND isGitConnected=true" -n 25`. A name
-   match is not ownership, and `--filter` runs after `-n` caps the page, so a
-   low limit can miss it. Otherwise generate one from the dependency's contract
-   (`postman mock generate <spec-or-collection> -n <dep>-sim`), then shape the
-   handler to:
-   - **the client that reads it** — your code decides what's accepted (wrapper
-     keys, the exact fields it checks), not the spec;
-   - **only the endpoints this path calls** — return `501` for anything else,
-     never a plausible `200`, so a call you missed fails right away.
-
-   For a third-party API, generate from its published contract (see
-   `api-discovery`), not from memory.
-
-3. **Compose the `.sim.yaml`, one port per member.** Every generated mock
-   declares port `4500`, and the run refuses duplicates. Set `port:` per entry:
-
-   ```yaml
-   simulation: orders-dev
-   mocks:
-     - path: ../mocks/payments-sim/config.yaml
-       port: 4901
-     - path: ../mocks/inventory-sim/config.yaml
-       port: 4902
-   ```
-
-   Full schema: [reference/sim_yaml_schema.md](reference/sim_yaml_schema.md).
-
-4. **Point the service at the mocks.** Set each upstream base URL to
-   `http://127.0.0.1:<port>`: with env vars if the service reads them, otherwise
-   with a dev config profile that replaces only the base URLs. Check the boot log
-   for what each dependency resolved to. Auth middleware often has its own URL
-   key, and some services never read `process.env`. Use a throwaway local
-   database rather than a shared one.
-
-5. **Start the simulation, then wait for every member.**
+3. **Compose the simulation.**
 
    ```bash
-   postman simulate run postman/simulations/orders-dev.sim.yaml --no-history > sim.log 2>&1 &
-   for port in 4901 4902; do
-     until curl -sS -o /dev/null -m 2 "http://127.0.0.1:$port/"; do sleep 1; done
-   done
+   postman simulation create -n feeds-dev \
+     --mock ./postman/mocks/acs=acs \
+     --mock ./postman/.dependencies/mocks/workspace-service=workspaces
    ```
 
-   Members bind one at a time, so poll each one. Don't use `curl -f`: a member
-   with an injected error never looks ready. Stop it with Ctrl+C.
+   Each `=<routeKey>` names a member: lowercase letters, digits, `-` and `_`.
+   Schema: [reference/sim_yaml_schema.md](reference/sim_yaml_schema.md).
 
-6. **Develop and test.** Start the real service and hit the changed route with
-   `postman request` or its collection (see `api-testing`). While iterating:
-   - Restart only the service after a code change. The simulation keeps running.
-   - Mocks don't hot-reload. After you edit a handler, restart the simulation.
-   - A `502` reading `Proxy error: connect ECONNREFUSED 127.0.0.1:<ephemeral>`
-     means that mock's handler crashed. The cause is in `sim.log`.
-   - A `501` from a mock means an upstream call wasn't modelled yet. Add it,
-     restart, continue.
+4. **Run it and point the service at it.**
 
-7. **Push.** Commit the mocks and the `.sim.yaml` with the change. CI runs the
-   same steps: start the simulation, start the service, run the collection with
-   `--no-history` (see `ci-integration`).
+   ```bash
+   postman simulation run postman/simulations/feeds-dev.sim.yaml --port 4900 --output ndjson > sim.ndjson 2>&1 &
+   ```
 
-**Failure paths, if the change handles them.** Copy the baseline to a second
-`.sim.yaml` and add conditions to one member:
+   It's up when the `listening` event lists each member's address. Set each
+   upstream base URL to `http://localhost:4900/<routeKey>`. Stop it with
+   Ctrl+C.
+
+5. **Develop and test.** Call the changed route on the real service with
+   `postman request` or its collection (see `api-testing`). Restart the
+   service after a code change, and the simulation after a mock edit. A
+   response from the simulation itself means wiring, not code:
+   - `404 Unknown simulation member`: the path has no valid routeKey. The body
+     lists the valid ones.
+   - `501`: an upstream call you haven't modelled yet.
+   - `502 Proxy error`: the member's handler crashed. See `sim.ndjson`.
+
+6. **Ship.** Commit the mocks, the `.sim.yaml` and `.postman/resources.yaml`.
+   CI runs `postman dependency install`, starts the simulation with
+   `--no-history`, starts the service and runs the collection (see
+   `ci-integration`).
+
+**Failure paths.** Copy the baseline `.sim.yaml` and give one member
+conditions: `latency.delay_ms`, `error.status_code` (400–599),
+`rate_limit.requests_per_minute` or `chaos.failure_rate` (0–100). They apply
+to every route on that member.
 
 ```yaml
-  - path: ../mocks/payments-sim/config.yaml
-    port: 4901
+  - routeKey: workspaces
+    path: ../.dependencies/mocks/workspace-service/config.yaml
     scenarios:
-      - path: ../mocks/payments-sim/default.js
-        overrides:
+      - overrides:
           conditions:
-            error:
-              status_code: 503
+            error: { status_code: 503 }
 ```
-
-The conditions are `latency.delay_ms`, `error.status_code` (400–599),
-`rate_limit.requests_per_minute` and `chaos.failure_rate` (0–100). A condition
-applies to every route on that member.
 
 ## Critical Rules
 
 1. **The service under test is never a member.** If nothing real runs, use
-   `api-mocking` instead.
-2. **Distinct ports, or the run fails closed.**
-3. **A scenario entry without `overrides.conditions` injects nothing.** For a
-   healthy member, leave out `scenarios:` entirely.
-4. **`id:`, `routing:` and `overrides.bypass` do nothing in the CLI.** There is
-   no proxying through to a real dependency.
-5. **Say where each mock came from:** the owner's or generated here.
-6. **Recording history needs both `-w` and `--simulation`.** Otherwise pass
-   `--no-history`.
+   `api-mocking`.
+2. **Unique routeKeys and an explicit `--port`.** A member's own `port:` is
+   ignored. Without `--port`, a busy 3000 silently moves to a random port.
+3. **Only `overrides.conditions` inject faults.** A bare
+   `scenarios: - path: …/default.js` entry, as the Postman app writes, adds
+   none. `overrides.bypass` is ignored.
+4. **Pull an owner's mock even when it's deployed.** Only members take faults
+   and log requests, and a private mock server needs an `x-api-key` your
+   service won't send. Don't edit the pulled copy, because
+   `dependency update` overwrites it. If it lacks an endpoint, copy it into
+   `postman/mocks/` and call it a fork.
+5. **Say where each mock came from:** the owner's (name the workspace),
+   forked, or generated here.
 
 ## Verification
 
-Starting is not the same as being used. Count the requests each member served:
-
-```bash
-grep -a 'request completed' sim.log \
-  | sed -E 's|.*request completed +||; s|http://localhost:[0-9]+||; s|\?[^ ]*||' \
-  | awk '{print $1, $2, $3, $4}' | sort | uniq -c | sort -rn
-```
-
-A member with zero requests either isn't wired (step 4) or isn't on this path.
-Readiness probes are in the counts too, so subtract them. For a fault, confirm
-the response changed: `"scenario":"error"` in the body, `429`s, or added latency.
-Report each dependency, where its mock came from, and what ran for real.
+Starting is not the same as being used. Each request a member serves is a
+`request` event in `sim.ndjson` with its `routeKey`; a member with none isn't
+wired or isn't on this path. Injected `error`, `rate_limit` and `chaos`
+responses never reach the mock, so confirm a fault from what the service got
+back: `"scenario":"error"`, `429`s, or the added latency. Report each
+dependency, where its mock came from, and what ran for real.
