@@ -9,8 +9,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-engineer/SKILL.md",
-          "bytes": 2558,
-          "sha256": "9c2b7991ab5bd2bac72565ac89d42bfc1796bcc61d08c2c9098f6f106fd9dc93"
+          "bytes": 2726,
+          "sha256": "961c8bdd37bd64de47e3ab4ea67079025f746e1c3566df9412cdda6990eed43c"
         }
       ]
     },
@@ -35,8 +35,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-discovery/SKILL.md",
-          "bytes": 6709,
-          "sha256": "f4a6b5243a044538bfa969a190d566f0de5ba943deef4f4c0d20f09cb00ef7fd"
+          "bytes": 6997,
+          "sha256": "163c721cf770013d1a80d0fa0df25b68d03a0d496b808e2ce3430b00e3a847d5"
         },
         {
           "target": "reference/orbit.md",
@@ -73,8 +73,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-mocking/SKILL.md",
-          "bytes": 8955,
-          "sha256": "6ce9c0cd72953bc947f183ec682793c47a0a8bf59331261f595870bbc53946fe"
+          "bytes": 10406,
+          "sha256": "d7e7bd27c5028a8e0603c73e1702f555cc271a59409f92bc4de57dac23b7a775"
         }
       ]
     },
@@ -88,6 +88,25 @@
           "source": "skills/api-monitoring/SKILL.md",
           "bytes": 7834,
           "sha256": "162bce15e16336d6af8447bdab7b3d11285530250400e0e2826e0217ff324dea"
+        }
+      ]
+    },
+    {
+      "name": "api-simulation",
+      "plugin": "postman",
+      "description": "The local development loop for a service that calls other APIs — find its dependencies in the code and the Context Graph, give each one a mock (the owning team's, or one generated from its contract), serve them together from one `.sim.yaml` on one port, run the real service against it, read the simulation's log to see what each dependency served, and ship it with the simulation in the PR. Can also inject latency, error, rate-limit or chaos per dependency. Use when the user is building or changing an endpoint that calls other services, or asks to \"simulate my dependencies,\" \"mock everything this service calls,\" or \"run this end to end locally.\" Covers `postman simulation`. Builds on api-discovery for finding dependencies and their owners' mocks, and on api-mocking for the rest.",
+      "files": [
+        {
+          "target": "SKILL.md",
+          "source": "skills/api-simulation/SKILL.md",
+          "bytes": 9786,
+          "sha256": "4ea08f459fec5472e1a59e46b33004c5204de235e869ebb6dbfb4bbb309477bd"
+        },
+        {
+          "target": "reference/sim_yaml_schema.md",
+          "source": "skills/api-simulation/reference/sim_yaml_schema.md",
+          "bytes": 5947,
+          "sha256": "f4b3c6961b8b1ef1178e4b959f74f4f63d8461492815cda0cc7adaf984f738c1"
         }
       ]
     },

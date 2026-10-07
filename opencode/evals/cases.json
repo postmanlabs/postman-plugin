@@ -21,6 +21,13 @@
     ]
   },
   {
+    "id": "api-simulation",
+    "prompt": "I'm adding a new endpoint that calls four upstream services. Mock them all so I can run and test the newly added endpoint locally before I push.",
+    "expected": [
+      "api-simulation"
+    ]
+  },
+  {
     "id": "api-testing",
     "prompt": "Run this Postman collection and verify that the API still satisfies its assertions.",
     "expected": [

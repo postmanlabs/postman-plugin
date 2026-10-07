@@ -9,7 +9,7 @@ description: Stands up a fake backend that behaves like a real API — from a co
 
 This skill covers the Postman CLI (`postman mock`) for **Code Mocks** — the
 code-based mock product. It is not the postman-app UI (Local Mode sidebar,
-Agent Mode tools, Simulations), nor the older classic/collection mocks that
+Agent Mode tools, the Simulations surface), nor the older classic/collection mocks that
 serve saved collection examples from a `*.mock.pstmn.io` URL — that's a
 different product (the MCP `createMock` flow), not this skill.
 
@@ -27,6 +27,10 @@ sender). A purely local mock answering a `postman request` on your machine
 never needs cloud. The exception is `generate -w`, which creates the mock in a
 workspace only and writes no local files — use that only when you intentionally
 skip the repo copy.
+
+Mocking another team's service, or the services your own service calls? Use
+`api-simulation`, which checks each owner's workspace for a published mock
+before anything is generated here.
 
 ## Process
 
@@ -95,6 +99,30 @@ skip the repo copy.
 To point real request/assertion runs at a mock instead of hand-editing
 base-URL variables, see the `api-testing` skill's `--use-mock`/`--mock` flags
 on `collection run`.
+
+To develop a service against mocks of every upstream it calls, started together
+as one simulation, see the `api-simulation` skill and `postman simulation run`.
+
+## Stateful mocks
+
+A mock generated from a collection or spec replays its examples, so a `POST`
+and a later `GET` share nothing. To make a mock remember, keep its records in
+`pm.state` inside `default.js`. `pm.state` is the mock's async key-value
+store: `get`, `set`, `delete`, `has`, `keys` and `clear`. The sample from
+`postman mock generate -n NAME` already uses it, and shows the pattern.
+
+Every `mock run` or `simulation run` starts the mock with empty state; during
+the run, its handler creates, reads, updates and deletes records through
+`pm.state`. A deployed mock server keeps its state between requests.
+
+- Set `interceptRequests: true` in `config.yaml` so `req.body` and `req.query`
+  arrive parsed.
+- Seed the starting records on first use, and add a reset route that clears
+  and reseeds them, so a test can start clean.
+- Answer an unknown id with the real service's 404, not an empty `200`.
+- Every caller shares one state unless it sends `x-mock-session`. Locally that
+  needs `interceptRequests: true`; a deployed server reads it only when the
+  mock has sessions enabled.
 
 ## The two ids that matter
 
