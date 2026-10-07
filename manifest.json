@@ -9,8 +9,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-engineer/SKILL.md",
-          "bytes": 2685,
-          "sha256": "e9f74728d75b4c0eda5193b406f7065382e2de821c9b972b7c92a543ba322636"
+          "bytes": 2696,
+          "sha256": "449912ae6abd9661371965fce3a430d902dc222a076caa76264914edfcce3e36"
         }
       ]
     },
@@ -94,19 +94,19 @@
     {
       "name": "api-simulation",
       "plugin": "postman",
-      "description": "The local development loop for a service that calls other APIs — find its dependencies with the Context Graph, give each one a mock (the owning team's, or one generated from its contract), serve them together from one `.sim.yaml` on one port, run the real service against it, test the change, and ship it with the simulation in the PR. Can also inject latency, error, rate-limit or chaos per dependency. Use when the user is building or changing an endpoint that calls other services, or asks to \"simulate my dependencies,\" \"mock everything this service calls,\" or \"run this end to end locally.\" Covers `postman simulation`. Builds on api-discovery for finding dependencies and their owners' mocks, and on api-mocking for the rest.",
+      "description": "The local development loop for a service that calls other APIs — find its dependencies in the code and the Context Graph, give each one a mock (the owning team's, or one generated from its contract), serve them together from one `.sim.yaml` on one port, run the real service against it, read the simulation's log to see what each dependency served, and ship it with the simulation in the PR. Can also inject latency, error, rate-limit or chaos per dependency. Use when the user is building or changing an endpoint that calls other services, or asks to \"simulate my dependencies,\" \"mock everything this service calls,\" or \"run this end to end locally.\" Covers `postman simulation`. Builds on api-discovery for finding dependencies and their owners' mocks, and on api-mocking for the rest.",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/api-simulation/SKILL.md",
-          "bytes": 8295,
-          "sha256": "11e7fb6dde2accca2cf6fa1d54d3192a3c1def26f22adc2d7cfd7885fb0ce33e"
+          "bytes": 8981,
+          "sha256": "61d6eff4727ae59d45aebcf4a2fa313caca4a4d7c4d61a372013a778e63a8335"
         },
         {
           "target": "reference/sim_yaml_schema.md",
           "source": "skills/api-simulation/reference/sim_yaml_schema.md",
-          "bytes": 4891,
-          "sha256": "a45954a6e44035bf48108a18ad83f9ae7f818783640dceb811fb22ae92c299b7"
+          "bytes": 5096,
+          "sha256": "72da064f1cafb584ea7006d8cb71aedcedc6d66ea03935d943f182451ed9111f"
         }
       ]
     },

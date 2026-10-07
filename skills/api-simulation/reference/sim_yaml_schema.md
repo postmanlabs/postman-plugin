@@ -93,7 +93,7 @@ its siblings succeed, split that endpoint into its own mock.
 | Flag | Notes |
 | --- | --- |
 | `-p, --port <n\|auto>` | Port to serve on. Defaults to 3000, and silently falls back to a free port if 3000 is busy. An explicit port fails instead. |
-| `--output ndjson` | One JSON event per line: `listening` (port, url, each member's `routeKey` and `address`), `request` (one per request a member served, with its `routeKey`), and `summary` on shutdown. |
+| `--output ndjson` | One JSON event per line, instead of the default readable log: `listening` (port, url, each member's `routeKey` and `address`); `request`, one per request a member served (`routeKey`, `method`, `path`, `statusCode`, `duration` in ms, headers and bodies); and `summary` on shutdown (`requestsServed`, `requestsFailed`). The router's own `400` and `404`, and injected faults, aren't logged. |
 | `-e`, `-g`, `--dataset` | Environment, globals and datasets for every member, as for `mock run`. |
 | `--no-history` | Record nothing. A `.sim.yaml` linked to a workspace otherwise records each start there; an unlinked one records only with `-w` and `--simulation`. |
 

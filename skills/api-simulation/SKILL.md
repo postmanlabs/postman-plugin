@@ -1,6 +1,6 @@
 ---
 name: api-simulation
-description: The local development loop for a service that calls other APIs — find its dependencies with the Context Graph, give each one a mock (the owning team's, or one generated from its contract), serve them together from one `.sim.yaml` on one port, run the real service against it, test the change, and ship it with the simulation in the PR. Can also inject latency, error, rate-limit or chaos per dependency. Use when the user is building or changing an endpoint that calls other services, or asks to "simulate my dependencies," "mock everything this service calls," or "run this end to end locally." Covers `postman simulation`. Builds on api-discovery for finding dependencies and their owners' mocks, and on api-mocking for the rest.
+description: The local development loop for a service that calls other APIs — find its dependencies in the code and the Context Graph, give each one a mock (the owning team's, or one generated from its contract), serve them together from one `.sim.yaml` on one port, run the real service against it, read the simulation's log to see what each dependency served, and ship it with the simulation in the PR. Can also inject latency, error, rate-limit or chaos per dependency. Use when the user is building or changing an endpoint that calls other services, or asks to "simulate my dependencies," "mock everything this service calls," or "run this end to end locally." Covers `postman simulation`. Builds on api-discovery for finding dependencies and their owners' mocks, and on api-mocking for the rest.
 ---
 
 # API Simulation
@@ -46,23 +46,23 @@ from a workspace, or both:
 
 ## Process
 
-1. **Find what the change calls, starting with the Context Graph.** Ask it
-   first, even when you can read the code: it also knows each dependency's
-   owner and Postman workspace, which step 2 needs.
-   `postman context-graph ask "What services and APIs does <repo-name> call?" --wait`
-   lists each upstream, the endpoints called and the call sites. Use the
-   repository's name from `git remote get-url origin`, not the folder's: a
-   wrong name answers "no dependencies", not an error.
-   The graph can miss a call, so check its list against the path you're
-   changing and add any call the change introduces. Only HTTP dependencies
-   become members; queues, databases and caches run as real local instances.
-   If a `.sim.yaml` already covers the list, use it. Otherwise add what's
-   missing.
+1. **Find what the change calls.** Read the code path you're changing: its
+   HTTP clients, their base-URL settings, and any call the change adds. Then
+   check that list against the Context Graph, which also sees calls made
+   through shared code and other repositories:
+   `postman context-graph ask "What services and APIs does <repo-name> call?" --wait`.
+   Use the repository's name from `git remote get-url origin`, not the
+   folder's: a wrong name answers "no dependencies", not an error. A call the
+   change adds isn't in the graph yet. Only HTTP dependencies become members;
+   queues, databases and caches run as real local instances. If a
+   `.sim.yaml` already covers the list, use it.
 
 2. **Get each dependency's mock from its owner first.** For every
    dependency, in this order:
    1. Find the owner's workspace:
-      `postman context-graph ask "Which Postman workspace holds the API for <service>?" --wait`.
+      `postman context-graph ask "Which Postman workspace holds the collections and mocks for <service>?" --wait`.
+      If the workspace it names has neither, find the owner's with
+      `postman search workspaces "<service>"`.
    2. List that workspace's mocks:
       `postman search mocks --filter "workspaceId=<id>"`. A name match in
       another workspace is not ownership.
@@ -93,22 +93,27 @@ from a workspace, or both:
 
    It's up when the `listening` event lists each member's address. Set each
    upstream base URL to `http://localhost:4900/<routeKey>`, never to a mock
-   server's URL. Stop it with Ctrl+C.
+   server's URL. Stop it with Ctrl+C; the closing `summary` event counts the
+   requests served and failed.
 
-5. **Develop and test.** Call the changed route on the real service with
-   `postman request` or its collection (see `api-testing`). Restart the
-   service after a code change, and the simulation after a mock edit. A
-   response from the simulation itself means wiring, not code:
+5. **Develop and test, reading the simulation log after each call.** Call
+   the changed route on the real service with `postman request` or its
+   collection (see `api-testing`). Every request a member served is a
+   `request` event in `sim.ndjson`, with its `routeKey`, `method`, `path`,
+   `statusCode`, `duration` in milliseconds, and both bodies. Check that each
+   upstream call you expect is there, on the right member, with the status you
+   expect. Restart the service after a code change, and the simulation after a
+   mock edit. A response from the simulation itself means wiring, not code:
    - `404 Unknown simulation member`: the path has no valid routeKey. The body
-     lists the valid ones.
+     lists the valid ones. It isn't logged.
    - `501`: an upstream call you haven't modelled yet. Add it to your own
      mock. For a pulled one, fork it into `postman/mocks/` first.
    - `502 Proxy error`: the member's handler crashed. See `sim.ndjson`.
 
-6. **Add failure scenarios.** For each dependency on the path, copy the
-   baseline `.sim.yaml` and give that member a condition: an error status, and
-   a delay longer than the client's timeout. Run the service against each and
-   report what it did; fix what breaks.
+6. **Optionally, fail a dependency.** Worth doing when the change has to
+   survive an upstream that errors or is slow, but not required. Copy the
+   baseline `.sim.yaml`, give that member a condition, run the service
+   against it, and report what it did.
 
    ```yaml
      - routeKey: workspaces
@@ -121,7 +126,9 @@ from a workspace, or both:
 
    The conditions are `latency.delay_ms`, `error.status_code` (400–599),
    `rate_limit.requests_per_minute` and `chaos.failure_rate` (0–100). Each
-   applies to every route on that member.
+   applies to every route on that member. An injected error, `429` or chaos
+   failure never reaches the mock and isn't logged, so judge it by what the
+   service returned.
 
 7. **Ship.** Commit your mocks, the `.sim.yaml` files and
    `.postman/resources.yaml`. Add `postman/.dependencies/` to `.gitignore`:
@@ -151,12 +158,16 @@ from a workspace, or both:
 
 ## Verification
 
-Starting is not the same as being used. Each request a member serves is a
-`request` event in `sim.ndjson` with its `routeKey`; a member with none isn't
-wired or isn't on this path. Injected `error`, `rate_limit` and `chaos`
-responses never reach the mock, so confirm a fault from what the service got
-back: `"scenario":"error"`, `429`s, or the added latency.
+Starting is not the same as being used. Before you report, read the whole
+log: every member on the path should have `request` events with the statuses
+you expect. A member with none isn't wired or isn't on this path.
 
-Report, for each dependency: the owner workspace you searched, what you
-found there, and where its mock came from (pulled, forked or generated here).
-Then name what ran for real.
+Report:
+
+- **How the simulation performed:** for each member, the requests it served
+  and their statuses, and anything unexpected, such as a `501`, a `502` or a
+  member that was never called.
+- **Where each mock came from:** for each dependency, the owner workspace you
+  searched, what you found there, and whether its mock was pulled, forked or
+  generated here.
+- **What ran for real.**
