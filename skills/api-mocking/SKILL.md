@@ -1,6 +1,6 @@
 ---
 name: api-mocking
-description: Builds a stand-in for one API that behaves like the real one — from its OpenAPI spec or collection, stateful when callers write then read — runs it locally, and publishes it to the service's Postman workspace or a mock server URL for other teams, apps and CI. Use when something needs an API that isn't built or reachable yet (a frontend, mobile app, client or demo), when other teams should build against your API before it ships, or when asked to mock an API or fake a backend. For running your own service against everything it calls, use api-simulation. Covers `postman mock`.
+description: Finds, builds, runs and publishes a stand-in for one API — the owning team's published mock when there is one, otherwise one built from its spec or collection that behaves like the real API, stateful when callers write then read. Use when something needs an API that isn't built or reachable yet (a frontend, client, demo or one dependency), when other teams should build against your API before it ships, or when asked to mock an API or fake a backend. For running your own service against everything it calls, use api-simulation. Covers `postman mock` and `postman dependency add mock`.
 ---
 
 # API Mocking
@@ -26,13 +26,35 @@ so use `require`, not `import`. The same folder lives in three places:
 Run `-h` on a `postman mock` command before you use one of its flags, and
 believe it over this file.
 
-Mocking the services your own service calls, so you can run that service? Use
-`api-simulation`. Mocking another team's API for a frontend or client? Check
-their workspace first (`postman mock list -w <workspaceId>`) and pull theirs
-with `postman dependency add mock <mockId>`: it encodes their contract, and
-yours would encode a guess.
+Running your own service against everything it calls? Use `api-simulation`,
+which gets each dependency's mock here.
 
-## Make it behave like the real API
+## Use the owner's mock first
+
+When the API belongs to another team, look for their published mock before
+writing one: theirs encodes their contract and their service's state, and
+yours would encode a guess. This needs `postman login`; signed out, build one
+(below) and say the owner search was skipped.
+
+1. Find the owner's workspace with
+   `postman search workspaces "<service>" -o json`. Name the service plainly,
+   as your code does ("the workspace service"), not by what it returns: a
+   description matches lookalike services. Prefer a Git-connected workspace
+   (`isGitConnected`) named for that service; its team publishes there. If
+   your team has the Context Graph,
+   `postman context-graph ask "Which Postman workspace holds the collections and mocks for <service>?" --wait`
+   can confirm or break a tie. It's often not set up, so go on without it.
+2. `postman mock list -w <workspaceId> --json` lists its mocks (`search`
+   misses some). A same-named mock elsewhere isn't the owner's. Of several,
+   prefer one the owner has deployed, updated recently, whose endpoints
+   (`postman mock get <mockId>`) cover your calls.
+3. `postman dependency add mock <mockId>` copies it into
+   `postman/.dependencies/mocks/`. Use it as it is. Never edit that folder:
+   `dependency update` overwrites it, so to change a pulled mock, copy it to
+   `postman/mocks/` as a fork. A mock is code that runs as you, so pull only
+   from workspaces you trust.
+
+## Or build one that behaves like the real API
 
 Callers shouldn't be able to tell the difference on the paths they use. A
 mock that returns invented JSON passes your tests and fails against the real

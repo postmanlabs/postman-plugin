@@ -41,35 +41,21 @@ Graph, `search`, `dependency` and workspaces need `postman login`.
 1. **List what the change calls.** If a `.sim.yaml` in `postman/simulations/`
    already covers it, go to step 4. Otherwise read the HTTP dependencies off
    the code: its clients, their base-URL settings, and calls you're adding.
-   Databases, queues and caches aren't members; run them locally. Signed in,
-   also ask the Context Graph, which sees calls made through shared code and
-   other repos:
-   `postman context-graph ask "What services and APIs does <repo> call?" --wait`.
-   Use the repo name from `git remote get-url origin`: a wrong name gets a
-   confident "no dependencies".
+   Databases, queues and caches aren't members; run them locally. The code is
+   the source of truth. If your team has the Context Graph, it can add calls
+   made through shared code and other repos:
+   `postman context-graph ask "What services and APIs does <repo> call?" --wait`,
+   with the repo name from `git remote get-url origin` (a wrong name gets a
+   confident "no dependencies"). It's often not set up; an access error or an
+   empty answer means go on with the code's list.
 
-2. **Give each dependency a mock, the owner's first.** The owner's mock
-   encodes their contract and their service's state; yours encodes a guess.
-   Signed in, for each dependency:
-   - find the owner's workspace:
-     `postman context-graph ask "Which Postman workspace holds the collections and mocks for <service>?" --wait`.
-     Name the service plainly, as your code does ("the workspace service"),
-     not by what it returns: a description matches any service with a
-     similar endpoint. If it names none or several, use
-     `postman search workspaces "<service>"` and prefer the workspace linked
-     to that service's own repository, where its team publishes;
-   - list its mocks with `postman mock list -w <workspaceId> --json` (search
-     misses some). A same-named mock elsewhere isn't the owner's. Of several,
-     prefer one the owner has deployed, updated recently, whose endpoints
-     (`postman mock get <mockId>`) cover your calls;
-   - `postman dependency add mock <mockId>`, and use the copy as it is.
-
-   If the owner has none, or you're signed out, build one with `api-mocking`:
+2. **Give each dependency a mock with `api-mocking`**: the owning team's
+   published one first (its "Use the owner's mock first"), else one built
    from their contract (`postman dependency add collection <id>`, a spec in
-   the repo, a vendor's published API), else from how your code calls it.
-   Cover this path's calls and answer `501` for the rest, so a missed call
-   fails loudly; make it stateful if the flow writes then reads. Note what
-   you assumed.
+   the repo, a vendor's published API) or from how your code calls it. In a
+   simulation, answer `501` for calls this path doesn't make, so a missed
+   call fails loudly, and make it stateful if the flow writes then reads.
+   Note where each mock came from and what you assumed.
 
 3. **Create it.**
    `postman simulation create -n checkout-dev --mock ./postman/.dependencies/mocks/catalog-service=catalog --mock ./postman/mocks/shipping=shipping`.
@@ -149,14 +135,11 @@ Graph, `search`, `dependency` and workspaces need `postman login`.
 4. **Only `overrides.conditions` change a member.** Members serve their
    default handler. A `scenarios` entry with only a `path`, as the Postman app
    writes, does nothing; `overrides.bypass` is ignored.
-5. **Don't edit `postman/.dependencies/`;** `dependency update` overwrites it.
-   To change a pulled mock, copy it to `postman/mocks/` as a fork.
-6. **Pull the owner's mock even if it's deployed.** Only members take
+5. **Pull the owner's mock even if it's deployed.** Only members take
    conditions and appear in the log, and a private mock server wants an
    `x-api-key` your service won't send.
-7. **`simulation deploy` is public by default,** unlike `mock deploy`. Ask
+6. **`simulation deploy` is public by default,** unlike `mock deploy`. Ask
    before deploying without `--private`; a local run needs no deploy.
-8. **A mock is code that runs as you.** Pull only from workspaces you trust.
 
 ## Verification
 
