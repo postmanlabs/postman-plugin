@@ -24,15 +24,15 @@ mocks:
     path: ../.dependencies/mocks/workspace-service/config.yaml
 ```
 
-Running a simulation is local and works signed out. The Context Graph,
-`search`, `dependency` and anything in a workspace need `postman login`.
-`postman simulation` needs CLI `1.69.0-beta-261006-114452` or a later release;
-stable 1.69.0 has only the older `postman simulate run`.
+Running a local `.sim.yaml` works signed out. Running one by id, the Context
+Graph, `search`, `dependency` and anything in a workspace need `postman login`.
+`postman simulation` needs Postman CLI 1.70.0 or later (`postman update`);
+earlier releases have only the older `postman simulate run`.
 
 ## Commands
 
-Every `postman simulation` command takes a `.sim.yaml` path, a simulation id
-from a workspace, or both:
+Most commands work either on a local `.sim.yaml` or on a simulation in a
+workspace:
 
 | Command | With a `.sim.yaml` path | With a simulation id |
 | --- | --- | --- |
@@ -41,24 +41,26 @@ from a workspace, or both:
 | `get <pathOrId>` | Reads the file | Fetches it |
 | `run <pathOrId>` | Serves the members on one port | Fetches the members, then serves them locally |
 | `push <path>` | Uploads each member mock, then the simulation, to the linked workspace. A member pulled with `dependency add` goes up as a copy | — |
-| `deploy <id>` | — | Serves it at a URL, **public by default**. `--private` requires an API key |
+| `deploy <id>` | — | Serves it at a URL, **public by default** (rule 7). `--private` requires an API key |
 | `delete <pathOrId>` | Deletes the file, not its mocks | Deletes it and takes its URL down |
 
 ## Process
 
-1. **Find what the change calls.** Read the code path you're changing: its
-   HTTP clients, their base-URL settings, and any call the change adds. Then
-   check that list against the Context Graph, which also sees calls made
-   through shared code and other repositories:
+1. **Find what the change calls.** If a `.sim.yaml` in `postman/simulations/`
+   already covers the change, skip to step 4. Otherwise read the code path
+   you're changing: its HTTP clients, their base-URL settings, and any call
+   the change adds. Only HTTP dependencies become members; queues, databases
+   and caches run as real local instances. When signed in, check that list
+   against the Context Graph, which also sees calls made through shared code
+   and other repositories:
    `postman context-graph ask "What services and APIs does <repo-name> call?" --wait`.
    Use the repository's name from `git remote get-url origin`, not the
    folder's: a wrong name answers "no dependencies", not an error. A call the
-   change adds isn't in the graph yet. Only HTTP dependencies become members;
-   queues, databases and caches run as real local instances. If a
-   `.sim.yaml` already covers the list, use it.
+   change adds isn't in the graph yet.
 
-2. **Get each dependency's mock from its owner first.** For every
-   dependency, in this order:
+2. **Get each dependency's mock from its owner first.** This needs
+   `postman login`; signed out, ask the user to sign in rather than writing
+   mocks (rule 5). For every dependency, in this order:
    1. Find the owner's workspace:
       `postman context-graph ask "Which Postman workspace holds the collections and mocks for <service>?" --wait`.
       If the workspace it names has neither, find the owner's with
@@ -88,13 +90,20 @@ from a workspace, or both:
 4. **Run it and point the service at it.**
 
    ```bash
-   postman simulation run postman/simulations/feeds-dev.sim.yaml --port 4900 --output ndjson > sim.ndjson 2>&1 &
+   postman simulation run postman/simulations/feeds-dev.sim.yaml --port 4900 --output ndjson > sim.ndjson 2> sim.err &
    ```
 
-   It's up when the `listening` event lists each member's address. Set each
-   upstream base URL to `http://localhost:4900/<routeKey>`, never to a mock
-   server's URL. Stop it with Ctrl+C; the closing `summary` event counts the
-   requests served and failed.
+   Keep stderr out of `sim.ndjson` so every line parses; start-up errors land
+   in `sim.err`. It's up when the `listening` event lists each member's
+   address. Set each upstream base URL to `http://localhost:4900/<routeKey>`,
+   never to a mock server's URL.
+
+   Stop it with
+   `pkill -INT -f "simulation run postman/simulations/feeds-dev.sim.yaml"`:
+   every member stops, and the closing `summary` event counts the requests
+   served and failed. `kill $!` reaches only the `postman` launcher, which
+   ignores it, so the simulation keeps serving. In a terminal of its own,
+   Ctrl+C works too.
 
 5. **Develop and test, reading the simulation log after each call.** Call
    the changed route on the real service with `postman request` or its
@@ -124,16 +133,18 @@ from a workspace, or both:
                error: { status_code: 503 }
    ```
 
-   The conditions are `latency.delay_ms`, `error.status_code` (400–599),
-   `rate_limit.requests_per_minute` and `chaos.failure_rate` (0–100). Each
-   applies to every route on that member. An injected error, `429` or chaos
-   failure never reaches the mock and isn't logged, so judge it by what the
-   service returned.
+   The conditions are `latency`, `error`, `rate_limit` and `chaos`; the schema
+   has all four. Each applies to every route on that member, and the first to
+   fail a request ends it, so fail a dependency one way at a time. An injected
+   error, `429` or chaos failure never reaches the mock and isn't logged, so
+   judge it by what the service returned.
 
 7. **Ship.** Commit your mocks, the `.sim.yaml` files and
-   `.postman/resources.yaml`. After a clone, `postman dependency install`
-   restores the pulled mocks. Running the simulation in CI is optional (see
-   `ci-integration`).
+   `.postman/resources.yaml`, but not `sim.ndjson`: it records request
+   headers and bodies, tokens included. After a clone,
+   `postman dependency install` restores the pulled mocks. Running the
+   simulation in CI is optional: start it as in step 4 before the test step,
+   and stop it after.
 
 ## Critical Rules
 
@@ -154,6 +165,9 @@ from a workspace, or both:
    service won't send. Never edit `postman/.dependencies/`:
    `dependency update` overwrites it. To change a pulled mock, copy it into
    `postman/mocks/` and call it a fork.
+7. **Confirm before a public deploy.** `simulation deploy` without
+   `--private`, or with `-y`, serves every member's mock to anyone with the
+   URL. Ask the user first; a local `run` needs no deploy at all.
 
 ## Verification
 

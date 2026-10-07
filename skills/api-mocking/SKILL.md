@@ -107,13 +107,14 @@ as one simulation, see the `api-simulation` skill and `postman simulation run`.
 
 A mock generated from a collection or spec replays its examples, so a `POST`
 and a later `GET` share nothing. To make a mock remember, keep its records in
-`pm.state` inside `default.js`; the sample from `postman mock generate -n NAME`
-(no source) already does, and shows the pattern. `mock run` and
-`simulation run` provide `pm.state` and start it empty on every run. A
-deployed mock server keeps it between requests.
+`pm.state` inside `default.js`. `pm.state` is the mock's async key-value
+store: `get`, `set`, `delete`, `has`, `keys` and `clear`. The sample from
+`postman mock generate -n NAME` already uses it, and shows the pattern.
 
-- `pm.state` is an async key-value store: `get`, `set`, `delete`, `has`,
-  `keys` and `clear`.
+Every `mock run` or `simulation run` starts the mock with empty state; during
+the run, its handler creates, reads, updates and deletes records through
+`pm.state`. A deployed mock server keeps its state between requests.
+
 - Set `interceptRequests: true` in `config.yaml` so `req.body` and `req.query`
   arrive parsed.
 - Seed the starting records on first use, and add a reset route that clears

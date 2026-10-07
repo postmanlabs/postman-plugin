@@ -173,16 +173,18 @@ without rebuilding it in another tool.
 The [`api-simulation`](skills/api-simulation/) skill is the local loop for a
 service change: find every dependency the service calls, mock each one (reusing
 the owning team's mock when they publish one), serve them on one port from one
-`.sim.yaml`, run the real service against them, test, and push:
+`.sim.yaml`, run the real service against them, test, and push. It needs
+Postman CLI 1.70.0 or later:
 
 ```bash
 postman simulation run postman/simulations/orders-dev.sim.yaml --port 4900
 ```
 
 The service under test is never mocked. It runs for real, so a passing run
-means the change works. The same simulation runs in CI, and any dependency can
-take injected latency, error, rate-limit, or chaos conditions to exercise
-failure paths.
+shows the change works against what the mocks model; it doesn't replace a run
+against the real upstreams. The simulation can also run in CI, and any
+dependency can take injected latency, error, rate-limit, or chaos conditions to
+exercise failure paths.
 
 
 ## How Postman builds context

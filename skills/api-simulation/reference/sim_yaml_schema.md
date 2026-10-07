@@ -53,7 +53,7 @@ The router answers on its own, without reaching a member:
 
 | Response | Cause |
 | --- | --- |
-| `400` | No routeKey: the path was `/`, or the header was missing. |
+| `400 {"error":"Prefix the request path with the member routing token, e.g. /<routeKey>/path."}` | No routeKey under `path` routing: the path was `/`. Under `header` routing the error asks for the `x-mock-slug` header instead. |
 | `404 {"error":"Unknown simulation member '<x>'.","available":[...]}` | `<x>` isn't a routeKey. Under `path` routing this is often a client that dropped the base URL's path, so `<x>` is the endpoint's own first segment. |
 
 ## `scenarios`
@@ -64,11 +64,20 @@ Each entry is a selection, and only its `overrides.conditions` inject faults:
 scenarios:
   - overrides:
       conditions:
-        error:
-          status_code: 503
         latency:
-          delay_ms: 250
+          delay_ms: 250              # hold each request 250 ms, then go on
+        error:
+          status_code: 503           # every request fails with 503
+        rate_limit:
+          requests_per_minute: 30    # the 31st request in a minute gets 429
+        chaos:
+          failure_rate: 10           # 10% of requests fail with 500
 ```
+
+This example sets all four to show their fields. They run in a fixed order,
+`latency`, `error`, `rate_limit`, `chaos`, whatever order you write them in,
+and the first to fail a request ends it: with `error` set, `rate_limit` and
+`chaos` never fire. Set one failure at a time, optionally with `latency`.
 
 The mock's default handler always serves, and conditions run in front of it.
 An entry with only `path` or `id`, as the Postman app writes, injects nothing.
@@ -82,8 +91,8 @@ accepted and validated strictly: an unknown `type` is an error.
 | --- | --- | --- |
 | `latency` | `delay_ms` (positive number) | Holds each request that long, then serves it normally. |
 | `error` | `status_code` (integer 400–599) | Every request returns that status with `{"error":{...},"scenario":"error"}`. |
-| `rate_limit` | `requests_per_minute` (positive integer) | Requests over the limit return `429` with `"scenario":"rate_limit"`. |
-| `chaos` | `failure_rate` (0–100) | That percentage of requests fail. |
+| `rate_limit` | `requests_per_minute` (positive integer) | Requests over the limit return `429` with a `Retry-After` header and `"scenario":"rate_limit"`. |
+| `chaos` | `failure_rate` (0–100) | That percentage of requests, chosen at random, return `500` with `"scenario":"chaos"`. |
 
 A condition applies to every route on its member. To fail one endpoint while
 its siblings succeed, split that endpoint into its own mock.
@@ -93,7 +102,7 @@ its siblings succeed, split that endpoint into its own mock.
 | Flag | Notes |
 | --- | --- |
 | `-p, --port <n\|auto>` | Port to serve on. Defaults to 3000, and silently falls back to a free port if 3000 is busy. An explicit port fails instead. |
-| `--output ndjson` | One JSON event per line, instead of the default readable log: `listening` (port, url, each member's `routeKey` and `address`); `request`, one per request a member served (`routeKey`, `method`, `path`, `statusCode`, `duration` in ms, headers and bodies); and `summary` on shutdown (`requestsServed`, `requestsFailed`). The router's own `400` and `404`, and injected faults, aren't logged. |
+| `--output ndjson` | One JSON event per line on stdout, instead of the default readable log; messages go to stderr: `listening` (port, url, each member's `routeKey` and `address`); `request`, one per request a member served (`routeKey`, `method`, `path`, `statusCode`, `duration` in ms, headers and bodies); and `summary` on shutdown (`requestsServed`, `requestsFailed`). The router's own `400` and `404`, and injected faults, aren't logged. |
 | `-e`, `-g`, `--dataset` | Environment, globals and datasets for every member, as for `mock run`. |
 | `--no-history` | Record nothing. A `.sim.yaml` linked to a workspace otherwise records each start there; an unlinked one records only with `-w` and `--simulation`. |
 

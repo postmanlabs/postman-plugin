@@ -22,7 +22,7 @@
   },
   {
     "id": "api-simulation",
-    "prompt": "I'm adding a new endpoint that calls four upstream services. Mock them all so I can run and test the real endpoint locally before I push.",
+    "prompt": "I'm adding a new endpoint that calls four upstream services. Mock them all so I can run and test the newly added endpoint locally before I push.",
     "expected": [
       "api-simulation"
     ]
