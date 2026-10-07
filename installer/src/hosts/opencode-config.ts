@@ -17,9 +17,10 @@ function tokenize (text: string): Token[] {
             index += 1;
         }
         else if (text.startsWith('//', index)) {
-            const newline = text.indexOf('\n', index);
+            // A line comment ends at either line terminator; a CR-only file has no \n at all.
+            const lineEnd = text.slice(index).search(/[\r\n]/);
 
-            index = newline === -1 ? text.length : newline + 1;
+            index = lineEnd === -1 ? text.length : index + lineEnd + 1;
         }
         else if (text.startsWith('/*', index)) {
             const close = text.indexOf('*/', index + 2);

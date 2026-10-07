@@ -201,14 +201,25 @@ test('install with nothing cached just adds again', async () => {
 });
 
 test('a plugin installed from npm is left for OpenCode to update, and nothing is run', async () => {
-    for (const probes of [V1, V2]) {
+    for (const [probes, next] of [[V2, /^Run `opencode plugin update`/], [V1, /opencode plugin --global --force @postman\/opencode-plugin@<version>/]]) {
         const system = fakeSystem({ probes, files: { [json]: plugins('@postman/opencode-plugin') } }),
             outcome = await opencode.install(system);
 
         assert.equal(outcome.outcome, 'manual');
-        assert.match(outcome.next, /opencode plugin update/);
+        assert.match(outcome.next, next);
         assert.deepEqual(system.commands, []);
     }
+});
+
+test('an entry in opencode.jsonc beside an opencode.json is not refreshed on OpenCode 2, which would register it twice', async () => {
+    const copy = copyOf(OPENCODE_SPEC),
+        system = fakeSystem({ probes: V2, files: { [json]: plugins('x'), [jsonc]: plugins(OPENCODE_SPEC) }, dirs: [path.join(copy, 'ts')] }),
+        outcome = await opencode.install(system);
+
+    assert.equal(outcome.outcome, 'blocked');
+    assert.match(outcome.message, /move the entry, with any options, into opencode\.json/);
+    assert.deepEqual(system.commands, []);
+    assert.ok(await system.exists(path.join(copy, 'ts')), 'the cached copy is left in place');
 });
 
 test('a plugin installed from npm still has the older clone and loader removed, so no skill loads twice', async () => {

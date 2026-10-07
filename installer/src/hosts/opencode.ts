@@ -181,12 +181,15 @@ async function removeLegacy (system: System): Promise<string[]> {
 }
 
 /**
- * `opencode plugin remove` edits `plugins` in the first of `opencode.json` and `opencode.jsonc` that exists
- * (`resolveConfigPath` in OpenCode 2's packages/cli), and exits 0 when the entry is in the other one.
+ * OpenCode 2's `plugin add` and `plugin remove` edit the first of `opencode.json` and `opencode.jsonc` that exists
+ * (`resolveConfigPath` in its packages/cli); `remove` exits 0 when the entry is in the other one.
  */
+async function editedByOpenCode (system: System, file: string): Promise<boolean> {
+    return path.basename(file) === CONFIG_FILES[0] || !(await system.exists(path.join(path.dirname(file), CONFIG_FILES[0])));
+}
+
 async function removedByOpenCode (system: System, entry: Entry): Promise<boolean> {
-    return entry.key === 'plugins' && entry.form !== 'tuple' &&
-        (path.basename(entry.file) === CONFIG_FILES[0] || !(await system.exists(path.join(path.dirname(entry.file), CONFIG_FILES[0]))));
+    return entry.key === 'plugins' && entry.form !== 'tuple' && editedByOpenCode(system, entry.file);
 }
 
 /** The config without the entry, for an entry OpenCode has no command to remove; refuses one it can't take out cleanly. */
@@ -285,7 +288,15 @@ export const opencode: Host = {
             if (refresh && entries[0].spec.split('#')[0].startsWith(NPM_NAME)) {
                 const removed = await removeLegacy(system);
 
-                return result('manual', summary('found', `${entries[0].spec}, installed from npm`, removed), `Run \`opencode plugin update\`, or on OpenCode 1 \`opencode plugin --global --force ${entries[0].spec}\`.`);
+                // OpenCode 1 reuses its cached `<name>@latest`, so only a new version string fetches anything.
+                return result('manual', summary('found', `${entries[0].spec}, installed from npm`, removed), version.major >= 2 ?
+                    'Run `opencode plugin update`.' :
+                    `Run \`opencode plugin --global --force ${NPM_NAME}@<version>\` with the version \`npm view ${NPM_NAME} version\` prints.`);
+            }
+
+            // `plugin add` would register a second copy in opencode.json rather than refresh this one.
+            if (refresh && version.major >= 2 && !(await editedByOpenCode(system, entries[0].file))) {
+                blocked(`${entries[0].file} registers ${redact(entries[0].spec)}, but \`opencode plugin add\` writes to the ${CONFIG_FILES[0]} beside it; move the entry, with any options, into ${CONFIG_FILES[0]} and re-run`);
             }
 
             // Replacement first: if it fails, the older install is still a working one.

@@ -18,6 +18,11 @@ test('parses comments, trailing commas and a byte order mark', () => {
     assert.deepEqual(parseJsonc(text), { model: 'a/b', plugin: ['x', SPEC] });
 });
 
+test('a line comment ends at a CR, in a file with CR-only line endings', () => {
+    assert.deepEqual(parseJsonc(`{\r  // mine\r  "plugin": ["${SPEC}"]\r}\r`), { plugin: [SPEC] });
+    assert.equal(withoutArrayString(`{\r  // mine\r  "plugin": ["x", "${SPEC}"]\r}\r`, 'plugin', SPEC), '{\r  // mine\r  "plugin": ["x"]\r}\r');
+});
+
 test('a // or /* inside a string is not a comment', () => {
     assert.deepEqual(parseJsonc('{"url": "https://example.com/a/*b*/", "plugin": ["x"]}'), { url: 'https://example.com/a/*b*/', plugin: ['x'] });
 });

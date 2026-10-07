@@ -108,6 +108,8 @@ try {
 
     // A new user's state: no config directory, no marketplace, an empty npm config.
     const environment = { ...process.env, HOME: home, USERPROFILE: home, ...xdg, PWD: nested, NPM_CONFIG_USERCONFIG: path.join(root, 'npmrc'), OPENCODE_DISABLE_CLAUDE_CODE_SKILLS: '1', OPENCODE_DISABLE_EXTERNAL_SKILLS: '1' };
+    // OpenCode 2 prefers OPENCODE_CONFIG_DIR to the XDG directory, so an inherited one would edit the contributor's own config.
+    delete environment.OPENCODE_CONFIG_DIR;
     let spec;
 
     if (route in PUBLISHED) {
