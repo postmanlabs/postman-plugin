@@ -28,6 +28,10 @@ never needs cloud. The exception is `generate -w`, which creates the mock in a
 workspace only and writes no local files — use that only when you intentionally
 skip the repo copy.
 
+Mocking another team's service, or the services your own service calls? Use
+`api-simulation`, which checks each owner's workspace for a published mock
+before anything is generated here.
+
 ## Process
 
 1. **Generate.** `postman mock generate -n NAME` with no source scaffolds a

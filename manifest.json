@@ -9,8 +9,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-engineer/SKILL.md",
-          "bytes": 2590,
-          "sha256": "758f771020491592749a063156ab16145ccfee25f3d7a3c0c8ddd1ba6f5aae9e"
+          "bytes": 2685,
+          "sha256": "e9f74728d75b4c0eda5193b406f7065382e2de821c9b972b7c92a543ba322636"
         }
       ]
     },
@@ -73,8 +73,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-mocking/SKILL.md",
-          "bytes": 10137,
-          "sha256": "9cc7b6dbdd3b76959536ff1cf8a85b81777334bc7d9993935cd1fb833dc33b1d"
+          "bytes": 10324,
+          "sha256": "fabc9a10f05c7ace23263659592ec36fdb3ca9901a18aeb9df05853bf612b0c0"
         }
       ]
     },
@@ -99,8 +99,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-simulation/SKILL.md",
-          "bytes": 7186,
-          "sha256": "9c8e0866f5919cb755124e726f1b9ee61334fb70b961c50924f04a350e4399fc"
+          "bytes": 8010,
+          "sha256": "d6e73c29b41b12fc6433fd104854e3270774e3acc840e2b17c39652df9fc2809"
         },
         {
           "target": "reference/sim_yaml_schema.md",

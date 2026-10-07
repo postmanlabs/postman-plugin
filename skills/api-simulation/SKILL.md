@@ -46,7 +46,9 @@ from a workspace, or both:
 
 ## Process
 
-1. **Find what the change calls.**
+1. **Find what the change calls, starting with the Context Graph.** Ask it
+   first, even when you can read the code: it also knows each dependency's
+   owner and Postman workspace, which step 2 needs.
    `postman context-graph ask "What services and APIs does <repo-name> call?" --wait`
    lists each upstream, the endpoints called and the call sites. Use the
    repository's name: a wrong name answers "no dependencies", not an error.
@@ -56,15 +58,20 @@ from a workspace, or both:
    If a `.sim.yaml` already covers the list, use it. Otherwise add what's
    missing.
 
-2. **Give each dependency a mock.** Prefer the owner's. Ask the graph "Which
-   Postman workspace holds the API for <service>?", list that workspace's
-   mocks with `postman search mocks --filter "workspaceId=<id>"`, and pull one
-   with `postman dependency add mock <mockId>` (see `api-discovery`). A name
-   match in another workspace is not ownership. If the owner has none,
-   generate one from their spec or collection (see `api-mocking`), and make it
-   stateful when the change writes something and reads it back. Keep the
-   endpoints this path calls and answer `501` for the rest, so a missed call
-   fails loudly.
+2. **Get each dependency's mock from its owner first.** For every
+   dependency, in this order:
+   1. Find the owner's workspace:
+      `postman context-graph ask "Which Postman workspace holds the API for <service>?" --wait`.
+   2. List that workspace's mocks:
+      `postman search mocks --filter "workspaceId=<id>"`. A name match in
+      another workspace is not ownership.
+   3. If the owner has one, pull it with `postman dependency add mock <mockId>`
+      and use the copy as it is, even if the owner also deployed it.
+   4. Only if the owner has none, make one: pull their collection with
+      `postman dependency add collection <id>` and run `postman mock generate`
+      on it (see `api-mocking`). Keep the endpoints this path calls and answer
+      `501` for the rest, so a missed call fails loudly. Make it stateful when
+      the change writes something and reads it back.
 
 3. **Compose the simulation.**
 
@@ -84,8 +91,8 @@ from a workspace, or both:
    ```
 
    It's up when the `listening` event lists each member's address. Set each
-   upstream base URL to `http://localhost:4900/<routeKey>`. Stop it with
-   Ctrl+C.
+   upstream base URL to `http://localhost:4900/<routeKey>`, never to a mock
+   server's URL. Stop it with Ctrl+C.
 
 5. **Develop and test.** Call the changed route on the real service with
    `postman request` or its collection (see `api-testing`). Restart the
@@ -93,11 +100,13 @@ from a workspace, or both:
    response from the simulation itself means wiring, not code:
    - `404 Unknown simulation member`: the path has no valid routeKey. The body
      lists the valid ones.
-   - `501`: an upstream call you haven't modelled yet.
+   - `501`: an upstream call you haven't modelled yet. Add it to your own
+     mock. For a pulled one, fork it into `postman/mocks/` first.
    - `502 Proxy error`: the member's handler crashed. See `sim.ndjson`.
 
-6. **Ship.** Commit the mocks, the `.sim.yaml` and `.postman/resources.yaml`.
-   CI runs `postman dependency install`, starts the simulation with
+6. **Ship.** Commit your mocks, the `.sim.yaml` and `.postman/resources.yaml`,
+   and add `postman/.dependencies/` to `.gitignore`. CI restores pulled mocks
+   with `postman dependency install`, starts the simulation with
    `--no-history`, starts the service and runs the collection (see
    `ci-integration`).
 
@@ -126,13 +135,14 @@ to every route on that member.
 4. **Only `overrides.conditions` inject faults.** A bare
    `scenarios: - path: …/default.js` entry, as the Postman app writes, adds
    none. `overrides.bypass` is ignored.
-5. **Pull an owner's mock even when it's deployed.** Only members take faults
+5. **Never write or generate a mock for a dependency before searching its
+   owner's workspace.** A mock you write encodes your assumptions; the
+   owner's encodes their contract and their state.
+6. **Pull an owner's mock even when it's deployed.** Only members take faults
    and log requests, and a private mock server needs an `x-api-key` your
-   service won't send. Don't edit the pulled copy, because
-   `dependency update` overwrites it. If it lacks an endpoint, copy it into
+   service won't send. Never edit `postman/.dependencies/`:
+   `dependency update` overwrites it. To change a pulled mock, copy it into
    `postman/mocks/` and call it a fork.
-6. **Say where each mock came from:** the owner's (name the workspace),
-   forked, or generated here.
 
 ## Verification
 
@@ -140,5 +150,8 @@ Starting is not the same as being used. Each request a member serves is a
 `request` event in `sim.ndjson` with its `routeKey`; a member with none isn't
 wired or isn't on this path. Injected `error`, `rate_limit` and `chaos`
 responses never reach the mock, so confirm a fault from what the service got
-back: `"scenario":"error"`, `429`s, or the added latency. Report each
-dependency, where its mock came from, and what ran for real.
+back: `"scenario":"error"`, `429`s, or the added latency.
+
+Report, for each dependency: the owner workspace you searched, what you
+found there, and where its mock came from (pulled, forked or generated here).
+Then name what ran for real.
