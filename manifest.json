@@ -4,13 +4,13 @@
     {
       "name": "api-engineer",
       "plugin": "postman",
-      "description": "Default entry point for API engineering work — designing, implementing, mocking, testing, monitoring, documenting, or deploying an API.",
+      "description": "Default entry point for API engineering work — designing, implementing, mocking, testing, monitoring, documenting, or deploying an API, including building or testing code that calls other services, and giving other teams something to build against.",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/api-engineer/SKILL.md",
-          "bytes": 2726,
-          "sha256": "961c8bdd37bd64de47e3ab4ea67079025f746e1c3566df9412cdda6990eed43c"
+          "bytes": 3042,
+          "sha256": "4f34fbe7f5c3156a71791e82a11980d0b480760a0f1952248f67b4f972e9ea09"
         }
       ]
     },
@@ -68,13 +68,13 @@
     {
       "name": "api-mocking",
       "plugin": "postman",
-      "description": "Stands up a fake backend that behaves like a real API — from a collection or an OpenAPI spec, running locally or pushed to Postman's cloud for a durable URL — plus request-time scenario and status-code overrides for testing failure paths. Use when the user asks to \"mock this API,\" \"create a mock server,\" \"fake the backend,\" \"run tests without hitting the real API,\" or \"simulate an error/out-of-stock response.\" Covers `postman mock`. Depends on bootstrap for the workspace id only once a mock is pushed to the cloud (`-w`, or the workspace linked in `.postman/resources.yaml`) — generating and running a mock locally needs nothing from bootstrap.",
+      "description": "Builds a stand-in for one API that behaves like the real one — from its OpenAPI spec or collection, stateful when callers write then read — runs it locally, and publishes it to the service's Postman workspace or a mock server URL for other teams, apps and CI. Use when something needs an API that isn't built or reachable yet (a frontend, mobile app, client or demo), when other teams should build against your API before it ships, or when asked to mock an API or fake a backend. For running your own service against everything it calls, use api-simulation. Covers `postman mock`.",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/api-mocking/SKILL.md",
-          "bytes": 10406,
-          "sha256": "d7e7bd27c5028a8e0603c73e1702f555cc271a59409f92bc4de57dac23b7a775"
+          "bytes": 8988,
+          "sha256": "33dc43fc17c641d91ecdb47e6c1e170497edc684fde9af97d63e59b0a865bfbe"
         }
       ]
     },
@@ -94,19 +94,19 @@
     {
       "name": "api-simulation",
       "plugin": "postman",
-      "description": "The local development loop for a service that calls other APIs — find its dependencies in the code and the Context Graph, give each one a mock (the owning team's, or one generated from its contract), serve them together from one `.sim.yaml` on one port, run the real service against it, read the simulation's log to see what each dependency served, and ship it with the simulation in the PR. Can also inject latency, error, rate-limit or chaos per dependency. Use when the user is building or changing an endpoint that calls other services, or asks to \"simulate my dependencies,\" \"mock everything this service calls,\" or \"run this end to end locally.\" Covers `postman simulation`. Builds on api-discovery for finding dependencies and their owners' mocks, and on api-mocking for the rest.",
+      "description": "Runs the service you're building for real against stand-ins for the HTTP services it calls — each owning team's published mock where one exists, one built from the contract where not — served on one local port from a `.sim.yaml`. Use when you add or change code that calls other services and need to run it, test it, prove a fix or reproduce an upstream failure (timeouts, 5xx, 409, 429) end to end, locally or in CI, without the real services, because they're unreachable, need credentials, cost money, have side effects or don't exist yet. Applies even when nobody says mock or simulation. Not for a stand-in backend with no service of your own running (use api-mocking). Covers `postman simulation`.",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/api-simulation/SKILL.md",
-          "bytes": 9786,
-          "sha256": "4ea08f459fec5472e1a59e46b33004c5204de235e869ebb6dbfb4bbb309477bd"
+          "bytes": 9329,
+          "sha256": "327be0ca105e6cc4cd3bb0a5569680959329995de35dc02b1f3e6fb44a2e8d59"
         },
         {
           "target": "reference/sim_yaml_schema.md",
           "source": "skills/api-simulation/reference/sim_yaml_schema.md",
-          "bytes": 5947,
-          "sha256": "f4b3c6961b8b1ef1178e4b959f74f4f63d8461492815cda0cc7adaf984f738c1"
+          "bytes": 3843,
+          "sha256": "b9e9cafd73475a24e759cc33c2743346bb36f08169864c74a4a292b3edb7efb2"
         }
       ]
     },
@@ -118,8 +118,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-testing/SKILL.md",
-          "bytes": 5665,
-          "sha256": "cec4b60578fb71adca30fefdcd9ed1f76aa56d79f54113c8d89d9d16e2099f1e"
+          "bytes": 5750,
+          "sha256": "e717e6ba5f50f43da3680d8ee2a4adc9fb9946a2835af27acb368cdafe287c4d"
         }
       ]
     },
