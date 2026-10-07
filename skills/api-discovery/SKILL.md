@@ -124,6 +124,9 @@ takes a Postman entity ID. If the Context Graph identifies a service or API to
 reuse, locate its collection with `search` first, then pass that entity ID to
 `dependency add`.
 
+It downloads a copy into `postman/.dependencies/` and records the entity in
+`.postman/resources.yaml`.
+
 ## Reference
 
 - [Orbit](reference/orbit.md) — public API discovery: the search/integrate
