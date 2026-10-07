@@ -16,6 +16,9 @@ export const OPENCODE_SPEC = `github:${OPENCODE_REPO}`;
 /** The first OpenCode release of each major that installs `OPENCODE_SPEC`, found by bisecting the harness in opencode/scripts/test-plugin-add.js. */
 export const OPENCODE_MINIMUM: Record<number, [number, number, number]> = { 1: [1, 14, 33], 2: [2, 0, 4] };
 
+/** The same for `@postman/opencode-plugin` from npm, which OpenCode 1 installs from an earlier release than a git spec. */
+export const OPENCODE_NPM_MINIMUM: Record<number, [number, number, number]> = { 1: [1, 14, 22], 2: [2, 0, 4] };
+
 /** Pre-`plugin add` installs: a clone of the repo plus this one-line loader file. Must stay byte-identical to the shim in opencode/README.md; test/routes.test.js enforces it. */
 export const OPENCODE_SHIM = "export { default } from '../postman-plugin/opencode/src/index.ts';\n";
 

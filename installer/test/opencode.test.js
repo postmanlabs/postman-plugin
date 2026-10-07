@@ -192,6 +192,45 @@ test('the cached copy is named by the spec\'s last path segment, as OpenCode 2 n
     assert.deepEqual(system.commands, [`remove ${copy}.previous`, `rename ${copy} ${copy}.previous`, `opencode plugin add ${spec}`, `remove ${copy}.previous`]);
 });
 
+test('finds an entry in .opencode/opencode.json, which OpenCode 2 edits only when neither direct file exists', async () => {
+    const nested = path.join(config, '.opencode', 'opencode.json'),
+        alone = fakeSystem({ probes: V2, files: { [nested]: plugins(OPENCODE_SPEC) } });
+
+    assert.equal((await opencode.status(alone)).installed, true);
+    assert.equal((await opencode.remove(alone)).outcome, 'done');
+    assert.deepEqual(alone.commands, [`opencode plugin remove ${OPENCODE_SPEC}`]);
+
+    const shadowed = fakeSystem({ probes: V2, files: { [nested]: plugins(OPENCODE_SPEC), [jsonc]: plugins('x') } });
+
+    assert.equal((await opencode.install(shadowed)).outcome, 'blocked', 'plugin add would write opencode.jsonc');
+    assert.equal((await opencode.remove(shadowed)).outcome, 'done');
+    assert.ok(!shadowed.commands.some((command) => command.startsWith('opencode plugin')), shadowed.commands.join('\n'));
+    assert.ok(!shadowed.files[nested].includes(OPENCODE_SPEC));
+});
+
+test('OpenCode 1 does not refresh an entry in OPENCODE_CONFIG_DIR, since `plugin --global` writes the default directory', async () => {
+    const file = path.join('/custom', 'opencode.json'),
+        custom = fakeSystem({ probes: V1, env: { OPENCODE_CONFIG_DIR: '/custom' }, files: { [file]: plugin(OPENCODE_SPEC) } }),
+        outcome = await opencode.install(custom);
+
+    assert.equal(outcome.outcome, 'blocked');
+    assert.ok(outcome.message.includes(`write the refresh to ${config}`), outcome.message);
+    assert.deepEqual(custom.commands, []);
+
+    const usual = fakeSystem({ probes: V1, env: { OPENCODE_CONFIG_DIR: '/custom' }, files: { [json]: plugin(OPENCODE_SPEC) } });
+
+    assert.equal((await opencode.install(usual)).outcome, 'done');
+});
+
+test('the minimum OpenCode is the installed route\'s: npm installs work from 1.14.22, git ones from 1.14.33', async () => {
+    const at = (version, spec) => opencode.install(fakeSystem({ probes: { 'opencode --version': `${version}\n` }, files: spec ? { [json]: plugin(spec) } : {} }));
+
+    assert.equal((await at('1.14.25', '@postman/opencode-plugin')).outcome, 'manual');
+    assert.equal((await at('1.14.21', '@postman/opencode-plugin')).outcome, 'blocked');
+    assert.equal((await at('1.14.25', OPENCODE_SPEC)).outcome, 'blocked');
+    assert.equal((await at('1.14.25')).outcome, 'blocked', 'a fresh install is a git spec');
+});
+
 test('install with nothing cached just adds again', async () => {
     const system = fakeSystem({ probes: V2, files: { [json]: plugins(OPENCODE_SPEC) } });
 
@@ -217,7 +256,7 @@ test('an entry in opencode.jsonc beside an opencode.json is not refreshed on Ope
         outcome = await opencode.install(system);
 
     assert.equal(outcome.outcome, 'blocked');
-    assert.match(outcome.message, /move the entry, with any options, into opencode\.json/);
+    assert.ok(outcome.message.includes(`write the refresh to ${json}; move the entry, with any options, there`), outcome.message);
     assert.deepEqual(system.commands, []);
     assert.ok(await system.exists(path.join(copy, 'ts')), 'the cached copy is left in place');
 });

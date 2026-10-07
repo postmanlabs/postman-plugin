@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import path from 'node:path';
-import { OPENCODE_MINIMUM, OPENCODE_REPO, OPENCODE_SHIM, OPENCODE_SPEC, isSameRepo, redact } from '../source.js';
+import { OPENCODE_MINIMUM, OPENCODE_NPM_MINIMUM, OPENCODE_REPO, OPENCODE_SHIM, OPENCODE_SPEC, isSameRepo, redact } from '../source.js';
 import type { System } from '../system.js';
 import { parseJsonc, withoutArrayString } from './opencode-config.js';
 import { assertCloneRemovable, blocked, failed, guard, mustRun, removeClone } from './shared.js';
@@ -8,11 +8,13 @@ import { type Host, result } from './types.js';
 
 type Version = { major: number; text: string };
 // `form` is how the list holds it: a bare string, OpenCode 1's `[spec, options]` tuple or OpenCode 2's `{ package }`.
-type Entry = { file: string; key: string; spec: string; form: 'string' | 'tuple' | 'object' };
+type Entry = { dir: string; file: string; key: string; spec: string; form: 'string' | 'tuple' | 'object' };
 
-// OpenCode 1 lists its plugins under `plugin`, OpenCode 2 under `plugins`; either may sit in `.json` or `.jsonc`.
+// OpenCode 1 lists its plugins under `plugin`, OpenCode 2 under `plugins`. OpenCode 2's `plugin add` and `plugin remove`
+// edit the first of these that exists in the config directory (`resolveConfigPath` in its packages/cli).
 const KEYS = ['plugin', 'plugins'],
-    CONFIG_FILES = ['opencode.json', 'opencode.jsonc'],
+    CONFIG_FILES = ['opencode.json', 'opencode.jsonc', path.join('.opencode', 'opencode.json'), path.join('.opencode', 'opencode.jsonc')],
+    samePath = (a: string, b: string) => path.relative(a, b) === '',
     NPM_NAME = '@postman/opencode-plugin',
     NEXT = 'Restart OpenCode for the change to take effect.',
     // Installs another spec instead of the mirror's default branch, such as a mirror built from a change before it merges.
@@ -30,8 +32,8 @@ const KEYS = ['plugin', 'plugins'],
     ),
     // `plugin add` and `plugin remove` act on OPENCODE_CONFIG_DIR when it is set, wherever our entry was found.
     // Compared as paths, not strings: Windows spells the same directory with either slash, in any case.
-    inConfigOf = (system: System, entry: Entry) => (system.env.OPENCODE_CONFIG_DIR && path.relative(system.env.OPENCODE_CONFIG_DIR, path.dirname(entry.file)) !== '' ?
-        { env: { OPENCODE_CONFIG_DIR: path.dirname(entry.file) } } :
+    inConfigOf = (system: System, entry: Entry) => (system.env.OPENCODE_CONFIG_DIR && !samePath(system.env.OPENCODE_CONFIG_DIR, entry.dir) ?
+        { env: { OPENCODE_CONFIG_DIR: entry.dir } } :
         undefined),
     // The older install: a clone of this repo next to a one-line loader file that imports it.
     cloneDir = (system: System) => path.join(configDir(system), 'postman-plugin'),
@@ -70,8 +72,8 @@ function isBefore (found: number[], minimum: number[]): boolean {
     return differing !== -1 && found[differing] < minimum[differing];
 }
 
-/** The release `opencode` is, refusing one older than the first of its major that installs Postman with `opencode plugin`. */
-async function installableVersion (system: System): Promise<Version> {
+/** The release `opencode` is, refusing one older than the first of its major that installs Postman's route with `opencode plugin`. */
+async function installableVersion (system: System, minimums: Record<number, [number, number, number]>): Promise<Version> {
     const probe = await system.probe('opencode', ['--version']),
         match = probe.stdout.match(/(\d+)\.(\d+)\.(\d+)/);
 
@@ -81,11 +83,11 @@ async function installableVersion (system: System): Promise<Version> {
 
     const found = match.slice(1).map(Number),
         major = found[0],
-        minimum = OPENCODE_MINIMUM[major],
+        minimum = minimums[major],
         older = minimum !== undefined && isBefore(found, minimum);
 
     if (major < 1 || older) {
-        return blocked(`OpenCode ${match[0]} is older than ${(minimum ?? OPENCODE_MINIMUM[1]).join('.')}, the first ${major}.x release that installs Postman with \`opencode plugin\`; update OpenCode and re-run`);
+        return blocked(`OpenCode ${match[0]} is older than ${(minimum ?? minimums[1]).join('.')}, the first ${major}.x release that installs Postman with \`opencode plugin\`; update OpenCode and re-run`);
     }
 
     return { major, text: match[0] };
@@ -98,7 +100,7 @@ async function configured (system: System): Promise<{ entries: Entry[]; unreadab
     const entries: Entry[] = [],
         unreadable: string[] = [];
 
-    for (const file of configDirs(system).flatMap((dir) => CONFIG_FILES.map((name) => path.join(dir, name)))) {
+    for (const [dir, file] of configDirs(system).flatMap((dir) => CONFIG_FILES.map((name) => [dir, path.join(dir, name)]))) {
         const text = await system.readFile(file);
 
         if (text === null) {
@@ -120,7 +122,7 @@ async function configured (system: System): Promise<{ entries: Entry[]; unreadab
                     spec = form === 'string' ? item : form === 'tuple' ? item[0] : (item as { package?: unknown } | null)?.package;
 
                 if (typeof spec === 'string' && isOurSpec(system, spec)) {
-                    entries.push({ file, key, spec, form });
+                    entries.push({ dir, file, key, spec, form });
                 }
             }
         }
@@ -180,16 +182,19 @@ async function removeLegacy (system: System): Promise<string[]> {
     return removed;
 }
 
-/**
- * OpenCode 2's `plugin add` and `plugin remove` edit the first of `opencode.json` and `opencode.jsonc` that exists
- * (`resolveConfigPath` in its packages/cli); `remove` exits 0 when the entry is in the other one.
- */
-async function editedByOpenCode (system: System, file: string): Promise<boolean> {
-    return path.basename(file) === CONFIG_FILES[0] || !(await system.exists(path.join(path.dirname(file), CONFIG_FILES[0])));
+/** The file OpenCode 2's `plugin add` and `plugin remove` edit in `dir`; `remove` exits 0 when the entry is in another one. */
+async function editedFile (system: System, dir: string): Promise<string> {
+    for (const name of CONFIG_FILES) {
+        if (await system.exists(path.join(dir, name))) {
+            return path.join(dir, name);
+        }
+    }
+
+    return path.join(dir, CONFIG_FILES[0]);
 }
 
 async function removedByOpenCode (system: System, entry: Entry): Promise<boolean> {
-    return entry.key === 'plugins' && entry.form !== 'tuple' && editedByOpenCode(system, entry.file);
+    return entry.key === 'plugins' && entry.form !== 'tuple' && samePath(entry.file, await editedFile(system, entry.dir));
 }
 
 /** The config without the entry, for an entry OpenCode has no command to remove; refuses one it can't take out cleanly. */
@@ -277,15 +282,16 @@ export const opencode: Host = {
 
     install (system) {
         return guard(async () => {
-            const version = await installableVersion(system),
-                entries = await readableEntries(system),
-                refresh = entries.length > 0;
+            const entries = await readableEntries(system),
+                refresh = entries.length > 0,
+                fromNpm = refresh && entries[0].spec.split('#')[0].startsWith(NPM_NAME),
+                version = await installableVersion(system, fromNpm ? OPENCODE_NPM_MINIMUM : OPENCODE_MINIMUM);
 
             // Both copies would load the same skills, so an older install that cannot be deleted whole stops us before the new one goes in.
             await preflightLegacy(system);
 
             // npm keeps its own record of what it installed, which this installer does not know how to refresh.
-            if (refresh && entries[0].spec.split('#')[0].startsWith(NPM_NAME)) {
+            if (fromNpm) {
                 const removed = await removeLegacy(system);
 
                 // OpenCode 1 reuses its cached `<name>@latest`, so only a new version string fetches anything.
@@ -294,14 +300,19 @@ export const opencode: Host = {
                     `Run \`opencode plugin --global --force ${NPM_NAME}@<version>\` with the version \`npm view ${NPM_NAME} version\` prints.`);
             }
 
-            // `plugin add` would register a second copy in opencode.json rather than refresh this one.
-            if (refresh && version.major >= 2 && !(await editedByOpenCode(system, entries[0].file))) {
-                blocked(`${entries[0].file} registers ${redact(entries[0].spec)}, but \`opencode plugin add\` writes to the ${CONFIG_FILES[0]} beside it; move the entry, with any options, into ${CONFIG_FILES[0]} and re-run`);
-            }
-
             // Replacement first: if it fails, the older install is still a working one.
             if (refresh) {
-                await refreshEntry(system, version, entries[0]);
+                const entry = entries[0],
+                    // OpenCode 1's `plugin --global` writes its default config directory, whatever OPENCODE_CONFIG_DIR says.
+                    target = version.major >= 2 ? await editedFile(system, entry.dir) : configDir(system),
+                    lands = version.major >= 2 ? samePath(entry.file, target) : samePath(entry.dir, target);
+
+                // Anywhere else, the refresh would register a second copy instead.
+                if (!lands) {
+                    blocked(`${entry.file} registers ${redact(entry.spec)}, but OpenCode would write the refresh to ${target}; move the entry, with any options, there and re-run`);
+                }
+
+                await refreshEntry(system, version, entry);
             }
             else {
                 await mustRun(system, 'opencode', addArgs(version, specToInstall(system)));
