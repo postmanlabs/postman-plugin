@@ -121,15 +121,17 @@ to every route on that member.
    `api-mocking`.
 2. **Unique routeKeys and an explicit `--port`.** A member's own `port:` is
    ignored. Without `--port`, a busy 3000 silently moves to a random port.
-3. **Only `overrides.conditions` inject faults.** A bare
+3. **Members share one `pm.state` store.** Two stateful mocks that use the
+   same key read and overwrite each other's records, so give each its own keys.
+4. **Only `overrides.conditions` inject faults.** A bare
    `scenarios: - path: …/default.js` entry, as the Postman app writes, adds
    none. `overrides.bypass` is ignored.
-4. **Pull an owner's mock even when it's deployed.** Only members take faults
+5. **Pull an owner's mock even when it's deployed.** Only members take faults
    and log requests, and a private mock server needs an `x-api-key` your
    service won't send. Don't edit the pulled copy, because
    `dependency update` overwrites it. If it lacks an endpoint, copy it into
    `postman/mocks/` and call it a fork.
-5. **Say where each mock came from:** the owner's (name the workspace),
+6. **Say where each mock came from:** the owner's (name the workspace),
    forked, or generated here.
 
 ## Verification

@@ -101,10 +101,12 @@ as one simulation, see the `api-simulation` skill and `postman simulation run`.
 
 ## Stateful mocks
 
-A generated mock replays its examples, so a `POST` and a later `GET` share
-nothing. To make a mock remember, keep its records in `pm.state` inside
-`default.js`. `mock run` and `simulation run` provide it, and a deployed mock
-server keeps it too.
+A mock generated from a collection or spec replays its examples, so a `POST`
+and a later `GET` share nothing. To make a mock remember, keep its records in
+`pm.state` inside `default.js`; the sample from `postman mock generate -n NAME`
+(no source) already does, and shows the pattern. `mock run` and
+`simulation run` provide `pm.state` and start it empty on every run. A
+deployed mock server keeps it between requests.
 
 - `pm.state` is an async key-value store: `get`, `set`, `delete`, `has`,
   `keys` and `clear`.
