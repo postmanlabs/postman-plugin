@@ -32,7 +32,8 @@ concurrency:
 jobs:
   sync:
     name: Sync postmanlabs/opencode-plugin
-    if: github.repository == 'postmanlabs/postman-plugin'
+    # A dispatch can name any branch, and this always replaces the mirror's main.
+    if: github.repository == 'postmanlabs/postman-plugin' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

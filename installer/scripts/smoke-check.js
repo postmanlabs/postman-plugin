@@ -64,9 +64,8 @@ const AGENTS = {
                     config = fs.existsSync(file) ? parseJsonc(fs.readFileSync(file, 'utf8')) : null;
 
                 return ['plugin', 'plugins'].flatMap((key) => (Array.isArray(config?.[key]) ? config[key] : []))
-                    .map((entry) => (typeof entry === 'string' ? entry : entry?.package))
-                    .filter((spec) => typeof spec === 'string' && (spec === openCodeSpec || /opencode-plugin/.test(spec)))
-                    .map((spec) => spec.split('#')[0]);
+                    .map((entry) => (typeof entry === 'string' ? entry : Array.isArray(entry) ? entry[0] : entry?.package))
+                    .filter((spec) => typeof spec === 'string' && (spec === openCodeSpec || /opencode-plugin/.test(spec)));
             }),
             ...present(path.join(openCodeConfig, 'postman-plugin', 'opencode', 'src', 'index.ts')),
             ...present(path.join(openCodeConfig, 'plugins', 'postman.ts'))

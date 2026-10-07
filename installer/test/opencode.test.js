@@ -211,6 +211,15 @@ test('a plugin installed from npm is left for OpenCode to update, and nothing is
     }
 });
 
+test('a plugin installed from npm still has the older clone and loader removed, so no skill loads twice', async () => {
+    const system = fakeSystem({ probes: withProbes(V2, cloneProbes()), bins: ['git'], ...ourClone({ files: { [shim]: OPENCODE_SHIM, [json]: plugins('@postman/opencode-plugin') } }) }),
+        outcome = await opencode.install(system);
+
+    assert.equal(outcome.outcome, 'manual');
+    assert.match(outcome.message, /removed the older install/);
+    assert.deepEqual(system.commands, [`remove ${clone}`, `remove ${shim}`]);
+});
+
 test('reads and edits the config in OPENCODE_CONFIG_DIR, where `plugin add` writes when it is set', async () => {
     const file = path.join('/custom', 'opencode.json'),
         env = { OPENCODE_CONFIG_DIR: '/custom' },
@@ -328,12 +337,36 @@ test('remove on OpenCode 1 refuses an entry in a form it cannot take out without
     assert.equal(system.files[json], text);
 });
 
-test('an entry that only mentions this repo inside a nested list is not ours', async () => {
-    const system = fakeSystem({ files: { [json]: `{ "plugin": [["${OPENCODE_SPEC}", {}]] }` } });
+test('an OpenCode 1 `[spec, options]` entry is ours, and remove refuses it rather than rewrite the config', async () => {
+    const text = `{ "plugin": [["${OPENCODE_SPEC}", {}]] }`,
+        system = fakeSystem({ files: { [json]: text } }),
+        outcome = await opencode.remove(system);
 
-    assert.equal((await opencode.status(system)).installed, false);
-    assert.equal((await opencode.remove(system)).outcome, 'skipped');
+    assert.equal((await opencode.status(system)).installed, true);
+    assert.equal(outcome.outcome, 'blocked');
+    assert.match(outcome.message, /delete that entry yourself/);
     assert.deepEqual(system.commands, []);
+    assert.equal(system.files[json], text);
+});
+
+test('remove edits opencode.jsonc itself when opencode.json beside it is the file `plugin remove` would edit', async () => {
+    const system = fakeSystem({ probes: V2, files: { [json]: plugins('x'), [jsonc]: plugins(OPENCODE_SPEC) } }),
+        outcome = await opencode.remove(system);
+
+    assert.equal(outcome.outcome, 'done');
+    assert.ok(!system.commands.some((command) => command.startsWith('opencode plugin remove')), system.commands.join('\n'));
+    assert.ok(!system.files[jsonc].includes(OPENCODE_SPEC));
+    assert.equal(system.files[json], plugins('x'));
+});
+
+test('remove refuses an object entry in opencode.jsonc that `plugin remove` would not reach, removing nothing', async () => {
+    const text = JSON.stringify({ plugins: [{ package: OPENCODE_SPEC }] }),
+        system = fakeSystem({ probes: V2, files: { [json]: plugins('x'), [jsonc]: text } }),
+        outcome = await opencode.remove(system);
+
+    assert.equal(outcome.outcome, 'blocked');
+    assert.deepEqual(system.commands, []);
+    assert.equal(system.files[jsonc], text);
 });
 
 test('remove also deletes the older clone and loader', async () => {

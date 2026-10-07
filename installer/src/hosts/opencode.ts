@@ -7,7 +7,8 @@ import { assertCloneRemovable, blocked, failed, guard, mustRun, removeClone } fr
 import { type Host, result } from './types.js';
 
 type Version = { major: number; text: string };
-type Entry = { file: string; key: string; spec: string };
+// `form` is how the list holds it: a bare string, OpenCode 1's `[spec, options]` tuple or OpenCode 2's `{ package }`.
+type Entry = { file: string; key: string; spec: string; form: 'string' | 'tuple' | 'object' };
 
 // OpenCode 1 lists its plugins under `plugin`, OpenCode 2 under `plugins`; either may sit in `.json` or `.jsonc`.
 const KEYS = ['plugin', 'plugins'],
@@ -115,10 +116,11 @@ async function configured (system: System): Promise<{ entries: Entry[]; unreadab
             const list = config[key];
 
             for (const item of Array.isArray(list) ? list : []) {
-                const spec = typeof item === 'string' ? item : (item as { package?: unknown } | null)?.package;
+                const form = typeof item === 'string' ? 'string' : Array.isArray(item) ? 'tuple' : 'object',
+                    spec = form === 'string' ? item : form === 'tuple' ? item[0] : (item as { package?: unknown } | null)?.package;
 
                 if (typeof spec === 'string' && isOurSpec(system, spec)) {
-                    entries.push({ file, key, spec });
+                    entries.push({ file, key, spec, form });
                 }
             }
         }
@@ -178,16 +180,21 @@ async function removeLegacy (system: System): Promise<string[]> {
     return removed;
 }
 
-/** Takes an entry out of OpenCode 1's config, which has no command for it. */
-async function removeFromConfig (system: System, entry: Entry): Promise<void> {
+/**
+ * `opencode plugin remove` edits `plugins` in the first of `opencode.json` and `opencode.jsonc` that exists
+ * (`resolveConfigPath` in OpenCode 2's packages/cli), and exits 0 when the entry is in the other one.
+ */
+async function removedByOpenCode (system: System, entry: Entry): Promise<boolean> {
+    return entry.key === 'plugins' && entry.form !== 'tuple' &&
+        (path.basename(entry.file) === CONFIG_FILES[0] || !(await system.exists(path.join(path.dirname(entry.file), CONFIG_FILES[0]))));
+}
+
+/** The config without the entry, for an entry OpenCode has no command to remove; refuses one it can't take out cleanly. */
+async function withoutEntry (system: System, entry: Entry): Promise<string> {
     const text = await system.readFile(entry.file),
-        edited = text === null ? null : withoutArrayString(text, entry.key, entry.spec);
+        edited = text === null || entry.form !== 'string' ? null : withoutArrayString(text, entry.key, entry.spec);
 
-    if (edited === null) {
-        blocked(`could not remove ${entry.spec} from ${entry.file} without rewriting it; delete that entry yourself and re-run`);
-    }
-
-    await system.writeFile(entry.file, edited);
+    return edited ?? blocked(`could not remove ${entry.spec} from ${entry.file} without rewriting it; delete that entry yourself and re-run`);
 }
 
 /**
@@ -271,13 +278,15 @@ export const opencode: Host = {
                 entries = await readableEntries(system),
                 refresh = entries.length > 0;
 
-            // npm keeps its own record of what it installed, which this installer does not know how to refresh.
-            if (refresh && entries[0].spec.split('#')[0].startsWith(NPM_NAME)) {
-                return result('manual', `${entries[0].spec} was installed from npm`, `Run \`opencode plugin update\`, or on OpenCode 1 \`opencode plugin --global --force ${entries[0].spec}\`.`);
-            }
-
             // Both copies would load the same skills, so an older install that cannot be deleted whole stops us before the new one goes in.
             await preflightLegacy(system);
+
+            // npm keeps its own record of what it installed, which this installer does not know how to refresh.
+            if (refresh && entries[0].spec.split('#')[0].startsWith(NPM_NAME)) {
+                const removed = await removeLegacy(system);
+
+                return result('manual', summary('found', `${entries[0].spec}, installed from npm`, removed), `Run \`opencode plugin update\`, or on OpenCode 1 \`opencode plugin --global --force ${entries[0].spec}\`.`);
+            }
 
             // Replacement first: if it fails, the older install is still a working one.
             if (refresh) {
@@ -305,15 +314,22 @@ export const opencode: Host = {
             // Everything that can refuse is checked before anything is removed, so a refusal leaves no half-removed state.
             await preflightLegacy(system);
 
+            const byOpenCode = await Promise.all(entries.map((entry) => removedByOpenCode(system, entry)));
+
+            for (const [at, entry] of entries.entries()) {
+                if (!byOpenCode[at]) {
+                    await withoutEntry(system, entry);
+                }
+            }
+
             const removed: string[] = [];
 
-            for (const entry of entries) {
-                // OpenCode 2 lists plugins under `plugins` and removes them itself; OpenCode 1 has no command for it.
-                if (entry.key === 'plugins') {
+            for (const [at, entry] of entries.entries()) {
+                if (byOpenCode[at]) {
                     await mustRun(system, 'opencode', ['plugin', 'remove', entry.spec], inConfigOf(system, entry));
                 }
                 else {
-                    await removeFromConfig(system, entry);
+                    await system.writeFile(entry.file, await withoutEntry(system, entry));
                 }
 
                 removed.push(redact(entry.spec));
