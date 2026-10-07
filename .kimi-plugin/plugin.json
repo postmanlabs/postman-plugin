@@ -22,6 +22,7 @@
   "skills": [
     "./skills"
   ],
+  "systemPromptPath": "./.kimi-plugin/session-start-context.md",
   "mcpServers": {
     "postman": {
       "transport": "http",

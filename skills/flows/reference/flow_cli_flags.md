@@ -80,7 +80,7 @@ execution and reporting. Takes the path positionally; a bad path fails with
 | `-x, --suppress-exit-code` | Overrides the run's exit code. Defeats CI gating. |
 | `--verbose` | Per-request detail: method, URL, assertions. |
 | `--no-truncate` | Full output, no truncated long values. |
-| `--no-report-events` | Don't send analytics. `--report-events` exists for compatibility; analytics are on by default. |
+| `--no-report-events` | Keep the run local instead of publishing results to the connected workspace. |
 
 ### BETA: dataset iteration
 

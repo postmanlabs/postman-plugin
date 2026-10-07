@@ -6,8 +6,8 @@
       "description": "Postman workspaces, collections, specs, environments, mocks and monitors",
       "headers": {
         "X-Source": "postman-pi-plugin",
-        "X-Plugin-Version": "0.1.2",
-        "User-Agent": "postman-pi-plugin/0.1.2"
+        "X-Plugin-Version": "0.2.2",
+        "User-Agent": "postman-pi-plugin/0.2.2"
       }
     }
   }

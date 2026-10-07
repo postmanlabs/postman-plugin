@@ -99,8 +99,9 @@ Postman's cloud. Extra
 flags cover the runner's own networking: `--region eu` for EU residency,
 `--proxy`/`--egress-proxy`/`--egress-proxy-authz-url` for outbound routing,
 `--ssl-extra-ca-certs` for a private CA, and `--metrics`/`--metrics-port`
-for a health-check endpoint. Analytics are sent by default; `--no-report-events`
-opts out. `runner list` shows the team's registered self-hosted runners —
+for a health-check endpoint. Runner activity is published to the connected
+workspace by default; `--no-report-events` keeps it local. `runner list` 
+shows the team's registered self-hosted runners —
 feed an id from here into `monitor create/update --runner` or `monitor list
 --runner`. `runner regions` lists the Postman-region and private-runner
 values valid for `--runner` on `monitor create`/`update`, including a

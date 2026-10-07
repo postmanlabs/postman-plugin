@@ -61,7 +61,7 @@ test('adapts the shared session mandate to native OpenCode skill ids', () => {
 
 test('rewrites only backticked skill references', () => {
     assert.equal(toOpenCodeSessionContext('see `postman:bootstrap`'), 'see `bootstrap`');
-    assert.equal(toOpenCodeSessionContext('run /postman:setup'), 'run /postman:setup');
+    assert.equal(toOpenCodeSessionContext('run /postman:bootstrap'), 'run /postman:bootstrap');
 });
 
 test('exposes config and system hooks through the public plugin export', async () => {
@@ -136,6 +136,11 @@ test('exposes a default v2 definition while retaining the v1 server entrypoint',
     assert.equal(event.system.length, 1);
     assert.equal(event.system[0].type, 'text');
     assert.match(event.system[0].text, /`api-engineer` skill/);
+});
+
+test('manifest.json lists api-engineer first, the skill postman init names in AGENTS.md', () => {
+    assert.equal(manifestSkills[0].name, 'api-engineer',
+        '`postman init` routes API work to the first skill; see ENTRY_SKILL in scripts/build-manifest.js');
 });
 
 test('reads the shared files from the repository root in a clone', () => {

@@ -24,9 +24,9 @@ Install Postman in every compatible coding agent detected on your machine:
 npx @postman/postman-plugin
 ```
 
-One command configures **Claude Code, Codex, Cursor, Kimi Code, OpenCode and Pi**.
-Run it again to update, `status` to see what's installed, and `remove` to
-uninstall; `--agent <id>` limits any of them to one agent.
+One command configures **Claude Code, Codex, Cursor, Factory Droid, Kimi Code,
+OpenCode and Pi**. Run it again to update, `status` to see what's installed,
+and `remove` to uninstall; `--agent <id>` limits any of them to one agent.
 
 You can also use the following commands to install individually:
 
@@ -35,7 +35,21 @@ You can also use the following commands to install individually:
 [View Postman on Claude Plugins](https://claude.com/plugins/postman)
 
 ```bash
-claude plugin install postman@postman
+claude plugin marketplace add anthropics/claude-plugins-official
+claude plugin install postman@claude-plugins-official
+```
+
+The first command registers Anthropic's official marketplace, which a fresh
+Claude Code doesn't have until an interactive session gets past sign-in. It
+does nothing where the marketplace is already registered.
+
+### Codex
+
+[View Postman on ChatGPT Plugins](https://chatgpt.com/plugins/postman?open_in_app)
+
+```bash
+codex plugin marketplace add postmanlabs/postman-plugin
+codex plugin add postman@postman
 ```
 
 ### Cursor
@@ -46,13 +60,33 @@ claude plugin install postman@postman
 /add-plugin postman
 ```
 
-### Codex
-
-[View Postman on ChatGPT Plugins](https://chatgpt.com/plugins/postman?open_in_app)
+### Factory Droid
 
 ```bash
-codex plugin add postman@postman
+droid plugin marketplace add https://github.com/postmanlabs/postman-plugin.git
+droid plugin install postman@postman-plugin --scope user
 ```
+
+`droid plugin marketplace update postman-plugin`, then
+`droid plugin update postman@postman-plugin --scope user`, updates it. Sign in
+to Postman's MCP server with `/mcp` inside a Droid session.
+
+### Kimi Code
+
+Inside a Kimi Code session:
+
+```text
+/plugins install https://github.com/postmanlabs/postman-plugin/tree/main
+```
+
+Then run `/new` to start a session with the plugin. Run the same command again,
+then `/new`, to update; `/plugins remove postman` removes it. Sign in to
+Postman's MCP server with `/mcp-config login plugin-postman:postman`.
+
+### OpenCode
+
+OpenCode loads Postman from a clone of this repository and a one-line loader
+file. [opencode/README.md](opencode/README.md#install) has the commands.
 
 ### Pi
 
@@ -135,40 +169,41 @@ external systems need access, the same mock can become a durable hosted URL
 without rebuilding it in another tool.
 
 
-## Telemetry
+## How Postman builds context
 
-Some Postman CLI commands report usage analytics by default. Where supported,
-you can disable reporting for an individual command with
-`--no-report-events`. `postman application test` uses
-`--report-events=false` instead.
+Work done in a Postman folder produces artifacts: collection runs, lint
+results, request history, mock deployments. When that folder is connected to a
+Postman workspace, after `postman init`, those artifacts are
+published to it as they are produced. The workspace is
+where a teammate, a reviewer, or another agent can see what the agent actually
+did.
 
-What is sent by default:
+What each command contributes to the connected workspace:
 
-| Command | Data sent |
+| Command | What it publishes |
 | --- | --- |
-| `postman collection run` | Run analytics and run history |
-| `postman application test` | Run results and analytics |
-| `postman spec lint` | Lint analytics, including violation counts and pass/fail |
-| `postman workspace push` | Push analytics |
-| `postman runner start` | Runner analytics |
-| `postman flows run` | Flow-run analytics |
-| `postman request` | Request analytics |
+| `postman collection run` | Run results and run history |
+| `postman application test` | Test run results |
+| `postman spec lint` | Lint results, including violation counts and pass/fail |
+| `postman workspace push` | The local workspace contents |
+| `postman runner start` | Runner processing and health activity |
+| `postman flows run` | Flow run results |
+| `postman request` | Agent's API interaction activity |
 
-Important limits:
 
-- `postman collection run --no-report-events` disables analytics but does not
-  disable run-history uploads.
-- `postman init` makes richer reporting opt-in with `--report-events`; it does
-  not accept `--report-events=false`.
-- The CLI also sends a minimal, unauthenticated event indicating that certain
-  commands ran. Reporting flags do not disable these client events. They are
-  emitted by `collection run`, `spec lint`, `workspace push`, `init`, the
-  `mock` commands, and `performance run` in the US region; other regions,
-  including the EU, do not emit them.
-- The plugin registers Postman's hosted MCP server as a fallback when the CLI
-  cannot run. MCP tool calls reach Postman and are not controlled by CLI
-  reporting flags; avoiding that traffic requires not installing the MCP
-  server.
+Publishing happens by default. To change this workflow, you can set 
+`--report-events=false` per invocation.
+
+### Anonymous usage counts
+
+The CLI records command usage surface — a minimal,
+unauthenticated count with no workspace, user, or payload attached.
+
+### The MCP fallback
+
+The plugin registers Postman's hosted MCP server as a fallback for when the CLI
+cannot run. MCP tool calls reach Postman by design and are not governed by the
+CLI flags above; skip installing the MCP server if you do not want that path.
 
 ## License
 

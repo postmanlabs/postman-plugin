@@ -16,8 +16,12 @@ const home = '/home/user',
     }),
     manifest = path.join(local, '.cursor-plugin', 'plugin.json');
 
-test('detects Cursor by CLI, by app bundle on macOS, or by its config directory', async () => {
+test('detects Cursor by its app\'s command, its CLI, its app bundle on macOS, or its config directory', async () => {
     assert.equal(await cursor.detect(fakeSystem({ bins: ['cursor'] })), true);
+    assert.equal(await cursor.detect(fakeSystem({ bins: ['cursor-agent'] })), true);
+    assert.equal(await cursor.detect(fakeSystem({ bins: ['agent'] })), false);
+    assert.equal(await cursor.detect(fakeSystem({ files: { [path.join(home, '.local', 'bin', 'cursor-agent')]: '' } })), true);
+    assert.equal(await cursor.detect(fakeSystem({ files: { [path.join(home, '.local', 'bin', 'agent')]: '' } })), false);
     assert.equal(await cursor.detect(fakeSystem({ platform: 'darwin', dirs: ['/Applications/Cursor.app'] })), true);
     assert.equal(await cursor.detect(fakeSystem({ dirs: [path.join(home, '.cursor')] })), true);
     assert.equal(await cursor.detect(fakeSystem({ platform: 'linux', dirs: ['/Applications/Cursor.app'] })), false);
@@ -28,7 +32,17 @@ test('fresh install clones this repo as a local plugin', async () => {
         outcome = await cursor.install(system);
 
     assert.equal(outcome.outcome, 'done');
+    assert.match(outcome.next, /Reload Window/);
+    assert.ok(outcome.next.includes(`cursor-agent --plugin-dir "${local}"`), outcome.next);
+    assert.doesNotMatch(outcome.next, /new Cursor CLI session/);
     assert.deepEqual(system.commands, [`git clone --depth 1 --branch main ${GIT_URL} ${local}`]);
+});
+
+test('names the Cursor CLI by its path when only ~/.local/bin has it', async () => {
+    const cli = path.join(home, '.local', 'bin', 'cursor-agent'),
+        outcome = await cursor.install(fakeSystem({ bins: ['git'], files: { [cli]: '' } }));
+
+    assert.ok(outcome.next.includes(`"${cli}" --plugin-dir "${local}"`), outcome.next);
 });
 
 test('re-run fast-forwards an existing clone of this repo', async () => {
@@ -83,9 +97,12 @@ test('blocks without git', async () => {
 });
 
 test('remove deletes our clone', async () => {
-    const system = fakeSystem({ bins: ['git'], dirs: [path.join(local, '.git')], probes: origin(GIT_URL) });
+    const system = fakeSystem({ bins: ['git'], dirs: [path.join(local, '.git')], probes: origin(GIT_URL) }),
+        outcome = await cursor.remove(system);
 
-    assert.equal((await cursor.remove(system)).outcome, 'done');
+    assert.equal(outcome.outcome, 'done');
+    assert.match(outcome.next, /Reload Window/);
+    assert.doesNotMatch(outcome.next, /CLI|--plugin-dir/);
     assert.deepEqual(system.commands, [`remove ${local}`]);
 });
 
