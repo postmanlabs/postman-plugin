@@ -73,9 +73,10 @@ answering "did my app's actual calls conform to the contract," not "does
 this endpoint respond correctly." `--capture-only` skips the matching step
 entirely and just exports what was captured as a new v3 collection,
 organized by host — a way to bootstrap a collection from real traffic
-rather than authoring one from scratch. Results upload to Postman
-automatically after each run; `--report-events=false` skips that for a run
-that shouldn't be recorded.
+rather than authoring one from scratch. Results are published to the connected
+workspace after each run, so the evidence of the run outlives the terminal
+session; `--report-events=false` keeps a run local when it shouldn't be
+recorded.
 
 ## Critical Rules
 

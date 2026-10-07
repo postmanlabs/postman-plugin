@@ -105,6 +105,13 @@
     ]
   },
   {
+    "id": "variables",
+    "prompt": "Where should I store my API's base URL versus its bearer token so the token never ends up committed, and how do I reference each from a request?",
+    "expected": [
+      "variables"
+    ]
+  },
+  {
     "id": "irrelevant-readme",
     "prompt": "Fix a spelling mistake in the project README.",
     "expected": []

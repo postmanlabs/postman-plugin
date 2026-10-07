@@ -9,8 +9,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-engineer/SKILL.md",
-          "bytes": 2763,
-          "sha256": "71c986053ea6421da09ffbd47c6d9be8d199965ff03477ba1829c8fd546e299b"
+          "bytes": 2919,
+          "sha256": "070f027f39a414b12e7f01b62fd009bd9735f693a80f579b58f780530d853b99"
         }
       ]
     },
@@ -86,8 +86,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-monitoring/SKILL.md",
-          "bytes": 7790,
-          "sha256": "e26e7d2a44cd844acda124a38188f5364da0aba15ad3efc70a6462d8d5e684ae"
+          "bytes": 7834,
+          "sha256": "162bce15e16336d6af8447bdab7b3d11285530250400e0e2826e0217ff324dea"
         }
       ]
     },
@@ -118,8 +118,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-testing/SKILL.md",
-          "bytes": 5598,
-          "sha256": "1fe04e33dc59b1a6f61fd1a937aacafe178b91e6922c06101a608c03a16c2402"
+          "bytes": 5665,
+          "sha256": "cec4b60578fb71adca30fefdcd9ed1f76aa56d79f54113c8d89d9d16e2099f1e"
         }
       ]
     },
@@ -207,8 +207,8 @@
         {
           "target": "reference/flow_cli_flags.md",
           "source": "skills/flows/reference/flow_cli_flags.md",
-          "bytes": 5616,
-          "sha256": "94bb1431e3f5312fbd7e6b5f63ddfa52424aa41415ebf10df8d8323d958c1932"
+          "bytes": 5598,
+          "sha256": "f880a4398e038e7bdd4748048570131fad18bbdbe84148bfa54b541adc19dba2"
         }
       ]
     },
@@ -289,6 +289,19 @@
           "source": "skills/postman-mcp-server/references/test.md",
           "bytes": 3376,
           "sha256": "8a255aba5e6d06625c65c463ee7fe87249d4a77687c59cee59e0a6a72e59ad69"
+        }
+      ]
+    },
+    {
+      "name": "variables",
+      "plugin": "postman",
+      "description": "How to parameterize a collection with variables and where each value belongs — a plain value goes in an environment or collection variable, a secret (token, password, API key) goes in the team's shared vault via `postman secret create` so its value never passes through the coding harness or lands in a committed file. Covers the variable scopes and their resolution order, reading and writing variables at runtime from pre-request and post-response scripts (`pm.environment`, `pm.collectionVariables`, `pm.variables`), and composing variables out of other variables. Use when the user asks where to put a base URL, token, or password, how to reference a secret without exposing it, how `{{variables}}` resolve, or how to set a value in a script. Covers `postman secret`.",
+      "files": [
+        {
+          "target": "SKILL.md",
+          "source": "skills/variables/SKILL.md",
+          "bytes": 4669,
+          "sha256": "d8f05c6021df39b62a1b49c3ef5b13376562b31683db6e858e7f7d460caed041"
         }
       ]
     }
