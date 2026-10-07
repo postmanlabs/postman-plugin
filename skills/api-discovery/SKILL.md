@@ -116,13 +116,32 @@ current `postman login` session, in that order.
 
 ## After discovery: reusing what was found
 
-`dependency add <type> <nameOrId>` formally adds a collection, environment,
-or mock found in another workspace as a dependency of the current one —
-the step after `search` finds something worth reusing (e.g., feeding
-`application test`'s contract matching), rather than copying it in by hand. It
-takes a Postman entity ID. If the Context Graph identifies a service or API to
-reuse, locate its collection with `search` first, then pass that entity ID to
-`dependency add`.
+Finding another service's workspace does not make it the workspace for the
+current repository. `workspace pull` is for working on the service that owns
+that workspace, from that service's repository. If the service is only a
+dependency, or the user only wants to inspect one of its resources, keep the
+current repository connected to its own workspace and use the dependency
+feature instead.
+
+For a collection, use `postman collection use`; for another supported Postman
+resource, use `postman entity use`. Read the command's `-h` output and pass the
+entity ID returned by `search`. These commands formally add the selected
+resource from another workspace as a dependency of the current one (for
+example, for `application test` contract matching), rather than copying it by
+hand or pulling the other service's entire workspace. If the Context Graph
+identifies only a service or API, locate the concrete entity with `search`
+first.
+
+Some CLIs expose the same dependency operation as `postman dependency add
+<type> <nameOrId>`. Feature-detect by checking that `use` is explicitly listed
+in `postman collection -h` and that `entity` is explicitly listed in `postman
+-h`; use `dependency add` when they are absent. Do not trust the exit code for
+this check: some versions print parent help and exit 0 for an unknown command.
+
+It downloads a copy into `postman/.dependencies/` and records the entity in
+`.postman/resources.yaml`. The copy works locally straight away.
+`postman dependency install` downloads the copies again, for example after a
+clone, and `dependency update` refreshes them to the owner's latest.
 
 It downloads a copy into `postman/.dependencies/` and records the entity in
 `.postman/resources.yaml`. The copy works locally straight away.

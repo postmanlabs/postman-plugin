@@ -1,6 +1,6 @@
 ---
 name: api-mocking
-description: Stands up a fake backend that behaves like a real API — from a collection or an OpenAPI spec, running locally or pushed to Postman's cloud for a durable URL — plus request-time scenario and status-code overrides for testing failure paths. Use when the user asks to "mock this API," "create a mock server," "fake the backend," "run tests without hitting the real API," or "simulate an error/out-of-stock response." Covers `postman mock`. Depends on bootstrap for the workspace id only once a mock is pushed to the cloud (`-w`, or the workspace linked in `.postman/resources.yaml`) — generating and running a mock locally needs nothing from bootstrap.
+description: Stands up a fake backend that behaves like a real API — from a collection or an OpenAPI spec, running locally or pushed to a workspace and deployed at a durable URL — plus request-time scenario and status-code overrides for testing failure paths. Use when the user asks to "mock this API," "create a mock server," "fake the backend," "run tests without hitting the real API," or "simulate an error/out-of-stock response." Covers `postman mock`. Depends on bootstrap for the workspace id only once a mock is pushed to the workspace (`-w`, or the workspace linked in `.postman/resources.yaml`) — generating and running a mock locally needs nothing from bootstrap.
 ---
 
 # API Mocking
@@ -16,15 +16,15 @@ different product (the MCP `createMock` flow), not this skill.
 A **local** mock is two files on disk: `config.yaml` (name, port, scenarios) and
 `default.js` — a plain Node HTTP server, and the mock itself, not a wrapper
 around one. Generating, inspecting, running, and calling a local mock work for
-a logged-out guest. Only sharing it — pushing to the cloud and deploying a
+a logged-out guest. Only sharing it — pushing to the workspace and deploying a
 durable URL — needs `postman login`. The progression is one model in three
-places: local folder ──`push`──▶ Code Mock (cloud definition) ──`deploy`──▶
+places: local folder ──`push`──▶ Code Mock (workspace definition) ──`deploy`──▶
 Mock Server (the reachable URL).
 
 Default path: write a local folder, then `mock push` later if something other
 than you needs to hit it over the network (a teammate, CI elsewhere, a webhook
 sender). A purely local mock answering a `postman request` on your machine
-never needs cloud. The exception is `generate -w`, which creates the mock in a
+never needs a workspace. The exception is `generate -w`, which creates the mock in a
 workspace only and writes no local files — use that only when you intentionally
 skip the repo copy.
 
@@ -46,7 +46,7 @@ before anything is generated here.
      the default handler from the source in place, keeping the existing name,
      port, and scenarios. `--update` still needs the `SOURCE`; it cannot be
      combined with `--output`.
-   - `-w <workspaceId>` saves the mock to a cloud workspace *instead of* the
+   - `-w <workspaceId>` saves the mock to a workspace *instead of* the
      repository — it writes no local files and requires being logged in. Cannot
      be combined with `--output`, `--force`, or `--update`. Prefer local
      generate + later `push` when you still need `mock run` from a folder.
@@ -70,18 +70,18 @@ before anything is generated here.
    `mock run` it again.
 4. **Push it, if it needs to leave your machine.**
    `postman mock push ./postman/mocks/NAME` is safe to re-run — `Created` the
-   first time, `Updated` after — and records the cloud mapping in
+   first time, `Updated` after — and records the workspace mapping in
    `.postman/resources.yaml`; commit that change. If a mock server is already
    live for this mock, the push updates what it serves.
 5. **Deploy it, for a URL that outlives your terminal.**
-   `postman mock deploy CLOUD_ID -s SLUG -y` prints
+   `postman mock deploy WORKSPACE_MOCK_ID -s SLUG -y` prints
    `https://SLUG.mock.<team-domain>.postman.dev`. Deployed private by default —
    callers need a Postman API key (`x-api-key`) — add `--public` only when the
    mock should be reachable by anyone with the URL. `--auto-deploy` re-publishes
    the live server automatically whenever the mock changes; even without it, a
    later `push` already updates a live server, so you only re-`deploy` for the
    first URL or after taking the server down.
-6. **See who's calling it.** `postman mock get CLOUD_ID` (table or `--json`)
+6. **See who's calling it.** `postman mock get WORKSPACE_MOCK_ID` (table or `--json`)
    returns `mockServerId`; feed that into `postman mock log MOCK_SERVER_ID` for
    call entries (filter with `--method` / `--status` / `--path` / `--since` /
    `--until` / `--limit`, or `--json`). An empty log means the URL genuinely
@@ -90,10 +90,10 @@ before anything is generated here.
 7. **Tear down.**
    - Local: `postman mock delete ./path --yes` — refuses while that mock is
      **running** locally; stop `mock run` first.
-   - Cloud: `postman mock delete CLOUD_ID --yes` — refuses while the mock is
+   - Workspace: `postman mock delete WORKSPACE_MOCK_ID --yes` — refuses while the mock is
      **running locally** *or* **deployed**; stop the local run and take the
      mock server down first.
-   Cloud delete doesn't touch `.postman/resources.yaml`; drop that line by hand
+   Workspace deletion doesn't touch `.postman/resources.yaml`; drop that line by hand
    afterward or the repo keeps claiming a mock that's gone.
 
 To point real request/assertion runs at a mock instead of hand-editing
@@ -128,20 +128,20 @@ the run, its handler creates, reads, updates and deletes records through
 
 - **Code-mock id** — the `id` in `config.yaml`, and the id that `push` and
   `generate -w` print (often the same value). Use it for `get`, `deploy`,
-  `delete`, and `run` by cloud id.
-- **`mockServerId`** — a different value from `mock get CLOUD_ID` (table or
+  `delete`, and `run` by workspace mock id.
+- **`mockServerId`** — a different value from `mock get WORKSPACE_MOCK_ID` (table or
   `--json`). Use it for `mock log`, and nothing else.
 
 ## Critical Rules
 
-1. **When you're not signed in, every gated cloud command fails closed:**
+1. **When you're not signed in, every gated workspace command fails closed:**
    `Authentication required. Run postman login or provide --api-key`, exit 1,
    nothing half-done. (Signed in but lacking access fails differently — a
    permission or missing-workspace error.) Whether a command is gated is decided
    by what you pass it, not the verb — `mock get`/`mock run` take either a local
-   path (ungated) or a cloud ID (gated); `mock list` is gated only when called
+   path (ungated) or a workspace mock ID (gated); `mock list` is gated only when called
    with no path.
-2. **`push` is what moves an existing local mock to the cloud — `-w` at
+2. **`push` is what moves an existing local mock to the workspace — `-w` at
    `generate` time is optional, not a fork you must choose up front.** A mock
    built as a guest can be pushed and deployed later with no rework. Do not
    assume `generate -w` left a `postman/mocks/NAME/` folder to `run`.
@@ -160,8 +160,8 @@ the run, its handler creates, reads, updates and deletes records through
 ## Verification
 
 A mock isn't done because `generate` or `run` exited 0 — hit it with
-`postman request` and check the actual status/body, or `mock get CLOUD_ID
---json` for a cloud one, then state whether it ended up local or cloud, and
+`postman request` and check the actual status/body, or `mock get WORKSPACE_MOCK_ID
+--json` for a pushed one, then state whether it ended up local, pushed, or deployed, and
 (if deployed) private or public. For a scenario check, confirm a *valid* name
 from `config.yaml` actually changed the response — a typo'd name falls back to
 the default, so a 200 alone proves nothing. For a status-code check, use an

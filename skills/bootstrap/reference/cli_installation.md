@@ -1,8 +1,9 @@
 # Postman CLI Installation
 
-A global install, on `PATH`, installed by one of three tools depending on
-platform. Whichever one put the binary there is the one to use again when
-updating it — mixing tools leaves two `postman` binaries and a `PATH`
+A global install on `PATH`. npm works anywhere Node is available; the curl
+installer covers macOS, Linux, and WSL; and the PowerShell installer covers
+Windows. Whichever route put the binary there is the one to use again when
+updating it — mixing routes leaves two `postman` binaries and a `PATH`
 question.
 
 ## Install
