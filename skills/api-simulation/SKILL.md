@@ -51,7 +51,8 @@ from a workspace, or both:
    owner and Postman workspace, which step 2 needs.
    `postman context-graph ask "What services and APIs does <repo-name> call?" --wait`
    lists each upstream, the endpoints called and the call sites. Use the
-   repository's name: a wrong name answers "no dependencies", not an error.
+   repository's name from `git remote get-url origin`, not the folder's: a
+   wrong name answers "no dependencies", not an error.
    The graph can miss a call, so check its list against the path you're
    changing and add any call the change introduces. Only HTTP dependencies
    become members; queues, databases and caches run as real local instances.
@@ -104,25 +105,29 @@ from a workspace, or both:
      mock. For a pulled one, fork it into `postman/mocks/` first.
    - `502 Proxy error`: the member's handler crashed. See `sim.ndjson`.
 
-6. **Ship.** Commit your mocks, the `.sim.yaml` and `.postman/resources.yaml`,
-   and add `postman/.dependencies/` to `.gitignore`. CI restores pulled mocks
-   with `postman dependency install`, starts the simulation with
-   `--no-history`, starts the service and runs the collection (see
+6. **Add failure scenarios.** For each dependency on the path, copy the
+   baseline `.sim.yaml` and give that member a condition: an error status, and
+   a delay longer than the client's timeout. Run the service against each and
+   report what it did; fix what breaks.
+
+   ```yaml
+     - routeKey: workspaces
+       path: ../.dependencies/mocks/workspace-service/config.yaml
+       scenarios:
+         - overrides:
+             conditions:
+               error: { status_code: 503 }
+   ```
+
+   The conditions are `latency.delay_ms`, `error.status_code` (400–599),
+   `rate_limit.requests_per_minute` and `chaos.failure_rate` (0–100). Each
+   applies to every route on that member.
+
+7. **Ship.** Commit your mocks, the `.sim.yaml` files and
+   `.postman/resources.yaml`. Add `postman/.dependencies/` to `.gitignore`:
+   it holds downloaded copies, and `postman dependency install` restores them
+   after a clone. Running the simulation in CI is optional (see
    `ci-integration`).
-
-**Failure paths.** Copy the baseline `.sim.yaml` and give one member
-conditions: `latency.delay_ms`, `error.status_code` (400–599),
-`rate_limit.requests_per_minute` or `chaos.failure_rate` (0–100). They apply
-to every route on that member.
-
-```yaml
-  - routeKey: workspaces
-    path: ../.dependencies/mocks/workspace-service/config.yaml
-    scenarios:
-      - overrides:
-          conditions:
-            error: { status_code: 503 }
-```
 
 ## Critical Rules
 

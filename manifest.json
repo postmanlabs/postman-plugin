@@ -35,8 +35,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-discovery/SKILL.md",
-          "bytes": 6709,
-          "sha256": "f4a6b5243a044538bfa969a190d566f0de5ba943deef4f4c0d20f09cb00ef7fd"
+          "bytes": 7036,
+          "sha256": "7ae1c8b2db0334b2f54dda0c3a7680938571dd32ff350ff77d5b87adc26285cd"
         },
         {
           "target": "reference/orbit.md",
@@ -99,8 +99,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-simulation/SKILL.md",
-          "bytes": 8010,
-          "sha256": "d6e73c29b41b12fc6433fd104854e3270774e3acc840e2b17c39652df9fc2809"
+          "bytes": 8295,
+          "sha256": "11e7fb6dde2accca2cf6fa1d54d3192a3c1def26f22adc2d7cfd7885fb0ce33e"
         },
         {
           "target": "reference/sim_yaml_schema.md",
