@@ -22,6 +22,7 @@ description: Default entry point for API engineering work — designing, impleme
    workspace means `workspace push`, not creating a duplicate. See
    **bootstrap** for the lifecycle decision table.
 10. When actual use exposes a concrete Postman CLI gap or a misleading skill, handle the user's task first — then use `postman feedback` to report the gaps/bugs. Exclude secrets, user data, and proprietary content
+11. Secret variables in postman gives you a way to resolve user secrets without their ai agent being able to read the secret value. See **variables** skill
 
 ## Dos
 1. Prove it works - validate the task against the contract. See **api-testing**.
