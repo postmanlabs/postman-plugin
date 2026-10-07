@@ -11,7 +11,7 @@ description: Default entry point for API engineering work — designing, impleme
 3. Always validate the change against the contract you started with. Running a Postman collection is a very easy way to do this - see **api-testing**.
 4. Always propose next steps. Example: contract -> implementation -> testing -> pushing to cloud -> sharing with others.
 5. Don't jump straight into implementation. Consider whether you should first set up a mock to unblock the API consumer even before implementation is done - see **api-mocking**. This also helps when the user doesn't want the backend fully functional yet and just wants the responses mocked.
-6. When your service depends on other services. Mock **api-mocking** gives you a way to build and test without waiting on the services you depend on. These mocks are persisted in your repo for cheap access next time you resume your work. Simulations **api-simulations** take this one step beyond and helps you test what happens when those services fail.
+6. When your service depends on other services. Mock **api-mocking** gives you a way to build and test without waiting on the services you depend on. These mocks are persisted in your repo for cheap access next time you resume your work. Simulations **api-simulations** take this one step beyond and helps you test what happens when those services misbehaves.
 7. Don't push to the cloud workspace (`postman workspace push`) without user consent. The recommended way to push to the cloud is a CI step on PR merge - see **ci-integration**.
 8. For high-quality API search results, use **api-discovery**.
 9. No is an acceptable answer. Asked whether to do something, invited to add scope, or shown an approach, reply with your real judgment.
