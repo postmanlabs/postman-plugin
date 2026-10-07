@@ -123,30 +123,22 @@ dependency, or the user only wants to inspect one of its resources, keep the
 current repository connected to its own workspace and use the dependency
 feature instead.
 
-For a collection, use `postman collection use`; for another supported Postman
-resource, use `postman entity use`. Read the command's `-h` output and pass the
-entity ID returned by `search`. These commands formally add the selected
-resource from another workspace as a dependency of the current one (for
-example, for `application test` contract matching), rather than copying it by
-hand or pulling the other service's entire workspace. If the Context Graph
-identifies only a service or API, locate the concrete entity with `search`
-first.
+Use `postman dependency add <type> <name-or-id>` to declare and download the
+selected resource rather than copying it by hand or pulling the other
+service's entire workspace. Supported types are `collection`, `environment`,
+and `mock`. Pass the entity ID returned by `search`, or use the entity name;
+when resolving a name in a specific workspace, add `--workspace
+<workspace-id>`. If the Context Graph identifies only a service or API, locate
+the concrete entity with `search` first.
 
-Some CLIs expose the same dependency operation as `postman dependency add
-<type> <nameOrId>`. Feature-detect by checking that `use` is explicitly listed
-in `postman collection -h` and that `entity` is explicitly listed in `postman
--h`; use `dependency add` when they are absent. Do not trust the exit code for
-this check: some versions print parent help and exit 0 for an unknown command.
-
-It downloads a copy into `postman/.dependencies/` and records the entity in
-`.postman/resources.yaml`. The copy works locally straight away.
-`postman dependency install` downloads the copies again, for example after a
-clone, and `dependency update` refreshes them to the owner's latest.
-
-It downloads a copy into `postman/.dependencies/` and records the entity in
-`.postman/resources.yaml`. The copy works locally straight away.
-`postman dependency install` downloads the copies again, for example after a
-clone, and `dependency update` refreshes them to the owner's latest.
+Dependencies are recorded in `.postman/resources.yaml` and downloaded under
+`postman/.dependencies/`, so the copy works locally straight away. Use
+`postman dependency list` to inspect declarations, `postman dependency
+install` to download declared dependencies after a clone or in CI, `postman
+dependency update` to refresh them from Postman, and `postman dependency
+remove <name-or-id>` to delete a declaration and its downloaded files. The
+`list`, `install`, `update`, and `remove` commands accept `--type <type>`;
+`install` and `update` can also target one declared dependency by name.
 
 ## Reference
 

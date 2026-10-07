@@ -139,15 +139,16 @@ and never replace this repository's binding with another service's workspace.
 Prefer filesystem-first work. For the current service, materialize its existing
 workspace with `workspace pull <id>`, or create and bind one with `postman init
 --json --visibility <personal|team>` when no workspace exists. For another
-service, use the dependency feature described in `api-discovery`. Then inspect,
-edit, diff, and validate the version-controlled files before any push.
+service, use `postman dependency add <type> <name-or-id>` as described in
+`api-discovery`. Then inspect, edit, diff, and validate the version-controlled
+files before any push.
 
 | Existing state and intent | Use | Why |
 | --- | --- | --- |
 | No workspace exists; create and bind one | `postman init --json --visibility <personal|team>` or `postman workspace create --visibility <value>` | Creates and binds the owning workspace; the init path also creates the git-native filesystem. |
 | The current service's workspace exists; enable filesystem work in its repository | `postman workspace pull <workspace-id>` | Connects the owning workspace to the repository and materializes its entities under `postman/`. |
 | The current service's workspace exists; record only the Git binding | `postman workspace connect-git <workspace-id> [path]` | Binds its repository without downloading its contents. |
-| Another service's resource is needed here | Dependency feature; see `api-discovery` for command detection | Adds only that resource as a dependency without rebinding this repository or pulling the other service's whole workspace. |
+| Another service's resource is needed here | `postman dependency add <type> <name-or-id>`; add `--workspace <workspace-id>` when resolving a name in a specific workspace | Declares and downloads only that collection, environment, or mock without rebinding this repository or pulling the other service's whole workspace. |
 | Bound workspace; the workspace is authoritative | `postman workspace pull` | Refreshes local files from the connected workspace. |
 | Bound workspace; local files are authoritative | `postman workspace diff --push-strategy default`, then `postman workspace push` | Persists the local API context for future work and sharing with others by publishing creates/updates without deleting unmatched workspace entities. |
 | “Share this existing workspace with my team” and it is already team-accessible | Diff, then `postman workspace push` | Persists local context in the existing workspace so teammates can share and build on it; `create` would make a duplicate. |

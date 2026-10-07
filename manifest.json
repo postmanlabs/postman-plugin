@@ -9,8 +9,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-engineer/SKILL.md",
-          "bytes": 3207,
-          "sha256": "215672992ddc51dd6a4a404d729cc07bdd0a7c0e2dc47da1c7ec382e669ab1d1"
+          "bytes": 3243,
+          "sha256": "987c46cd73e8f079a6f85036b98c30ca0cd7b9e260a6e209143cdc1ba88590f4"
         }
       ]
     },
@@ -35,8 +35,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-discovery/SKILL.md",
-          "bytes": 8133,
-          "sha256": "cc2adb2bbf2c16667d465769cfb3e0ee1f4b898bec227d942dba767ca29788dc"
+          "bytes": 7704,
+          "sha256": "a2a553a3b49035cd7fa9bc55b2f9da8aa17ec14f461654deee54ee82688fc48f"
         },
         {
           "target": "reference/orbit.md",
@@ -54,8 +54,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-documentation/SKILL.md",
-          "bytes": 2141,
-          "sha256": "79b802121a9b5760bbaa77c391400efcafc5f3365b8f9386b0f8a37c8992be33"
+          "bytes": 2685,
+          "sha256": "f4d9be8fd9b10239409d336da720c6a0ed2694d5b4c968cca65ed8a6ab1b4dcb"
         },
         {
           "target": "reference/rest-api-best-practices.md",
@@ -131,8 +131,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/bootstrap/SKILL.md",
-          "bytes": 10826,
-          "sha256": "6c7cbaf1bc6ba3a0e94606188bf69a2ac5ae51105df177d745cce25f024ad233"
+          "bytes": 10940,
+          "sha256": "55f20a9ebd52de6ef031da6f9d0b667d85d525b4ef263e597d88d2e06654567c"
         },
         {
           "target": "reference/cli_installation.md",
