@@ -124,12 +124,6 @@ takes a Postman entity ID. If the Context Graph identifies a service or API to
 reuse, locate its collection with `search` first, then pass that entity ID to
 `dependency add`.
 
-It downloads a copy into `postman/.dependencies/` and records the entity in
-`.postman/resources.yaml`. The copy works locally straight away. Commit
-`resources.yaml` and git-ignore the folder: after a clone, `postman dependency
-install` downloads the copies again, and `dependency update` refreshes them
-to the owner's latest.
-
 ## Reference
 
 - [Orbit](reference/orbit.md) — public API discovery: the search/integrate
