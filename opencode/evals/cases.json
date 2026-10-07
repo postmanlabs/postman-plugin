@@ -28,6 +28,20 @@
     ]
   },
   {
+    "id": "api-simulation-implicit",
+    "prompt": "Add a cancel endpoint to the orders service that releases the reservation in the inventory service and refunds the payment, and make sure it works end to end before I open the PR.",
+    "expected": [
+      "api-simulation"
+    ]
+  },
+  {
+    "id": "api-mocking-producer",
+    "prompt": "The mobile team wants to start building against our new loyalty API this week, but the backend won't be ready for a month. Give them something that behaves like it.",
+    "expected": [
+      "api-mocking"
+    ]
+  },
+  {
     "id": "api-testing",
     "prompt": "Run this Postman collection and verify that the API still satisfies its assertions.",
     "expected": [

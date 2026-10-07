@@ -166,7 +166,8 @@ test consumers without waiting for the real service to be ready or available.
 
 The mock stays local until you choose to push and deploy it. When teammates or
 external systems need access, the same mock can become a durable hosted URL
-without rebuilding it in another tool.
+without rebuilding it in another tool. Pushed to the service's own workspace,
+it's the mock other teams' simulations pull first.
 
 ### Develop against simulated dependencies
 
