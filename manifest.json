@@ -4,13 +4,13 @@
     {
       "name": "api-engineer",
       "plugin": "postman",
-      "description": "Default entry point for API engineering work — designing, implementing, mocking, testing, monitoring, documenting, or deploying an API.",
+      "description": "Makes coding agents faster and more accurate with fewer tokens when designing, implementing, mocking, testing, monitoring, documenting, or deploying an API.",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/api-engineer/SKILL.md",
-          "bytes": 2726,
-          "sha256": "961c8bdd37bd64de47e3ab4ea67079025f746e1c3566df9412cdda6990eed43c"
+          "bytes": 3243,
+          "sha256": "987c46cd73e8f079a6f85036b98c30ca0cd7b9e260a6e209143cdc1ba88590f4"
         }
       ]
     },
@@ -35,8 +35,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-discovery/SKILL.md",
-          "bytes": 6997,
-          "sha256": "163c721cf770013d1a80d0fa0df25b68d03a0d496b808e2ce3430b00e3a847d5"
+          "bytes": 7704,
+          "sha256": "a2a553a3b49035cd7fa9bc55b2f9da8aa17ec14f461654deee54ee82688fc48f"
         },
         {
           "target": "reference/orbit.md",
@@ -54,8 +54,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-documentation/SKILL.md",
-          "bytes": 2141,
-          "sha256": "79b802121a9b5760bbaa77c391400efcafc5f3365b8f9386b0f8a37c8992be33"
+          "bytes": 2685,
+          "sha256": "f4d9be8fd9b10239409d336da720c6a0ed2694d5b4c968cca65ed8a6ab1b4dcb"
         },
         {
           "target": "reference/rest-api-best-practices.md",
@@ -68,13 +68,13 @@
     {
       "name": "api-mocking",
       "plugin": "postman",
-      "description": "Stands up a fake backend that behaves like a real API — from a collection or an OpenAPI spec, running locally or pushed to Postman's cloud for a durable URL — plus request-time scenario and status-code overrides for testing failure paths. Use when the user asks to \"mock this API,\" \"create a mock server,\" \"fake the backend,\" \"run tests without hitting the real API,\" or \"simulate an error/out-of-stock response.\" Covers `postman mock`. Depends on bootstrap for the workspace id only once a mock is pushed to the cloud (`-w`, or the workspace linked in `.postman/resources.yaml`) — generating and running a mock locally needs nothing from bootstrap.",
+      "description": "Stands up a fake backend that behaves like a real API — from a collection or an OpenAPI spec, running locally or pushed to a workspace and deployed at a durable URL — plus request-time scenario and status-code overrides for testing failure paths. Use when the user asks to \"mock this API,\" \"create a mock server,\" \"fake the backend,\" \"run tests without hitting the real API,\" or \"simulate an error/out-of-stock response.\" Covers `postman mock`. Depends on bootstrap for the workspace id only once a mock is pushed to the workspace (`-w`, or the workspace linked in `.postman/resources.yaml`) — generating and running a mock locally needs nothing from bootstrap.",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/api-mocking/SKILL.md",
-          "bytes": 10406,
-          "sha256": "d7e7bd27c5028a8e0603c73e1702f555cc271a59409f92bc4de57dac23b7a775"
+          "bytes": 10524,
+          "sha256": "9c623b5f0f3b001b62f4993b9b264edfb5d84a26a1d94c1bfe335d39c09962ee"
         }
       ]
     },
@@ -131,14 +131,14 @@
         {
           "target": "SKILL.md",
           "source": "skills/bootstrap/SKILL.md",
-          "bytes": 9681,
-          "sha256": "f09e17d45bdca9fec95b9ca5d7ec65a08f0273a25ecfb9af176139a7428a9b1e"
+          "bytes": 10940,
+          "sha256": "55f20a9ebd52de6ef031da6f9d0b667d85d525b4ef263e597d88d2e06654567c"
         },
         {
           "target": "reference/cli_installation.md",
           "source": "skills/bootstrap/reference/cli_installation.md",
-          "bytes": 1645,
-          "sha256": "47a386fa43c5bfe3fc5999bc2d7eec77c1e79077994f6b6748cef0ff11a00161"
+          "bytes": 1724,
+          "sha256": "1542ad092d0b5a301dde216f01bc406495bad248415e1957a7d7e3d5660f734b"
         }
       ]
     },
@@ -150,8 +150,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/ci-integration/SKILL.md",
-          "bytes": 6282,
-          "sha256": "5133310bc4a81b49192987cc6568fbfc46f7b12fe8fa50fc42a5ee26bb21d4c0"
+          "bytes": 6411,
+          "sha256": "c22abeade1610582cf13f27a7a720203443b8d532e883abf11c2a99a0beb59c2"
         }
       ]
     },
@@ -188,8 +188,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/datasets/SKILL.md",
-          "bytes": 20882,
-          "sha256": "125d17fd2e9638b2000e161a0e3d7d74e04e04ef41d3fc0cccd4cce32f78b735"
+          "bytes": 20954,
+          "sha256": "8c7238aa38a63caa5e8d7b4332890c4d659301046a9d1372b177aea894b04a81"
         }
       ]
     },
@@ -300,8 +300,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/variables/SKILL.md",
-          "bytes": 4669,
-          "sha256": "d8f05c6021df39b62a1b49c3ef5b13376562b31683db6e858e7f7d460caed041"
+          "bytes": 4976,
+          "sha256": "bdc4ef430ea2d83c73f259c27ba03c635a82b3276c0928a068fb126075a32f83"
         }
       ]
     }

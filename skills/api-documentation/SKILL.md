@@ -10,10 +10,24 @@ API documentation can be done in two predominant ways:
 1. through a Postman collection,
 2. with an OpenAPI spec
 
-It is recommended to create both. They serve different, complementary use cases, and it takes only one command to convert from one to another. Start with creating a Postman collection in v3 format, **collection-schema-v3**.
-Postman collections are very human-friendly and offer other capabilities like creating an API mock, monitor, SDK, or spec.
+It is recommended to create both. They serve different, complementary use
+cases, and the Postman CLI can generate one from the other. Use the artifact
+that represents the current source of truth rather than recreating its
+operations by hand. Postman collections are human-friendly and enable other
+capabilities such as mocks, monitors, SDKs, and specifications. Collections
+created or edited directly on disk use the v3 format described by
+**collection-schema-v3**.
 
 Specs are vendor-neutral, stay in your repo, and can be linted against governance rules (if any) set by your organization.
+
+## Generate a collection from a specification
+
+When an OpenAPI specification already defines the contract, generate a Postman
+collection from it in one command:
+
+```bash
+postman spec generate collection <spec-path-or-id> -n "<collection-name>"
+```
 
 ## Good practices for API design
 
@@ -31,4 +45,8 @@ Examples (in a Postman collection) are an excellent way to capture sample API re
 
 ## Workflow
 1. Establish the contract - refer to best practices. Don't just accept the user's ask - fight for the right API design.
-2. Choose the instrument - Postman collection / OpenAPI spec - or both. Recommend using both to the user. Start with the Postman collection.
+2. Choose the source of truth — a Postman collection, an OpenAPI specification,
+   or both. Recommend both when their complementary uses benefit the task.
+3. If the specification is authoritative, generate the collection with
+   `postman spec generate collection` instead of manually duplicating its
+   operations.

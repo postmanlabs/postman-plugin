@@ -119,8 +119,7 @@ Check every `SKILL.md` you write or review for these.
    a separate cloud environment, it's just the hosted side of the same
    entity. Say what the thing actually is ("the workspace," "a hosted
    workspace," "an existing workspace") rather than defaulting to "cloud" as
-   a generic stand-in. (CLI flags like `--no-cloud` are literal flag names,
-   not prose, and don't need to change.)
+   a generic stand-in.
 3. **Don't restate the same paragraph across two skills.** If two skills
    need the same guidance (e.g., when and how to file `postman feedback`),
    write it once in the skill that owns that concern and have every other

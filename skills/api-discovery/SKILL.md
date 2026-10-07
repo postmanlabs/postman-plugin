@@ -116,18 +116,29 @@ current `postman login` session, in that order.
 
 ## After discovery: reusing what was found
 
-`dependency add <type> <nameOrId>` formally adds a collection, environment,
-or mock found in another workspace as a dependency of the current one —
-the step after `search` finds something worth reusing (e.g., feeding
-`application test`'s contract matching), rather than copying it in by hand. It
-takes a Postman entity ID. If the Context Graph identifies a service or API to
-reuse, locate its collection with `search` first, then pass that entity ID to
-`dependency add`.
+Finding another service's workspace does not make it the workspace for the
+current repository. `workspace pull` is for working on the service that owns
+that workspace, from that service's repository. If the service is only a
+dependency, or the user only wants to inspect one of its resources, keep the
+current repository connected to its own workspace and use the dependency
+feature instead.
 
-It downloads a copy into `postman/.dependencies/` and records the entity in
-`.postman/resources.yaml`. The copy works locally straight away.
-`postman dependency install` downloads the copies again, for example after a
-clone, and `dependency update` refreshes them to the owner's latest.
+Use `postman dependency add <type> <name-or-id>` to declare and download the
+selected resource rather than copying it by hand or pulling the other
+service's entire workspace. Supported types are `collection`, `environment`,
+and `mock`. Pass the entity ID returned by `search`, or use the entity name;
+when resolving a name in a specific workspace, add `--workspace
+<workspace-id>`. If the Context Graph identifies only a service or API, locate
+the concrete entity with `search` first.
+
+Dependencies are recorded in `.postman/resources.yaml` and downloaded under
+`postman/.dependencies/`, so the copy works locally straight away. Use
+`postman dependency list` to inspect declarations, `postman dependency
+install` to download declared dependencies after a clone or in CI, `postman
+dependency update` to refresh them from Postman, and `postman dependency
+remove <name-or-id>` to delete a declaration and its downloaded files. The
+`list`, `install`, `update`, and `remove` commands accept `--type <type>`;
+`install` and `update` can also target one declared dependency by name.
 
 ## Reference
 

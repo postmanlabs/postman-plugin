@@ -70,6 +70,13 @@
     ]
   },
   {
+    "id": "api-discovery-service-dependency",
+    "prompt": "I'm in the orders service repository and need to inspect and use the payments collection from another Postman workspace without changing this repository's workspace binding.",
+    "expected": [
+      "api-discovery"
+    ]
+  },
+  {
     "id": "ai-readiness",
     "prompt": "Score this OpenAPI specification for how easily an AI agent can use it.",
     "expected": [
