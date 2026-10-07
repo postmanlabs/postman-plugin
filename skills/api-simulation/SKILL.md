@@ -131,9 +131,8 @@ from a workspace, or both:
    service returned.
 
 7. **Ship.** Commit your mocks, the `.sim.yaml` files and
-   `.postman/resources.yaml`. Add `postman/.dependencies/` to `.gitignore`:
-   it holds downloaded copies, and `postman dependency install` restores them
-   after a clone. Running the simulation in CI is optional (see
+   `.postman/resources.yaml`. After a clone, `postman dependency install`
+   restores the pulled mocks. Running the simulation in CI is optional (see
    `ci-integration`).
 
 ## Critical Rules
