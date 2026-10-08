@@ -32,11 +32,12 @@ names a server entrypoint (`exports["./server"]`, else `main`). That package is
 [postmanlabs/opencode-plugin](https://github.com/postmanlabs/opencode-plugin),
 built by `opencode/scripts/build-mirror.js` from this repo —
 `opencode/src/index.ts` at `src/`, with `skills/`, the mandate, `manifest.json`
-and `mcp.opencode.json` beside it — and pushed by two workflows. Its README is
-`opencode/mirror-readme.md` with this repo's `README.md` OpenCode section
-inserted, so the install commands and minimums are written once. A sync replaces
+and `mcp.opencode.json` beside it — and pushed by two workflows. A sync replaces
 only the paths in the script's `MIRROR_PATHS`; files that belong to the mirror
-alone, such as `SECURITY.md` and `.github/CODEOWNERS`, are edited there and stay.
+alone, such as `README.md`, `SECURITY.md` and `.github/CODEOWNERS`, are edited
+there and stay. The release publishes the mirror's `README.md` as the npm page.
+A change to the install commands or minimums in this repo's `README.md` needs the
+same change in the mirror's.
 
 - **`opencode-mirror.yml`** commits the tree to the mirror's `main` on every push
   to this repo's `main` that changes what it holds, so
@@ -111,7 +112,6 @@ it lands.
 .app.json                         maps the Codex plugin to its published ChatGPT app ID
 opencode/                         the OpenCode plugin — source, tests, install harnesses, routing evals
 opencode/scripts/build-mirror.js  builds postmanlabs/opencode-plugin, the package OpenCode installs
-opencode/mirror-readme.md         that package's README; the build inserts README.md's OpenCode section into it
 .github/scripts/push-mirror.sh    commits or tags that build on the mirror, for opencode-mirror.yml and release.yml
 installer/                        `npx @postman/postman-plugin` — one adapter per agent in src/hosts/ — and the Pi package
 installer/src/pi-extension.ts     the Pi package's extension: the session-start mandate and the MCP server

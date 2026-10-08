@@ -161,10 +161,13 @@ jobs:
         working-directory: ${{ steps.meta.outputs.package_path }}
         env:
           NAME: ${{ steps.meta.outputs.name }}
+          GH_TOKEN: ${{ secrets.OPENCODE_PLUGIN_TOKEN }}
         run: |
           set -euo pipefail
           if [ "$NAME" = @postman/opencode-plugin ]; then
             node scripts/build-mirror.js "$RUNNER_TEMP/publish"
+            # The README is the mirror's own, edited there; npm shows it as the package page.
+            gh api repos/postmanlabs/opencode-plugin/contents/README.md -H 'Accept: application/vnd.github.raw' > "$RUNNER_TEMP/publish/README.md"
             echo "dir=$RUNNER_TEMP/publish" >> "$GITHUB_OUTPUT"
           else
             echo "dir=$PWD" >> "$GITHUB_OUTPUT"

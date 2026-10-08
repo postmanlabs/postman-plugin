@@ -19,7 +19,7 @@ export const OPENCODE_MINIMUM: Record<number, [number, number, number]> = { 1: [
 /** The same for `@postman/opencode-plugin` from npm, which OpenCode 1 installs from an earlier release than a git spec. */
 export const OPENCODE_NPM_MINIMUM: Record<number, [number, number, number]> = { 1: [1, 14, 22], 2: [2, 0, 4] };
 
-/** Pre-`plugin add` installs: a clone of the repo plus this one-line loader file. Must stay byte-identical to the shim in opencode/mirror-readme.md; test/routes.test.js enforces it. */
+/** Pre-`plugin add` installs: a clone of the repo plus this one-line loader file. Must stay byte-identical to what those installs wrote, or the installer stops recognizing them. */
 export const OPENCODE_SHIM = "export { default } from '../postman-plugin/opencode/src/index.ts';\n";
 
 /** Pinned: this third-party CLI writes Kimi's plugin store for us, and an unpinned npx would run whatever is latest. */

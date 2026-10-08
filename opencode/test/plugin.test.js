@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { buildMirror, MIRROR_PATHS, mirrorReadme } from '../scripts/build-mirror.js';
+import { buildMirror, MIRROR_PATHS } from '../scripts/build-mirror.js';
 import PostmanPluginDefinition, {
     applyPostmanConfig, assetRoot, mcpConfigFile, PostmanPlugin, sessionContextFile,
     skillsDirectory, toOpenCodeSessionContext
@@ -38,7 +38,7 @@ test('the mirror is a package `opencode plugin add` can install, versioned with 
     assert.equal(mirror.dependencies, undefined);
     assert.equal(mirror.repository.url, 'git+https://github.com/postmanlabs/postman-plugin.git', 'npm provenance needs the repository it is published from');
 
-    for (const file of [mirror.main, 'manifest.json', 'mcp.opencode.json', 'hooks/session-start-context.md', 'LICENSE', 'README.md']) {
+    for (const file of [mirror.main, 'manifest.json', 'mcp.opencode.json', 'hooks/session-start-context.md', 'LICENSE']) {
         assert.ok(fs.existsSync(path.join(out, file)), `the mirror has no ${file}`);
     }
 
@@ -48,7 +48,7 @@ test('the mirror is a package `opencode plugin add` can install, versioned with 
 
 test('a sync replaces what the mirror generates and keeps the mirror\'s own files', (t) => {
     const out = fs.mkdtempSync(path.join(os.tmpdir(), 'opencode-mirror-')),
-        own = { 'SECURITY.md': '# Security policy\n', '.github/CODEOWNERS': '* @postmanlabs/headless-postman\n' };
+        own = { 'README.md': '# Postman for OpenCode\n', 'SECURITY.md': '# Security policy\n', '.github/CODEOWNERS': '* @postmanlabs/headless-postman\n' };
 
     t.after(() => fs.rmSync(out, { recursive: true, force: true }));
 
@@ -77,25 +77,6 @@ test('MIRROR_PATHS names every top-level path the build writes', (t) => {
     buildMirror(out);
 
     assert.deepEqual(fs.readdirSync(out).sort(), [...MIRROR_PATHS].sort());
-});
-
-test('the mirror README carries README.md\'s OpenCode install section, written once', (t) => {
-    const out = fs.mkdtempSync(path.join(os.tmpdir(), 'opencode-mirror-'));
-
-    t.after(() => fs.rmSync(out, { recursive: true, force: true }));
-    buildMirror(out);
-
-    const readme = fs.readFileSync(path.join(out, 'README.md'), 'utf8');
-
-    assert.match(readme, /^# Postman for OpenCode\n\n> Generated from \[postmanlabs\/postman-plugin\]/);
-    assert.ok(readme.includes('opencode plugin add github:postmanlabs/opencode-plugin'));
-    assert.ok(readme.includes('`@postman/opencode-plugin` needs'));
-    assert.ok(!readme.includes('<!--'), 'the insertion marker is left in the published README');
-});
-
-test('the mirror README build fails rather than publish without its install section', () => {
-    assert.throws(() => mirrorReadme('# Title\n\nno marker\n', '### OpenCode\nx\n'), /lost the marker/);
-    assert.throws(() => mirrorReadme(fs.readFileSync(path.join(packageRoot, 'mirror-readme.md'), 'utf8'), '### Pi\nx\n'), /no `### OpenCode` section/);
 });
 
 test('the entrypoint reads the shared files beside itself in the mirror', async (t) => {

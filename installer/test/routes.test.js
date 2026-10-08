@@ -5,7 +5,6 @@ import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { HOSTS } from '../dist/hosts/index.js';
-import { OPENCODE_SHIM } from '../dist/source.js';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..'),
     { MANIFEST_ROUTES, MANIFEST_DIR_PATTERN, PACKAGE_ROUTES } = createRequire(import.meta.url)(path.join(repoRoot, 'scripts', 'routes.js')),
@@ -28,12 +27,4 @@ test('every adapter names a route that exists', () => {
         assert.ok(routes.includes(host.route), `${host.id} names ${host.route}, which is not a route in scripts/routes.js or a .*-plugin/ directory`);
         assert.ok(fs.existsSync(path.join(repoRoot, host.route)), `${host.id} names ${host.route}, which does not exist`);
     }
-});
-
-test('the OpenCode shim is the one opencode/mirror-readme.md tells users to write', () => {
-    const readme = fs.readFileSync(path.join(repoRoot, 'opencode', 'mirror-readme.md'), 'utf8'),
-        documented = readme.match(/echo "(export \{ default \} from [^"]+)" > ~\/\.config\/opencode\/plugins\/postman\.ts/);
-
-    assert.ok(documented, 'opencode/mirror-readme.md no longer shows the global shim command');
-    assert.equal(OPENCODE_SHIM, `${documented[1]}\n`);
 });
