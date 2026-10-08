@@ -216,6 +216,19 @@ test('finds an entry in .opencode/opencode.json, which OpenCode 2 edits only whe
     assert.ok(!shadowed.files[nested].includes(GIT_SPEC));
 });
 
+test('OpenCode 1 ignores the .opencode/ copies in its config directory, which it never reads, while remove still clears them', async () => {
+    const nested = path.join(config, '.opencode', 'opencode.json'),
+        nestedJsonc = path.join(config, '.opencode', 'opencode.jsonc'),
+        leftOver = fakeSystem({ probes: V1, files: { [nested]: plugin(SPEC) } }),
+        beside = fakeSystem({ probes: V1, files: { [json]: plugin(SPEC), [nestedJsonc]: plugin('x') } });
+
+    assert.equal((await opencode.status(leftOver)).installed, false);
+    assert.equal((await opencode.install(leftOver)).outcome, 'done', 'a fresh install, not a refused refresh of the nested entry');
+    assert.deepEqual(leftOver.commands, [ADD1]);
+    assert.equal((await opencode.status(beside)).installed, true, 'a nested opencode.jsonc does not hide opencode.json');
+    assert.equal((await opencode.remove(fakeSystem({ probes: V1, files: { [nested]: plugin(SPEC) } }))).outcome, 'done');
+});
+
 test('OpenCode 1 does not refresh an entry in OPENCODE_CONFIG_DIR, since `plugin --global` writes the default directory', async () => {
     const file = path.join('/custom', 'opencode.json'),
         custom = fakeSystem({ probes: V1, env: { OPENCODE_CONFIG_DIR: '/custom', ...GIT }, files: { [file]: plugin(GIT_SPEC) } }),

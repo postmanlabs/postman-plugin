@@ -106,7 +106,10 @@ async function configured (system: System, major: number | null): Promise<{ entr
         unreadable: string[] = [],
         jsoncLists = new Set<string>();
 
-    for (const [dir, file] of configDirs(system, major).flatMap((dir) => CONFIG_FILES.map((name) => [dir, path.join(dir, name)]))) {
+    // OpenCode 1 reads only the files directly in a config directory, never its `.opencode/` copies.
+    const names = major !== null && major < 2 ? CONFIG_FILES.slice(0, 2) : CONFIG_FILES;
+
+    for (const [dir, file] of configDirs(system, major).flatMap((dir) => names.map((name) => [dir, path.join(dir, name)]))) {
         const text = await system.readFile(file);
 
         if (text === null) {
@@ -133,14 +136,14 @@ async function configured (system: System, major: number | null): Promise<{ entr
             }
         }
 
-        if (path.basename(file) === 'opencode.jsonc' && Array.isArray(config.plugin)) {
+        if (samePath(file, path.join(dir, CONFIG_FILES[1])) && Array.isArray(config.plugin)) {
             jsoncLists.add(dir);
         }
     }
 
     // OpenCode 1 merges its global opencode.json and then opencode.jsonc with a merge that replaces arrays.
     for (const entry of entries) {
-        entry.shadowed = entry.key === 'plugin' && path.basename(entry.file) === 'opencode.json' && jsoncLists.has(entry.dir);
+        entry.shadowed = entry.key === 'plugin' && samePath(entry.file, path.join(entry.dir, CONFIG_FILES[0])) && jsoncLists.has(entry.dir);
     }
 
     return { entries, unreadable };
