@@ -59,7 +59,8 @@ try {
         listed = (answer.skills ?? []).map((name) => String(name).replace(/^postman:/, ''));
 
     console.log(`Cursor's model replied:\n${reply}`);
-    assert.equal(normalize(answer.mandate ?? ''), normalize(sentence), `the session-start mandate did not reach Cursor's model:\n${reply}`);
+    // The model sometimes quotes the whole mandate paragraph rather than the one sentence asked for.
+    assert.ok(normalize(answer.mandate ?? '').includes(normalize(sentence)), `the session-start mandate did not reach Cursor's model:\n${reply}`);
     assert.equal(normalize(answer.skill ?? ''), ENTRY_SKILL, `Cursor's model did not name ${ENTRY_SKILL} as the mandate spells it for Cursor, without \`postman:\`:\n${reply}`);
     assert.equal(normalize(answer.firstLine ?? ''), normalize(skillExcerpt(ENTRY_SKILL)), `the mandated skill did not load from ${plugin}:\n${reply}`);
     assert.deepEqual(skills.filter((skill) => !listed.includes(skill)), [], `Cursor's model did not list every skill in manifest.json:\n${reply}`);
