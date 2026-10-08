@@ -268,8 +268,12 @@ jobs:
             echo "v$VERSION already has a release"
             exit 0
           fi
+          # Latest only when this is the newest release tag, so a retried older release doesn't take it over.
+          NEWEST=$(gh api repos/postmanlabs/opencode-plugin/git/matching-refs/tags/v --jq '.[].ref' | sed 's|refs/tags/v||' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1 || true)
           FLAGS=(--latest)
           if [ "$DIST_TAG" != latest ]; then
             FLAGS=(--prerelease --latest=false)
+          elif [ "$NEWEST" != "$VERSION" ]; then
+            FLAGS=(--latest=false)
           fi
           gh release create "v$VERSION" --repo postmanlabs/opencode-plugin --verify-tag --title "v$VERSION" --notes "Built from $SOURCE." "${FLAGS[@]}"

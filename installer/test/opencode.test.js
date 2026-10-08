@@ -255,7 +255,7 @@ test('any other spec of the repository is replaced by the range spec', async () 
             outcome = await opencode.install(v2);
 
         assert.equal(outcome.outcome, 'done', old);
-        assert.ok(outcome.message.startsWith(`replaced ${old} with ${SPEC}`), outcome.message);
+        assert.ok(outcome.message.startsWith(`replaced ${old} under \`plugins\` with ${SPEC}`), outcome.message);
         assert.deepEqual(v2.commands, [ADD2, `opencode plugin remove ${old}`], old);
 
         const v1 = fakeSystem({ probes: V1, files: { [json]: plugin('x', old) } });
@@ -617,4 +617,31 @@ test('remove edits an OpenCode 2 `plugins` entry itself when the opencode on PAT
     assert.equal(outcome.outcome, 'done');
     assert.ok(!system.commands.some((command) => command.startsWith('opencode plugin remove')), system.commands.join('\n'));
     assert.equal(system.files[json], plugins('x'));
+});
+
+test('an entry left under the other major\'s list is moved to this one, not added a second time', async () => {
+    const v2 = fakeSystem({ probes: V2, files: { [json]: plugin('x', SPEC) } }),
+        moved = await opencode.install(v2);
+
+    assert.equal(moved.outcome, 'done');
+    assert.ok(moved.message.startsWith(`replaced ${SPEC} under \`plugin\` with ${SPEC}`), moved.message);
+    assert.ok(v2.commands.includes(ADD2), v2.commands.join('\n'));
+    assert.equal(v2.files[json], plugin('x'), 'the OpenCode 1 entry is edited out');
+
+    const v1 = fakeSystem({ probes: V1, files: { [json]: plugins(SPEC) } });
+
+    assert.equal((await opencode.install(v1)).outcome, 'done');
+    assert.equal(v1.files[json], plugins(), 'the OpenCode 2 entry is edited out');
+});
+
+test('a fresh OpenCode 1 install refuses, before touching an older install, when opencode.jsonc\'s plugin list would hide it', async () => {
+    const system = fakeSystem({ probes: withProbes(V1, cloneProbes()), bins: ['git'], ...ourClone({ files: { [shim]: OPENCODE_SHIM, [json]: '{}', [jsonc]: plugin('x') } }) }),
+        outcome = await opencode.install(system);
+
+    assert.equal(outcome.outcome, 'blocked');
+    assert.match(outcome.message, /reads only the `plugin` list in .*opencode\.jsonc/);
+    assert.deepEqual(system.commands, [], 'the plugin is not added and the clone and loader stay');
+
+    assert.equal((await opencode.install(fakeSystem({ probes: V1, files: { [json]: '{}', [jsonc]: '{ "model": "a/b" }' } }))).outcome, 'done', 'an opencode.jsonc with no plugin list hides nothing');
+    assert.equal((await opencode.install(fakeSystem({ probes: V2, files: { [json]: '{}', [jsonc]: plugin('x') } }))).outcome, 'done', 'OpenCode 2 is not affected');
 });

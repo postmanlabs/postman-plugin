@@ -241,6 +241,21 @@ async function destination (system: System, version: Version, entry: Entry): Pro
     return (await system.exists(json)) || !(await system.exists(jsonc)) ? json : jsonc;
 }
 
+/** OpenCode 1 adds to opencode.json, but ignores that file's list when the opencode.jsonc beside it has one of its own. */
+async function assertAddIsRead (system: System, version: Version): Promise<void> {
+    const jsonc = path.join(configDir(system), CONFIG_FILES[1]);
+
+    if (version.major >= 2 || !(await system.exists(path.join(configDir(system), CONFIG_FILES[0])))) {
+        return;
+    }
+
+    const config = parseJsonc<Record<string, unknown>>((await system.readFile(jsonc)) ?? '{}');
+
+    if (Array.isArray(config?.plugin)) {
+        blocked(`OpenCode 1 would add Postman to ${path.join(configDir(system), CONFIG_FILES[0])}, but reads only the \`plugin\` list in ${jsonc}; add \`${redact(specToInstall(system))}\` to that list yourself, or merge the two files, and re-run`);
+    }
+}
+
 /** Refuses an entry OpenCode's add would not write back to: it would register a second copy elsewhere instead. */
 async function assertLands (system: System, version: Version, entry: Entry): Promise<void> {
     const target = await destination(system, version, entry);
@@ -273,7 +288,7 @@ async function replaceEntry (system: System, version: Version, entry: Entry, spe
     await addFresh(system, version, spec, inConfigOf(system, entry), true);
 
     // Either major may have replaced it in place already.
-    if (!(await configured(system)).entries.some((left) => left.spec === entry.spec && samePath(left.file, entry.file))) {
+    if (!(await configured(system)).entries.some((left) => left.spec === entry.spec && left.key === entry.key && samePath(left.file, entry.file))) {
         return;
     }
 
@@ -388,19 +403,23 @@ export const opencode: Host = {
             await preflightLegacy(system);
 
             if (!entry) {
+                await assertAddIsRead(system, version);
                 await addFresh(system, version, spec);
 
                 return result('done', summary('installed', redact(spec), await removeLegacy(system)), NEXT);
             }
 
-            if (entry.spec === spec) {
+            // An entry under the other major's list is moved over: refreshing it would add a second one under this major's.
+            const refresh = entry.spec === spec && entry.key === (version.major >= 2 ? 'plugins' : 'plugin');
+
+            if (refresh) {
                 await refreshInPlace(system, version, entry);
             }
             else {
                 await replaceEntry(system, version, entry, spec);
             }
 
-            return result('done', summary(entry.spec === spec ? 'updated' : `replaced ${redact(entry.spec)} with`, redact(spec), await removeLegacy(system)), NEXT);
+            return result('done', summary(refresh ? 'updated' : `replaced ${redact(entry.spec)} under \`${entry.key}\` with`, redact(spec), await removeLegacy(system)), NEXT);
         });
     },
 
