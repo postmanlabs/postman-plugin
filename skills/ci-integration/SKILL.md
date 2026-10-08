@@ -37,15 +37,16 @@ answers it (and covers every collection in the repo in one pass); reach for
 bare `collection lint` only when there's no workspace to fetch rules from
 yet.
 
-## Push to workspace — only after merge
+## Persist and share context — only after merge
 
-`postman workspace push -y` is the one command in this skill that changes
-shared cloud state, so it belongs behind a merge-to-main trigger, not a PR
-trigger. `-y` skips confirmation prompts a non-interactive job can't answer.
-Leave `--no-prepare` off — the default prepare step is what assigns real IDs
-to entities that are new since the last push; skipping it because a run
-felt slow trades a few seconds for a push that silently fails to create
-anything new.
+`postman workspace push -y` persists the merged repository's API context in
+the workspace for future work and enables sharing it with others. It is the one
+command in this skill that changes shared workspace state, so it belongs behind
+a merge-to-main trigger, not a PR trigger. `-y` skips confirmation prompts a
+non-interactive job can't answer. Leave `--no-prepare` off — the default
+prepare step is what assigns real IDs to entities that are new since the last
+push; skipping it because a run felt slow trades a few seconds for a push that
+silently fails to create anything new.
 
 `--push-strategy force-sync` mirrors the whole workspace, deleting any cloud
 entity with no local counterpart — genuinely destructive, and not the

@@ -21,6 +21,13 @@
     ]
   },
   {
+    "id": "api-simulation",
+    "prompt": "I'm adding a new endpoint that calls four upstream services. Mock them all so I can run and test the newly added endpoint locally before I push.",
+    "expected": [
+      "api-simulation"
+    ]
+  },
+  {
     "id": "api-testing",
     "prompt": "Run this Postman collection and verify that the API still satisfies its assertions.",
     "expected": [
@@ -58,6 +65,13 @@
   {
     "id": "api-discovery",
     "prompt": "Find a suitable public shipping API and help me understand how to integrate its endpoints.",
+    "expected": [
+      "api-discovery"
+    ]
+  },
+  {
+    "id": "api-discovery-service-dependency",
+    "prompt": "I'm in the orders service repository and need to inspect and use the payments collection from another Postman workspace without changing this repository's workspace binding.",
     "expected": [
       "api-discovery"
     ]

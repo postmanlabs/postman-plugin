@@ -432,6 +432,9 @@ already under way:
    publishes it, so a new version can't be rehearsed in CI: `npm pack --dry-run`
    in `installer/` is the rehearsal.
 
+Every run of `release.yml`, a dry run included, waits for a `headless-postman`
+member to approve it in the `npm-publish` environment before the publish job starts.
+
 Keep the workflow's filename: npm's trusted publisher for the package is
 pinned to `release.yml`.
 

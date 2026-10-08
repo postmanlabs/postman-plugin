@@ -65,6 +65,11 @@ lives only for the current run.
 
 ## Secret keys
 
+Passport is how people, services, and agents call APIs without ever holding
+the secret. `postman secret` is the vault side of the same idea: it stores and
+links secrets without putting their values in agent context or repository
+files. Run `postman secret -h` for the supported vault operations and flags.
+
 A bearer token, password, API key, client secret, or signing key goes in the
 team's **shared vault**:
 

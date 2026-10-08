@@ -193,15 +193,33 @@ The mock stays local until you choose to push and deploy it. When teammates or
 external systems need access, the same mock can become a durable hosted URL
 without rebuilding it in another tool.
 
+### Develop against simulated dependencies
+
+The [`api-simulation`](skills/api-simulation/) skill is the local loop for a
+service change: find every dependency the service calls, mock each one (reusing
+the owning team's mock when they publish one), serve them on one port from one
+`.sim.yaml`, run the real service against them, test, and push. It needs
+Postman CLI 1.70.0 or later:
+
+```bash
+postman simulation run postman/simulations/orders-dev.sim.yaml --port 4900
+```
+
+The service under test is never mocked. It runs for real, so a passing run
+shows the change works against what the mocks model; it doesn't replace a run
+against the real upstreams. The simulation can also run in CI, and any
+dependency can take injected latency, error, rate-limit, or chaos conditions to
+exercise failure paths.
+
 
 ## How Postman builds context
 
 Work done in a Postman folder produces artifacts: collection runs, lint
 results, request history, mock deployments. When that folder is connected to a
-Postman workspace, after `postman init`, those artifacts are
-published to it as they are produced. The workspace is
-where a teammate, a reviewer, or another agent can see what the agent actually
-did.
+Postman workspace after `postman init`, those artifacts are published to it as
+they are produced. The workspace persists that context for future work and
+enables teammates, reviewers, and other agents to share and build on what the
+agent did.
 
 What each command contributes to the connected workspace:
 
@@ -210,7 +228,7 @@ What each command contributes to the connected workspace:
 | `postman collection run` | Run results and run history |
 | `postman application test` | Test run results |
 | `postman spec lint` | Lint results, including violation counts and pass/fail |
-| `postman workspace push` | The local workspace contents |
+| `postman workspace push` | Local workspace contents, persisted as context for future work and sharing with others |
 | `postman runner start` | Runner processing and health activity |
 | `postman flows run` | Flow run results |
 | `postman request` | Agent's API interaction activity |

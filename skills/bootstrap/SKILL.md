@@ -22,8 +22,7 @@ repo is already set up.
 - Never invent a subcommand or a flag. Run `-h` first and believe it.
 - Lint specs with `postman spec lint`, never `postman api …` — the API Builder
   is deprecated in v12+ and the CLI prints no warning.
-- Local commands need no login; only commands that reach the Postman
-  workspace do. Don't force a login the task doesn't need.
+- Local commands need no login.
 - A missing `postman` binary means install it. Route to `postman-mcp-server`
   only after an install has been attempted and actually failed.
 - Never fabricate a workspace id, spec path, or collections directory. Report
@@ -31,11 +30,15 @@ repo is already set up.
 - Never echo an API key or session token into output, logs, or summaries.
 - "Present" is not "current": check the version and existing links before
   setting anything up.
-- Wire up an existing repo only. Never scaffold a new API or a starter spec.
+- Operate inside a repository, including a fresh repository for a new project.
+  Never scaffold the API implementation or a starter spec.
 - Write no host-specific paths — the same `skills/` directory loads on every
   route.
 - Do not use `init` or `workspace create` to share or import a workspace that
   already exists. Choose the direction of sync from the lifecycle table below.
+- Before pulling, apply `api-discovery`'s owning-workspace-versus-dependency
+  distinction; finding a workspace does not by itself make it this
+  repository's workspace.
 
 ## Ask the CLI: `-h`
 
@@ -79,15 +82,16 @@ npm view postman-cli version
 
 ### 1.2 Install only if missing
 
-**Preferred — npm, all platforms:**
+**npm — all platforms, using Node's global package install:**
 
 ```bash
 npm install -g postman-cli
 ```
 
-**Windows, or avoiding a global npm install:** use the platform installers in
-[reference/cli_installation.md](reference/cli_installation.md). Every route puts
-`postman` on `PATH`.
+**Platform installers — direct shell installs for macOS, Linux, WSL, and
+Windows:** use the commands in
+[reference/cli_installation.md](reference/cli_installation.md). Every route
+puts `postman` on `PATH`.
 
 **Updating a copy that already exists:** use the same route that installed it.
 curl-installed binaries don't take `npm install -g` cleanly.
@@ -101,10 +105,10 @@ only thing that qualifies.
 
 ### 2.1 Authenticate only if this step needs it
 
-Local commands need no login, and `postman init` is among them — its own help
-says *"No authentication, and safe in CI."* Skip this entirely unless the
-command you're about to run pulls or pushes an existing workspace, or shares
-one with a team.
+`postman init` needs no normal login — init uses an agent-scoped session.
+Do not log in before init. Authenticate only when the command you're about to
+run operates on an existing workspace, such as listing, inspecting, pulling,
+pushing, or changing access to one.
 
 **With an API key — preferred, non-interactive:**
 
@@ -127,23 +131,27 @@ more.
 Read `.postman/resources.yaml` for `localResources` and `workspace.id`, and
 inspect the local `postman/` tree. When the user names an existing workspace or
 asks to import, sync, or share one, use `workspace list --json` and `workspace
-get <id> --elements --json` to confirm the workspace side. Never create a
-second workspace merely because this repository is not connected yet.
+get <id> --elements --json` to confirm the workspace side. Also establish
+whether that workspace owns the service represented by this repository. Never
+create a second workspace merely because this repository is not connected yet,
+and never replace this repository's binding with another service's workspace.
 
-Prefer filesystem-first work: materialize an existing workspace with
-`workspace pull <id>`, or initialize local files with `postman init --no-cloud`
-when no workspace exists. Then inspect, edit, diff, and validate the
-version-controlled files before any push.
+Prefer filesystem-first work. For the current service, materialize its existing
+workspace with `workspace pull <id>`, or create and bind one with `postman init
+--json --visibility <personal|team>` when no workspace exists. For another
+service, use `postman dependency add <type> <name-or-id>` as described in
+`api-discovery`. Then inspect, edit, diff, and validate the version-controlled
+files before any push.
 
 | Existing state and intent | Use | Why |
 | --- | --- | --- |
-| No workspace exists; start locally | `postman init --json --no-cloud` | Creates the git-native filesystem without requiring login. |
-| No workspace exists; create and bind one | `postman workspace create --visibility <value>` or the explicit init creation path | Creation is the requested lifecycle event. |
-| Workspace exists; enable filesystem work | `postman workspace pull <workspace-id>` | Connects the workspace to the repository and materializes its entities under `postman/`. |
-| Workspace exists; record only the Git binding | `postman workspace connect-git <workspace-id> [path]` | Binds without downloading its contents. |
+| No workspace exists; create and bind one | `postman init --json --visibility <personal|team>` or `postman workspace create --visibility <value>` | Creates and binds the owning workspace; the init path also creates the git-native filesystem. |
+| The current service's workspace exists; enable filesystem work in its repository | `postman workspace pull <workspace-id>` | Connects the owning workspace to the repository and materializes its entities under `postman/`. |
+| The current service's workspace exists; record only the Git binding | `postman workspace connect-git <workspace-id> [path]` | Binds its repository without downloading its contents. |
+| Another service's resource is needed here | `postman dependency add <type> <name-or-id>`; add `--workspace <workspace-id>` when resolving a name in a specific workspace | Declares and downloads only that collection, environment, or mock without rebinding this repository or pulling the other service's whole workspace. |
 | Bound workspace; the workspace is authoritative | `postman workspace pull` | Refreshes local files from the connected workspace. |
-| Bound workspace; local files are authoritative | `postman workspace diff --push-strategy default`, then `postman workspace push` | Previews and publishes creates/updates without deleting unmatched workspace entities. |
-| “Share this existing workspace with my team” and it is already team-accessible | Diff, then `postman workspace push` | Publishes local contents to the existing workspace; `create` would make a duplicate. |
+| Bound workspace; local files are authoritative | `postman workspace diff --push-strategy default`, then `postman workspace push` | Persists the local API context for future work and sharing with others by publishing creates/updates without deleting unmatched workspace entities. |
+| “Share this existing workspace with my team” and it is already team-accessible | Diff, then `postman workspace push` | Persists local context in the existing workspace so teammates can share and build on it; `create` would make a duplicate. |
 
 If “share” also requires changing a personal workspace's visibility or team
 permissions, inspect its metadata first. `push` synchronizes entities; it does
@@ -162,15 +170,20 @@ deletions. Do not add `-y` merely to bypass a prompt.
 environments. Downstream skills read that file and nothing else.
 
 ```bash
-postman init --json --no-cloud               # local only, no workspace
-postman init --json --visibility personal    # also create and bind a workspace
+postman init --json --visibility personal
+postman init --json --visibility team
 ```
 
 Use `--visibility` only when a new workspace is actually wanted. If the
-workspace already exists, use `pull` to enable the filesystem workflow;
-use `push` only when publishing local changes to an already-bound workspace.
+current service's workspace already exists, use `pull` from that service's
+repository to enable the filesystem workflow. If the existing workspace
+belongs to another service, use it as a dependency instead. Use `push` only
+when publishing local changes to an already-bound workspace.
 
-**The workspace step is interactive** without `--no-cloud` or `--visibility`.
+Without `--visibility`, interactive init prompts for the workspace step, while
+`--json` skips that step because it may not prompt. Use `--visibility` when an
+agent should create and bind a workspace non-interactively; omit it when a
+local-only setup is intended.
 
 **Read the payload, not stderr.** Take `bindings` and `exitCode` from the JSON.
 Each binding reports a `source` of `inferred` or `none` — an inferred spec is a
@@ -187,8 +200,9 @@ written but the requested workspace was not created — it does *not* mean re-ru
 - `postman --version` returned a real version.
 - Auth is confirmed, or established as not required for this task.
 - `.postman/resources.yaml` names a spec or a collections directory.
-- `workspace.id` is set, or the run was deliberately local-only — `--no-cloud`
-  leaves it empty and still exits 0, which is a pass, not a gap.
+- When workspace creation was requested or the repository was already bound,
+  `workspace.id` is set to the owning workspace. A deliberately local-only
+  init may omit it.
 - After `pull`, expected workspace entities exist under `postman/`. After
   `push`, report created/updated entities and conflicts; do not claim a
   workspace is shared unless its access level permits the intended teammates.
@@ -201,7 +215,7 @@ written but the requested workspace was not created — it does *not* mean re-ru
 ## Postman bootstrap
 - **CLI**: <version> (latest: <version> | not checked)
 - **Auth**: <api-key | browser | not required for this task>
-- **Workspace**: <id | none — local only>
+- **Workspace**: <id | not requested | creation failed: reason>
 - **Spec path**: <path (inferred | explicit) | none — user must create>
 - **Collections dir**: <path | none — user must create>
 ```
