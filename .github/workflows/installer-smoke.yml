@@ -113,8 +113,9 @@ jobs:
           git -C "$mirror" init --quiet
           git -C "$mirror" add --all
           git -C "$mirror" -c user.name=smoke -c user.email=smoke@localhost -c commit.gpgsign=false commit --quiet --message smoke
-          # A release tag, so the installer resolves the same `#semver:*` range it gives users.
-          git -C "$mirror" -c user.name=smoke -c user.email=smoke@localhost -c tag.gpgsign=false tag -a -m smoke "v$(node -p 'require(process.argv[1]).version' "$mirror/package.json")"
+          # A release tag, so the installer resolves the same `#semver:*` range it gives users. Stable even for a
+          # prerelease source version, whose own tag the range would skip.
+          git -C "$mirror" -c user.name=smoke -c user.email=smoke@localhost -c tag.gpgsign=false tag -a -m smoke "v$(node -p 'require(process.argv[1]).version.split("-")[0]' "$mirror/package.json")"
           echo "POSTMAN_PLUGIN_OPENCODE_SPEC=git+$(node -p 'require("url").pathToFileURL(process.argv[1]).href' "$mirror")#semver:*" >> "$GITHUB_ENV"
 
       - name: Install, then re-run to take the update path

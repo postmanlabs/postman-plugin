@@ -82,8 +82,9 @@ try {
         buildMirror(mirror);
 
         commit(mirror);
-        // A release tag, as release.yml puts on the mirror; the range resolves to it.
-        run('git', ['-c', 'user.name=harness', '-c', 'user.email=harness@localhost', '-c', 'tag.gpgsign=false', 'tag', '-a', '-m', 'harness', `v${readJson(path.join(mirror, 'package.json')).version}`], { cwd: mirror });
+        // A release tag, as release.yml puts on the mirror; the range resolves to it. Stable even for a prerelease
+        // source version, such as 0.2.0-rc.1, whose own tag the range would skip.
+        run('git', ['-c', 'user.name=harness', '-c', 'user.email=harness@localhost', '-c', 'tag.gpgsign=false', 'tag', '-a', '-m', 'harness', `v${readJson(path.join(mirror, 'package.json')).version.split('-')[0]}`], { cwd: mirror });
         spec = `git+${pathToFileURL(mirror).href}${RANGE}`;
     }
 

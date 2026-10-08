@@ -222,7 +222,7 @@ test('OpenCode 1 does not refresh an entry in OPENCODE_CONFIG_DIR, since `plugin
         outcome = await opencode.install(custom);
 
     assert.equal(outcome.outcome, 'blocked');
-    assert.ok(outcome.message.includes(`write the refresh to ${config}`), outcome.message);
+    assert.ok(outcome.message.includes(`write to ${json}`), outcome.message);
     assert.deepEqual(custom.commands, []);
 
     const usual = fakeSystem({ probes: V1, env: { OPENCODE_CONFIG_DIR: '/custom', ...GIT }, files: { [json]: plugin(MIRROR) } });
@@ -298,7 +298,7 @@ test('an entry in opencode.jsonc beside an opencode.json is not refreshed on Ope
         outcome = await opencode.install(system);
 
     assert.equal(outcome.outcome, 'blocked');
-    assert.ok(outcome.message.includes(`write the refresh to ${json}; move the entry, with any options, there`), outcome.message);
+    assert.ok(outcome.message.includes(`write to ${json}; move the entry, with any options, there`), outcome.message);
     assert.deepEqual(system.commands, []);
     assert.ok(await system.exists(path.join(copy, 'ts')), 'the cached copy is left in place');
 });
@@ -401,7 +401,7 @@ test('a clone without the file the loader imports is not installed', async () =>
 });
 
 test('remove on OpenCode 2 runs `opencode plugin remove` with the configured spec', async () => {
-    const system = fakeSystem({ files: { [json]: plugins('x', `${MIRROR}#abc`) } }),
+    const system = fakeSystem({ probes: V2, files: { [json]: plugins('x', `${MIRROR}#abc`) } }),
         outcome = await opencode.remove(system);
 
     assert.equal(outcome.outcome, 'done');
@@ -462,7 +462,7 @@ test('remove refuses an object entry in opencode.jsonc that `plugin remove` woul
 });
 
 test('remove also deletes the older clone and loader', async () => {
-    const system = fakeSystem({ probes: cloneProbes(), bins: ['git'], ...ourClone({ files: { [shim]: OPENCODE_SHIM, [json]: plugins(MIRROR) } }) }),
+    const system = fakeSystem({ probes: withProbes(V2, cloneProbes()), bins: ['git'], ...ourClone({ files: { [shim]: OPENCODE_SHIM, [json]: plugins(MIRROR) } }) }),
         outcome = await opencode.remove(system);
 
     assert.equal(outcome.outcome, 'done');
@@ -497,7 +497,7 @@ test('remove has nothing to do when nothing of Postman is there', async () => {
 
 test('commands act on the config directory the entry was found in, not on a custom OPENCODE_CONFIG_DIR', async () => {
     const env = { OPENCODE_CONFIG_DIR: '/custom' },
-        remove = fakeSystem({ env, files: { [json]: plugins(MIRROR) } }),
+        remove = fakeSystem({ env, probes: V2, files: { [json]: plugins(MIRROR) } }),
         refresh = fakeSystem({ env, probes: V2, files: { [json]: plugins(MIRROR) } });
 
     await opencode.remove(remove);
@@ -582,4 +582,39 @@ test('OPENCODE_CONFIG_DIR naming the default directory another way is read once'
     assert.equal((await opencode.status(system)).installed, true);
     assert.equal((await opencode.remove(system)).outcome, 'done');
     assert.equal(system.files[json], plugin());
+});
+
+test('an install message never shows the user-info of a spec, in a refusal or a fresh install', async () => {
+    const spec = 'git+https://someone:secret-token@github.com/postmanlabs/opencode-plugin.git#semver:*',
+        refused = await opencode.install(fakeSystem({ probes: V1, env: { POSTMAN_PLUGIN_OPENCODE_SPEC: SPEC }, files: { [json]: `{ "plugin": [["${spec}", {}]] }` } })),
+        fresh = await opencode.install(fakeSystem({ probes: V2, env: { POSTMAN_PLUGIN_OPENCODE_SPEC: spec } }));
+
+    assert.equal(refused.outcome, 'blocked');
+    assert.equal(fresh.outcome, 'done');
+
+    for (const outcome of [refused, fresh]) {
+        assert.ok(!outcome.message.includes('secret-token'), outcome.message);
+    }
+});
+
+test('OpenCode 1 refreshes or replaces only an entry in the file `plugin --global` writes: opencode.json when it exists', async () => {
+    for (const entry of [SPEC, MIRROR]) {
+        const system = fakeSystem({ probes: V1, files: { [json]: plugin('x'), [jsonc]: plugin(entry) } }),
+            outcome = await opencode.install(system);
+
+        assert.equal(outcome.outcome, 'blocked', entry);
+        assert.ok(outcome.message.includes(`write to ${json}`), outcome.message);
+        assert.deepEqual(system.commands, [], entry);
+    }
+
+    assert.equal((await opencode.install(fakeSystem({ probes: V1, files: { [jsonc]: plugin(SPEC) } }))).outcome, 'done', 'with no opencode.json, opencode.jsonc is the one it writes');
+});
+
+test('remove edits an OpenCode 2 `plugins` entry itself when the opencode on PATH is OpenCode 1, which has no `plugin remove`', async () => {
+    const system = fakeSystem({ probes: V1, files: { [json]: plugins('x', SPEC) } }),
+        outcome = await opencode.remove(system);
+
+    assert.equal(outcome.outcome, 'done');
+    assert.ok(!system.commands.some((command) => command.startsWith('opencode plugin remove')), system.commands.join('\n'));
+    assert.equal(system.files[json], plugins('x'));
 });

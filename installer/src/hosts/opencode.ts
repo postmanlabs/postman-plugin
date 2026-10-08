@@ -205,6 +205,14 @@ async function editedFile (system: System, dir: string): Promise<string> {
     return path.join(dir, CONFIG_FILES[0]);
 }
 
+/** The major of the `opencode` on PATH, or null when it can't say; only OpenCode 2 has `plugin remove`. */
+async function cliMajor (system: System): Promise<number | null> {
+    const probe = await system.probe('opencode', ['--version']),
+        match = probe.code === 0 ? probe.stdout.match(/(\d+)\.\d+\.\d+/) : null;
+
+    return match ? Number(match[1]) : null;
+}
+
 async function removedByOpenCode (system: System, entry: Entry): Promise<boolean> {
     return entry.key === 'plugins' && entry.form !== 'tuple' && samePath(entry.file, await editedFile(system, entry.dir));
 }
@@ -214,24 +222,47 @@ async function withoutEntry (system: System, entry: Entry): Promise<string> {
     const text = await system.readFile(entry.file),
         edited = text === null || entry.form !== 'string' ? null : withoutArrayString(text, entry.key, entry.spec);
 
-    return edited ?? blocked(`could not remove ${entry.spec} from ${entry.file} without rewriting it; delete that entry yourself and re-run`);
+    return edited ?? blocked(`could not remove ${redact(entry.spec)} from ${entry.file} without rewriting it; delete that entry yourself and re-run`);
 }
 
-/** Refetches a git spec the entry already names, refusing one the command would register a second copy of elsewhere. */
-async function refreshInPlace (system: System, version: Version, entry: Entry): Promise<void> {
-    // OpenCode 1's `plugin --global` writes its default config directory, whatever OPENCODE_CONFIG_DIR says.
-    const target = version.major >= 2 ? await editedFile(system, entry.dir) : configDir(system),
-        lands = version.major >= 2 ? samePath(entry.file, target) : samePath(entry.dir, target);
-
-    if (!lands) {
-        blocked(`${entry.file} registers ${redact(entry.spec)}, but OpenCode would write the refresh to ${target}; move the entry, with any options, there and re-run`);
+/**
+ * The file OpenCode's add writes. OpenCode 1's `plugin --global` writes its default config directory, whatever
+ * OPENCODE_CONFIG_DIR says, and there the first of opencode.json and opencode.jsonc that exists (`patchOne` in its
+ * plugin/install.ts).
+ */
+async function destination (system: System, version: Version, entry: Entry): Promise<string> {
+    if (version.major >= 2) {
+        return editedFile(system, entry.dir);
     }
 
+    const json = path.join(configDir(system), CONFIG_FILES[0]),
+        jsonc = path.join(configDir(system), CONFIG_FILES[1]);
+
+    return (await system.exists(json)) || !(await system.exists(jsonc)) ? json : jsonc;
+}
+
+/** Refuses an entry OpenCode's add would not write back to: it would register a second copy elsewhere instead. */
+async function assertLands (system: System, version: Version, entry: Entry): Promise<void> {
+    const target = await destination(system, version, entry);
+
+    if (!samePath(entry.file, target)) {
+        blocked(`${entry.file} registers ${redact(entry.spec)}, but OpenCode would write to ${target}; move the entry, with any options, there and re-run`);
+    }
+}
+
+/** Refetches a git spec the entry already names. */
+async function refreshInPlace (system: System, version: Version, entry: Entry): Promise<void> {
+    await assertLands(system, version, entry);
     await addFresh(system, version, entry.spec, inConfigOf(system, entry), true);
 }
 
 /** Adds `spec`, then takes out the entry it supersedes; a refusal to take it out comes before anything is added. */
 async function replaceEntry (system: System, version: Version, entry: Entry, spec: string): Promise<void> {
+    // OpenCode 1 would add the new spec to another file and leave the old file's list overriding it.
+    if (version.major < 2) {
+        await assertLands(system, version, entry);
+    }
+
     const byOpenCode = version.major >= 2 && await removedByOpenCode(system, entry);
 
     if (!byOpenCode) {
@@ -359,7 +390,7 @@ export const opencode: Host = {
             if (!entry) {
                 await addFresh(system, version, spec);
 
-                return result('done', summary('installed', spec, await removeLegacy(system)), NEXT);
+                return result('done', summary('installed', redact(spec), await removeLegacy(system)), NEXT);
             }
 
             if (entry.spec === spec) {
@@ -385,7 +416,8 @@ export const opencode: Host = {
             // Everything that can refuse is checked before anything is removed, so a refusal leaves no half-removed state.
             await preflightLegacy(system);
 
-            const byOpenCode = await Promise.all(entries.map((entry) => removedByOpenCode(system, entry)));
+            const hasRemove = ((await cliMajor(system)) ?? 0) >= 2,
+                byOpenCode = await Promise.all(entries.map(async (entry) => hasRemove && removedByOpenCode(system, entry)));
 
             for (const [at, entry] of entries.entries()) {
                 if (!byOpenCode[at]) {
