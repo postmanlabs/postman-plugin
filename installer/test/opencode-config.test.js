@@ -91,3 +91,11 @@ test('an element that is not in the array, or an array that is not there, is nul
     assert.equal(withoutArrayString('{ "model": "x" }', 'plugin', SPEC), null);
     assert.equal(withoutArrayString('{ "plugin": [["' + SPEC + '", {}]] }', 'plugin', SPEC), null);
 });
+
+test('removing the last element keeps a comment between it and the comma before it', () => {
+    const text = `{\n  "plugin": [\n    "a", // keep\n    "${SPEC}"\n  ]\n}\n`,
+        inline = `{ "plugin": ["a", /* keep */ "${SPEC}"] }`;
+
+    assert.equal(withoutArrayString(text, 'plugin', SPEC), '{\n  "plugin": [\n    "a" // keep\n\n  ]\n}\n');
+    assert.equal(withoutArrayString(inline, 'plugin', SPEC), '{ "plugin": ["a" /* keep */] }');
+});

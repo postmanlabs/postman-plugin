@@ -587,12 +587,20 @@ test('OPENCODE_CONFIG_DIR naming the default directory another way is read once'
 test('an install message never shows the user-info of a spec, in a refusal or a fresh install', async () => {
     const spec = 'git+https://someone:secret-token@github.com/postmanlabs/postman-plugin.git#main',
         refused = await opencode.install(fakeSystem({ probes: V1, env: { POSTMAN_PLUGIN_OPENCODE_SPEC: SPEC }, files: { [json]: `{ "plugin": [["${spec}", {}]] }` } })),
-        fresh = await opencode.install(fakeSystem({ probes: V2, env: { POSTMAN_PLUGIN_OPENCODE_SPEC: spec } }));
+        fresh = await opencode.install(fakeSystem({ probes: V2, env: { POSTMAN_PLUGIN_OPENCODE_SPEC: spec } })),
+        // OpenCode 1 names the spec it failed to install in its own output.
+        failed = await opencode.install(fakeSystem({
+            probes: V1,
+            env: { POSTMAN_PLUGIN_OPENCODE_SPEC: spec },
+            runs: { [`opencode plugin --global ${spec}`]: { code: 1, stderr: `Failed to install ${spec}` } }
+        }));
 
     assert.equal(refused.outcome, 'blocked');
     assert.equal(fresh.outcome, 'done');
+    assert.equal(failed.outcome, 'failed');
+    assert.match(failed.message, /Failed to install git\+https:\/\/github\.com/);
 
-    for (const outcome of [refused, fresh]) {
+    for (const outcome of [refused, fresh, failed]) {
         assert.ok(!outcome.message.includes('secret-token'), outcome.message);
     }
 });

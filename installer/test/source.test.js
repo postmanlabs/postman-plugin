@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { isSameRepo, redact } from '../dist/source.js';
+import { isSameRepo, redact, redactText } from '../dist/source.js';
 
 const REPO = 'postmanlabs/postman-plugin';
 
@@ -48,4 +48,10 @@ test('redacts the user-info a token would sit in, and nothing else', () => {
     assert.equal(redact('git@github.com:a/b.git'), 'git@github.com:a/b.git');
     assert.equal(redact('ghp_secret@github.com:someone/fork.git'), 'github.com:someone/fork.git');
     assert.equal(redact('/src/postman-plugin'), '/src/postman-plugin');
+});
+
+test('redacts the user-info of every URL in command output', () => {
+    const output = 'error: failed to install git+https://someone:ghp_secret@github.com/a/b.git\nfrom https://x:tok@example.com/c and ssh://git@github.com/a/b.git';
+
+    assert.equal(redactText(output), 'error: failed to install git+https://github.com/a/b.git\nfrom https://example.com/c and ssh://git@github.com/a/b.git');
 });

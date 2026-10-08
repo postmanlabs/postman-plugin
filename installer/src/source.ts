@@ -27,6 +27,7 @@ export const PLUGINS_CLI = 'plugins@1.3.4';
 const GITHUB_PREFIX = /^(?:(?:https?|ssh|git|git\+ssh|ssh\+git|git\+https):\/\/)?(?:[^@/]+@)?github\.com[:/]/,
     // User-info in a URL, or before an scp-style `host:path`; the conventional `git@` is kept.
     URL_USER_INFO = /^([a-z][a-z+.-]*:\/\/)(?!git@)[^@/]+@/i,
+    URL_USER_INFO_IN_TEXT = /([a-z][a-z+.-]*:\/\/)(?!git@)[^@/\s]+@/gi,
     SCP_USER_INFO = /^(?!git@)[^@/:]+@(?=[^/:]+:)/;
 
 function normalize (source: string): string {
@@ -44,4 +45,9 @@ export function isSameRepo (source: string | undefined, repo: string): boolean {
 /** Strips a URL's user-info, where a token would be, so a source can be printed. */
 export function redact (source: string): string {
     return source.replace(URL_USER_INFO, '$1').replace(SCP_USER_INFO, '');
+}
+
+/** Strips the user-info of every URL in a command's output, which can echo a spec it was given. */
+export function redactText (text: string): string {
+    return text.replace(URL_USER_INFO_IN_TEXT, '$1');
 }

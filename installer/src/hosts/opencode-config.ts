@@ -4,7 +4,8 @@
 type Token = { kind: 'string' | 'punct' | 'other'; start: number; end: number; text: string };
 
 const PUNCTUATION = '{}[]:,',
-    WHITESPACE = /\s/;
+    WHITESPACE = /\s/,
+    WHITESPACE_ONLY = /^\s*$/;
 
 function tokenize (text: string): Token[] {
     const tokens: Token[] = [];
@@ -162,8 +163,18 @@ export function withoutArrayString (text: string, key: string, value: string): s
             end += 1;
         }
     }
-    else if (element.before) {
+    else if (element.before && WHITESPACE_ONLY.test(text.slice(element.before.end, element.start))) {
         start = element.before.start;
+    }
+    // A comment between the comma and the last element belongs to the element before it, so only the comma goes.
+    else if (element.before) {
+        while (/[ \t]/.test(text[start - 1] ?? '')) {
+            start -= 1;
+        }
+
+        const edited = text.slice(0, element.before.start) + text.slice(element.before.end, start) + text.slice(end);
+
+        return parseJsonc(edited) === null ? null : edited;
     }
 
     const edited = text.slice(0, start) + text.slice(end);

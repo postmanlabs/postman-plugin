@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { BRANCH, GIT_URL, REPO, isSameRepo, redact } from '../source.js';
+import { BRANCH, GIT_URL, REPO, isSameRepo, redact, redactText } from '../source.js';
 import { type ExecOptions, type ExecResult, type System, formatCommand } from '../system.js';
 import { type Result, result } from './types.js';
 
@@ -23,7 +23,7 @@ function lastLines (text: string, count = 5): string {
 }
 
 function describeFailure (command: string, args: string[], exec: ExecResult): string {
-    const output = lastLines(exec.stderr) || lastLines(exec.stdout);
+    const output = redactText(lastLines(exec.stderr) || lastLines(exec.stdout));
 
     return `\`${formatCommand(command, args)}\` exited ${exec.code}${output ? `\n${output}` : ''}`;
 }
