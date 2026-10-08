@@ -1,14 +1,15 @@
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { OPENCODE_MINIMUM, OPENCODE_REPO, OPENCODE_SHIM, OPENCODE_SPEC, isSameRepo, redact } from '../source.js';
-import type { System } from '../system.js';
+import type { ExecOptions, System } from '../system.js';
 import { parseJsonc, withoutArrayString } from './opencode-config.js';
 import { assertCloneRemovable, blocked, failed, guard, mustRun, removeClone } from './shared.js';
 import { type Host, result } from './types.js';
 
 type Version = { major: number; text: string };
 // `form` is how the list holds it: a bare string, OpenCode 1's `[spec, options]` tuple or OpenCode 2's `{ package }`.
-type Entry = { dir: string; file: string; key: string; spec: string; form: 'string' | 'tuple' | 'object' };
+// `shadowed`: OpenCode 1 never reads it, since the `plugin` list in opencode.jsonc beside it replaces opencode.json's.
+type Entry = { dir: string; file: string; key: string; spec: string; form: 'string' | 'tuple' | 'object'; shadowed: boolean };
 
 // OpenCode 1 lists its plugins under `plugin`, OpenCode 2 under `plugins`. OpenCode 2's `plugin add` and `plugin remove`
 // edit the first of these that exists in the config directory (`resolveConfigPath` in its packages/cli).
@@ -20,7 +21,9 @@ const KEYS = ['plugin', 'plugins'],
     SPEC_VARIABLE = 'POSTMAN_PLUGIN_OPENCODE_SPEC',
     configDir = (system: System) => path.join(system.env.XDG_CONFIG_HOME || path.join(system.home, '.config'), 'opencode'),
     // `opencode plugin add` writes to OPENCODE_CONFIG_DIR instead when it is set.
-    configDirs = (system: System) => [...new Set([system.env.OPENCODE_CONFIG_DIR, configDir(system)].filter((dir): dir is string => Boolean(dir)))],
+    configDirs = (system: System) => [system.env.OPENCODE_CONFIG_DIR, configDir(system)]
+        .filter((dir): dir is string => Boolean(dir))
+        .filter((dir, at, dirs) => dirs.findIndex((other) => samePath(other, dir)) === at),
     // OpenCode 2 keeps one cached copy of each git plugin here, named `git-<slug>-<first 12 hex of sha256(spec)>`.
     cachedCopy = (system: System, spec: string) => path.join(
         system.env.XDG_CACHE_HOME || path.join(system.home, '.cache'),
@@ -94,12 +97,11 @@ async function installableVersion (system: System): Promise<Version> {
     return { major, text: match[0] };
 }
 
-const addArgs = (version: Version, spec: string) => (version.major >= 2 ? ['plugin', 'add', spec] : ['plugin', '--global', spec]);
-
 /** Our entries in OpenCode's global config, and the config files that could not be read. */
 async function configured (system: System): Promise<{ entries: Entry[]; unreadable: string[] }> {
     const entries: Entry[] = [],
-        unreadable: string[] = [];
+        unreadable: string[] = [],
+        jsoncLists = new Set<string>();
 
     for (const [dir, file] of configDirs(system).flatMap((dir) => CONFIG_FILES.map((name) => [dir, path.join(dir, name)]))) {
         const text = await system.readFile(file);
@@ -123,10 +125,19 @@ async function configured (system: System): Promise<{ entries: Entry[]; unreadab
                     spec = form === 'string' ? item : form === 'tuple' ? item[0] : (item as { package?: unknown } | null)?.package;
 
                 if (typeof spec === 'string' && isOurSpec(system, spec)) {
-                    entries.push({ dir, file, key, spec, form });
+                    entries.push({ dir, file, key, spec, form, shadowed: false });
                 }
             }
         }
+
+        if (path.basename(file) === 'opencode.jsonc' && Array.isArray(config.plugin)) {
+            jsoncLists.add(dir);
+        }
+    }
+
+    // OpenCode 1 merges its global opencode.json and then opencode.jsonc with a merge that replaces arrays.
+    for (const entry of entries) {
+        entry.shadowed = entry.key === 'plugin' && path.basename(entry.file) === 'opencode.json' && jsoncLists.has(entry.dir);
     }
 
     return { entries, unreadable };
@@ -216,7 +227,7 @@ async function refreshInPlace (system: System, version: Version, entry: Entry): 
         blocked(`${entry.file} registers ${redact(entry.spec)}, but OpenCode would write the refresh to ${target}; move the entry, with any options, there and re-run`);
     }
 
-    await refreshEntry(system, version, entry);
+    await addFresh(system, version, entry.spec, inConfigOf(system, entry), true);
 }
 
 /** Adds `spec`, then takes out the entry it supersedes; a refusal to take it out comes before anything is added. */
@@ -228,7 +239,7 @@ async function replaceEntry (system: System, version: Version, entry: Entry, spe
     }
 
     // OpenCode 1 replaces an entry for the same package in place only when forced; unforced, it changes nothing.
-    await mustRun(system, 'opencode', version.major >= 2 ? addArgs(version, spec) : ['plugin', '--global', '--force', spec], inConfigOf(system, entry));
+    await addFresh(system, version, spec, inConfigOf(system, entry), true);
 
     // Either major may have replaced it in place already.
     if (!(await configured(system)).entries.some((left) => left.spec === entry.spec && samePath(left.file, entry.file))) {
@@ -244,19 +255,20 @@ async function replaceEntry (system: System, version: Version, entry: Entry, spe
 }
 
 /**
- * OpenCode 2 caches a git plugin by its spec and `plugin add` reuses the cache, so a moved branch only
- * arrives when the cached copy is gone; `plugin update` would do it but needs OpenCode's background
- * service, which a second instance or a cold start answers wrongly. The copy is moved aside, not deleted,
- * so a failed fetch leaves the plugin as it was. OpenCode 1 re-resolves on a forced re-run.
+ * OpenCode 2 caches a git plugin by its spec and `plugin add` reuses the cache, even one an earlier
+ * `plugin remove` left behind, so a newer release only arrives when the cached copy is gone; `plugin update`
+ * would do it but needs OpenCode's background service, which a second instance or a cold start answers
+ * wrongly. The copy is moved aside, not deleted, so a failed fetch leaves the plugin as it was. OpenCode 1
+ * re-resolves a git spec on every add; `force` makes it replace an entry for the same package in place.
  */
-async function refreshEntry (system: System, version: Version, entry: Entry): Promise<void> {
+async function addFresh (system: System, version: Version, spec: string, options?: ExecOptions, force = false): Promise<void> {
     if (version.major < 2) {
-        await mustRun(system, 'opencode', ['plugin', '--global', '--force', entry.spec], inConfigOf(system, entry));
+        await mustRun(system, 'opencode', ['plugin', '--global', ...(force ? ['--force'] : []), spec], options);
 
         return;
     }
 
-    const copy = cachedCopy(system, entry.spec),
+    const copy = cachedCopy(system, spec),
         previous = `${copy}.previous`,
         cached = await system.exists(copy);
 
@@ -266,7 +278,7 @@ async function refreshEntry (system: System, version: Version, entry: Entry): Pr
     }
 
     try {
-        await mustRun(system, 'opencode', ['plugin', 'add', entry.spec], inConfigOf(system, entry));
+        await mustRun(system, 'opencode', ['plugin', 'add', spec], options);
     }
     catch (error) {
         if (cached) {
@@ -305,8 +317,15 @@ export const opencode: Host = {
                 ...(cloned && !loadable ? [`${cloneDir(system)} exists but has no opencode/src/index.ts for a loader to import`] : [])
             ];
 
-        if (entries.length) {
-            return { installed: true, detail: `${redact(entries[0].spec)} in ${entries[0].file}`, notes };
+        const read = entries.filter((entry) => !entry.shadowed),
+            shadowed = entries.filter((entry) => entry.shadowed).map((entry) => `${entry.file} registers ${redact(entry.spec)}, but OpenCode 1 reads the opencode.jsonc beside it instead`);
+
+        if (read.length) {
+            return { installed: true, detail: `${redact(read[0].spec)} in ${read[0].file}`, notes: [...shadowed, ...notes] };
+        }
+
+        if (shadowed.length) {
+            return { installed: false, detail: 'not loaded', notes: [...shadowed, ...notes] };
         }
 
         if (unreadable.length) {
@@ -325,11 +344,20 @@ export const opencode: Host = {
                 version = await installableVersion(system),
                 entry = entries[0];
 
+            // Each would load the same skills, and refreshing one would leave the others loading the rest.
+            if (entries.length > 1) {
+                blocked(`found ${entries.length} entries for Postman (${entries.map((found) => `${redact(found.spec)} in ${found.file}`).join(', ')}); keep one, with any options, and re-run`);
+            }
+
+            if (entry?.shadowed) {
+                blocked(`${entry.file} registers ${redact(entry.spec)}, but OpenCode 1 reads only the \`plugin\` list in the opencode.jsonc beside it; move the entry there and re-run`);
+            }
+
             // Both copies would load the same skills, so an older install that cannot be deleted whole stops us before the new one goes in.
             await preflightLegacy(system);
 
             if (!entry) {
-                await mustRun(system, 'opencode', addArgs(version, spec));
+                await addFresh(system, version, spec);
 
                 return result('done', summary('installed', spec, await removeLegacy(system)), NEXT);
             }

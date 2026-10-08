@@ -17,13 +17,28 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'
     releases = listed.stdout.split('\n').map((line) => line.split('refs/tags/')[1]).filter((tag) => /^v\d+\.\d+\.\d+$/.test(tag ?? '')),
     skip = listed.status !== 0 ? `${OPENCODE_REPO} is not readable from here` : releases.length === 0 && `${OPENCODE_REPO} has no release tag yet`;
 
-/** True when dotted version `a` is `b` or an earlier release. */
+/** True when version `a` is `b` or earlier; on equal `x.y.z`, a prerelease such as `0.2.0-rc.1` comes before the release. */
 function notAfter (a, b) {
-    const [x, y] = [a, b].map((version) => version.split('.').map(Number)),
+    const [[x, preA], [y, preB]] = [a, b].map((version) => {
+            const [core, pre] = version.split('-');
+
+            return [core.split('.').map(Number), pre];
+        }),
         differing = x.findIndex((part, at) => part !== y[at]);
 
-    return differing === -1 || x[differing] < y[differing];
+    if (differing !== -1) {
+        return x[differing] < y[differing];
+    }
+
+    return Boolean(preA) || !preB;
 }
+
+test('version order puts a prerelease source after the release before it and before its own release', () => {
+    assert.ok(notAfter('0.1.0', '0.1.1-rc.1'));
+    assert.ok(notAfter('0.1.0', '0.1.0'));
+    assert.ok(!notAfter('0.1.1', '0.1.1-rc.1'));
+    assert.ok(!notAfter('0.10.0', '0.9.0'));
+});
 
 test('the newest release tag on the mirror is an installable package, no newer than this source', { skip }, (t) => {
     const newest = releases.map((tag) => tag.slice(1)).reduce((a, b) => (notAfter(a, b) ? b : a)),

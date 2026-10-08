@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Builds opencode/scripts/build-mirror.js's tree into a clone of postmanlabs/opencode-plugin, replacing only the files
 # it generates, then either commits it to main or tags it as a release:
-#   push-mirror.sh main <source-sha>
+#   push-mirror.sh main <source-sha> <version>
 #   push-mirror.sh tag <version>
 # OPENCODE_PLUGIN_TOKEN is a fine-grained token with Contents read and write on that repository only.
 set -euo pipefail
@@ -24,6 +24,12 @@ git add --all
 
 case "$mode" in
     main)
+        # A retried older release must not take main back from a newer one.
+        newest=$(git ls-remote --tags --refs origin 'v*' | sed -n 's|.*refs/tags/v||p' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1 || true)
+        if [ -n "$newest" ] && [ "$(printf '%s\n' "$newest" "$3" | sort -V | tail -1)" != "$3" ]; then
+            echo "postmanlabs/opencode-plugin already has v$newest, newer than $3; main stays"
+            exit 0
+        fi
         if git diff --cached --quiet; then
             echo "postmanlabs/opencode-plugin already matches $arg"
             exit 0
@@ -45,7 +51,7 @@ case "$mode" in
         git push --quiet origin "refs/tags/$tag"
         ;;
     *)
-        echo "usage: push-mirror.sh main <source-sha> | push-mirror.sh tag <version>" >&2
+        echo "usage: push-mirror.sh main <source-sha> <version> | push-mirror.sh tag <version>" >&2
         exit 2
         ;;
 esac

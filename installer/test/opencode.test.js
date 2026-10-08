@@ -540,3 +540,46 @@ test('remove checks the older install before it removes the plugin, so a refusal
     assert.equal((await opencode.remove(foreign)).outcome, 'blocked');
     assert.deepEqual(foreign.commands, []);
 });
+
+test('a fresh install or a replacement sets aside a cached copy an earlier `plugin remove` left, so a newer release arrives', async () => {
+    const copy = copyOf(SPEC),
+        fresh = fakeSystem({ probes: V2, dirs: [path.join(copy, 'ts')] }),
+        replacing = fakeSystem({ probes: V2, files: { [json]: plugins(MIRROR) }, dirs: [path.join(copy, 'ts')] });
+
+    await opencode.install(fresh);
+    assert.deepEqual(fresh.commands, [`remove ${copy}.previous`, `rename ${copy} ${copy}.previous`, ADD2, `remove ${copy}.previous`]);
+    await opencode.install(replacing);
+    assert.deepEqual(replacing.commands.slice(0, 4), [`remove ${copy}.previous`, `rename ${copy} ${copy}.previous`, ADD2, `remove ${copy}.previous`]);
+});
+
+test('more than one Postman entry is refused before anything changes, naming each', async () => {
+    const system = fakeSystem({ probes: V2, files: { [json]: plugins(SPEC, `${MIRROR}#v0.1.0`) } }),
+        outcome = await opencode.install(system);
+
+    assert.equal(outcome.outcome, 'blocked');
+    assert.match(outcome.message, /found 2 entries for Postman .*#v0\.1\.0.*keep one/);
+    assert.deepEqual(system.commands, []);
+});
+
+test('an opencode.json entry that the opencode.jsonc plugin list replaces on OpenCode 1 is not loaded, and install refuses it', async () => {
+    const files = { [json]: plugin(SPEC), [jsonc]: plugin('x') },
+        status = await opencode.status(fakeSystem({ files })),
+        install = fakeSystem({ probes: V1, files: { ...files } }),
+        remove = fakeSystem({ probes: V1, files: { ...files } });
+
+    assert.equal(status.installed, false);
+    assert.ok(status.notes.some((note) => note.includes('reads the opencode.jsonc beside it')), status.notes.join('\n'));
+    assert.equal((await opencode.install(install)).outcome, 'blocked');
+    assert.deepEqual(install.commands, []);
+    assert.equal((await opencode.remove(remove)).outcome, 'done', 'the stored entry still comes out');
+    assert.equal(remove.files[json], plugin());
+});
+
+test('OPENCODE_CONFIG_DIR naming the default directory another way is read once', async () => {
+    const env = { OPENCODE_CONFIG_DIR: `${config}${path.sep}` },
+        system = fakeSystem({ env, probes: V1, files: { [json]: plugin(SPEC) } });
+
+    assert.equal((await opencode.status(system)).installed, true);
+    assert.equal((await opencode.remove(system)).outcome, 'done');
+    assert.equal(system.files[json], plugin());
+});

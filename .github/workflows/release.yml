@@ -247,7 +247,8 @@ jobs:
         if: needs.publish.outputs.dist_tag == 'latest'
         env:
           OPENCODE_PLUGIN_TOKEN: ${{ secrets.OPENCODE_PLUGIN_TOKEN }}
-        run: bash .github/scripts/push-mirror.sh main "$(git rev-parse HEAD)"
+          VERSION: ${{ needs.publish.outputs.version }}
+        run: bash .github/scripts/push-mirror.sh main "$(git rev-parse HEAD)" "$VERSION"
 
       - name: Tag it on postmanlabs/opencode-plugin
         env:

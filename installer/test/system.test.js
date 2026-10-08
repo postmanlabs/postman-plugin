@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { spawnSync } from 'node:child_process';
-import { createSystem } from '../dist/system.js';
+import { createSystem, formatCommand } from '../dist/system.js';
 
 const system = createSystem({ log: () => {} }),
     windows = process.platform === 'win32',
@@ -134,4 +134,13 @@ test('readDir lists a directory, and is empty for a path that is missing or not 
     assert.deepEqual(await system.readDir(path.join(dir, 'missing')), []);
     assert.deepEqual(await system.readDir(path.join(dir, 'a-file', 'below-it')), []);
     assert.deepEqual(await system.readDir(path.join(dir, 'a-file')), []);
+});
+
+test('a command is logged without the user-info of a URL in it, even on a dry run', async () => {
+    const spec = 'git+https://someone:secret-token@github.com/postmanlabs/opencode-plugin.git#semver:*',
+        lines = [];
+
+    assert.equal(formatCommand('opencode', ['plugin', 'add', spec]), `opencode plugin add ${JSON.stringify('git+https://github.com/postmanlabs/opencode-plugin.git#semver:*')}`);
+    await createSystem({ dryRun: true, log: (line) => lines.push(line) }).run('opencode', ['plugin', 'add', spec]);
+    assert.ok(!lines.join('\n').includes('secret-token'), lines.join('\n'));
 });

@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { redact } from './source.js';
 
 export type ExecResult = { code: number; stdout: string; stderr: string };
 export type ExecOptions = { env?: Record<string, string> };
@@ -68,8 +69,9 @@ function execute (file: string, args: string[], env: NodeJS.ProcessEnv): Promise
     });
 }
 
+/** A command as logs and failure messages show it, without the user-info of any URL in it. */
 export function formatCommand (command: string, args: string[]): string {
-    return [command, ...args].map((part) => (/^[\w@./:=~-]+$/.test(part) ? part : JSON.stringify(part))).join(' ');
+    return [command, ...args].map((part) => redact(part)).map((part) => (/^[\w@./:=~-]+$/.test(part) ? part : JSON.stringify(part))).join(' ');
 }
 
 export function createSystem ({ dryRun = false, log = (line: string) => console.log(line) } = {}): System {
