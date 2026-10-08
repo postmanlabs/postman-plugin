@@ -124,8 +124,10 @@ test('an npm-style .cmd shim on PATH runs through cmd.exe with its arguments int
     }
 });
 
-test('readDir lists a directory, and is empty for a path that is missing or not a directory', async () => {
+test('readDir lists a directory, and is empty for a path that is missing or not a directory', async (t) => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'postman-plugin-system-'));
+
+    t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
 
     fs.mkdirSync(path.join(dir, 'sub'));
     fs.writeFileSync(path.join(dir, 'a-file'), '');

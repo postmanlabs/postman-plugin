@@ -69,7 +69,7 @@ function execute (file: string, args: string[], env: NodeJS.ProcessEnv): Promise
     });
 }
 
-/** A command as logs and failure messages show it, without the user-info of any URL in it. */
+/** Formats a command for logs and failure messages, with the user-info of any URL in it redacted. */
 export function formatCommand (command: string, args: string[]): string {
     return [command, ...args].map((part) => redact(part)).map((part) => (/^[\w@./:=~-]+$/.test(part) ? part : JSON.stringify(part))).join(' ');
 }
