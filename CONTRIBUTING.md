@@ -405,6 +405,20 @@ Step 2 is not optional — `manifest.json` carries a `sha256` per file, and a
 stale manifest silently drifts from what the files actually contain instead
 of failing loudly.
 
+### Skills repository sync
+
+When a pull request that changes `skills/` merges into `main`,
+`.github/workflows/sync-skills.yml` mirrors the complete directory to
+`plugins/postman/skills/` in `postmanlabs/skills`, regenerates that repository's
+manifest, and opens or updates a pull request there. A single rolling pull
+request is used so multiple plugin changes do not produce competing manifest
+updates.
+
+The workflow requires a repository secret named `SKILLS_REPO_TOKEN` containing
+a fine-grained token with **Contents: read and write** and **Pull requests: read
+and write** access to `postmanlabs/skills`. The source repository's
+`GITHUB_TOKEN` cannot write to another repository.
+
 ## Adding a skill
 
 Create `skills/<name>/SKILL.md` with `name` and `description`
