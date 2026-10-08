@@ -7,12 +7,12 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnCliSync } from '../../scripts/lib/cli.js';
 import { parseJsonc } from '../dist/hosts/opencode-config.js';
-import { OPENCODE_PACKAGE, OPENCODE_SHIM } from '../dist/source.js';
+import { OPENCODE_SHIM, OPENCODE_SPEC } from '../dist/source.js';
 
 const [mode, ...agents] = process.argv.slice(2),
     home = os.homedir(),
-    // What the installer installs: the spec installer smoke tells it to, else npm's latest release, pinned.
-    openCodeSpec = () => process.env.POSTMAN_PLUGIN_OPENCODE_SPEC || `${OPENCODE_PACKAGE}@${output('npm', ['view', OPENCODE_PACKAGE, 'version']).trim()}`,
+    // What the installer installs: the spec installer smoke tells it to, else the newest release tag.
+    openCodeSpec = process.env.POSTMAN_PLUGIN_OPENCODE_SPEC || OPENCODE_SPEC,
     openCodeConfig = path.join(process.env.XDG_CONFIG_HOME || path.join(home, '.config'), 'opencode'),
     kimiStore = path.join(process.env.KIMI_CODE_HOME || path.join(home, '.kimi-code'), 'plugins', 'installed.json');
 
@@ -55,10 +55,7 @@ const AGENTS = {
             .map(({ id }) => id).filter((id) => id === 'postman')
     },
     opencode: {
-        // A getter, so npm is asked only when OpenCode is checked.
-        get expected () {
-            return [openCodeSpec()];
-        },
+        expected: [openCodeSpec],
         // The plugin's entry in the global config (`plugin` on OpenCode 1, `plugins` on OpenCode 2, in `.json` or `.jsonc`),
         // and anything left of the older clone-and-loader install.
         found: () => [
@@ -68,7 +65,7 @@ const AGENTS = {
 
                 return ['plugin', 'plugins'].flatMap((key) => (Array.isArray(config?.[key]) ? config[key] : []))
                     .map((entry) => (typeof entry === 'string' ? entry : Array.isArray(entry) ? entry[0] : entry?.package))
-                    .filter((spec) => typeof spec === 'string' && (spec === process.env.POSTMAN_PLUGIN_OPENCODE_SPEC || /opencode-plugin/.test(spec)));
+                    .filter((spec) => typeof spec === 'string' && (spec === openCodeSpec || /opencode-plugin/.test(spec)));
             }),
             ...present(path.join(openCodeConfig, 'postman-plugin', 'opencode', 'src', 'index.ts')),
             ...present(path.join(openCodeConfig, 'plugins', 'postman.ts'))

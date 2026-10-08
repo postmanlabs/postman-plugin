@@ -36,7 +36,7 @@ test('the mirror is a package `opencode plugin add` can install, versioned with 
     assert.equal(mirror.main, mirror.exports['./server']);
     assert.equal(mirror.scripts, undefined, 'npm runs prepare/install scripts of a Git dependency in every user\'s install');
     assert.equal(mirror.dependencies, undefined);
-    assert.equal(mirror.repository.url, 'git+https://github.com/postmanlabs/postman-plugin.git', 'npm provenance needs the repository it is published from');
+    assert.equal(mirror.repository.url, 'git+https://github.com/postmanlabs/postman-plugin.git', 'the package names the repository it is built from');
 
     for (const file of [mirror.main, 'manifest.json', 'mcp.opencode.json', 'hooks/session-start-context.md', 'LICENSE']) {
         assert.ok(fs.existsSync(path.join(out, file)), `the mirror has no ${file}`);

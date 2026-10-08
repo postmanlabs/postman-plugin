@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import path from 'node:path';
 import test from 'node:test';
 import { opencode } from '../dist/hosts/opencode.js';
-import { OPENCODE_SHIM } from '../dist/source.js';
+import { OPENCODE_SHIM, OPENCODE_SPEC } from '../dist/source.js';
 import { fakeSystem } from './fake-system.js';
 
 const config = path.join('/home/user', '.config', 'opencode'),
@@ -15,15 +15,14 @@ const config = path.join('/home/user', '.config', 'opencode'),
     target = path.join(clone, 'opencode', 'src', 'index.ts'),
     // An install from the mirror's repository, which `opencode plugin add github:...` writes and the installer recognizes.
     MIRROR = 'github:postmanlabs/opencode-plugin',
-    // What the installer installs: npm's latest release, pinned.
-    PIN = '@postman/opencode-plugin@0.3.0',
-    LATEST = { 'npm view @postman/opencode-plugin version': '0.3.0\n' },
-    V2 = { 'opencode --version': 'opencode v2.0.23\n', ...LATEST },
-    V1 = { 'opencode --version': '1.18.34\n', ...LATEST },
-    ADD2 = `opencode plugin add ${PIN}`,
+    // What the installer installs: the newest release tag.
+    SPEC = OPENCODE_SPEC,
+    V2 = { 'opencode --version': 'opencode v2.0.23\n' },
+    V1 = { 'opencode --version': '1.18.34\n' },
+    ADD2 = `opencode plugin add ${SPEC}`,
     // A git spec only re-installs when POSTMAN_PLUGIN_OPENCODE_SPEC names it, as installer smoke does with a built mirror.
     GIT = { POSTMAN_PLUGIN_OPENCODE_SPEC: MIRROR },
-    ADD1 = `opencode plugin --global ${PIN}`,
+    ADD1 = `opencode plugin --global ${SPEC}`,
     plugins = (...items) => JSON.stringify({ plugins: items }),
     plugin = (...items) => JSON.stringify({ plugin: items }),
     cloneProbes = ({ branch = { code: 0, stdout: 'main\n' }, changes = '', ahead = '0' } = {}) => ({
@@ -67,8 +66,8 @@ test('POSTMAN_PLUGIN_OPENCODE_SPEC installs that spec instead of the mirror, and
 });
 
 test('refuses an OpenCode older than the first release of its major that installs Postman, running nothing', async () => {
-    for (const [version, minimum] of [['2.0.3', '2.0.4'], ['1.14.21', '1.14.22'], ['1.4.9', '1.14.22']]) {
-        const system = fakeSystem({ probes: { 'opencode --version': `${version}\n`, ...LATEST } }),
+    for (const [version, minimum] of [['2.0.3', '2.0.4'], ['1.14.32', '1.14.33'], ['1.4.9', '1.14.33']]) {
+        const system = fakeSystem({ probes: { 'opencode --version': `${version}\n`,  } }),
             outcome = await opencode.install(system);
 
         assert.equal(outcome.outcome, 'blocked');
@@ -76,13 +75,13 @@ test('refuses an OpenCode older than the first release of its major that install
         assert.deepEqual(system.commands, []);
     }
 
-    for (const version of ['2.0.4', '1.14.22', '3.1.0']) {
-        assert.equal((await opencode.install(fakeSystem({ probes: { 'opencode --version': `v${version}\n`, ...LATEST } }))).outcome, 'done');
+    for (const version of ['2.0.4', '1.14.33', '3.1.0']) {
+        assert.equal((await opencode.install(fakeSystem({ probes: { 'opencode --version': `v${version}\n`,  } }))).outcome, 'done');
     }
 });
 
 test('an OpenCode whose version cannot be read is a failure, not a guess', async () => {
-    for (const probes of [LATEST, { 'opencode --version': 'dev build\n', ...LATEST }]) {
+    for (const probes of [{}, { 'opencode --version': 'dev build\n' }]) {
         const system = fakeSystem({ probes }),
             outcome = await opencode.install(system);
 
@@ -100,7 +99,7 @@ test('status reads the global config: `plugins` for OpenCode 2, `plugin` in .jso
     assert.equal((await at({ [jsonc]: `{\n  // mine\n  "plugin": ["x", "${MIRROR}",],\n}\n` })).installed, true);
     assert.match((await at({ [json]: plugins(MIRROR) })).detail, /opencode\.json/);
 
-    for (const spec of [`${MIRROR}#abc123`, '@postman/opencode-plugin', '@postman/opencode-plugin@0.3.0', 'git+https://github.com/postmanlabs/opencode-plugin.git#main']) {
+    for (const spec of [SPEC, `${MIRROR}#abc123`, 'git+https://github.com/postmanlabs/opencode-plugin.git#main']) {
         assert.equal((await at({ [json]: plugins(spec) })).installed, true, spec);
     }
 
@@ -231,15 +230,6 @@ test('OpenCode 1 does not refresh an entry in OPENCODE_CONFIG_DIR, since `plugin
     assert.equal((await opencode.install(usual)).outcome, 'done');
 });
 
-test('the minimum OpenCode is the one for what is installed: the npm release from 1.14.22, a git spec from 1.14.33', async () => {
-    const at = (version, env = {}) => opencode.install(fakeSystem({ env, probes: { 'opencode --version': `${version}\n`, ...LATEST } }));
-
-    assert.equal((await at('1.14.22')).outcome, 'done');
-    assert.equal((await at('1.14.21')).outcome, 'blocked');
-    assert.equal((await at('1.14.25', GIT)).outcome, 'blocked');
-    assert.equal((await at('1.14.33', GIT)).outcome, 'done');
-});
-
 test('install with nothing cached just adds again', async () => {
     const system = fakeSystem({ probes: V2, env: GIT, files: { [json]: plugins(MIRROR) } });
 
@@ -248,67 +238,58 @@ test('install with nothing cached just adds again', async () => {
     assert.deepEqual(system.commands, [`opencode plugin add ${MIRROR}`]);
 });
 
-test('an install of the latest release is left as it is: npm versions never change', async () => {
-    for (const probes of [V1, V2]) {
-        const system = fakeSystem({ probes, files: { [json]: plugins(PIN) } }),
-            outcome = await opencode.install(system);
+test('a re-run refreshes the range spec in place, so it moves to the newest release tag', async () => {
+    const copy = copyOf(SPEC),
+        v2 = fakeSystem({ probes: V2, files: { [json]: plugins(SPEC) }, dirs: [path.join(copy, 'ts')] }),
+        v1 = fakeSystem({ probes: V1, files: { [json]: plugin(SPEC) } });
 
-        assert.equal(outcome.outcome, 'skipped');
-        assert.match(outcome.message, /^already at @postman\/opencode-plugin@0\.3\.0/);
-        assert.deepEqual(system.commands, []);
-    }
+    assert.ok((await opencode.install(v2)).message.startsWith(`updated ${SPEC}`));
+    assert.deepEqual(v2.commands, [`remove ${copy}.previous`, `rename ${copy} ${copy}.previous`, ADD2, `remove ${copy}.previous`]);
+    await opencode.install(v1);
+    assert.deepEqual(v1.commands, [`opencode plugin --global --force ${SPEC}`]);
 });
 
-test('an older release, an unpinned name or a mirror install is replaced by the latest release', async () => {
-    for (const old of ['@postman/opencode-plugin@0.2.0', '@postman/opencode-plugin', MIRROR]) {
+test('any other spec of the repository is replaced by the range spec', async () => {
+    for (const old of [MIRROR, `${MIRROR}#main`, `${MIRROR}#v0.1.0`, 'git+https://github.com/postmanlabs/opencode-plugin.git']) {
         const v2 = fakeSystem({ probes: V2, files: { [json]: plugins(old) } }),
             outcome = await opencode.install(v2);
 
         assert.equal(outcome.outcome, 'done', old);
-        assert.ok(outcome.message.startsWith(`replaced ${old} with ${PIN}`), outcome.message);
+        assert.ok(outcome.message.startsWith(`replaced ${old} with ${SPEC}`), outcome.message);
         assert.deepEqual(v2.commands, [ADD2, `opencode plugin remove ${old}`], old);
 
         const v1 = fakeSystem({ probes: V1, files: { [json]: plugin('x', old) } });
 
         assert.equal((await opencode.install(v1)).outcome, 'done', old);
-        assert.deepEqual(v1.commands.slice(0, 1), [`opencode plugin --global --force ${PIN}`], old);
+        assert.deepEqual(v1.commands.slice(0, 1), [`opencode plugin --global --force ${SPEC}`], old);
         assert.ok(!v1.files[json].includes(`"${old}"`), 'OpenCode 1 has no remove command, so the old entry is edited out');
     }
 });
 
 test('an old entry OpenCode already replaced in place is not removed again, which would leave nothing', async () => {
-    const old = '@postman/opencode-plugin@0.2.0',
+    const old = `${MIRROR}#v0.1.0`,
         system = fakeSystem({
             probes: V1,
             files: { [json]: plugin('x', old) },
-            runs: { [`opencode plugin --global --force ${PIN}`]: (self) => {
-                self.files[json] = plugin('x', PIN);
+            runs: { [`opencode plugin --global --force ${SPEC}`]: (self) => {
+                self.files[json] = plugin('x', SPEC);
 
                 return { code: 0 };
             } }
         });
 
     assert.equal((await opencode.install(system)).outcome, 'done');
-    assert.equal(system.files[json], plugin('x', PIN));
+    assert.equal(system.files[json], plugin('x', SPEC));
 });
 
 test('a replacement that could not take out the old entry adds nothing', async () => {
-    const text = `{ "plugin": [["@postman/opencode-plugin@0.2.0", {}]] }`,
+    const text = `{ "plugin": [["${MIRROR}", {}]] }`,
         system = fakeSystem({ probes: V1, files: { [json]: text } }),
         outcome = await opencode.install(system);
 
     assert.equal(outcome.outcome, 'blocked');
     assert.deepEqual(system.commands, []);
     assert.equal(system.files[json], text);
-});
-
-test('the latest release is read from npm, and an install stops when npm cannot say', async () => {
-    const system = fakeSystem({ probes: { 'opencode --version': '2.0.23\n', 'npm view @postman/opencode-plugin version': { code: 1, stderr: 'E404' } } }),
-        outcome = await opencode.install(system);
-
-    assert.equal(outcome.outcome, 'failed');
-    assert.match(outcome.message, /could not read the latest @postman\/opencode-plugin release from npm/);
-    assert.deepEqual(system.commands, []);
 });
 
 test('an entry in opencode.jsonc beside an opencode.json is not refreshed on OpenCode 2, which would register it twice', async () => {
@@ -322,13 +303,13 @@ test('an entry in opencode.jsonc beside an opencode.json is not refreshed on Ope
     assert.ok(await system.exists(path.join(copy, 'ts')), 'the cached copy is left in place');
 });
 
-test('a plugin installed from npm still has the older clone and loader removed, so no skill loads twice', async () => {
-    const system = fakeSystem({ probes: withProbes(V2, cloneProbes()), bins: ['git'], ...ourClone({ files: { [shim]: OPENCODE_SHIM, [json]: plugins(PIN) } }) }),
+test('a re-run with the plugin installed still removes the older clone and loader, so no skill loads twice', async () => {
+    const system = fakeSystem({ probes: withProbes(V2, cloneProbes()), bins: ['git'], ...ourClone({ files: { [shim]: OPENCODE_SHIM, [json]: plugins(SPEC) } }) }),
         outcome = await opencode.install(system);
 
     assert.equal(outcome.outcome, 'done');
     assert.match(outcome.message, /removed the older install/);
-    assert.deepEqual(system.commands, [`remove ${clone}`, `remove ${shim}`]);
+    assert.deepEqual(system.commands.slice(-2), [`remove ${clone}`, `remove ${shim}`]);
 });
 
 test('reads and edits the config in OPENCODE_CONFIG_DIR, where `plugin add` writes when it is set', async () => {

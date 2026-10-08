@@ -1,19 +1,15 @@
 #!/usr/bin/env node
 // Installs Postman with OpenCode's own `plugin` command under a throwaway home, then runs one session
 // against a stand-in model and Postman MCP server and checks what OpenCode sent them. The route is:
-//   git       a one-commit repository of the mirror scripts/build-mirror.js builds from this checkout
-//   npm       that mirror, packed, behind a local registry, by name as the README installs it
-//   npm-pinned  the same at its exact version, as the installer installs it
-//   github    `github:postmanlabs/opencode-plugin`, or PLUGIN_ADD_SPEC, from GitHub
-//   registry  `@postman/opencode-plugin`, or PLUGIN_ADD_SPEC, from npm
-// `github` and `registry` install what is published, so they check the skills the installed copy declares.
+//   git       the mirror scripts/build-mirror.js builds from this checkout, as a one-commit repository tagged with
+//             its version, through `#semver:*` as the installer and README install it
+//   github    `github:postmanlabs/opencode-plugin#semver:*`, or PLUGIN_ADD_SPEC, from GitHub
+// `github` installs what is released, so it checks the skills the installed copy declares.
 // Needs an OpenCode with a `plugin` install command: OPENCODE_BIN, else the pinned CLI in node_modules, else
 // `opencode` on PATH. No account is used.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import http from 'node:http';
 import path from 'node:path';
-import crypto from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
     ENTRY_SKILL, assertMandate, assertMcpHeaders, chatCompletion, commit,
@@ -22,8 +18,9 @@ import {
 import { MIRROR_REPO, buildMirror } from './build-mirror.js';
 import { resolveOpenCodeExecutable } from './lib/opencode-executable.js';
 
-const PUBLISHED = { github: `github:${MIRROR_REPO}`, registry: '@postman/opencode-plugin' },
-    ROUTES = ['git', 'npm', 'npm-pinned', ...Object.keys(PUBLISHED)],
+const RANGE = '#semver:*',
+    PUBLISHED = { github: `github:${MIRROR_REPO}${RANGE}` },
+    ROUTES = ['git', ...Object.keys(PUBLISHED)],
     route = process.argv[2],
     openCode = resolveOpenCodeExecutable(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')),
     // OpenCode 2 is its own CLI (`@opencode/cli`) with `plugin add`; OpenCode 1's command is `plugin <module>`.
@@ -32,42 +29,6 @@ const PUBLISHED = { github: `github:${MIRROR_REPO}`, registry: '@postman/opencod
     STANDALONE = openCodeMajor >= 2 ? ['--standalone'] : [];
 
 assert.ok(ROUTES.includes(route), `usage: node scripts/test-plugin-add.js ${ROUTES.join('|')}`);
-
-/** A registry serving only `tarball`, enough for `plugin add <name>` to resolve and fetch it. */
-function startRegistry (tarball, manifest) {
-    const buffer = fs.readFileSync(tarball),
-        file = `${manifest.name.split('/')[1]}-${manifest.version}.tgz`,
-        server = http.createServer((request, response) => {
-            if (request.url.endsWith('.tgz')) {
-                response.end(buffer);
-            }
-            else if (decodeURIComponent(request.url) === `/${manifest.name}`) {
-                response.setHeader('content-type', 'application/json');
-                response.end(JSON.stringify({
-                    name: manifest.name,
-                    'dist-tags': { latest: manifest.version },
-                    versions: { [manifest.version]: { ...manifest, dist: {
-                        tarball: `http://127.0.0.1:${server.address().port}/${manifest.name}/-/${file}`,
-                        shasum: crypto.createHash('sha1').update(buffer).digest('hex'),
-                        integrity: `sha512-${crypto.createHash('sha512').update(buffer).digest('base64')}`
-                    } } }
-                }));
-            }
-            else {
-                response.statusCode = 404;
-                response.end('{}');
-            }
-        });
-
-    return new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve({ server, url: `http://127.0.0.1:${server.address().port}`, name: manifest.name })));
-}
-
-/** The mirror's tarball, as `npm publish` in release.yml ships it. */
-function packMirror (mirror, into) {
-    const output = run('npm', ['pack', '--pack-destination', into, '--json'], { cwd: mirror, env: { ...process.env, NPM_CONFIG_USERCONFIG: path.join(into, 'npmrc') } });
-
-    return path.join(into, JSON.parse(output)[0].filename);
-}
 
 function findFile (directory, name) {
     for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
@@ -89,8 +50,7 @@ function findFile (directory, name) {
 const { root, home, project, remove } = workspace(`opencode-plugin-add-${route}`),
     xdg = Object.fromEntries(['config', 'cache', 'data', 'state'].map((kind) => [`XDG_${kind.toUpperCase()}_HOME`, path.join(root, `xdg-${kind}`)])),
     nested = path.join(project, 'services', 'orders');
-let standIn,
-    registry;
+let standIn;
 
 try {
     standIn = await startStandIn((request, body) => {
@@ -121,21 +81,12 @@ try {
 
         buildMirror(mirror);
 
-        if (route === 'git') {
-            commit(mirror);
-            spec = `git+${pathToFileURL(mirror).href}`;
-        }
-        else {
-            const manifest = readJson(path.join(mirror, 'package.json'));
-
-            registry = await startRegistry(packMirror(mirror, root), manifest);
-            spec = route === 'npm-pinned' ? `${registry.name}@${manifest.version}` : registry.name;
-            environment.NPM_CONFIG_REGISTRY = registry.url;
-            environment.npm_config_registry = registry.url;
-        }
+        commit(mirror);
+        // A release tag, as release.yml puts on the mirror; the range resolves to it.
+        run('git', ['-c', 'user.name=harness', '-c', 'user.email=harness@localhost', '-c', 'tag.gpgsign=false', 'tag', '-a', '-m', 'harness', `v${readJson(path.join(mirror, 'package.json')).version}`], { cwd: mirror });
+        spec = `git+${pathToFileURL(mirror).href}${RANGE}`;
     }
 
-    // Asynchronous: the registry this process serves must answer while `plugin add` waits on it.
     const added = await runAgent(openCode, [...ADD, spec], { cwd: nested, env: environment });
 
     assert.equal(added.code, 0, `opencode ${ADD.join(' ')} ${spec} exited ${added.code}\n${added.stdout}\n${added.stderr}`);
@@ -203,6 +154,5 @@ try {
 }
 finally {
     standIn?.server.close();
-    registry?.server.close();
     remove();
 }

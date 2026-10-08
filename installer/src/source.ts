@@ -7,17 +7,14 @@ export const BRANCH = 'main';
 /** Unpinned, so `pi update` moves it with each `latest` release; test/pi-package.test.js checks the name. */
 export const PI_SOURCE = 'npm:@postman/postman-plugin';
 
-/** The OpenCode plugin package, which release.yml publishes and whose latest release the installer pins. */
-export const OPENCODE_PACKAGE = '@postman/opencode-plugin';
-
-/** The same package as a repository, which release.yml updates; `github:` installs of it are ours too. */
+/** The OpenCode plugin's repository, which only release.yml writes: `main` and a `v<version>` tag per release. */
 export const OPENCODE_REPO = 'postmanlabs/opencode-plugin';
 
-/** The first OpenCode release of each major that installs a git spec of `OPENCODE_REPO`, found by bisecting the harness in opencode/scripts/test-plugin-add.js. */
-export const OPENCODE_MINIMUM: Record<number, [number, number, number]> = { 1: [1, 14, 33], 2: [2, 0, 4] };
+/** The newest release tag on `OPENCODE_REPO`. OpenCode 1 re-resolves it at startup and OpenCode 2's update check flags a newer one; prerelease tags never match. */
+export const OPENCODE_SPEC = `github:${OPENCODE_REPO}#semver:*`;
 
-/** The same for `OPENCODE_PACKAGE` from npm at a pinned version, which OpenCode 1 installs from an earlier release than a git spec. */
-export const OPENCODE_NPM_MINIMUM: Record<number, [number, number, number]> = { 1: [1, 14, 22], 2: [2, 0, 4] };
+/** The first OpenCode release of each major that installs `OPENCODE_SPEC`, found by bisecting the harness in opencode/scripts/test-plugin-add.js. */
+export const OPENCODE_MINIMUM: Record<number, [number, number, number]> = { 1: [1, 14, 33], 2: [2, 0, 4] };
 
 /** Pre-`plugin add` installs: a clone of the repo plus this one-line loader file. Must stay byte-identical to what those installs wrote, or the installer stops recognizing them. */
 export const OPENCODE_SHIM = "export { default } from '../postman-plugin/opencode/src/index.ts';\n";

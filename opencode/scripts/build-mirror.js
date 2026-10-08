@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Builds the OpenCode plugin package that postmanlabs/opencode-plugin holds and @postman/opencode-plugin
-// publishes: this package's entrypoint at the root, with the shared files it reads beside it.
+// Builds the OpenCode plugin package that postmanlabs/opencode-plugin holds: this package's entrypoint at the
+// root, with the shared files it reads beside it.
 // Usage: node scripts/build-mirror.js <out-dir>. Only MIRROR_PATHS are replaced: the mirror's own files,
 // such as README.md, SECURITY.md, .github/ and .git, stay.
 import fs from 'node:fs';
@@ -27,7 +27,7 @@ export function mirrorManifest (source) {
         keywords: ['postman', 'opencode', 'opencode-plugin', 'api', 'agent-skills'],
         homepage: `https://github.com/${MIRROR_REPO}#readme`,
         bugs: `https://github.com/${SOURCE_REPO}/issues`,
-        // npm's provenance check requires the repository the package is built and published from.
+        // Where it is built from, and where changes go.
         repository: { type: 'git', url: `git+https://github.com/${SOURCE_REPO}.git`, directory: 'opencode' },
         main: './src/index.ts',
         exports: { './server': './src/index.ts' },

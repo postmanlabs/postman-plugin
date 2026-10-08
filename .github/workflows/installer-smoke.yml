@@ -103,8 +103,8 @@ jobs:
       - name: Kimi Code runs
         run: kimi --version
 
-      # The mirror and npm change only at a release, so every run but the nightly one has the installer install the
-      # mirror built from this commit, as a one-commit repository. The nightly run installs npm's latest release.
+      # The mirror changes only at a release, so every run but the nightly one has the installer install the mirror
+      # built from this commit, as a one-commit repository. The nightly run installs the newest release tag.
       - name: Build the OpenCode mirror from this commit
         if: github.event_name != 'schedule'
         run: |
@@ -113,7 +113,9 @@ jobs:
           git -C "$mirror" init --quiet
           git -C "$mirror" add --all
           git -C "$mirror" -c user.name=smoke -c user.email=smoke@localhost -c commit.gpgsign=false commit --quiet --message smoke
-          echo "POSTMAN_PLUGIN_OPENCODE_SPEC=git+$(node -p 'require("url").pathToFileURL(process.argv[1]).href' "$mirror")" >> "$GITHUB_ENV"
+          # A release tag, so the installer resolves the same `#semver:*` range it gives users.
+          git -C "$mirror" -c user.name=smoke -c user.email=smoke@localhost -c tag.gpgsign=false tag -a -m smoke "v$(node -p 'require(process.argv[1]).version' "$mirror/package.json")"
+          echo "POSTMAN_PLUGIN_OPENCODE_SPEC=git+$(node -p 'require("url").pathToFileURL(process.argv[1]).href' "$mirror")#semver:*" >> "$GITHUB_ENV"
 
       - name: Install, then re-run to take the update path
         run: |
@@ -207,27 +209,19 @@ jobs:
 
       # The pinned plugin-add harness in validate.yml, against the latest OpenCode 1 installed above and the
       # latest OpenCode 2, so a release that stops loading Postman through `opencode plugin` fails here. Beyond
-      # the built mirror as a Git repository and as a tarball it installs what users run:
-      # `github:postmanlabs/opencode-plugin` from GitHub and, nightly, `@postman/opencode-plugin` from npm.
+      # the built mirror it installs what users run: `github:postmanlabs/opencode-plugin#semver:*` from GitHub.
       - name: The latest OpenCode installs Postman with `plugin`
         if: ${{ !cancelled() }}
         working-directory: opencode
-        env:
-          EVENT: ${{ github.event_name }}
         run: |
           # npm puts global bins in the prefix itself on Windows, in its bin/ elsewhere.
           OPENCODE1=$(node -p 'require("path").join(process.argv[1], process.platform === "win32" ? "opencode.cmd" : "bin/opencode")' "$(npm prefix -g)")
           OPENCODE2=$(node -p 'require("path").join(process.argv[1], "node_modules", ".bin", process.platform === "win32" ? "opencode.cmd" : "opencode")' "$RUNNER_TEMP/opencode2")
 
           for opencode in "$OPENCODE1" "$OPENCODE2"; do
-            for route in git npm github; do
+            for route in git github; do
               OPENCODE_BIN="$opencode" node scripts/test-plugin-add.js "$route"
             done
-
-            # The published package changes only when the OpenCode plugin is released, so only the nightly run asks for it.
-            if [ "$EVENT" = schedule ]; then
-              OPENCODE_BIN="$opencode" node scripts/test-plugin-add.js registry
-            fi
           done
 
       # The installer drives whichever `opencode` is first on PATH, which was OpenCode 1 above. Last, because

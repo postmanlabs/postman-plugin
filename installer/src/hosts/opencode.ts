@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import path from 'node:path';
-import { OPENCODE_MINIMUM, OPENCODE_NPM_MINIMUM, OPENCODE_PACKAGE, OPENCODE_REPO, OPENCODE_SHIM, isSameRepo, redact } from '../source.js';
+import { OPENCODE_MINIMUM, OPENCODE_REPO, OPENCODE_SHIM, OPENCODE_SPEC, isSameRepo, redact } from '../source.js';
 import type { System } from '../system.js';
 import { parseJsonc, withoutArrayString } from './opencode-config.js';
 import { assertCloneRemovable, blocked, failed, guard, mustRun, removeClone } from './shared.js';
@@ -15,7 +15,6 @@ type Entry = { dir: string; file: string; key: string; spec: string; form: 'stri
 const KEYS = ['plugin', 'plugins'],
     CONFIG_FILES = ['opencode.json', 'opencode.jsonc', path.join('.opencode', 'opencode.json'), path.join('.opencode', 'opencode.jsonc')],
     samePath = (a: string, b: string) => path.relative(a, b) === '',
-    NPM_NAME = OPENCODE_PACKAGE,
     NEXT = 'Restart OpenCode for the change to take effect.',
     // Installs another spec instead of the latest release, such as a mirror built from a change before it merges.
     SPEC_VARIABLE = 'POSTMAN_PLUGIN_OPENCODE_SPEC',
@@ -53,25 +52,14 @@ function gitSlug (spec: string): string {
     return target.replace(/\.git$/i, '').split(/[/:\\]/).at(-1)?.replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '') || 'repository';
 }
 
-/** The latest `@postman/opencode-plugin` release, pinned to its version so OpenCode installs exactly what npm published, or POSTMAN_PLUGIN_OPENCODE_SPEC. */
-export async function specToInstall (system: System): Promise<string> {
-    if (system.env[SPEC_VARIABLE]) {
-        return system.env[SPEC_VARIABLE];
-    }
+/** What this run installs: `OPENCODE_SPEC`, or the spec POSTMAN_PLUGIN_OPENCODE_SPEC names. */
+const specToInstall = (system: System) => system.env[SPEC_VARIABLE] || OPENCODE_SPEC;
 
-    const probe = await system.probe('npm', ['view', NPM_NAME, 'version']),
-        latest = probe.stdout.trim();
-
-    return probe.code === 0 && /^\d+\.\d+\.\d+$/.test(latest) ?
-        `${NPM_NAME}@${latest}` :
-        failed(`could not read the latest ${NPM_NAME} release from npm (\`npm view ${NPM_NAME} version\`)`);
-}
-
-/** The plugin through npm at any version, or its repository through `github:` or a git URL at any ref, or the spec POSTMAN_PLUGIN_OPENCODE_SPEC installs. */
+/** The plugin's repository through `github:` or a git URL at any ref or range, or the spec POSTMAN_PLUGIN_OPENCODE_SPEC installs. */
 function isOurSpec (system: System, spec: string): boolean {
     const bare = spec.split('#')[0];
 
-    if (spec === system.env[SPEC_VARIABLE] || bare === NPM_NAME || bare.startsWith(`${NPM_NAME}@`)) {
+    if (spec === system.env[SPEC_VARIABLE]) {
         return true;
     }
 
@@ -85,8 +73,8 @@ function isBefore (found: number[], minimum: number[]): boolean {
     return differing !== -1 && found[differing] < minimum[differing];
 }
 
-/** The release `opencode` is, refusing one older than the first of its major that installs Postman's route with `opencode plugin`. */
-async function installableVersion (system: System, minimums: Record<number, [number, number, number]>): Promise<Version> {
+/** The release `opencode` is, refusing one older than the first of its major that installs Postman with `opencode plugin`. */
+async function installableVersion (system: System): Promise<Version> {
     const probe = await system.probe('opencode', ['--version']),
         match = probe.stdout.match(/(\d+)\.(\d+)\.(\d+)/);
 
@@ -96,11 +84,11 @@ async function installableVersion (system: System, minimums: Record<number, [num
 
     const found = match.slice(1).map(Number),
         major = found[0],
-        minimum = minimums[major],
+        minimum = OPENCODE_MINIMUM[major],
         older = minimum !== undefined && isBefore(found, minimum);
 
     if (major < 1 || older) {
-        return blocked(`OpenCode ${match[0]} is older than ${(minimum ?? minimums[1]).join('.')}, the first ${major}.x release that installs Postman with \`opencode plugin\`; update OpenCode and re-run`);
+        return blocked(`OpenCode ${match[0]} is older than ${(minimum ?? OPENCODE_MINIMUM[1]).join('.')}, the first ${major}.x release that installs Postman with \`opencode plugin\`; update OpenCode and re-run`);
     }
 
     return { major, text: match[0] };
@@ -333,8 +321,8 @@ export const opencode: Host = {
     install (system) {
         return guard(async () => {
             const entries = await readableEntries(system),
-                spec = await specToInstall(system),
-                version = await installableVersion(system, spec.startsWith(`${NPM_NAME}@`) ? OPENCODE_NPM_MINIMUM : OPENCODE_MINIMUM),
+                spec = specToInstall(system),
+                version = await installableVersion(system),
                 entry = entries[0];
 
             // Both copies would load the same skills, so an older install that cannot be deleted whole stops us before the new one goes in.
@@ -344,13 +332,6 @@ export const opencode: Host = {
                 await mustRun(system, 'opencode', addArgs(version, spec));
 
                 return result('done', summary('installed', spec, await removeLegacy(system)), NEXT);
-            }
-
-            // A pinned npm version never changes, so the entry is already what this run would install.
-            if (entry.spec === spec && spec.startsWith(`${NPM_NAME}@`)) {
-                const removed = await removeLegacy(system);
-
-                return result(removed.length ? 'done' : 'skipped', summary('already at', spec, removed));
             }
 
             if (entry.spec === spec) {
