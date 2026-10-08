@@ -99,3 +99,12 @@ test('removing the last element keeps a comment between it and the comma before 
     assert.equal(withoutArrayString(text, 'plugin', SPEC), '{\n  "plugin": [\n    "a" // keep\n\n  ]\n}\n');
     assert.equal(withoutArrayString(inline, 'plugin', SPEC), '{ "plugin": ["a" /* keep */] }');
 });
+
+test('a root key that appears twice is not edited, since the parser keeps the last one', () => {
+    const text = `{ "plugin": ["${SPEC}"], "plugin": ["${SPEC}", "b"] }`,
+        notArray = `{ "plugin": ["${SPEC}"], "plugin": "b" }`;
+
+    assert.equal(withoutArrayString(text, 'plugin', SPEC), null);
+    assert.equal(withoutArrayString(notArray, 'plugin', SPEC), null);
+    assert.equal(withoutArrayString(`{ "plugin": ["${SPEC}"], "agent": { "plugin": [] } }`, 'plugin', SPEC), '{ "plugin": [], "agent": { "plugin": [] } }', 'a nested key of that name is not a duplicate');
+});

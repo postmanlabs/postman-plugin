@@ -175,6 +175,21 @@ test('a failed refresh puts the cached copy back', async () => {
     assert.ok(!(await system.exists(path.join(copy, 'half-written'))), 'what the failed add left is gone');
 });
 
+test('a cached copy a stopped run left only under .previous is put back first, so a failed fetch restores it', async () => {
+    const copy = copyOf(GIT_SPEC),
+        system = fakeSystem({
+            probes: V2,
+            env: GIT,
+            files: { [json]: plugins(GIT_SPEC), [path.join(`${copy}.previous`, 'ts', 'package.json')]: '{}' },
+            runs: { [`opencode plugin add ${GIT_SPEC}`]: { code: 1, stderr: 'network is down' } }
+        }),
+        outcome = await opencode.install(system);
+
+    assert.equal(outcome.outcome, 'failed');
+    assert.deepEqual(system.commands.slice(0, 1), [`rename ${copy}.previous ${copy}`]);
+    assert.ok(path.join(copy, 'ts', 'package.json') in system.files, 'the copy is back where OpenCode reads it');
+});
+
 test('install refreshes the spec the plugin is configured with, ref included, and honours XDG_CACHE_HOME', async () => {
     const spec = `${GIT_SPEC}#abc`,
         copy = copyOf(spec, path.join('/xdg-cache', 'opencode', 'npm')),

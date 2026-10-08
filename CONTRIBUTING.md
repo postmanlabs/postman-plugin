@@ -417,11 +417,12 @@ pinned to `release.yml`.
 
 Don't bump a version in the change itself; each route's own release PR does
 that (see `AGENTS.md`). Routes version independently — differing versions
-across routes are correct, not drift — so a release bumps the three strings
-that one route owns: `version` in its manifest, plus `X-Plugin-Version` and
+across routes are correct, not drift — so a release bumps the strings that
+one route owns, three for every route but OpenCode: `version` in its manifest, plus `X-Plugin-Version` and
 `User-Agent` in its MCP config (for Kimi all three live in the manifest; for
 Codex the two headers sit under `http_headers`, not `headers`; for OpenCode
-the manifest is `opencode/package.json`, whose version the root `package.json` repeats; for Pi it is
+the manifest is `opencode/package.json`, and the root `package.json` repeats its
+version as a fourth string; for Pi it is
 `installer/package.json`, so Pi's bump is an installer release; for Factory
 Droid the MCP config is the root `mcp.json`). Nothing verifies this, so check
 the route's strings against each other before you commit the release. Don't

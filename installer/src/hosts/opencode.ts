@@ -321,8 +321,14 @@ async function addFresh (system: System, version: Version, spec: string, options
     }
 
     const copy = cachedCopy(system, spec),
-        previous = `${copy}.previous`,
-        cached = await system.exists(copy);
+        previous = `${copy}.previous`;
+
+    // A run stopped between setting the copy aside and fetching left it only under `.previous`.
+    if (!(await system.exists(copy)) && await system.exists(previous)) {
+        await system.rename(previous, copy);
+    }
+
+    const cached = await system.exists(copy);
 
     if (cached) {
         await system.remove(previous);

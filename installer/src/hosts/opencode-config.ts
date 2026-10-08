@@ -88,9 +88,14 @@ export function parseJsonc<T> (text: string): T | null {
 
 type Element = { start: number; end: number; value: string; before: Token | null; after: Token | null };
 
-/** The direct string elements of the root object's array under `key`, or `null` when there is no such array. */
+/**
+ * The direct string elements of the root object's array under `key`, or `null` when there is no such array or the root
+ * object has `key` more than once: JSON.parse keeps the last one, so editing any of them could leave the one that counts.
+ */
 function stringElements (tokens: Token[], key: string): Element[] | null {
-    let depth = 0;
+    let depth = 0,
+        found: Element[] | null = null,
+        occurrences = 0;
 
     for (let at = 0; at < tokens.length; at += 1) {
         const token = tokens[at];
@@ -101,7 +106,7 @@ function stringElements (tokens: Token[], key: string): Element[] | null {
         else if (token.kind === 'punct' && '}]'.includes(token.text)) {
             depth -= 1;
         }
-        else if (depth === 1 && token.kind === 'string' && tokens[at + 1]?.text === ':' && tokens[at + 2]?.text === '[') {
+        else if (depth === 1 && token.kind === 'string' && tokens[at + 1]?.text === ':') {
             let value: unknown;
 
             try {
@@ -112,6 +117,12 @@ function stringElements (tokens: Token[], key: string): Element[] | null {
             }
 
             if (value !== key) {
+                continue;
+            }
+
+            occurrences += 1;
+
+            if (tokens[at + 2]?.text !== '[') {
                 continue;
             }
 
@@ -138,11 +149,11 @@ function stringElements (tokens: Token[], key: string): Element[] | null {
                 }
             }
 
-            return elements;
+            found ??= elements;
         }
     }
 
-    return null;
+    return occurrences === 1 ? found : null;
 }
 
 /** `text` without the first `value` in the array under `key`, comments and layout intact; `null` if it is not there or the result would not parse. */
