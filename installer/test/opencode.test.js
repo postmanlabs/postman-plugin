@@ -134,7 +134,9 @@ test('a config that does not parse is unknown, and install leaves it alone', asy
     assert.deepEqual(system.commands, []);
 });
 
-const cached = path.join('/home/user', '.cache', 'opencode', 'npm'),
+// A completed fetch: OpenCode 2 names each one by the time it finished, and fetches into `.staging-*` until then.
+const GENERATION = '1791217846050',
+    cached = path.join('/home/user', '.cache', 'opencode', 'npm'),
     copyOf = (spec, root = cached, slug = 'postman-plugin') => path.join(root, `git-${slug}-${createHash('sha256').update(spec).digest('hex').slice(0, 12)}`);
 
 test('install on an installed plugin refreshes it: OpenCode 2 sets its cached copy aside and adds again, OpenCode 1 forces a re-run', async () => {
@@ -160,7 +162,7 @@ test('a failed refresh puts the cached copy back', async () => {
         system = fakeSystem({
             probes: V2,
             env: GIT,
-            files: { [json]: plugins(GIT_SPEC), [path.join(copy, 'ts', 'package.json')]: '{}' },
+            files: { [json]: plugins(GIT_SPEC), [path.join(copy, GENERATION, 'package.json')]: '{}' },
             runs: { [`opencode plugin add ${GIT_SPEC}`]: (self) => {
                 self.dirs.add(path.join(copy, 'half-written'));
 
@@ -171,7 +173,7 @@ test('a failed refresh puts the cached copy back', async () => {
 
     assert.equal(outcome.outcome, 'failed');
     assert.deepEqual(system.commands, [`remove ${copy}.previous`, `rename ${copy} ${copy}.previous`, `opencode plugin add ${GIT_SPEC}`, `remove ${copy}`, `rename ${copy}.previous ${copy}`]);
-    assert.ok(path.join(copy, 'ts', 'package.json') in system.files, 'the previous copy is back');
+    assert.ok(path.join(copy, GENERATION, 'package.json') in system.files, 'the previous copy is back');
     assert.ok(!(await system.exists(path.join(copy, 'half-written'))), 'what the failed add left is gone');
 });
 
@@ -180,14 +182,31 @@ test('a cached copy a stopped run left only under .previous is put back first, s
         system = fakeSystem({
             probes: V2,
             env: GIT,
-            files: { [json]: plugins(GIT_SPEC), [path.join(`${copy}.previous`, 'ts', 'package.json')]: '{}' },
+            files: { [json]: plugins(GIT_SPEC), [path.join(`${copy}.previous`, GENERATION, 'package.json')]: '{}' },
             runs: { [`opencode plugin add ${GIT_SPEC}`]: { code: 1, stderr: 'network is down' } }
         }),
         outcome = await opencode.install(system);
 
     assert.equal(outcome.outcome, 'failed');
-    assert.deepEqual(system.commands.slice(0, 1), [`rename ${copy}.previous ${copy}`]);
-    assert.ok(path.join(copy, 'ts', 'package.json') in system.files, 'the copy is back where OpenCode reads it');
+    assert.deepEqual(system.commands.slice(0, 2), [`remove ${copy}`, `rename ${copy}.previous ${copy}`]);
+    assert.ok(path.join(copy, GENERATION, 'package.json') in system.files, 'the copy is back where OpenCode reads it');
+});
+
+test('a copy holding only an unfinished fetch never replaces the working one set aside beside it', async () => {
+    const copy = copyOf(GIT_SPEC),
+        working = path.join(`${copy}.previous`, GENERATION, 'package.json'),
+        system = fakeSystem({
+            probes: V2,
+            env: GIT,
+            files: { [json]: plugins(GIT_SPEC), [working]: '{}' },
+            dirs: [path.join(copy, '.staging-1791217846999-abc')],
+            runs: { [`opencode plugin add ${GIT_SPEC}`]: { code: 1, stderr: 'network is down' } }
+        }),
+        outcome = await opencode.install(system);
+
+    assert.equal(outcome.outcome, 'failed');
+    assert.deepEqual(system.commands.slice(0, 2), [`remove ${copy}`, `rename ${copy}.previous ${copy}`]);
+    assert.ok(path.join(copy, GENERATION, 'package.json') in system.files, 'the working generation is back where OpenCode reads it');
 });
 
 test('install refreshes the spec the plugin is configured with, ref included, and honours XDG_CACHE_HOME', async () => {
@@ -197,7 +216,7 @@ test('install refreshes the spec the plugin is configured with, ref included, an
             probes: V2,
             env: { XDG_CACHE_HOME: '/xdg-cache', POSTMAN_PLUGIN_OPENCODE_SPEC: spec },
             files: { [json]: plugins(spec) },
-            dirs: [path.join(copy, 'ts')]
+            dirs: [path.join(copy, GENERATION)]
         });
 
     await opencode.install(system);
@@ -208,7 +227,7 @@ test('install refreshes the spec the plugin is configured with, ref included, an
 test('the cached copy is named by the spec\'s last path segment, as OpenCode 2 names it', async () => {
     const spec = 'git+file:///C:/build/Opencode%20Plugin.git',
         copy = copyOf(spec, cached, 'Opencode-Plugin'),
-        system = fakeSystem({ probes: V2, env: { POSTMAN_PLUGIN_OPENCODE_SPEC: spec }, files: { [json]: plugins(spec) }, dirs: [path.join(copy, 'ts')] });
+        system = fakeSystem({ probes: V2, env: { POSTMAN_PLUGIN_OPENCODE_SPEC: spec }, files: { [json]: plugins(spec) }, dirs: [path.join(copy, GENERATION)] });
 
     await opencode.install(system);
 
@@ -268,7 +287,7 @@ test('install with nothing cached just adds again', async () => {
 
 test('a re-run refreshes the default-branch spec in place, so it moves to the newest commit', async () => {
     const copy = copyOf(SPEC),
-        v2 = fakeSystem({ probes: V2, files: { [json]: plugins(SPEC) }, dirs: [path.join(copy, 'ts')] }),
+        v2 = fakeSystem({ probes: V2, files: { [json]: plugins(SPEC) }, dirs: [path.join(copy, GENERATION)] }),
         v1 = fakeSystem({ probes: V1, files: { [json]: plugin(SPEC) } });
 
     assert.ok((await opencode.install(v2)).message.startsWith(`updated ${SPEC}`));
@@ -322,13 +341,13 @@ test('a replacement that could not take out the old entry adds nothing', async (
 
 test('an entry in opencode.jsonc beside an opencode.json is not refreshed on OpenCode 2, which would register it twice', async () => {
     const copy = copyOf(GIT_SPEC),
-        system = fakeSystem({ probes: V2, env: GIT, files: { [json]: plugins('x'), [jsonc]: plugins(GIT_SPEC) }, dirs: [path.join(copy, 'ts')] }),
+        system = fakeSystem({ probes: V2, env: GIT, files: { [json]: plugins('x'), [jsonc]: plugins(GIT_SPEC) }, dirs: [path.join(copy, GENERATION)] }),
         outcome = await opencode.install(system);
 
     assert.equal(outcome.outcome, 'blocked');
     assert.ok(outcome.message.includes(`write to ${json}; move the entry, with any options, there`), outcome.message);
     assert.deepEqual(system.commands, []);
-    assert.ok(await system.exists(path.join(copy, 'ts')), 'the cached copy is left in place');
+    assert.ok(await system.exists(path.join(copy, GENERATION)), 'the cached copy is left in place');
 });
 
 test('a re-run with the plugin installed still removes the older clone and loader, so no skill loads twice', async () => {
@@ -581,8 +600,8 @@ test('remove checks the older install before it removes the plugin, so a refusal
 
 test('a fresh install or a replacement sets aside a cached copy an earlier `plugin remove` left, so a newer commit arrives', async () => {
     const copy = copyOf(SPEC),
-        fresh = fakeSystem({ probes: V2, dirs: [path.join(copy, 'ts')] }),
-        replacing = fakeSystem({ probes: V2, files: { [json]: plugins(GIT_SPEC) }, dirs: [path.join(copy, 'ts')] });
+        fresh = fakeSystem({ probes: V2, dirs: [path.join(copy, GENERATION)] }),
+        replacing = fakeSystem({ probes: V2, files: { [json]: plugins(GIT_SPEC) }, dirs: [path.join(copy, GENERATION)] });
 
     await opencode.install(fresh);
     assert.deepEqual(fresh.commands, [`remove ${copy}.previous`, `rename ${copy} ${copy}.previous`, ADD2, `remove ${copy}.previous`]);

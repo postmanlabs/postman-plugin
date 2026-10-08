@@ -24,12 +24,15 @@ export const PLUGINS_CLI = 'plugins@1.3.4';
 
 // A git transport (not `file://`, which names a local path), optional user-info, then
 // GitHub's host and its `/`, or the scp-style `git@github.com:` form with no scheme.
-const GITHUB_PREFIX = /^(?:(?:https?|ssh|git|git\+ssh|ssh\+git|git\+https):\/\/)?(?:[^@/]+@)?github\.com[:/]/,
-    // User-info in a URL, or before an scp-style `host:path`; the conventional `git@` is kept.
-    URL_USER_INFO = /^([a-z][a-z+.-]*:\/\/)(?!git@)[^@/]+@/i,
-    URL_USER_INFO_IN_TEXT = /([a-z][a-z+.-]*:\/\/)(?!git@)[^@/\s]+@/gi,
-    SCP_USER_INFO_IN_TEXT = /(^|[\s"'`(=])(?!git@)[^@/:\s"'`(=]+@(?=[^/:\s]+:)/gm,
-    SCP_USER_INFO = /^(?!git@)[^@/:]+@(?=[^/:]+:)/;
+const GITHUB_PREFIX = /^(?:(?:https?|ssh|git|git\+ssh|ssh\+git|git\+https):\/\/)?(?:[^/]*@)?github\.com[:/]/,
+    // User-info in a URL, or before an scp-style `host:path`. Greedy, because a password may hold an unescaped `@` and a
+    // URL's host starts after the last one.
+    URL_USER_INFO = /^([a-z][a-z+.-]*:\/\/)([^/?#]*)@/i,
+    URL_USER_INFO_IN_TEXT = /([a-z][a-z+.-]*:\/\/)([^/?#\s]*)@/gi,
+    SCP_USER_INFO_IN_TEXT = /(^|[\s"'`(=])([^/:\s"'`(=]*)@(?=[^@/:\s]+:)/gm,
+    SCP_USER_INFO = /^()([^/:]*)@(?=[^@/:]+:)/,
+    // The conventional `git@` names no credential and is kept.
+    withoutUserInfo = (match: string, before: string, info: string) => (info === 'git' ? match : before);
 
 function normalize (source: string): string {
     return source.trim().toLowerCase()
@@ -45,10 +48,10 @@ export function isSameRepo (source: string | undefined, repo: string): boolean {
 
 /** Strips a URL's user-info, where a token would be, so a source can be printed. */
 export function redact (source: string): string {
-    return source.replace(URL_USER_INFO, '$1').replace(SCP_USER_INFO, '');
+    return source.replace(URL_USER_INFO, withoutUserInfo).replace(SCP_USER_INFO, withoutUserInfo);
 }
 
 /** Strips the user-info of every URL in a command's output, which can echo a spec it was given. */
 export function redactText (text: string): string {
-    return text.replace(URL_USER_INFO_IN_TEXT, '$1').replace(SCP_USER_INFO_IN_TEXT, '$1');
+    return text.replace(URL_USER_INFO_IN_TEXT, withoutUserInfo).replace(SCP_USER_INFO_IN_TEXT, withoutUserInfo);
 }

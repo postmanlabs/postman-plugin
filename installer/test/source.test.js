@@ -59,3 +59,12 @@ test('redacts the user-info of every URL in command output', () => {
         'github.com:a/b.git failed\ncould not add "github.com:a/b.git" or git@github.com:a/b.git'
     );
 });
+
+test('redacts user-info through its last @, as a URL parser reads an unescaped @ in a password', () => {
+    assert.equal(redact('git+https://user:secret@part@github.com/a/b.git'), 'git+https://github.com/a/b.git');
+    assert.equal(redact('tok@part@github.com:a/b.git'), 'github.com:a/b.git');
+    assert.equal(redactText('failed: git+https://user:secret@part@github.com/a/b.git at https://github.com/x?u=a@b'), 'failed: git+https://github.com/a/b.git at https://github.com/x?u=a@b');
+    assert.equal(redactText('add "tok@part@github.com:a/b.git"'), 'add "github.com:a/b.git"');
+    assert.equal(redactText('see https://github.com?ref=a@b'), 'see https://github.com?ref=a@b');
+    assert.ok(isSameRepo('https://user:secret@part@github.com/postmanlabs/postman-plugin.git', 'postmanlabs/postman-plugin'));
+});

@@ -306,6 +306,11 @@ async function replaceEntry (system: System, version: Version, entry: Entry, spe
     }
 }
 
+/** OpenCode 2 fetches into `.staging-*` and renames it to a numeric generation only once the fetch succeeds (packages/util/src/npm.ts). */
+async function isComplete (system: System, cache: string): Promise<boolean> {
+    return (await system.readDir(cache)).some((entry) => /^\d+$/.test(entry));
+}
+
 /**
  * OpenCode 2 caches a git plugin by its spec and `plugin add` reuses the cache, even one an earlier
  * `plugin remove` left behind, so a newer commit only arrives when the cached copy is gone; `plugin update`
@@ -323,12 +328,13 @@ async function addFresh (system: System, version: Version, spec: string, options
     const copy = cachedCopy(system, spec),
         previous = `${copy}.previous`;
 
-    // A run stopped between setting the copy aside and fetching left it only under `.previous`.
-    if (!(await system.exists(copy)) && await system.exists(previous)) {
+    // A run stopped after setting the copy aside left the working one only under `.previous`, beside nothing or an unfinished fetch.
+    if (!(await isComplete(system, copy)) && await isComplete(system, previous)) {
+        await system.remove(copy);
         await system.rename(previous, copy);
     }
 
-    const cached = await system.exists(copy);
+    const cached = await isComplete(system, copy);
 
     if (cached) {
         await system.remove(previous);
