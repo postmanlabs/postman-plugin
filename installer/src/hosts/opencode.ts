@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import path from 'node:path';
-import { OPENCODE_MINIMUM, OPENCODE_NPM_MINIMUM, OPENCODE_REPO, OPENCODE_SHIM, OPENCODE_SPEC, isSameRepo, redact } from '../source.js';
+import { OPENCODE_MINIMUM, OPENCODE_NPM_MINIMUM, OPENCODE_PACKAGE, OPENCODE_REPO, OPENCODE_SHIM, isSameRepo, redact } from '../source.js';
 import type { System } from '../system.js';
 import { parseJsonc, withoutArrayString } from './opencode-config.js';
 import { assertCloneRemovable, blocked, failed, guard, mustRun, removeClone } from './shared.js';
@@ -15,11 +15,10 @@ type Entry = { dir: string; file: string; key: string; spec: string; form: 'stri
 const KEYS = ['plugin', 'plugins'],
     CONFIG_FILES = ['opencode.json', 'opencode.jsonc', path.join('.opencode', 'opencode.json'), path.join('.opencode', 'opencode.jsonc')],
     samePath = (a: string, b: string) => path.relative(a, b) === '',
-    NPM_NAME = '@postman/opencode-plugin',
+    NPM_NAME = OPENCODE_PACKAGE,
     NEXT = 'Restart OpenCode for the change to take effect.',
-    // Installs another spec instead of the mirror's default branch, such as a mirror built from a change before it merges.
+    // Installs another spec instead of the latest release, such as a mirror built from a change before it merges.
     SPEC_VARIABLE = 'POSTMAN_PLUGIN_OPENCODE_SPEC',
-    specToInstall = (system: System) => system.env[SPEC_VARIABLE] || OPENCODE_SPEC,
     configDir = (system: System) => path.join(system.env.XDG_CONFIG_HOME || path.join(system.home, '.config'), 'opencode'),
     // `opencode plugin add` writes to OPENCODE_CONFIG_DIR instead when it is set.
     configDirs = (system: System) => [...new Set([system.env.OPENCODE_CONFIG_DIR, configDir(system)].filter((dir): dir is string => Boolean(dir)))],
@@ -54,7 +53,21 @@ function gitSlug (spec: string): string {
     return target.replace(/\.git$/i, '').split(/[/:\\]/).at(-1)?.replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '') || 'repository';
 }
 
-/** The mirror through `github:`, a git URL or npm, at any ref or version, or the spec POSTMAN_PLUGIN_OPENCODE_SPEC installs. */
+/** The latest `@postman/opencode-plugin` release, pinned to its version so OpenCode installs exactly what npm published, or POSTMAN_PLUGIN_OPENCODE_SPEC. */
+export async function specToInstall (system: System): Promise<string> {
+    if (system.env[SPEC_VARIABLE]) {
+        return system.env[SPEC_VARIABLE];
+    }
+
+    const probe = await system.probe('npm', ['view', NPM_NAME, 'version']),
+        latest = probe.stdout.trim();
+
+    return probe.code === 0 && /^\d+\.\d+\.\d+$/.test(latest) ?
+        `${NPM_NAME}@${latest}` :
+        failed(`could not read the latest ${NPM_NAME} release from npm (\`npm view ${NPM_NAME} version\`)`);
+}
+
+/** The plugin through npm at any version, or its repository through `github:` or a git URL at any ref, or the spec POSTMAN_PLUGIN_OPENCODE_SPEC installs. */
 function isOurSpec (system: System, spec: string): boolean {
     const bare = spec.split('#')[0];
 
@@ -205,6 +218,43 @@ async function withoutEntry (system: System, entry: Entry): Promise<string> {
     return edited ?? blocked(`could not remove ${entry.spec} from ${entry.file} without rewriting it; delete that entry yourself and re-run`);
 }
 
+/** Refetches a git spec the entry already names, refusing one the command would register a second copy of elsewhere. */
+async function refreshInPlace (system: System, version: Version, entry: Entry): Promise<void> {
+    // OpenCode 1's `plugin --global` writes its default config directory, whatever OPENCODE_CONFIG_DIR says.
+    const target = version.major >= 2 ? await editedFile(system, entry.dir) : configDir(system),
+        lands = version.major >= 2 ? samePath(entry.file, target) : samePath(entry.dir, target);
+
+    if (!lands) {
+        blocked(`${entry.file} registers ${redact(entry.spec)}, but OpenCode would write the refresh to ${target}; move the entry, with any options, there and re-run`);
+    }
+
+    await refreshEntry(system, version, entry);
+}
+
+/** Adds `spec`, then takes out the entry it supersedes; a refusal to take it out comes before anything is added. */
+async function replaceEntry (system: System, version: Version, entry: Entry, spec: string): Promise<void> {
+    const byOpenCode = version.major >= 2 && await removedByOpenCode(system, entry);
+
+    if (!byOpenCode) {
+        await withoutEntry(system, entry);
+    }
+
+    // OpenCode 1 replaces an entry for the same package in place only when forced; unforced, it changes nothing.
+    await mustRun(system, 'opencode', version.major >= 2 ? addArgs(version, spec) : ['plugin', '--global', '--force', spec], inConfigOf(system, entry));
+
+    // Either major may have replaced it in place already.
+    if (!(await configured(system)).entries.some((left) => left.spec === entry.spec && samePath(left.file, entry.file))) {
+        return;
+    }
+
+    if (byOpenCode) {
+        await mustRun(system, 'opencode', ['plugin', 'remove', entry.spec], inConfigOf(system, entry));
+    }
+    else {
+        await system.writeFile(entry.file, await withoutEntry(system, entry));
+    }
+}
+
 /**
  * OpenCode 2 caches a git plugin by its spec and `plugin add` reuses the cache, so a moved branch only
  * arrives when the cached copy is gone; `plugin update` would do it but needs OpenCode's background
@@ -283,44 +333,34 @@ export const opencode: Host = {
     install (system) {
         return guard(async () => {
             const entries = await readableEntries(system),
-                refresh = entries.length > 0,
-                fromNpm = refresh && entries[0].spec.split('#')[0].startsWith(NPM_NAME),
-                version = await installableVersion(system, fromNpm ? OPENCODE_NPM_MINIMUM : OPENCODE_MINIMUM);
+                spec = await specToInstall(system),
+                version = await installableVersion(system, spec.startsWith(`${NPM_NAME}@`) ? OPENCODE_NPM_MINIMUM : OPENCODE_MINIMUM),
+                entry = entries[0];
 
             // Both copies would load the same skills, so an older install that cannot be deleted whole stops us before the new one goes in.
             await preflightLegacy(system);
 
-            // npm keeps its own record of what it installed, which this installer does not know how to refresh.
-            if (fromNpm) {
+            if (!entry) {
+                await mustRun(system, 'opencode', addArgs(version, spec));
+
+                return result('done', summary('installed', spec, await removeLegacy(system)), NEXT);
+            }
+
+            // A pinned npm version never changes, so the entry is already what this run would install.
+            if (entry.spec === spec && spec.startsWith(`${NPM_NAME}@`)) {
                 const removed = await removeLegacy(system);
 
-                // OpenCode 1 reuses its cached `<name>@latest`, so only a new version string fetches anything.
-                return result('manual', summary('found', `${entries[0].spec}, installed from npm`, removed), version.major >= 2 ?
-                    'Run `opencode plugin update`.' :
-                    `Run \`opencode plugin --global --force ${NPM_NAME}@<version>\` with the version \`npm view ${NPM_NAME} version\` prints.`);
+                return result(removed.length ? 'done' : 'skipped', summary('already at', spec, removed));
             }
 
-            // Replacement first: if it fails, the older install is still a working one.
-            if (refresh) {
-                const entry = entries[0],
-                    // OpenCode 1's `plugin --global` writes its default config directory, whatever OPENCODE_CONFIG_DIR says.
-                    target = version.major >= 2 ? await editedFile(system, entry.dir) : configDir(system),
-                    lands = version.major >= 2 ? samePath(entry.file, target) : samePath(entry.dir, target);
-
-                // Anywhere else, the refresh would register a second copy instead.
-                if (!lands) {
-                    blocked(`${entry.file} registers ${redact(entry.spec)}, but OpenCode would write the refresh to ${target}; move the entry, with any options, there and re-run`);
-                }
-
-                await refreshEntry(system, version, entry);
+            if (entry.spec === spec) {
+                await refreshInPlace(system, version, entry);
             }
             else {
-                await mustRun(system, 'opencode', addArgs(version, specToInstall(system)));
+                await replaceEntry(system, version, entry, spec);
             }
 
-            const removed = await removeLegacy(system);
-
-            return result('done', summary(refresh ? 'updated' : 'installed', refresh ? redact(entries[0].spec) : specToInstall(system), removed), NEXT);
+            return result('done', summary(entry.spec === spec ? 'updated' : `replaced ${redact(entry.spec)} with`, redact(spec), await removeLegacy(system)), NEXT);
         });
     },
 

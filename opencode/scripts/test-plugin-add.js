@@ -2,7 +2,8 @@
 // Installs Postman with OpenCode's own `plugin` command under a throwaway home, then runs one session
 // against a stand-in model and Postman MCP server and checks what OpenCode sent them. The route is:
 //   git       a one-commit repository of the mirror scripts/build-mirror.js builds from this checkout
-//   npm       that mirror, packed, behind a local registry
+//   npm       that mirror, packed, behind a local registry, by name as the README installs it
+//   npm-pinned  the same at its exact version, as the installer installs it
 //   github    `github:postmanlabs/opencode-plugin`, or PLUGIN_ADD_SPEC, from GitHub
 //   registry  `@postman/opencode-plugin`, or PLUGIN_ADD_SPEC, from npm
 // `github` and `registry` install what is published, so they check the skills the installed copy declares.
@@ -22,7 +23,7 @@ import { MIRROR_REPO, buildMirror } from './build-mirror.js';
 import { resolveOpenCodeExecutable } from './lib/opencode-executable.js';
 
 const PUBLISHED = { github: `github:${MIRROR_REPO}`, registry: '@postman/opencode-plugin' },
-    ROUTES = ['git', 'npm', ...Object.keys(PUBLISHED)],
+    ROUTES = ['git', 'npm', 'npm-pinned', ...Object.keys(PUBLISHED)],
     route = process.argv[2],
     openCode = resolveOpenCodeExecutable(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')),
     // OpenCode 2 is its own CLI (`@opencode/cli`) with `plugin add`; OpenCode 1's command is `plugin <module>`.
@@ -125,8 +126,10 @@ try {
             spec = `git+${pathToFileURL(mirror).href}`;
         }
         else {
-            registry = await startRegistry(packMirror(mirror, root), readJson(path.join(mirror, 'package.json')));
-            spec = registry.name;
+            const manifest = readJson(path.join(mirror, 'package.json'));
+
+            registry = await startRegistry(packMirror(mirror, root), manifest);
+            spec = route === 'npm-pinned' ? `${registry.name}@${manifest.version}` : registry.name;
             environment.NPM_CONFIG_REGISTRY = registry.url;
             environment.npm_config_registry = registry.url;
         }

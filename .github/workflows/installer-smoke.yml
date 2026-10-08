@@ -103,10 +103,10 @@ jobs:
       - name: Kimi Code runs
         run: kimi --version
 
-      # postmanlabs/opencode-plugin holds main, so a pull request or a dispatched ref has the installer install
-      # the mirror built from its own commit, as a one-commit repository; main and the nightly run install the real one.
+      # The mirror and npm change only at a release, so every run but the nightly one has the installer install the
+      # mirror built from this commit, as a one-commit repository. The nightly run installs npm's latest release.
       - name: Build the OpenCode mirror from this commit
-        if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+        if: github.event_name != 'schedule'
         run: |
           mirror="$RUNNER_TEMP/opencode-plugin"
           node ../opencode/scripts/build-mirror.js "$mirror"

@@ -118,13 +118,17 @@ jobs:
             exit 1
           fi
 
-      - name: A latest release is on main
-        if: steps.meta.outputs.dist_tag == 'latest'
+      # Every OpenCode release reaches postmanlabs/opencode-plugin, so each one must be reviewed code. An installer
+      # rc is tagged on a release/ branch that never merges (see the release-installer skill).
+      - name: The release is on main
+        if: steps.meta.outputs.dist_tag == 'latest' || steps.meta.outputs.name == '@postman/opencode-plugin'
+        env:
+          NAME: ${{ steps.meta.outputs.name }}
         run: |
           set -euo pipefail
           git fetch --no-tags origin main
           if ! git merge-base --is-ancestor HEAD FETCH_HEAD; then
-            echo "::error::a latest release must be tagged on a commit that is on main"
+            echo "::error::$NAME must be tagged on a commit that is on main for this release"
             exit 1
           fi
 
@@ -233,12 +237,17 @@ jobs:
           fi
           gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes --title "$TAG" "${FLAGS[@]}"
 
-  # The same version as a tag on postmanlabs/opencode-plugin, holding exactly what npm published.
+  # postmanlabs/opencode-plugin changes only here: a latest release becomes its main, and every release a
+  # v<version> tag, each holding exactly what npm published. Nothing else writes to it.
   mirror:
     needs: publish
     if: ${{ needs.publish.outputs.name == '@postman/opencode-plugin' && (github.event_name != 'workflow_dispatch' || !inputs.dry_run) }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # OPENCODE_PLUGIN_TOKEN is this environment's secret, so only an approved release run can read it.
+    environment: npm-publish
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v7
         with:
@@ -248,6 +257,12 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: lts/*
+
+      - name: Make it postmanlabs/opencode-plugin's main
+        if: needs.publish.outputs.dist_tag == 'latest'
+        env:
+          OPENCODE_PLUGIN_TOKEN: ${{ secrets.OPENCODE_PLUGIN_TOKEN }}
+        run: bash .github/scripts/push-mirror.sh main "$(git rev-parse HEAD)"
 
       - name: Tag it on postmanlabs/opencode-plugin
         env:

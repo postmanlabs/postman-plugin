@@ -87,7 +87,7 @@ Postman's MCP server with `/mcp-config login plugin-postman:postman`.
 
 OpenCode installs Postman from
 [postmanlabs/opencode-plugin](https://github.com/postmanlabs/opencode-plugin),
-which follows `main`:
+which holds the latest release:
 
 ```bash
 opencode plugin add github:postmanlabs/opencode-plugin

@@ -39,16 +39,14 @@ there and stay. The release publishes the mirror's `README.md` as the npm page.
 A change to the install commands or minimums in this repo's `README.md` needs the
 same change in the mirror's.
 
-- **`opencode-mirror.yml`** commits the tree to the mirror's `main` on every push
-  to this repo's `main` that changes what it holds, so
-  `opencode plugin add github:postmanlabs/opencode-plugin` gets `main` as a clone
-  of this repo would.
-- **`release.yml`** publishes the same tree to npm as `@postman/opencode-plugin`
-  and tags the mirror `v<version>` when `@postman/opencode-plugin@<version>` is
-  tagged here.
-
-Both push with `OPENCODE_PLUGIN_TOKEN`, a fine-grained token with Contents read
-and write on the mirror only. The mirror's `package.json` takes its version from
+Only a release changes the mirror. When `@postman/opencode-plugin@<version>` is
+tagged on a commit on `main`, `release.yml` publishes the tree to npm, makes it
+the mirror's `main` if the version goes to `latest`, and tags the mirror
+`v<version>`. So the mirror's `main`, npm's `latest` and what the installer
+installs are always the same reviewed release. The `mirror` job runs in the
+`npm-publish` environment, as `publish` does, and pushes with that environment's
+`OPENCODE_PLUGIN_TOKEN`: a fine-grained token with Contents read and write on the
+mirror only, which no other workflow can read. The mirror's `package.json` takes its version from
 `opencode/package.json` and carries no `scripts` or `dependencies`: npm runs a
 Git dependency's `prepare`, which would pull dev dependencies into every user's
 install. Its `repository` is this repo, which npm's provenance check requires.
@@ -81,7 +79,8 @@ a throwaway home with no config directory:
 | Route | Installs | Runs in |
 | --- | --- | --- |
 | `git` | the mirror built from the checkout, as a one-commit repository | `validate.yml` and `installer-smoke.yml` |
-| `npm` | that mirror packed, served by a local registry | both |
+| `npm` | that mirror packed, served by a local registry, by name as the README installs it | both |
+| `npm-pinned` | the same at its exact version, as the installer installs it | both |
 | `github` | `github:postmanlabs/opencode-plugin` from GitHub, which is `main` as last synced (`PLUGIN_ADD_SPEC` sets the spec) | `installer-smoke.yml` |
 | `registry` | `@postman/opencode-plugin` from npm | `installer-smoke.yml`, nightly only |
 
@@ -112,7 +111,7 @@ it lands.
 .app.json                         maps the Codex plugin to its published ChatGPT app ID
 opencode/                         the OpenCode plugin — source, tests, install harnesses, routing evals
 opencode/scripts/build-mirror.js  builds postmanlabs/opencode-plugin, the package OpenCode installs
-.github/scripts/push-mirror.sh    commits or tags that build on the mirror, for opencode-mirror.yml and release.yml
+.github/scripts/push-mirror.sh    commits or tags that build on the mirror, for release.yml
 installer/                        `npx @postman/postman-plugin` — one adapter per agent in src/hosts/ — and the Pi package
 installer/src/pi-extension.ts     the Pi package's extension: the session-start mandate and the MCP server
 .opencode/plugins/postman.ts      loads that plugin from source when OpenCode runs inside a clone
@@ -222,15 +221,16 @@ both reach every route — Kimi's copy of the mandate once
 `node scripts/build-manifest.js` regenerates it — so rerun the full set after
 changing either and don't tune wording for OpenCode alone.
 
-A change reaches `github:postmanlabs/opencode-plugin` users once
-`opencode-mirror.yml` syncs it after merge, and clone users on their next
-`git pull`. npm users get it in a release, which is its own version bump:
+A change reaches OpenCode users only in a release, which is its own version
+bump; clone users get it on their next `git pull`:
 
 1. Set the version on the route's three strings (`opencode/package.json` and
    both headers in `mcp.opencode.json`; the unit tests fail if they differ).
 2. After it merges, push a signed tag `@postman/opencode-plugin@<version>` on
-   that commit. `release.yml` publishes the mirror tree to npm and tags the
-   mirror `v<version>`.
+   that commit; `release.yml` refuses one that isn't on `main`. Once a
+   headless-postman member approves each `npm-publish` job, it publishes the
+   mirror tree to npm, updates the mirror and tags it `v<version>`. The
+   installer moves users to it on their next run.
 3. Install it with `opencode plugin add @postman/opencode-plugin@<version>`, on
    OpenCode 1 and on OpenCode 2, following
    [README.md](README.md#opencode), and check that each loads the
@@ -375,7 +375,7 @@ wherever one exists:
 | Cursor | a clone at `~/.cursor/plugins/local/postman`. A fresh install is skipped when the Cursor Marketplace copy is present, but an existing clone is kept and updated: Cursor keeps a disabled Marketplace copy on disk too, so the installer can't tell whether that copy is enabled |
 | Factory Droid | `droid plugin` against this repo as the `postman-plugin` marketplace |
 | Kimi Code | `npx --package=plugins@1.3.4 plugins add postmanlabs/postman-plugin --target kimi`, because Kimi installs plugins only from its TUI |
-| OpenCode | `opencode plugin add github:postmanlabs/opencode-plugin` on OpenCode 2.0.4 or later, `opencode plugin --global …` on OpenCode 1.14.33 or later. It reads the global config (`plugins`, or `plugin` on OpenCode 1, in `opencode.json` or `opencode.jsonc`) to see what is installed, removes with `opencode plugin remove` on OpenCode 2 and otherwise by editing the config entry — on OpenCode 1, and on 2 when the entry is in `opencode.jsonc` beside an `opencode.json`, the only file `plugin remove` edits — and then deletes an older clone-and-loader install so no skill loads twice. It updates by re-running with `--force` on OpenCode 1 and, on OpenCode 2, by deleting the cached copy under `<cache>/opencode/npm/git-opencode-plugin-*` and adding again: `plugin add` reuses that cache, and `plugin update`, `list` and `check` need OpenCode's background service, which a second instance on the same port or a cold start answers wrongly. It refuses to refresh an entry that the refresh would not write back to, where it would register a second copy instead: on OpenCode 2 one outside the first of `opencode.json`, `opencode.jsonc` and their `.opencode/` copies that exists, which is the file `plugin add` edits; on OpenCode 1 one in `OPENCODE_CONFIG_DIR`, which `plugin --global` ignores. An existing npm install is held to npm's minimum, 1.14.22 on OpenCode 1. An npm-installed entry is left for `opencode plugin update`, or on OpenCode 1 a forced re-run with an explicit version: its cached `<name>@latest` is never re-fetched. `POSTMAN_PLUGIN_OPENCODE_SPEC` installs another spec instead, which installer smoke sets to the mirror built from a pull request |
+| OpenCode | `opencode plugin add @postman/opencode-plugin@<version>` on OpenCode 2.0.4 or later, `opencode plugin --global …` on OpenCode 1.14.22 or later, with `<version>` npm's latest release, which it reads with `npm view` on every run. A re-run replaces an entry for any other spec of the plugin (an older release, the bare name, or `github:postmanlabs/opencode-plugin`) by adding the new one and then removing the old, and leaves one for the latest release alone. It reads the global config (`plugins`, or `plugin` on OpenCode 1, in `opencode.json` or `opencode.jsonc`) to see what is installed, removes with `opencode plugin remove` on OpenCode 2 and otherwise by editing the config entry — on OpenCode 1, and on 2 when the entry is in `opencode.jsonc` beside an `opencode.json`, the only file `plugin remove` edits — and then deletes an older clone-and-loader install so no skill loads twice. A git spec that `POSTMAN_PLUGIN_OPENCODE_SPEC` names again is updated in place: by re-running with `--force` on OpenCode 1 and, on OpenCode 2, by deleting the cached copy under `<cache>/opencode/npm/git-opencode-plugin-*` and adding again: `plugin add` reuses that cache, and `plugin update`, `list` and `check` need OpenCode's background service, which a second instance on the same port or a cold start answers wrongly. It refuses to refresh an entry that the refresh would not write back to, where it would register a second copy instead: on OpenCode 2 one outside the first of `opencode.json`, `opencode.jsonc` and their `.opencode/` copies that exists, which is the file `plugin add` edits; on OpenCode 1 one in `OPENCODE_CONFIG_DIR`, which `plugin --global` ignores. A git spec is held to the git route's minimum, 1.14.33 on OpenCode 1. `POSTMAN_PLUGIN_OPENCODE_SPEC` installs another spec instead, which installer smoke sets to the mirror built from its commit on every run but the nightly one |
 | Pi | `pi install npm:@postman/postman-plugin`, or `pi update` when it's installed, then `pi remove` for any git install of this repo, which would load the same skills twice |
 
 Every agent but Pi gets the plugin from GitHub, not from the npm package, so a
