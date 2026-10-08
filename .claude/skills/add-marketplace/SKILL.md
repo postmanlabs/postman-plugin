@@ -43,11 +43,15 @@ writing anything:
      into that one file, Step 5 usually has no install command, and there may
      be no `version` key anywhere.
    - **Package route** — the vendor loads plugin code rather than a manifest,
-     and the route's version lives in a `package.json`. OpenCode is this: the
-     user clones this repo and adds a one-line file to OpenCode's `plugins/`
-     directory that re-exports `opencode/src/index.ts`, which reads the
-     clone's `skills/` and `mcp.opencode.json` at runtime. It is not published
-     to npm. Pi is one too, published inside the installer's npm package.
+     and the route's version lives in a `package.json`. OpenCode is this:
+     `opencode plugin add github:postmanlabs/postman-plugin` installs this
+     repo's `main`, whose root `package.json` names `opencode/src/index.ts` as
+     `main` and `exports["./server"]`; that file reads `skills/`, the mandate
+     and `mcp.opencode.json` from the repo root at runtime. The root
+     `package.json` stays `private`, with no `scripts`, `dependencies` or
+     `type`, its `files` limited to what the entrypoint reads, and its
+     `version` equal to `opencode/package.json`'s. It is not published to
+     npm. Pi is one too, published inside the installer's npm package.
 2. The manifest or config path and filename.
 3. The **exact shape** of the skills pointer. The routes here already cover
    implicit, string, array and object (`{"skills": {"paths": ["./skills"]}}`), so
@@ -271,7 +275,7 @@ node .claude/hooks/validate-manifests.js && echo "manifests consistent"
 # names no vendor and slips a text filter. Package routes match no
 # `*plugin.json`, so name their package manifest explicitly, as Factory Droid's
 # fixed-name `mcp.json` matches no `mcp.*.json`.
-git diff --name-only main -- '*plugin.json' 'mcp.*.json' mcp.json opencode/package.json installer/package.json
+git diff --name-only main -- '*plugin.json' 'mcp.*.json' mcp.json package.json opencode/package.json installer/package.json
 ```
 
 If the vendor publishes a schema, run the `schema` job's ajv command against the
@@ -294,8 +298,8 @@ covers what each of these checks and — more usefully — what none of them do.
   `mcp.json`, so Codex, Cursor and Copilot CLI would all load Factory Droid's
   server and report their traffic as Droid. The trigger is the filename, not
   root-level config in general: a config-only route's own file at the root, or
-  a package route's `package.json` in its own directory, is a different name
-  that Codex never looks at.
+  a package route's `package.json` — OpenCode's at the root included — is a
+  different name that Codex never looks at.
 - **Do not copy another vendor's manifest or MCP file wholesale.** `X-Source`,
   version, header key and URL mode are deliberate per-route differences; a copy
   breaks all four at once.

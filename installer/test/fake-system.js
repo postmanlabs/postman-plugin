@@ -51,6 +51,19 @@ export function fakeSystem ({
             return file in system.files ? system.files[file] : null;
         },
 
+        async readDir (dir) {
+            const prefix = dir + path.sep,
+                names = new Set();
+
+            for (const entry of [...Object.keys(system.files), ...system.dirs]) {
+                if (entry.startsWith(prefix)) {
+                    names.add(entry.slice(prefix.length).split(path.sep)[0]);
+                }
+            }
+
+            return [...names];
+        },
+
         async probe (command, args) {
             return respond(system.probes, [command, ...args].join(' '), { code: 1, stdout: '', stderr: 'no probe stubbed' });
         },
@@ -86,6 +99,28 @@ export function fakeSystem ({
 
                 for (const dir of [...system.dirs]) {
                     if (dir === file || dir.startsWith(prefix)) {
+                        system.dirs.delete(dir);
+                    }
+                }
+            }
+        },
+
+        async rename (from, to) {
+            system.commands.push(`rename ${from} ${to}`);
+
+            if (!dryRun) {
+                const prefix = from + path.sep;
+
+                for (const key of Object.keys(system.files)) {
+                    if (key === from || key.startsWith(prefix)) {
+                        system.files[to + key.slice(from.length)] = system.files[key];
+                        delete system.files[key];
+                    }
+                }
+
+                for (const dir of [...system.dirs]) {
+                    if (dir === from || dir.startsWith(prefix)) {
+                        system.dirs.add(to + dir.slice(from.length));
                         system.dirs.delete(dir);
                     }
                 }

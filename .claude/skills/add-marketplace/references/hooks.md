@@ -23,7 +23,7 @@ install path. Every vendor names that differently, and only some substitute
 | Factory Droid | `DROID_PLUGIN_ROOT`, plus `CLAUDE_PLUGIN_ROOT` for compatibility | yes — `${DROID_PLUGIN_ROOT}`, `$DROID_PLUGIN_ROOT`, `${CLAUDE_PLUGIN_ROOT}` and `$CLAUDE_PLUGIN_ROOT` |
 | Kimi Code | `KIMI_PLUGIN_ROOT`, and cwd is set to the plugin root | not documented |
 | Agent Plugins 1.0 (root `plugin.json`) | `PLUGIN_ROOT`, `PLUGIN_DATA` | **no** — the spec restricts expansion to `args`, `env` values and `cwd`, and defines no hooks component at all |
-| OpenCode | **none, and none should be added** — the local plugin locates the clone's files from `import.meta.url` | n/a — it never reads `hooks/hooks.json` |
+| OpenCode | **none, and none should be added** — the plugin locates the repo's files from `import.meta.url`, in an installed copy or a clone | n/a — it never reads `hooks/hooks.json` |
 | Pi | **none** — the extension locates the tarball's files from `import.meta.url` | n/a — it never reads `hooks/hooks.json` |
 
 So a single vendor token is wrong on every other route, and forking the file per
@@ -122,7 +122,7 @@ Discovery is the other half, and it is not uniform either:
 | Factory Droid | `hooks/hooks.json` at the plugin root, in the same `hooks`-wrapped shape as Claude Code. It finds the scripts through Droid's `${CLAUDE_PLUGIN_ROOT}` alias and gets `${DROID_PLUGIN_ROOT}` as its argument, which is what makes the scripts strip the `postman:` prefix. A top-level event key is the shape of a user's `.factory/hooks.json`, not a plugin's |
 | Copilot / VS Code | layout-dependent — `hooks/hooks.json` for the Claude layout, `com.github.copilot/hooks/hooks.json` for Agent Plugins 1.0, `hooks.json` at the root for the Copilot layout |
 | Kimi Code | **nowhere.** Hooks are an inline `hooks` array in the manifest, entries shaped `event` / `matcher` / `command` / `timeout`, and Kimi documents no default file to discover. It also discards a SessionStart hook's output, so the mandate goes through the manifest's `systemPromptPath` instead |
-| OpenCode | **no `hooks.json`.** Nothing session-shaped in its config schema; the local plugin pushes the mandate into the system prompt from its own hooks — see item 1 below |
+| OpenCode | **no `hooks.json`.** Nothing session-shaped in its config schema; the plugin pushes the mandate into the system prompt from its own hooks — see item 1 below |
 | Pi | **no `hooks.json`.** Its extensions subscribe to events instead; the package's extension sets the mandate as a system-prompt section on `before_agent_start` |
 
 The Kimi Code row is what a new route inherits if Step 3 is skipped: nothing
@@ -183,6 +183,6 @@ plugin through its Agent Plugins loader, which has no hooks component, so
 goes dead — including the ones that work today.
 
 **The trigger is the filename.** A config-only vendor's own root file is not
-affected, and neither is a package route's `package.json` in its own directory:
+affected, and neither is a package route's `package.json`, OpenCode's at the root included:
 each is a different name, in neither `DISCOVERABLE_PLUGIN_MANIFEST_PATHS` nor
 the Agent Plugins set, so Codex never loads it and it cannot reroute anything.

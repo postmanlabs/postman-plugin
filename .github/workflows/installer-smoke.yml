@@ -3,7 +3,8 @@
 # installer sends; this checks the agents still accept them, and that each one
 # then reports Postman (Cursor isn't installed, so its files are checked instead).
 # They install from GitHub or npm, not from this checkout, so it tests the
-# installer, not a branch's skills; only the route harness steps at the end load
+# installer, not a branch's skills; OpenCode, on every run but the nightly one, installs
+# a one-commit copy of this checkout, and the route harness steps at the end load
 # this checkout, each into the latest release of its agent. It also runs nightly, because an agent release breaks the installer
 # without anyone pushing here, and the release-installer skill dispatches it on
 # the commit it is about to tag.
@@ -14,9 +15,9 @@ run-name: ${{ inputs.ref && format('Installer smoke on {0}', inputs.ref) || '' }
 on:
   push:
     branches: ['main']
-    paths: ['installer/**', 'opencode/**', 'scripts/lib/**', 'scripts/*-harness.js', '.github/workflows/installer-smoke.yml']
+    paths: ['package.json', 'installer/**', 'opencode/**', 'scripts/lib/**', 'scripts/*-harness.js', '.github/workflows/installer-smoke.yml']
   pull_request:
-    paths: ['installer/**', 'opencode/**', 'scripts/lib/**', 'scripts/*-harness.js', '.github/workflows/installer-smoke.yml']
+    paths: ['package.json', 'installer/**', 'opencode/**', 'scripts/lib/**', 'scripts/*-harness.js', '.github/workflows/installer-smoke.yml']
   schedule:
     - cron: '23 4 * * *'
   # The release-installer skill passes the exact commit it is about to tag.
@@ -72,6 +73,10 @@ jobs:
       - name: Install the agent CLIs
         run: npm install -g @anthropic-ai/claude-code @openai/codex droid @earendil-works/pi-coding-agent opencode-ai
 
+      # OpenCode 2 is its own CLI, installed apart so both majors are tested: `opencode-ai` above is OpenCode 1.
+      - name: Install OpenCode 2 beside OpenCode 1
+        run: npm install --prefix "$RUNNER_TEMP/opencode2" @opencode/cli@latest
+
       - name: Install Kimi Code
         if: runner.os != 'Windows'
         run: |
@@ -97,6 +102,15 @@ jobs:
 
       - name: Kimi Code runs
         run: kimi --version
+
+      # Every run but the nightly one has the installer install this commit, as a one-commit copy of the checkout, so a
+      # fork's pull request is tested too. The nightly run installs `main` from GitHub, as users do.
+      - name: Copy this commit for OpenCode
+        if: github.event_name != 'schedule'
+        run: |
+          copy="$RUNNER_TEMP/postman-plugin"
+          node -e 'import(require("url").pathToFileURL("../scripts/lib/harness.js").href).then((h) => { h.copyCheckout(process.argv[1]); h.commit(process.argv[1]); })' "$copy"
+          echo "POSTMAN_PLUGIN_OPENCODE_SPEC=git+$(node -p 'require("url").pathToFileURL(process.argv[1]).href' "$copy")" >> "$GITHUB_ENV"
 
       - name: Install, then re-run to take the update path
         run: |
@@ -172,13 +186,64 @@ jobs:
         env:
           CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
 
+      # Both OpenCode steps below run from here.
+      - name: Install the OpenCode package's dependencies
+        if: ${{ !cancelled() }}
+        working-directory: opencode
+        run: npm ci
+
       # The pinned harness in validate.yml, against the OpenCode release installed above.
       - name: The latest OpenCode loads the skills
         if: ${{ !cancelled() }}
         working-directory: opencode
         # npm puts global bins in the prefix itself on Windows, in its bin/ elsewhere.
         run: |
-          npm ci
           OPENCODE_BIN=$(node -p 'require("path").join(process.argv[1], process.platform === "win32" ? "opencode.cmd" : "bin/opencode")' "$(npm prefix -g)")
           export OPENCODE_BIN
           npm run test:harness
+
+      # The pinned plugin-add harness in validate.yml, against the latest OpenCode 1 installed above and the
+      # latest OpenCode 2, so a release that stops loading Postman through `opencode plugin` fails here. Beyond
+      # the local copy it installs what users run, `github:postmanlabs/postman-plugin`, from GitHub.
+      - name: The latest OpenCode installs Postman with `plugin`
+        if: ${{ !cancelled() }}
+        working-directory: opencode
+        env:
+          FORK: ${{ github.event.pull_request.head.repo.fork }}
+          PR_SHA: ${{ github.event.pull_request.head.sha }}
+          INPUT_REF: ${{ inputs.ref }}
+        run: |
+          # npm puts global bins in the prefix itself on Windows, in its bin/ elsewhere.
+          OPENCODE1=$(node -p 'require("path").join(process.argv[1], process.platform === "win32" ? "opencode.cmd" : "bin/opencode")' "$(npm prefix -g)")
+          OPENCODE2=$(node -p 'require("path").join(process.argv[1], "node_modules", ".bin", process.platform === "win32" ? "opencode.cmd" : "opencode")' "$RUNNER_TEMP/opencode2")
+
+          # A pull request installs its own head commit; a dispatch, the commit it was given; main and the
+          # nightly run, the bare spec the README documents.
+          spec=github:postmanlabs/postman-plugin
+          if [ -n "$PR_SHA" ]; then spec="$spec#$PR_SHA"; elif [ -n "$INPUT_REF" ]; then spec="$spec#$INPUT_REF"; fi
+
+          for opencode in "$OPENCODE1" "$OPENCODE2"; do
+            OPENCODE_BIN="$opencode" node scripts/test-plugin-add.js git
+
+            if [ "$FORK" = true ]; then
+              echo "::notice::the github route is not run for a fork's pull request: its head commit is not on postmanlabs/postman-plugin"
+            else
+              OPENCODE_BIN="$opencode" PLUGIN_ADD_SPEC="$spec" node scripts/test-plugin-add.js github
+            fi
+          done
+
+      # The installer drives whichever `opencode` is first on PATH, which was OpenCode 1 above. Last, because
+      # a PATH entry added through GITHUB_PATH holds for every step after it.
+      - name: Put OpenCode 2 first on PATH
+        if: ${{ !cancelled() }}
+        run: node -p 'require("path").join(process.argv[1], "node_modules", ".bin")' "$RUNNER_TEMP/opencode2" >> "$GITHUB_PATH"
+
+      - name: The installer installs, updates and removes Postman in OpenCode 2
+        if: ${{ !cancelled() }}
+        run: |
+          opencode --version
+          node dist/cli.js install --yes --agent opencode
+          node dist/cli.js install --yes --agent opencode
+          node scripts/smoke-check.js installed opencode
+          node dist/cli.js remove --yes --agent opencode
+          node scripts/smoke-check.js removed opencode

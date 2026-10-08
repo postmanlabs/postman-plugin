@@ -20,6 +20,21 @@ test('mcp.opencode.json carries this package version in both headers', () => {
     assert.equal(headers['User-Agent'], `postman-opencode-plugin/${packageVersion}`);
 });
 
+test('the repo root is installable with `opencode plugin add github:...` and versions with this package', () => {
+    const root = JSON.parse(fs.readFileSync(path.join(assetRoot, 'package.json'), 'utf8'));
+
+    assert.equal(root.version, packageVersion);
+    assert.equal(root.exports['./server'], './opencode/src/index.ts');
+    assert.equal(root.main, root.exports['./server']);
+    assert.equal(root.scripts, undefined, 'npm runs prepare/install scripts of a Git dependency in every user\'s install');
+    assert.equal(root.dependencies, undefined);
+
+    for (const file of [path.posix.normalize(root.main), 'opencode/package.json', 'skills', 'hooks/session-start-context.md', 'manifest.json', 'mcp.opencode.json']) {
+        assert.ok(fs.existsSync(path.join(assetRoot, file)), `${file} does not exist`);
+        assert.ok(root.files.some((entry) => file === entry.replace(/\/$/, '') || file.startsWith(entry)), `the installed package leaves out ${file}, which the entrypoint reads`);
+    }
+});
+
 test('registers the skills directory and Postman MCP server', () => {
     const config = {};
 

@@ -22,7 +22,7 @@ export function workspace (name) {
     fs.mkdirSync(home, { recursive: true });
     fs.mkdirSync(project, { recursive: true });
 
-    return { root, home, project, remove: () => fs.rmSync(root, { recursive: true, force: true }) };
+    return { root, home, project, remove: () => fs.rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }) };
 }
 
 // Some agents find their project from $PWD rather than the working directory they are started in.
@@ -146,7 +146,7 @@ export function pointMcpAt (file, url, serversKey = 'mcpServers') {
 
 /** Only the JSON-RPC POSTs carry a server's configured headers; the OAuth probes after the 401 don't. */
 export function assertMcpHeaders (agent, mcpRequests, headers) {
-    const toServer = mcpRequests.filter(({ method, url }) => method === 'POST' && url === '/mcp');
+    const toServer = mcpRequests.filter(({ method, url }) => method === 'POST' && url.split('?')[0] === '/mcp');
 
     assert.ok(toServer.length > 0, `${agent} never connected to the Postman MCP server: ${JSON.stringify(mcpRequests.map(({ method, url }) => `${method} ${url}`))}`);
 

@@ -15,11 +15,14 @@ One parallel job per concern, so a failure names itself:
   so a stale manifest fails on a user's machine rather than here; checking it on
   every push is much cheaper than diagnosing that.
 - **`opencode`** — from `opencode/`: `npm ci`, the unit tests, the harness that
-  installs the plugin as a user does (the clone's files and the one-line file
-  under an isolated global config directory) and has the pinned OpenCode CLI
-  load every skill, and a check that every skill has a routing eval case.
-  OpenCode applies no version gate to a local plugin, so the minimum version
-  is documented rather than enforced.
+  installs the clone-and-loader route under an isolated global config directory
+  and has the pinned OpenCode CLI load every skill, `scripts/test-plugin-add.js
+  git`, which runs `opencode plugin add` from a one-commit copy of the checkout
+  on OpenCode 1 and 2, and a check that every skill has a routing eval case.
+  Installer smoke adds the `github` route, from GitHub at the pull request's
+  commit. OpenCode applies no version gate to a plugin, so the installer
+  enforces the measured minimums (`OPENCODE_MINIMUM` in
+  `installer/src/source.ts`) and the README documents them.
 - **`schema`** — one matrix entry per official schema, fetched from the vendor's
   own source on every run, so a vendor tightening its schema fails here rather
   than at marketplace review. Entries carry `spec`, which is not always `draft7`
