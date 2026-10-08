@@ -32,7 +32,9 @@ names a server entrypoint (`exports["./server"]`, else `main`). That package is
 [postmanlabs/opencode-plugin](https://github.com/postmanlabs/opencode-plugin),
 built by `opencode/scripts/build-mirror.js` from this repo —
 `opencode/src/index.ts` at `src/`, with `skills/`, the mandate, `manifest.json`
-and `mcp.opencode.json` beside it — and pushed by two workflows. A sync replaces
+and `mcp.opencode.json` beside it — and pushed by two workflows. Its README is
+`opencode/mirror-readme.md` with this repo's `README.md` OpenCode section
+inserted, so the install commands and minimums are written once. A sync replaces
 only the paths in the script's `MIRROR_PATHS`; files that belong to the mirror
 alone, such as `SECURITY.md` and `.github/CODEOWNERS`, are edited there and stay.
 
@@ -108,7 +110,9 @@ it lands.
 .factory-plugin/plugin.json       the Factory Droid plugin metadata
 .app.json                         maps the Codex plugin to its published ChatGPT app ID
 opencode/                         the OpenCode plugin — source, tests, install harnesses, routing evals
-opencode/scripts/build-mirror.js  builds postmanlabs/opencode-plugin, the package OpenCode installs; opencode-mirror.yml and release.yml push it
+opencode/scripts/build-mirror.js  builds postmanlabs/opencode-plugin, the package OpenCode installs
+opencode/mirror-readme.md         that package's README; the build inserts README.md's OpenCode section into it
+.github/scripts/push-mirror.sh    commits or tags that build on the mirror, for opencode-mirror.yml and release.yml
 installer/                        `npx @postman/postman-plugin` — one adapter per agent in src/hosts/ — and the Pi package
 installer/src/pi-extension.ts     the Pi package's extension: the session-start mandate and the MCP server
 .opencode/plugins/postman.ts      loads that plugin from source when OpenCode runs inside a clone
@@ -229,7 +233,7 @@ A change reaches `github:postmanlabs/opencode-plugin` users once
    mirror `v<version>`.
 3. Install it with `opencode plugin add @postman/opencode-plugin@<version>`, on
    OpenCode 1 and on OpenCode 2, following
-   [opencode/README.md](opencode/README.md), and check that each loads the
+   [README.md](README.md#opencode), and check that each loads the
    skills and the MCP server. The clone harness can't cover OpenCode 2: its CLI
    has no `debug skill` command; `test-plugin-add.js` covers both versions.
 

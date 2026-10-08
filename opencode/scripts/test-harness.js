@@ -24,7 +24,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'),
     nestedDirectory = path.join(projectDirectory, 'services', 'orders'),
     openCode = resolveOpenCodeExecutable(root),
     installedSkills = path.join('postman-plugin', 'skills'),
-    // Must stay identical to the shim opencode/README.md tells users to write.
+    // Must stay identical to the shim opencode/mirror-readme.md tells users to write.
     shim = "export { default } from '../postman-plugin/opencode/src/index.ts';\n";
 
 function run (command, argumentsList, options = {}) {

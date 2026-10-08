@@ -13,11 +13,12 @@ on:
       - 'manifest.json'
       - 'mcp.opencode.json'
       - 'LICENSE'
+      - 'README.md'
       - 'opencode/src/**'
       - 'opencode/package.json'
-      - 'opencode/README.md'
+      - 'opencode/mirror-readme.md'
       - 'opencode/scripts/build-mirror.js'
-      - 'opencode/scripts/push-mirror.sh'
+      - '.github/scripts/push-mirror.sh'
       - '.github/workflows/opencode-mirror.yml'
   workflow_dispatch:
 
@@ -48,4 +49,4 @@ jobs:
       - name: Commit it to postmanlabs/opencode-plugin
         env:
           OPENCODE_PLUGIN_TOKEN: ${{ secrets.OPENCODE_PLUGIN_TOKEN }}
-        run: bash opencode/scripts/push-mirror.sh main "$GITHUB_SHA"
+        run: bash .github/scripts/push-mirror.sh main "$GITHUB_SHA"

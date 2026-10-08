@@ -36,8 +36,26 @@ export function mirrorManifest (source) {
     };
 }
 
-export function mirrorReadme (markdown) {
-    const [title, ...rest] = markdown.split('\n'),
+const INSTALL_MARKER = "<!-- The OpenCode section of postman-plugin's README.md goes here; scripts/build-mirror.js inserts it. -->";
+
+/** The body of README.md's `### OpenCode` section, so the install commands and minimums are written once. */
+export function openCodeInstall (rootReadme) {
+    const section = rootReadme.split(/^### /m).find((part) => part.startsWith('OpenCode\n'));
+
+    if (!section) {
+        throw new Error('README.md has no `### OpenCode` section for the mirror\'s install instructions');
+    }
+
+    return section.slice('OpenCode\n'.length).trim();
+}
+
+/** mirror-readme.md with README.md's install section in place and a notice that the repository is generated. */
+export function mirrorReadme (markdown, rootReadme) {
+    if (!markdown.includes(INSTALL_MARKER)) {
+        throw new Error('mirror-readme.md has lost the marker its install section goes in');
+    }
+
+    const [title, ...rest] = markdown.replace(INSTALL_MARKER, openCodeInstall(rootReadme)).split('\n'),
         notice = `> Generated from [${SOURCE_REPO}](https://github.com/${SOURCE_REPO}) on every change to its \`main\`. ` +
             `Open issues and pull requests there; changes made here to generated files are overwritten.`;
 
@@ -64,7 +82,10 @@ export function buildMirror (out) {
         recursive: true,
         filter: (file) => !path.basename(file).startsWith('.')
     });
-    fs.writeFileSync(path.join(out, 'README.md'), mirrorReadme(fs.readFileSync(path.join(packageRoot, 'README.md'), 'utf8')));
+    fs.writeFileSync(path.join(out, 'README.md'), mirrorReadme(
+        fs.readFileSync(path.join(packageRoot, 'mirror-readme.md'), 'utf8'),
+        fs.readFileSync(path.join(repoRoot, 'README.md'), 'utf8')
+    ));
     fs.writeFileSync(path.join(out, 'package.json'), `${JSON.stringify(mirrorManifest(source), null, 2)}\n`);
 }
 

@@ -188,7 +188,7 @@ try {
     assert.ok(second.includes(skillExcerpt(ENTRY_SKILL, installedRoot)), `the mandated skill did not load:\n${second.slice(-800)}`);
     assertMcpHeaders('OpenCode', standIn.mcpRequests, mcpConfig.mcp.postman.headers);
 
-    // OpenCode 1 has no remove command; its entry is deleted from the config by hand (see opencode/README.md).
+    // OpenCode 1 has no remove command; its entry is deleted from the config by hand (see README.md's OpenCode section).
     if (openCodeMajor >= 2) {
         const removed = await runAgent(openCode, ['plugin', 'remove', spec], { cwd: nested, env: environment });
 

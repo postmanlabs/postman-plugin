@@ -58,7 +58,7 @@ the PR body.
 
 ## Minimum agent versions are measured
 
-A minimum agent version, in `README.md`, `opencode/README.md` or the
+A minimum agent version, in `README.md` or the
 installer, is the oldest release the route passes on. Find it by bisecting
 that agent's releases, once per install route, and cite the bisect in the
 PR. A changelog entry, the version CI pins and a number another doc states

@@ -248,4 +248,4 @@ jobs:
         env:
           OPENCODE_PLUGIN_TOKEN: ${{ secrets.OPENCODE_PLUGIN_TOKEN }}
           VERSION: ${{ needs.publish.outputs.version }}
-        run: bash opencode/scripts/push-mirror.sh tag "$VERSION"
+        run: bash .github/scripts/push-mirror.sh tag "$VERSION"

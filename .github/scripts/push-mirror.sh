@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Builds scripts/build-mirror.js's tree into a clone of postmanlabs/opencode-plugin, replacing only the files
+# Builds opencode/scripts/build-mirror.js's tree into a clone of postmanlabs/opencode-plugin, replacing only the files
 # it generates, then either commits it to main or tags it as a release:
 #   push-mirror.sh main <source-sha>
 #   push-mirror.sh tag <version>
 # OPENCODE_PLUGIN_TOKEN is a fine-grained token with Contents read and write on that repository only.
 set -euo pipefail
 
-build=$(cd "$(dirname "$0")" && pwd)/build-mirror.js
+build=$(cd "$(dirname "$0")/../../opencode/scripts" && pwd)/build-mirror.js
 mode=$1
 arg=$2
 : "${OPENCODE_PLUGIN_TOKEN:?set OPENCODE_PLUGIN_TOKEN to a token that can push to postmanlabs/opencode-plugin}"

@@ -30,10 +30,10 @@ test('every adapter names a route that exists', () => {
     }
 });
 
-test('the OpenCode shim is the one opencode/README.md tells users to write', () => {
-    const readme = fs.readFileSync(path.join(repoRoot, 'opencode', 'README.md'), 'utf8'),
+test('the OpenCode shim is the one opencode/mirror-readme.md tells users to write', () => {
+    const readme = fs.readFileSync(path.join(repoRoot, 'opencode', 'mirror-readme.md'), 'utf8'),
         documented = readme.match(/echo "(export \{ default \} from [^"]+)" > ~\/\.config\/opencode\/plugins\/postman\.ts/);
 
-    assert.ok(documented, 'opencode/README.md no longer shows the global shim command');
+    assert.ok(documented, 'opencode/mirror-readme.md no longer shows the global shim command');
     assert.equal(OPENCODE_SHIM, `${documented[1]}\n`);
 });

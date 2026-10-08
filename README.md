@@ -85,15 +85,33 @@ Postman's MCP server with `/mcp-config login plugin-postman:postman`.
 
 ### OpenCode
 
+OpenCode installs Postman from
+[postmanlabs/opencode-plugin](https://github.com/postmanlabs/opencode-plugin),
+which follows `main`:
+
 ```bash
 opencode plugin add github:postmanlabs/opencode-plugin
 ```
 
-That is OpenCode 2.0.4 or later. On OpenCode 1.14.33 or later the command is
-`opencode plugin --global github:postmanlabs/opencode-plugin`.
-[opencode/README.md](opencode/README.md#install) has the npm form, the
-minimum versions per route, how to remove it, and the older clone-and-loader
-install.
+or from npm, which carries the latest release:
+
+```bash
+opencode plugin add @postman/opencode-plugin
+```
+
+Restart OpenCode after either. To check it loaded, ask OpenCode to "set up
+Postman in this repo": it should load the `bootstrap` skill and run the Postman
+CLI.
+
+| | OpenCode 2 (`@opencode/cli`) | OpenCode 1 (`opencode-ai`) |
+| --- | --- | --- |
+| Command | `opencode plugin add <spec>` | `opencode plugin --global <spec>` |
+| `github:postmanlabs/opencode-plugin` needs | 2.0.4 | 1.14.33 |
+| `@postman/opencode-plugin` needs | 2.0.4 | 1.14.22 |
+| Remove | `opencode plugin remove <spec>` | delete the entry from `plugin` in whichever of `~/.config/opencode/opencode.json` or `opencode.jsonc` holds it, then restart |
+
+The `github:` form needs `git`. Install it one way only: two installs register
+every skill twice.
 
 ### Pi
 
