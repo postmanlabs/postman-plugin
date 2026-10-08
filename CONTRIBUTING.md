@@ -30,9 +30,11 @@ understand, so its traffic arrived with no `X-Source` at all. Keep
 OpenCode has no plugin-manifest format; it loads a package whose `package.json`
 names a server entrypoint (`exports["./server"]`, else `main`). That package is
 [postmanlabs/opencode-plugin](https://github.com/postmanlabs/opencode-plugin),
-which nobody edits: `opencode/scripts/build-mirror.js` builds it from this repo —
+built by `opencode/scripts/build-mirror.js` from this repo —
 `opencode/src/index.ts` at `src/`, with `skills/`, the mandate, `manifest.json`
-and `mcp.opencode.json` beside it — and two workflows push it:
+and `mcp.opencode.json` beside it — and pushed by two workflows. A sync replaces
+only the paths in the script's `MIRROR_PATHS`; files that belong to the mirror
+alone, such as `SECURITY.md` and `.github/CODEOWNERS`, are edited there and stay.
 
 - **`opencode-mirror.yml`** commits the tree to the mirror's `main` on every push
   to this repo's `main` that changes what it holds, so

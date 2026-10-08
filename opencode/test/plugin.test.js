@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { buildMirror } from '../scripts/build-mirror.js';
+import { buildMirror, MIRROR_PATHS } from '../scripts/build-mirror.js';
 import PostmanPluginDefinition, {
     applyPostmanConfig, assetRoot, mcpConfigFile, PostmanPlugin, sessionContextFile,
     skillsDirectory, toOpenCodeSessionContext
@@ -44,6 +44,39 @@ test('the mirror is a package `opencode plugin add` can install, versioned with 
 
     assert.deepEqual(fs.readdirSync(path.join(out, 'skills')).sort(), manifestSkills.map((skill) => skill.name).sort());
     assert.equal(fs.readFileSync(path.join(out, 'src', 'index.ts'), 'utf8'), fs.readFileSync(path.join(packageRoot, 'src', 'index.ts'), 'utf8'));
+});
+
+test('a sync replaces what the mirror generates and keeps the mirror\'s own files', (t) => {
+    const out = fs.mkdtempSync(path.join(os.tmpdir(), 'opencode-mirror-')),
+        own = { 'SECURITY.md': '# Security policy\n', '.github/CODEOWNERS': '* @postmanlabs/headless-postman\n' };
+
+    t.after(() => fs.rmSync(out, { recursive: true, force: true }));
+
+    for (const [file, content] of Object.entries(own)) {
+        fs.mkdirSync(path.dirname(path.join(out, file)), { recursive: true });
+        fs.writeFileSync(path.join(out, file), content);
+    }
+
+    fs.mkdirSync(path.join(out, 'skills', 'removed-skill'), { recursive: true });
+    fs.writeFileSync(path.join(out, 'skills', 'removed-skill', 'SKILL.md'), 'stale');
+    fs.writeFileSync(path.join(out, 'manifest.json'), 'stale');
+    buildMirror(out);
+
+    for (const [file, content] of Object.entries(own)) {
+        assert.equal(fs.readFileSync(path.join(out, file), 'utf8'), content, `the sync dropped the mirror's ${file}`);
+    }
+
+    assert.deepEqual(fs.readdirSync(path.join(out, 'skills')).sort(), manifestSkills.map((skill) => skill.name).sort());
+    assert.equal(fs.readFileSync(path.join(out, 'manifest.json'), 'utf8'), fs.readFileSync(path.join(assetRoot, 'manifest.json'), 'utf8'));
+});
+
+test('MIRROR_PATHS names every top-level path the build writes', (t) => {
+    const out = fs.mkdtempSync(path.join(os.tmpdir(), 'opencode-mirror-'));
+
+    t.after(() => fs.rmSync(out, { recursive: true, force: true }));
+    buildMirror(out);
+
+    assert.deepEqual(fs.readdirSync(out).sort(), [...MIRROR_PATHS].sort());
 });
 
 test('the entrypoint reads the shared files beside itself in the mirror', async (t) => {

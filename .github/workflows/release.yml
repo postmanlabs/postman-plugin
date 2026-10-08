@@ -244,11 +244,8 @@ jobs:
         with:
           node-version: lts/*
 
-      - name: Build the mirror
-        run: node opencode/scripts/build-mirror.js "$RUNNER_TEMP/mirror"
-
       - name: Tag it on postmanlabs/opencode-plugin
         env:
           OPENCODE_PLUGIN_TOKEN: ${{ secrets.OPENCODE_PLUGIN_TOKEN }}
           VERSION: ${{ needs.publish.outputs.version }}
-        run: bash opencode/scripts/push-mirror.sh "$RUNNER_TEMP/mirror" tag "$VERSION"
+        run: bash opencode/scripts/push-mirror.sh tag "$VERSION"

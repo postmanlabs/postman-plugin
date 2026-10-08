@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# Replaces postmanlabs/opencode-plugin's contents with a tree scripts/build-mirror.js built, then either
-# commits it to main or tags it as a release:
-#   push-mirror.sh <tree> main <source-sha>
-#   push-mirror.sh <tree> tag <version>
+# Builds scripts/build-mirror.js's tree into a clone of postmanlabs/opencode-plugin, replacing only the files
+# it generates, then either commits it to main or tags it as a release:
+#   push-mirror.sh main <source-sha>
+#   push-mirror.sh tag <version>
 # OPENCODE_PLUGIN_TOKEN is a fine-grained token with Contents read and write on that repository only.
 set -euo pipefail
 
-tree=$(cd "$1" && pwd)
-mode=$2
-arg=$3
+build=$(cd "$(dirname "$0")" && pwd)/build-mirror.js
+mode=$1
+arg=$2
 : "${OPENCODE_PLUGIN_TOKEN:?set OPENCODE_PLUGIN_TOKEN to a token that can push to postmanlabs/opencode-plugin}"
 
 # A directory with no git config: inside a checkout, actions/checkout's auth header would replace this token.
@@ -19,8 +19,7 @@ cd mirror
 git config user.name 'github-actions[bot]'
 git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
 
-find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
-cp -R "$tree"/. .
+node "$build" .
 git add --all
 
 case "$mode" in
@@ -46,7 +45,7 @@ case "$mode" in
         git push --quiet origin "refs/tags/$tag"
         ;;
     *)
-        echo "usage: push-mirror.sh <tree> main <source-sha> | push-mirror.sh <tree> tag <version>" >&2
+        echo "usage: push-mirror.sh main <source-sha> | push-mirror.sh tag <version>" >&2
         exit 2
         ;;
 esac

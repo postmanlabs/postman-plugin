@@ -1,7 +1,7 @@
 # Keeps postmanlabs/opencode-plugin, the package `opencode plugin add github:postmanlabs/opencode-plugin`
 # installs, in step with main: a push that changes what the package holds rebuilds it with
-# opencode/scripts/build-mirror.js and commits it there. release.yml tags it. Nobody edits the mirror;
-# the next sync overwrites whatever it holds.
+# opencode/scripts/build-mirror.js and commits it there. release.yml tags it. The next sync overwrites
+# any edit to the files it generates; the mirror's own files, such as SECURITY.md, stay.
 name: OpenCode mirror
 
 on:
@@ -45,10 +45,7 @@ jobs:
         with:
           node-version: lts/*
 
-      - name: Build the mirror
-        run: node opencode/scripts/build-mirror.js "$RUNNER_TEMP/mirror"
-
       - name: Commit it to postmanlabs/opencode-plugin
         env:
           OPENCODE_PLUGIN_TOKEN: ${{ secrets.OPENCODE_PLUGIN_TOKEN }}
-        run: bash opencode/scripts/push-mirror.sh "$RUNNER_TEMP/mirror" main "$GITHUB_SHA"
+        run: bash opencode/scripts/push-mirror.sh main "$GITHUB_SHA"
