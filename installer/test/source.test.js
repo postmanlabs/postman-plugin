@@ -54,4 +54,8 @@ test('redacts the user-info of every URL in command output', () => {
     const output = 'error: failed to install git+https://someone:ghp_secret@github.com/a/b.git\nfrom https://x:tok@example.com/c and ssh://git@github.com/a/b.git';
 
     assert.equal(redactText(output), 'error: failed to install git+https://github.com/a/b.git\nfrom https://example.com/c and ssh://git@github.com/a/b.git');
+    assert.equal(
+        redactText('ghp_secret@github.com:a/b.git failed\ncould not add "tok@github.com:a/b.git" or git@github.com:a/b.git'),
+        'github.com:a/b.git failed\ncould not add "github.com:a/b.git" or git@github.com:a/b.git'
+    );
 });

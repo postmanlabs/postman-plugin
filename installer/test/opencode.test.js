@@ -495,17 +495,27 @@ test('remove has nothing to do when nothing of Postman is there', async () => {
     assert.deepEqual(system.commands, []);
 });
 
-test('commands act on the config directory the entry was found in, not on a custom OPENCODE_CONFIG_DIR', async () => {
-    const env = { OPENCODE_CONFIG_DIR: '/custom' },
-        remove = fakeSystem({ env, probes: V2, files: { [json]: plugins(GIT_SPEC) } }),
-        refresh = fakeSystem({ env, probes: V2, files: { [json]: plugins(GIT_SPEC) } });
+test('remove acts on the config directory the entry was found in, not on a custom OPENCODE_CONFIG_DIR', async () => {
+    const remove = fakeSystem({ env: { OPENCODE_CONFIG_DIR: '/custom' }, probes: V2, files: { [json]: plugins(GIT_SPEC) } });
 
     await opencode.remove(remove);
-    await opencode.install(refresh);
 
     assert.deepEqual(remove.commands, [`opencode plugin remove ${GIT_SPEC}`]);
     assert.deepEqual(remove.runEnv[`opencode plugin remove ${GIT_SPEC}`], { OPENCODE_CONFIG_DIR: config });
-    assert.deepEqual(refresh.runEnv[ADD2], { OPENCODE_CONFIG_DIR: config });
+});
+
+test('OpenCode 2 reads only a set OPENCODE_CONFIG_DIR, so an entry left in the default directory is not installed there', async () => {
+    const env = { OPENCODE_CONFIG_DIR: '/custom' },
+        system = fakeSystem({ env, probes: V2, files: { [json]: plugins(SPEC) } }),
+        status = await opencode.status(system),
+        outcome = await opencode.install(system);
+
+    assert.equal(status.installed, false);
+    assert.equal(outcome.outcome, 'done');
+    assert.ok(outcome.message.startsWith(`installed ${SPEC}`), outcome.message);
+    assert.deepEqual(system.commands, [ADD2]);
+    assert.equal(system.runEnv[ADD2], undefined, 'added to OPENCODE_CONFIG_DIR, the directory OpenCode 2 reads');
+    assert.equal((await opencode.status(fakeSystem({ env, probes: V1, files: { [json]: plugin(SPEC) } }))).installed, true, 'OpenCode 1 still reads the default directory');
 });
 
 test('OpenCode 1 forces its re-run in the config directory the entry was found in', async () => {

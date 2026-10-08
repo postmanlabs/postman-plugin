@@ -28,6 +28,7 @@ const GITHUB_PREFIX = /^(?:(?:https?|ssh|git|git\+ssh|ssh\+git|git\+https):\/\/)
     // User-info in a URL, or before an scp-style `host:path`; the conventional `git@` is kept.
     URL_USER_INFO = /^([a-z][a-z+.-]*:\/\/)(?!git@)[^@/]+@/i,
     URL_USER_INFO_IN_TEXT = /([a-z][a-z+.-]*:\/\/)(?!git@)[^@/\s]+@/gi,
+    SCP_USER_INFO_IN_TEXT = /(^|[\s"'`(=])(?!git@)[^@/:\s"'`(=]+@(?=[^/:\s]+:)/gm,
     SCP_USER_INFO = /^(?!git@)[^@/:]+@(?=[^/:]+:)/;
 
 function normalize (source: string): string {
@@ -49,5 +50,5 @@ export function redact (source: string): string {
 
 /** Strips the user-info of every URL in a command's output, which can echo a spec it was given. */
 export function redactText (text: string): string {
-    return text.replace(URL_USER_INFO_IN_TEXT, '$1');
+    return text.replace(URL_USER_INFO_IN_TEXT, '$1').replace(SCP_USER_INFO_IN_TEXT, '$1');
 }

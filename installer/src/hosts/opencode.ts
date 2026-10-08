@@ -20,8 +20,11 @@ const KEYS = ['plugin', 'plugins'],
     // Installs another spec instead, such as a copy of a change before it merges.
     SPEC_VARIABLE = 'POSTMAN_PLUGIN_OPENCODE_SPEC',
     configDir = (system: System) => path.join(system.env.XDG_CONFIG_HOME || path.join(system.home, '.config'), 'opencode'),
-    // `opencode plugin add` writes to OPENCODE_CONFIG_DIR instead when it is set.
-    configDirs = (system: System) => [system.env.OPENCODE_CONFIG_DIR, configDir(system)]
+    // OpenCode 2 reads only OPENCODE_CONFIG_DIR when it is set (`Global` in its packages/util/src/global.ts); OpenCode 1
+    // reads it as well as the default directory. `major` is null where an entry anywhere matters, as for remove.
+    configDirs = (system: System, major: number | null) => (major !== null && major >= 2 && system.env.OPENCODE_CONFIG_DIR ?
+        [system.env.OPENCODE_CONFIG_DIR] :
+        [system.env.OPENCODE_CONFIG_DIR, configDir(system)])
         .filter((dir): dir is string => Boolean(dir))
         .filter((dir, at, dirs) => dirs.findIndex((other) => samePath(other, dir)) === at),
     // OpenCode 2 keeps one cached copy of each git plugin here, named `git-<slug>-<first 12 hex of sha256(spec)>`.
@@ -98,12 +101,12 @@ async function installableVersion (system: System): Promise<Version> {
 }
 
 /** Our entries in OpenCode's global config, and the config files that could not be read. */
-async function configured (system: System): Promise<{ entries: Entry[]; unreadable: string[] }> {
+async function configured (system: System, major: number | null): Promise<{ entries: Entry[]; unreadable: string[] }> {
     const entries: Entry[] = [],
         unreadable: string[] = [],
         jsoncLists = new Set<string>();
 
-    for (const [dir, file] of configDirs(system).flatMap((dir) => CONFIG_FILES.map((name) => [dir, path.join(dir, name)]))) {
+    for (const [dir, file] of configDirs(system, major).flatMap((dir) => CONFIG_FILES.map((name) => [dir, path.join(dir, name)]))) {
         const text = await system.readFile(file);
 
         if (text === null) {
@@ -143,8 +146,8 @@ async function configured (system: System): Promise<{ entries: Entry[]; unreadab
     return { entries, unreadable };
 }
 
-async function readableEntries (system: System): Promise<Entry[]> {
-    const { entries, unreadable } = await configured(system);
+async function readableEntries (system: System, major: number | null): Promise<Entry[]> {
+    const { entries, unreadable } = await configured(system, major);
 
     return unreadable.length ? failed(`${unreadable[0]} is not valid JSON; fix it and re-run`) : entries;
 }
@@ -288,7 +291,7 @@ async function replaceEntry (system: System, version: Version, entry: Entry, spe
     await addFresh(system, version, spec, inConfigOf(system, entry), true);
 
     // Either major may have replaced it in place already.
-    if (!(await configured(system)).entries.some((left) => left.spec === entry.spec && left.key === entry.key && samePath(left.file, entry.file))) {
+    if (!(await configured(system, version.major)).entries.some((left) => left.spec === entry.spec && left.key === entry.key && samePath(left.file, entry.file))) {
         return;
     }
 
@@ -354,7 +357,7 @@ export const opencode: Host = {
     },
 
     async status (system) {
-        const { entries, unreadable } = await configured(system),
+        const { entries, unreadable } = await configured(system, await cliMajor(system)),
             { cloned, shim, loadable } = await legacyState(system),
             legacy = loadable && shim === OPENCODE_SHIM,
             notes = [
@@ -385,9 +388,9 @@ export const opencode: Host = {
 
     install (system) {
         return guard(async () => {
-            const entries = await readableEntries(system),
+            const version = await installableVersion(system),
+                entries = await readableEntries(system, version.major),
                 spec = specToInstall(system),
-                version = await installableVersion(system),
                 entry = entries[0];
 
             // Each would load the same skills, and refreshing one would leave the others loading the rest.
@@ -425,7 +428,7 @@ export const opencode: Host = {
 
     remove (system) {
         return guard(async () => {
-            const entries = await readableEntries(system),
+            const entries = await readableEntries(system, null),
                 { cloned, shim } = await legacyState(system);
 
             if (!entries.length && !cloned && shim !== OPENCODE_SHIM) {
