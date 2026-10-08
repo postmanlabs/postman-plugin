@@ -66,11 +66,11 @@ export function commit (target) {
     run('git', ['-c', 'user.name=harness', '-c', 'user.email=harness@localhost', '-c', 'commit.gpgsign=false', 'commit', '--quiet', '--message', 'harness'], { cwd: target });
 }
 
-/** A line of the skill's body, past its frontmatter, that only a loaded skill puts in the session. */
+/** The first numbered instruction, which only a loaded skill puts in the session. */
 export function skillExcerpt (skill, root = repoRoot) {
     const body = fs.readFileSync(path.join(root, 'skills', skill, 'SKILL.md'), 'utf8').split(/^---\r?$/m).slice(2).join('---');
 
-    return body.split(/\r?\n/).find((line) => line.trim().length > 40 && !line.startsWith('#')).trim();
+    return body.split(/\r?\n/).find((line) => /^1\.\s+\S/.test(line)).trim();
 }
 
 /** The entry skill exactly as the mandate spells it, so a name the agent can't resolve fails later. */
