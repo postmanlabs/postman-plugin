@@ -213,6 +213,55 @@
       ]
     },
     {
+      "name": "jmeter-to-postman",
+      "plugin": "postman",
+      "description": "Convert a JMeter .jmx load test into a Postman collection (v2.1) plus a ready-to-run performance-test configuration and a conversion report. Use when a user wants to migrate a JMeter test plan to Postman performance testing, has a .jmx file to convert, or asks to turn JMeter requests/extractors/assertions/thread-groups into a Postman collection and `postman performance run` settings.",
+      "files": [
+        {
+          "target": "SKILL.md",
+          "source": "skills/jmeter-to-postman/SKILL.md",
+          "bytes": 13788,
+          "sha256": "256a155cb8f09228573b154c6b4e83fe17ea81106a369f171e007cc37ee9a6cb"
+        },
+        {
+          "target": "references/mapping-table.md",
+          "source": "skills/jmeter-to-postman/references/mapping-table.md",
+          "bytes": 6823,
+          "sha256": "728a61828361d9b11495d64b94047c05dc536fc905d667a4b6f5470d4d54fa79"
+        },
+        {
+          "target": "references/postman-perf-capabilities.md",
+          "source": "skills/jmeter-to-postman/references/postman-perf-capabilities.md",
+          "bytes": 3858,
+          "sha256": "20a18b40d8ec00dda6d62ce8584e9448d0ceb3f7e0424f4355f97ac23f30c4f3"
+        },
+        {
+          "target": "references/script-translation.md",
+          "source": "skills/jmeter-to-postman/references/script-translation.md",
+          "bytes": 5905,
+          "sha256": "8275b098725a89818a4554af7402e8a748570ae4540a7875d4fa8539b4602835"
+        },
+        {
+          "target": "scripts/groovy_to_js.py",
+          "source": "skills/jmeter-to-postman/scripts/groovy_to_js.py",
+          "bytes": 3867,
+          "sha256": "bb4d41dda1d0f118e6373e2c6e511a6977f89199fc14c4058280673c1c68d4a4"
+        },
+        {
+          "target": "scripts/jmx_to_postman.py",
+          "source": "skills/jmeter-to-postman/scripts/jmx_to_postman.py",
+          "bytes": 65016,
+          "sha256": "6b8c94b4c33ff2023415d7a3c4166e540e164214193e423758051660698f63cb"
+        },
+        {
+          "target": "templates/conversion-report.md",
+          "source": "skills/jmeter-to-postman/templates/conversion-report.md",
+          "bytes": 1849,
+          "sha256": "8545399a0faad3a24475e7978f947516f89d1fc4ead258ea5d3fc437f83d85a7"
+        }
+      ]
+    },
+    {
       "name": "performance-testing",
       "plugin": "postman",
       "description": "Load-tests a collection with concurrent virtual users, a chosen load profile, and pass/fail thresholds on latency or error rate — run locally or on Postman's cloud runners. Use when the user asks to \"load test this API,\" \"run a performance test,\" \"check how this holds up under load,\" or \"benchmark this collection.\" Covers `postman performance run`. This generates real traffic against a real target — confirm the target and scale before running, the same way any action with effects outside this session gets confirmed.",
