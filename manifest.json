@@ -293,6 +293,67 @@
       ]
     },
     {
+      "name": "readyapi-to-postman",
+      "plugin": "postman",
+      "description": "Convert a ReadyAPI / SoapUI project XML into a Postman Collection (v2.1) plus a ready-to-run performance-test configuration and a conversion report. Use when a user wants to migrate a ReadyAPI or SoapUI project to Postman, has a ReadyAPI/SoapUI `.xml` project file to convert, or asks to turn ReadyAPI test suites / test cases / REST or SOAP requests / assertions / Groovy scripts / LoadTests into a Postman collection and `postman performance run` settings.",
+      "files": [
+        {
+          "target": "SKILL.md",
+          "source": "skills/readyapi-to-postman/SKILL.md",
+          "bytes": 12440,
+          "sha256": "59ab1d8d4cf247f1f9362478a7690aea578c3165504e74875d7edeaca0bb3a6e"
+        },
+        {
+          "target": "references/conversion-report-template.md",
+          "source": "skills/readyapi-to-postman/references/conversion-report-template.md",
+          "bytes": 1275,
+          "sha256": "ea3260f02fc918902b99409d0c433c0acd520a592e994de3368aa46de55cce71"
+        },
+        {
+          "target": "references/loadtest-to-perf.md",
+          "source": "skills/readyapi-to-postman/references/loadtest-to-perf.md",
+          "bytes": 3094,
+          "sha256": "6d6c0c4b536fe5d9db872b9c6ced9abf782f864dfa2b2f618a480415ef8103e3"
+        },
+        {
+          "target": "references/mapping-table.md",
+          "source": "skills/readyapi-to-postman/references/mapping-table.md",
+          "bytes": 6797,
+          "sha256": "ff2d2b1ca709342067840af3c4e3a5d9b5c05317c9cf4d020670ed80752ddf3d"
+        },
+        {
+          "target": "references/postman-perf-capabilities.md",
+          "source": "skills/readyapi-to-postman/references/postman-perf-capabilities.md",
+          "bytes": 3858,
+          "sha256": "20a18b40d8ec00dda6d62ce8584e9448d0ceb3f7e0424f4355f97ac23f30c4f3"
+        },
+        {
+          "target": "references/script-translation.md",
+          "source": "skills/readyapi-to-postman/references/script-translation.md",
+          "bytes": 3388,
+          "sha256": "b3f5a536a0a3163b655a7d8f58f4e9da11d3c74cb93a0df08e42941dc8d27674"
+        },
+        {
+          "target": "scripts/groovy_to_js.py",
+          "source": "skills/readyapi-to-postman/scripts/groovy_to_js.py",
+          "bytes": 5676,
+          "sha256": "952d022c3c014d6bdf5351920a1db20e2c0a391af9acbd9c11e58c6f60d6188c"
+        },
+        {
+          "target": "scripts/loadtest_to_perf.py",
+          "source": "skills/readyapi-to-postman/scripts/loadtest_to_perf.py",
+          "bytes": 10160,
+          "sha256": "0af84fca0484be59dcce7f40ca0e9b6068a4616af4b3024b1a6dca97b10664c5"
+        },
+        {
+          "target": "scripts/readyapi_to_postman.py",
+          "source": "skills/readyapi-to-postman/scripts/readyapi_to_postman.py",
+          "bytes": 67876,
+          "sha256": "10921b909dee16066cae48ce1ce7060358d48f04be787f5cfc94d1d8fd8aced8"
+        }
+      ]
+    },
+    {
       "name": "variables",
       "plugin": "postman",
       "description": "How to parameterize a collection with variables and where each value belongs — a plain value goes in an environment or collection variable, a secret (token, password, API key) goes in the team's shared vault via `postman secret create` so its value never passes through the coding harness or lands in a committed file. Covers the variable scopes and their resolution order, reading and writing variables at runtime from pre-request and post-response scripts (`pm.environment`, `pm.collectionVariables`, `pm.variables`), and composing variables out of other variables. Use when the user asks where to put a base URL, token, or password, how to reference a secret without exposing it, how `{{variables}}` resolve, or how to set a value in a script. Covers `postman secret`.",
