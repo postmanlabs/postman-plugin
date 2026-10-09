@@ -85,8 +85,14 @@ Postman's MCP server with `/mcp-config login plugin-postman:postman`.
 
 ### OpenCode
 
-OpenCode loads Postman from a clone of this repository and a one-line loader
-file. [opencode/README.md](opencode/README.md#install) has the commands.
+```bash
+opencode plugin add github:postmanlabs/postman-plugin
+```
+
+That is OpenCode 2.0.4 or later. On OpenCode 1.14.33 or later the command is
+`opencode plugin --global github:postmanlabs/postman-plugin`.
+[opencode/README.md](opencode/README.md#install) has how to update and remove
+it, and the older clone-and-loader install.
 
 ### Pi
 

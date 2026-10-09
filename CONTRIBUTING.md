@@ -16,7 +16,7 @@ plugin route below — each route's manifest or package points back at the same
 | Kimi Code plugin | `.kimi-plugin/plugin.json` points at the same `skills/` dir | `mcpServers` in `.kimi-plugin/plugin.json` | `postman-kimi-plugin` |
 | Codex plugin | `.codex-plugin/plugin.json` points at the same `skills/` dir | `mcp.codex.json` | `postman-codex-plugin` |
 | Factory Droid plugin | `.factory-plugin/marketplace.json` installs this repo root as the plugin, so Droid reads the same root `skills/` dir | `mcp.json` | `postman-factory-plugin` |
-| OpenCode plugin | a clone of this repo, loaded by a one-line local plugin that re-exports `opencode/src/index.ts` | `mcp.opencode.json` | `postman-opencode-plugin` |
+| OpenCode plugin | `opencode plugin add github:postmanlabs/postman-plugin` installs this repo's `main`, whose root `package.json` names `opencode/src/index.ts`; or a clone of this repo, loaded by a one-line local plugin | `mcp.opencode.json` | `postman-opencode-plugin` |
 | Pi package | `pi install npm:@postman/postman-plugin` — the installer's npm tarball, which carries `skills/`, `hooks/session-start-context.md` and `mcp.pi.json` staged at pack time | `mcp.pi.json`, registered by `installer/src/pi-extension.ts` | `postman-pi-plugin` |
 
 Codex also reads `.claude-plugin/plugin.json` and `.cursor-plugin/plugin.json` as
@@ -27,13 +27,24 @@ Codex would read `mcp.claude-code.json`, whose `headers` key Codex does not
 understand, so its traffic arrived with no `X-Source` at all. Keep
 `.codex-plugin/plugin.json` first in precedence and Codex never falls back.
 
-OpenCode has no plugin-manifest format, so its route is a local plugin: a
-clone of this repository plus a one-line file in OpenCode's `plugins/`
-directory that re-exports `opencode/src/index.ts`. OpenCode runs the
-TypeScript directly, and the source has no runtime dependencies — its only
-imports from OpenCode are `import type` — so nothing is built or installed.
-The plugin reads the skills, `hooks/session-start-context.md`,
-`manifest.json` and `mcp.opencode.json` from the clone's root. It is not
+OpenCode has no plugin-manifest format; it loads a package whose `package.json`
+names a server entrypoint (`exports["./server"]`, else `main`). That package is
+this repository: the root `package.json` names `opencode/src/index.ts`, and its
+`files` keep the install to the entrypoint and the shared files it reads. It
+carries no `scripts` or `dependencies`, because npm runs a Git dependency's
+`prepare` and would pull dev dependencies into every user's install, and no
+`type`, because `scripts/` holds both CommonJS and ES modules. Its `version`
+matches `opencode/package.json`. Users install `main`, as every other route that
+installs from GitHub does; a `#semver:` range can't pick out OpenCode releases,
+because npm reads a version from any tag ending in one, the installer's
+`@postman/postman-plugin@<version>` tags included.
+
+The older route still works: a clone of this repository plus a one-line file in
+OpenCode's `plugins/` directory that re-exports `opencode/src/index.ts`. Either
+way OpenCode runs the TypeScript directly, and the source has no runtime
+dependencies — its only imports from OpenCode are `import type` — so nothing is
+built. The plugin reads the skills, `hooks/session-start-context.md`,
+`manifest.json` and `mcp.opencode.json` from the repository root. It is not
 published to npm.
 
 The default export serves both OpenCode plugin APIs: v1 hosts call
@@ -49,7 +60,20 @@ config directory — has the pinned OpenCode 1 CLI load every skill, and runs
 one session against a stand-in model to check the mandate reaches it. OpenCode
 finds its project from `$PWD`, so the harness sets it; inherited, it points at
 this clone, whose `.opencode/plugins/postman.ts` would load the plugin instead.
-OpenCode 2 is covered only by unit tests against a mock host.
+`scripts/test-plugin-add.js` covers the `plugin` routes the same way, each under
+a throwaway home with no config directory:
+
+| Route | Installs | Runs in |
+| --- | --- | --- |
+| `git` | a one-commit copy of the checkout | `validate.yml` and `installer-smoke.yml` |
+| `github` | `github:postmanlabs/postman-plugin` from GitHub; a pull request's head commit in installer smoke (`PLUGIN_ADD_SPEC` sets the spec) | `installer-smoke.yml` |
+
+It then runs `opencode run` against the stand-in and checks the skill list the
+installed copy declares, the mandate, that the entry skill loads and that the
+MCP server is reached, and on OpenCode 2 that `plugin remove` takes the entry
+out of the config. It runs on OpenCode 1 (`opencode plugin --global <spec>`) and
+OpenCode 2 (`opencode plugin add <spec>`), on Linux and Windows; the clone
+route's harness above runs only on 1, because OpenCode 2 has no `debug skill`.
 
 Inside a clone, `.opencode/plugins/postman.ts` is that same one-line file, so
 OpenCode running in this repository loads the plugin from source.
@@ -69,7 +93,8 @@ it lands.
 .factory-plugin/marketplace.json  the Factory Droid marketplace
 .factory-plugin/plugin.json       the Factory Droid plugin metadata
 .app.json                         maps the Codex plugin to its published ChatGPT app ID
-opencode/                         the OpenCode plugin — source, tests, install harness, routing evals
+opencode/                         the OpenCode plugin — source, tests, install harnesses, routing evals
+package.json                      makes the repo the package `opencode plugin add` installs; names opencode/src/index.ts
 installer/                        `npx @postman/postman-plugin` — one adapter per agent in src/hosts/ — and the Pi package
 installer/src/pi-extension.ts     the Pi package's extension: the session-start mandate and the MCP server
 .opencode/plugins/postman.ts      loads that plugin from source when OpenCode runs inside a clone
@@ -156,6 +181,8 @@ needs a model:
 npm ci
 npm test                       # builds, then unit-tests the v1 and v2 entry points
 npm run test:harness           # installs it as a user does, has the pinned CLI load every skill and checks what a session sends the model
+node scripts/test-plugin-add.js git      # the same for `opencode plugin add` from a one-commit copy of this checkout; for OpenCode 2, OPENCODE_BIN=<path to its opencode>
+node scripts/test-plugin-add.js github   # and from github:postmanlabs/postman-plugin; PLUGIN_ADD_SPEC=github:postmanlabs/postman-plugin#<ref> for one commit
 npm run eval:skills:validate   # every skill has at least one positive routing case
 npm run eval:skills            # live routing eval against a configured model
 ```
@@ -167,16 +194,19 @@ both reach every route — Kimi's copy of the mandate once
 `node scripts/build-manifest.js` regenerates it — so rerun the full set after
 changing either and don't tune wording for OpenCode alone.
 
-Users run whatever their clone has checked out, so a change reaches them on
-their next `git pull` of `main`. A release is still its own version bump:
+Users run `main`: a change reaches them the next time OpenCode fetches the
+plugin, which a re-run of the installer does, or on their next `git pull` of a
+clone. A release is still its own version bump:
 
-1. Set the version on the route's three strings (`opencode/package.json` and
-   both headers in `mcp.opencode.json`; the unit tests fail if they differ).
+1. Set the version on the route's four strings (`opencode/package.json`, the
+   root `package.json` and both headers in `mcp.opencode.json`; the unit tests
+   fail if they differ).
 2. After it merges, push a signed tag `opencode-v<version>` on that commit.
-3. Install it from a fresh clone, on OpenCode 1 and on OpenCode 2, following
+3. Install it with `opencode plugin add "github:postmanlabs/postman-plugin#opencode-v<version>"`,
+   on OpenCode 1 and on OpenCode 2, following
    [opencode/README.md](opencode/README.md), and check that each loads the
-   skills and the MCP server. The harness can't cover OpenCode 2: its CLI has
-   no `debug skill` command.
+   skills and the MCP server. The clone harness can't cover OpenCode 2: its CLI
+   has no `debug skill` command; `test-plugin-add.js` covers both versions.
 
 List it in [OpenCode's ecosystem page](https://opencode.ai/docs/ecosystem/) only
 after step 3 passes.
@@ -316,7 +346,7 @@ wherever one exists:
 | Cursor | a clone at `~/.cursor/plugins/local/postman`. A fresh install is skipped when the Cursor Marketplace copy is present, but an existing clone is kept and updated: Cursor keeps a disabled Marketplace copy on disk too, so the installer can't tell whether that copy is enabled |
 | Factory Droid | `droid plugin` against this repo as the `postman-plugin` marketplace |
 | Kimi Code | `npx --package=plugins@1.3.4 plugins add postmanlabs/postman-plugin --target kimi`, because Kimi installs plugins only from its TUI |
-| OpenCode | the clone and one-line file [opencode/README.md](opencode/README.md) documents |
+| OpenCode | `opencode plugin add github:postmanlabs/postman-plugin` on OpenCode 2.0.4 or later, `opencode plugin --global …` on OpenCode 1.14.33 or later. A re-run refetches that spec in place, so it moves to the newest commit on `main`, and replaces an entry for any other spec of the repository (a branch, a tag or a git URL) by adding the bare spec and then removing the old one; on OpenCode 1 the add is forced, which replaces the same package in place. It reads the global config (`plugins`, or `plugin` on OpenCode 1, in `opencode.json` or `opencode.jsonc`) to see what is installed, removes with `opencode plugin remove` on OpenCode 2 and otherwise by editing the config entry — on OpenCode 1, and on 2 when the entry is in `opencode.jsonc` beside an `opencode.json`, the only file `plugin remove` edits — and then deletes an older clone-and-loader install so no skill loads twice. It refetches by re-running with `--force` on OpenCode 1 and, on OpenCode 2, by deleting the cached copy under `<cache>/opencode/npm/git-postman-plugin-*` and adding again: `plugin add` reuses that cache, and `plugin update`, `list` and `check` need OpenCode's background service, which a second instance on the same port or a cold start answers wrongly. It refuses to refresh an entry that the refresh would not write back to, where it would register a second copy instead: on OpenCode 2 one outside the first of `opencode.json`, `opencode.jsonc` and their `.opencode/` copies that exists, which is the file `plugin add` edits; on OpenCode 1 one in `OPENCODE_CONFIG_DIR`, which `plugin --global` ignores. `POSTMAN_PLUGIN_OPENCODE_SPEC` installs another spec instead, which installer smoke sets to a one-commit copy of its checkout on every run but the nightly one |
 | Pi | `pi install npm:@postman/postman-plugin`, or `pi update` when it's installed, then `pi remove` for any git install of this repo, which would load the same skills twice |
 
 Every agent but Pi gets the plugin from GitHub, not from the npm package, so a
@@ -373,6 +403,9 @@ already under way:
    publishes it, so a new version can't be rehearsed in CI: `npm pack --dry-run`
    in `installer/` is the rehearsal.
 
+Every run of `release.yml`, a dry run included, waits for a `headless-postman`
+member to approve it in the `npm-publish` environment before the publish job starts.
+
 Keep the workflow's filename: npm's trusted publisher for the package is
 pinned to `release.yml`.
 
@@ -384,11 +417,12 @@ pinned to `release.yml`.
 
 Don't bump a version in the change itself; each route's own release PR does
 that (see `AGENTS.md`). Routes version independently — differing versions
-across routes are correct, not drift — so a release bumps the three strings
-that one route owns: `version` in its manifest, plus `X-Plugin-Version` and
+across routes are correct, not drift — so a release bumps the strings that
+one route owns, three for every route but OpenCode: `version` in its manifest, plus `X-Plugin-Version` and
 `User-Agent` in its MCP config (for Kimi all three live in the manifest; for
 Codex the two headers sit under `http_headers`, not `headers`; for OpenCode
-the manifest is `opencode/package.json`; for Pi it is
+the manifest is `opencode/package.json`, and the root `package.json` repeats its
+version as a fourth string; for Pi it is
 `installer/package.json`, so Pi's bump is an installer release; for Factory
 Droid the MCP config is the root `mcp.json`). Nothing verifies this, so check
 the route's strings against each other before you commit the release. Don't
