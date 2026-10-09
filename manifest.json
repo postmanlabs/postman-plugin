@@ -213,6 +213,55 @@
       ]
     },
     {
+      "name": "gatling-to-postman",
+      "plugin": "postman",
+      "description": "Convert an existing Gatling load-test project (Java, Kotlin, Scala or JS/TS simulations) into a Postman collection plus a `postman performance run` configuration, with a gap report listing everything that could not be carried over exactly. Use when the user wants to \"migrate from Gatling,\" \"import a Gatling simulation,\" \"convert Gatling to Postman,\" or move Gatling load tests into Postman Performance Testing. Verification sends one iteration of real requests against the target, so confirm the target first — the same way any action with effects outside this session gets confirmed.",
+      "files": [
+        {
+          "target": "SKILL.md",
+          "source": "skills/gatling-to-postman/SKILL.md",
+          "bytes": 12072,
+          "sha256": "7b4a5413d7f175871dfa5bf9aacd69696668367c21990bb47b04014c61288a46"
+        },
+        {
+          "target": "references/feeders.md",
+          "source": "skills/gatling-to-postman/references/feeders.md",
+          "bytes": 2819,
+          "sha256": "bbd998634705a7c605a1720e149cc65aedb6a99084e05566cf9f64f719ceb828"
+        },
+        {
+          "target": "references/injection.md",
+          "source": "skills/gatling-to-postman/references/injection.md",
+          "bytes": 8146,
+          "sha256": "55bf0febb9dff4b149439808e5b473aa23b27d382980a91d0a7a18bf2008c243"
+        },
+        {
+          "target": "references/mapping.md",
+          "source": "skills/gatling-to-postman/references/mapping.md",
+          "bytes": 9567,
+          "sha256": "0ce1b67f82f28c380f0a55c97b689ecdacf8baaeadc9f879816df59c08a0ba30"
+        },
+        {
+          "target": "references/unsupported.md",
+          "source": "skills/gatling-to-postman/references/unsupported.md",
+          "bytes": 3222,
+          "sha256": "d45d48d27c16b378c91ba0d020169a0d4502c8c2c25e55597925e2a143094104"
+        },
+        {
+          "target": "scripts/inventory.py",
+          "source": "skills/gatling-to-postman/scripts/inventory.py",
+          "bytes": 20363,
+          "sha256": "ec3600463fd0963636156a5be32bf21c819d2229586607b5bdd470305a81f6e2"
+        },
+        {
+          "target": "scripts/verify.py",
+          "source": "skills/gatling-to-postman/scripts/verify.py",
+          "bytes": 19524,
+          "sha256": "fad4be62ed55c960fa4c980a544c2db02f2b5ace18c186527bc6d580bc1e9670"
+        }
+      ]
+    },
+    {
       "name": "performance-testing",
       "plugin": "postman",
       "description": "Load-tests a collection with concurrent virtual users, a chosen load profile, and pass/fail thresholds on latency or error rate — run locally or on Postman's cloud runners. Use when the user asks to \"load test this API,\" \"run a performance test,\" \"check how this holds up under load,\" or \"benchmark this collection.\" Covers `postman performance run`. This generates real traffic against a real target — confirm the target and scale before running, the same way any action with effects outside this session gets confirmed.",
