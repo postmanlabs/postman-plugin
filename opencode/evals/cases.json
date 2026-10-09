@@ -119,6 +119,13 @@
     ]
   },
   {
+    "id": "gatling-to-postman",
+    "prompt": "I have a Gatling load-test project in Scala. Convert it into a Postman collection and a performance-run configuration.",
+    "expected": [
+      "gatling-to-postman"
+    ]
+  },
+  {
     "id": "irrelevant-readme",
     "prompt": "Fix a spelling mistake in the project README.",
     "expected": []
