@@ -112,6 +112,13 @@
     ]
   },
   {
+    "id": "application-testing",
+    "prompt": "Connect my Playwright tests to Postman and capture their network traffic against a collection contract.",
+    "expected": [
+      "application-testing"
+    ]
+  },
+  {
     "id": "variables",
     "prompt": "Where should I store my API's base URL versus its bearer token so the token never ends up committed, and how do I reference each from a request?",
     "expected": [
