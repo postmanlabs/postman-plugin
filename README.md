@@ -28,6 +28,22 @@ One command configures **Claude Code, Codex, Cursor, Factory Droid, Kimi Code,
 OpenCode and Pi**. Run it again to update, `status` to see what's installed,
 and `remove` to uninstall; `--agent <id>` limits any of them to one agent.
 
+### Without Node
+
+`install/install.sh` (macOS and Linux) and `install/install.ps1` (Windows)
+install into Claude Code, Codex and Cursor with each agent's own CLI. They
+need no Node, leave an installed plugin alone, and print a `result <agent>
+<outcome>` line per agent:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/postmanlabs/postman-plugin/main/install/install.sh | sh
+```
+
+`--agent claude-code`, `--agent codex` or `--agent cursor` limits the run. The
+exit code is 0 when done, 1 when an agent failed, 2 for bad usage and 3 when none
+of the three is installed. Factory Droid, Kimi Code, OpenCode and Pi still
+install with the commands below or `npx`.
+
 You can also use the following commands to install individually:
 
 ### Claude Code
