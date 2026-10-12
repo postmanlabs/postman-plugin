@@ -9,8 +9,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-engineer/SKILL.md",
-          "bytes": 3243,
-          "sha256": "987c46cd73e8f079a6f85036b98c30ca0cd7b9e260a6e209143cdc1ba88590f4"
+          "bytes": 3439,
+          "sha256": "24009ab0e7656f7d775c38f950d3c9d4f88469a45ebf1e121aa292e7e1ed1591"
         }
       ]
     },
@@ -302,6 +302,25 @@
           "source": "skills/variables/SKILL.md",
           "bytes": 4976,
           "sha256": "bdc4ef430ea2d83c73f259c27ba03c635a82b3276c0928a068fb126075a32f83"
+        }
+      ]
+    },
+    {
+      "name": "webhook-testing",
+      "plugin": "postman",
+      "description": "Tests webhooks end to end with a Postman webhook — a stable public URL that records every request sent to it — by forwarding deliveries to a handler on localhost, inspecting the exact headers and body that arrived, replaying a captured event after a fix or to check idempotency, and asserting on every delivery with an `onEvent` script. Works in both directions — developing a handler for a provider's webhooks (Stripe, GitHub, Slack, …) and checking the webhooks your own API sends. Use when the user asks to \"test my webhook handler,\" \"get Stripe/GitHub webhooks to localhost,\" \"forward webhooks to my local server,\" \"see what the webhook actually sent,\" \"replay that event,\" \"verify the webhook signature,\" or \"check the webhooks our API sends.\" Covers `postman webhook`. Every `postman webhook` command needs `postman login`; bootstrap handles sign-in and the workspace id.",
+      "files": [
+        {
+          "target": "SKILL.md",
+          "source": "skills/webhook-testing/SKILL.md",
+          "bytes": 13407,
+          "sha256": "33081cc323b39f418ffdd15b720e1dec69b8e58e7c26952cadc3f568c45323ae"
+        },
+        {
+          "target": "reference/webhook_scripts.md",
+          "source": "skills/webhook-testing/reference/webhook_scripts.md",
+          "bytes": 5245,
+          "sha256": "518c90c4fc456323fb91b69317a69e2444c3fb1b708b789cb76e4b37661ba43b"
         }
       ]
     }

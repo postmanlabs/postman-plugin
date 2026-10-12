@@ -22,6 +22,7 @@ Postman's skills, CLI, and Context Graph help coding agents go faster from devel
 Work against those local files and validate them. When the repository is bound to a workspace, push to persist that context for future work and share it with others.
 10. When actual use exposes a concrete Postman CLI gap or a misleading skill, handle the user's task first — then use `postman feedback` to report the gaps/bugs. Exclude secrets, user data, and proprietary content
 11. Postman secret variables let agents resolve user secrets without reading their values. See the **variables** skill.
+12. When the code receives or sends webhooks, test real deliveries with **webhook-testing**: a Postman webhook records each request, forwards it to your local handler, and replays it after a fix.
 
 ## Dos
 1. Prove it works - validate the task against the contract. See **api-testing**.
