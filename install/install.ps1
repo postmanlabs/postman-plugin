@@ -85,7 +85,8 @@ function Install-PostmanPlugin {
     }
 
     # Fixed codes and version strings only: a Sentry event must never carry paths, agent output or user text.
-    # The fingerprint keeps each failure kind its own Sentry issue instead of one issue per agent.
+    # The fingerprint keeps each failure kind its own Sentry issue instead of one issue per agent. A user with the
+    # address 0.0.0.0 stops Sentry from recording the sender's own IP address and its geolocation.
     function Send-Report($agentName, $outcome, $reason, $e) {
         if (-not $TelemetryUrl -or $env:POSTMAN_PLUGIN_TELEMETRY -eq '0') { return }
         $tags = @{ agent = $agentName; outcome = $outcome; environment = $Environment; os = 'windows'; script_version = $ScriptVersion }
@@ -101,6 +102,7 @@ function Install-PostmanPlugin {
             level       = $(if ($outcome -eq 'failed') { 'error' } else { 'info' })
             logger      = 'postman-plugin-install'
             platform    = 'other'
+            user        = @{ ip_address = '0.0.0.0' }
             fingerprint = @('postman-plugin-install', $agentName, $outcome, [string]$reason, [string]$e.Cause)
             tags        = $tags
         } | ConvertTo-Json -Depth 4 -Compress

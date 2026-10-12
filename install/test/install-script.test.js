@@ -376,6 +376,7 @@ test('telemetry: the event names its environment, groups by a fingerprint and sa
     const [event] = sentEvents(box);
 
     assert.match(event, /"environment":"production"/);
+    assert.match(event, /"user":\{"ip_address":"0\.0\.0\.0"\}/, 'the sender\'s IP address is not recorded');
     assert.match(event, /"message":"postman-plugin-install claude-code failed install-failed network-dns"/);
     assert.match(event, /"fingerprint":\["postman-plugin-install","claude-code","failed","install-failed","network-dns"\]/);
     assert.match(sentEvents(beta)[0], /"environment":"beta_x"/);

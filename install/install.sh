@@ -66,7 +66,8 @@ usage() {
 }
 
 # Fixed codes and version strings only: a Sentry event must never carry paths, agent output or user text.
-# The fingerprint keeps each failure kind its own Sentry issue instead of one issue per agent.
+# The fingerprint keeps each failure kind its own Sentry issue instead of one issue per agent. A user with the
+# address 0.0.0.0 stops Sentry from recording the sender's own IP address and its geolocation.
 report() {
     [ -n "$TELEMETRY_URL" ] || return 0
     [ "${POSTMAN_PLUGIN_TELEMETRY:-1}" = 0 ] && return 0
@@ -81,7 +82,7 @@ report() {
     [ -n "$SOURCE" ] && tags="$tags,\"source\":\"$SOURCE\""
     curl --silent --fail --connect-timeout 3 --max-time 5 --retry 0 --request POST \
         --header 'Content-Type: application/json' \
-        --data-raw "{\"message\":\"postman-plugin-install $1 $2${3:+ $3}${CAUSE:+ $CAUSE}\",\"level\":\"$level\",\"logger\":\"postman-plugin-install\",\"platform\":\"other\",\"fingerprint\":[\"postman-plugin-install\",\"$1\",\"$2\",\"$3\",\"$CAUSE\"],\"tags\":{$tags}}" \
+        --data-raw "{\"message\":\"postman-plugin-install $1 $2${3:+ $3}${CAUSE:+ $CAUSE}\",\"level\":\"$level\",\"logger\":\"postman-plugin-install\",\"platform\":\"other\",\"user\":{\"ip_address\":\"0.0.0.0\"},\"fingerprint\":[\"postman-plugin-install\",\"$1\",\"$2\",\"$3\",\"$CAUSE\"],\"tags\":{$tags}}" \
         "$TELEMETRY_URL" >/dev/null 2>&1 || true
 }
 

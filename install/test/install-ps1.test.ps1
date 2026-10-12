@@ -5,6 +5,8 @@
 #   pwsh -File install/test/install-ps1.test.ps1
 
 $ErrorActionPreference = 'Continue'
+# Anything that forgets to switch reporting off posts to a dead port, never to the real Sentry project.
+$env:POSTMAN_PLUGIN_TELEMETRY_URL = 'http://127.0.0.1:9/'
 $ps = (Get-Process -Id $PID).Path
 $script = (Resolve-Path (Join-Path $PSScriptRoot '..\install.ps1')).ProviderPath
 $root = Join-Path ([IO.Path]::GetTempPath()) ("pm plug-" + [guid]::NewGuid().ToString('N').Substring(0, 8))
@@ -120,7 +122,7 @@ $r = Invoke-Install '' "`$env:POSTMAN_PLUGIN_AGENT='claude-code,codex'" 'iex' ''
 Check 'iex: runs, reads POSTMAN_PLUGIN_AGENT, exits 0' ($r.Code -eq 0 -and $r.Out -match 'result claude-code installed' -and $r.Out -match 'result codex installed') "$($r.Code) $($r.Out)"
 $r = Invoke-Install '' "`$env:POSTMAN_PLUGIN_AGENT='vim'" 'iex'
 Check 'iex: bad agent sets code 2' ($r.Code -eq 2) "$($r.Code) $($r.Out)"
-$probe = & $ps -NoProfile -ExecutionPolicy Bypass -Command "`$env:PATH='$bin;$env:SystemRoot\System32'; `$env:USERPROFILE='$home_'; `$env:POSTMAN_PLUGIN_AGENT='claude-code'; Get-Content -Raw '$script' | iex; 'alive'; `$leak = (Get-Variable Repo,GitUrl,st,ctx -ErrorAction SilentlyContinue | Measure-Object).Count; 'leaked=' + `$leak" 2>&1 | Out-String
+$probe = & $ps -NoProfile -ExecutionPolicy Bypass -Command "`$env:PATH='$bin;$env:SystemRoot\System32'; `$env:USERPROFILE='$home_'; `$env:POSTMAN_PLUGIN_AGENT='claude-code'; `$env:POSTMAN_PLUGIN_TELEMETRY='0'; Get-Content -Raw '$script' | iex; 'alive'; `$leak = (Get-Variable Repo,GitUrl,st,ctx -ErrorAction SilentlyContinue | Measure-Object).Count; 'leaked=' + `$leak" 2>&1 | Out-String
 Check 'iex: session stays open and no variable leaks' ($probe -match 'alive' -and $probe -match 'leaked=0') $probe
 
 # Telemetry goes to a local listener. Returns the bodies of the events one run sends.
@@ -162,6 +164,7 @@ Check 'telemetry: failure has cause, exit code, versions, run id, source, host f
     $e -match '"agent_version":\s*"2\.1\.296 Agent Name"' -and $e -match '"run_id":\s*"[0-9a-f]{12}"' -and
     $e -match '"source":\s*"auto_new_download_x"' -and $e -match '"ps_version":\s*"\d' -and $e -match '"exec_policy":' -and
     $e -match '"language_mode":\s*"FullLanguage"' -and $e -match '"via":\s*"file"' -and $e -match '"arch":') $e
+Check 'telemetry: the sender IP address is not recorded' ($e -match '"user":\s*\{\s*"ip_address":\s*"0\.0\.0\.0"') $e
 Check 'telemetry: nothing the agent printed or any path is sent' ($e -notmatch 'secret|someone|ENOTFOUND|github\.com|Users') $e
 
 foreach ($case in @(
