@@ -54,7 +54,8 @@ jobs:
           - os: windows-latest
             label: Windows
     env:
-      # The scripts report to their Sentry project, so tag these runs and they can be filtered out.
+      # These runs report with the project's CI key, which has its own low rate limit, and are tagged so they can be filtered out.
+      POSTMAN_PLUGIN_TELEMETRY_URL: https://o1224273.ingest.us.sentry.io/api/4512245392867328/store/?sentry_key=ecb864881df3ebaba9870d466949a5b2
       POSTMAN_PLUGIN_ENVIRONMENT: ci
       POSTMAN_PLUGIN_INSTALL_SOURCE: installer-smoke
     steps:
