@@ -210,7 +210,7 @@ jobs:
           if grep -E '# SKIP' unit-tests.tap | grep -v -E "$ALLOWED_SKIP"; then exit 1; fi
 
   # install/install.sh needs no Node to run; Node only runs its stub-agent tests. Linux and macOS,
-  # because the script is POSIX sh. install.ps1 is not run here.
+  # because the script is POSIX sh.
   install-script:
     name: Install script / ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
@@ -232,6 +232,23 @@ jobs:
 
       - name: Stub-agent tests
         run: node --test install/test/*.test.js
+
+  # install.ps1 on both PowerShells a Windows machine can have, against stub agents and a real Git.
+  install-script-windows:
+    name: Install script / Windows ${{ matrix.shell }}
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shell: [powershell, pwsh]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Stub-agent tests
+        shell: ${{ matrix.shell }}
+        run: ${{ matrix.shell }} -NoProfile -ExecutionPolicy Bypass -File install/test/install-ps1.test.ps1
 
   # Pi installs the installer's npm tarball as a Pi package. The harness packs it,
   # installs it into a pinned Pi, and checks what Pi sends the model.

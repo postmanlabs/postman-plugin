@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -31,7 +31,7 @@ function sandbox ({ bins = {}, home = {} } = {}) {
     }
 
     // Tools the script needs, linked in so the stubs stay the only agents on PATH.
-    for (const tool of ['sh', 'grep', 'tr', 'cut', 'sed', 'uname', 'printf', 'cat', 'mkdir']) {
+    for (const tool of ['sh', 'grep', 'tr', 'cut', 'sed', 'uname', 'printf', 'cat', 'mkdir', 'head', 'date', 'touch', 'sleep']) {
         const found = spawnSync('sh', ['-c', `command -v ${tool}`]).stdout.toString().trim();
 
         if (found.startsWith('/') && !fs.existsSync(path.join(bin, tool))) {
@@ -40,8 +40,10 @@ function sandbox ({ bins = {}, home = {} } = {}) {
     }
 
     return {
+        root,
         homeDir,
-        commands: () => fs.readFileSync(log, 'utf8').split('\n').filter(Boolean),
+        // The version probe is not a command that changes anything, so it stays out of the recorded list.
+        commands: () => fs.readFileSync(log, 'utf8').split('\n').filter((line) => line && !line.endsWith(' --version')),
         run (args = [], env = {}) {
             const exec = spawnSync(path.join(bin, 'sh'), [SCRIPT, ...args], {
                 env: { PATH: bin, HOME: homeDir, POSTMAN_PLUGIN_CURSOR_APP: path.join(homeDir, 'no-cursor.app'), ...env },
@@ -55,11 +57,12 @@ function sandbox ({ bins = {}, home = {} } = {}) {
 }
 
 // What `claude` prints for the two list commands; every other command succeeds silently.
-const claudeStub = ({ plugins = '[]', marketplaces = OFFICIAL, failOn = '' } = {}) => `
+const claudeStub = ({ plugins = '[]', marketplaces = OFFICIAL, failOn = '', message = 'boom: /Users/someone/secret' } = {}) => `
 case "$*" in
+  "--version") echo '2.1.296 (Claude Code)' ;;
   "plugin list --json") echo '${plugins}' ;;
   "plugin marketplace list --json") echo '${marketplaces}' ;;
-  *"${failOn || 'NEVER_MATCHES'}"*) echo "boom: /Users/someone/secret" >&2; exit 1 ;;
+  *"${failOn || 'NEVER_MATCHES'}"*) echo "${message}" >&2; exit 1 ;;
 esac`;
 
 const codexStub = ({ plugins = '{"installed":[]}', marketplaces = '{"marketplaces":[]}', failOn = '' } = {}) => `
@@ -192,7 +195,7 @@ test('Codex: a registered marketplace is upgraded, and a foreign source blocks',
 });
 
 test('Cursor: clones the repo into the local plugins folder', (t) => {
-    const box = sandbox({ bins: { git: 'for last; do :; done; mkdir -p "$last/.cursor-plugin"' }, home: { '.cursor/settings.json': '{}' } });
+    const box = sandbox({ bins: { git: '[ "$1" = --version ] && exit 0; for last; do :; done; mkdir -p "$last/.cursor-plugin"' }, home: { '.cursor/settings.json': '{}' } });
 
     t.after(box.cleanup);
     const out = box.run(['--agent', 'cursor']);
@@ -271,4 +274,78 @@ test('telemetry: off when no endpoint is set or POSTMAN_PLUGIN_TELEMETRY=0', (t)
     off.run([], { POSTMAN_PLUGIN_TELEMETRY_URL: 'https://sentry.test/store', POSTMAN_PLUGIN_TELEMETRY: '0' });
     assert.ok(!unset.commands().some((line) => line.startsWith('curl ')));
     assert.ok(!off.commands().some((line) => line.startsWith('curl ')));
+});
+
+const sentEvents = (box) => box.commands().filter((line) => line.startsWith('curl '));
+const TELEMETRY = { POSTMAN_PLUGIN_TELEMETRY_URL: 'https://sentry.test/store' };
+
+test('telemetry: a failure carries a fixed cause, the exit code, the agent version and a run id', (t) => {
+    const box = sandbox({ bins: { claude: claudeStub({ failOn: 'plugin install', message: 'getaddrinfo ENOTFOUND github.com /Users/someone/secret' }), curl: 'exit 0' } });
+
+    t.after(box.cleanup);
+    box.run(['--agent', 'claude-code'], TELEMETRY);
+    const [event] = sentEvents(box);
+
+    assert.match(event, /"cause":"network-dns"/);
+    assert.match(event, /"exit_code":"1"/);
+    assert.match(event, /"agent_version":"2.1.296 Claude Code"/);
+    assert.match(event, /"run_id":"\d+-\d+"/);
+    assert.match(event, /"arch":"[^"]+"/);
+    assert.doesNotMatch(event, /secret|ENOTFOUND|github/);
+});
+
+test('telemetry: the cause classifier maps common failures to fixed codes', (t) => {
+    const cases = {
+        'x509: certificate signed by unknown authority': 'tls',
+        'HTTP 407 Proxy Authentication Required': 'proxy',
+        'EACCES: permission denied, mkdir': 'permission',
+        'ENOSPC: no space left on device': 'disk-full',
+        'fatal: could not read Username: terminal prompts disabled': 'auth',
+        'error: unknown option --scope': 'cli-unsupported',
+        'something nobody has seen': 'unknown'
+    };
+
+    for (const [message, cause] of Object.entries(cases)) {
+        const box = sandbox({ bins: { claude: claudeStub({ failOn: 'plugin install', message }), curl: 'exit 0' } });
+
+        t.after(box.cleanup);
+        box.run(['--agent', 'claude-code'], TELEMETRY);
+        assert.match(sentEvents(box)[0], new RegExp(`"cause":"${cause}"`), message);
+    }
+});
+
+test('telemetry: no supported agent is reported, not silent', (t) => {
+    const box = sandbox({ bins: { curl: 'exit 0' } });
+
+    t.after(box.cleanup);
+    const out = box.run([], TELEMETRY);
+
+    assert.equal(out.code, 3);
+    assert.match(sentEvents(box)[0], /"agent":"none".*"outcome":"skipped".*"reason":"no-agent"/);
+});
+
+test('telemetry: a run killed mid-install reports an abort and exits 130', async (t) => {
+    const box = sandbox({ bins: { claude: `case "$*" in "plugin list --json") echo '[]' ;; "plugin marketplace list --json") echo '[]' ;; esac\ncase "$*" in *"marketplace add"*) touch "$0.started"; sleep 2 ;; esac`, curl: 'exit 0' } });
+
+    t.after(box.cleanup);
+    const child = spawn(path.join(box.root, 'bin', 'sh'), [SCRIPT, '--agent', 'claude-code'], {
+        env: { PATH: path.join(box.root, 'bin'), HOME: box.homeDir, ...TELEMETRY }
+    });
+    const exit = new Promise((resolve) => child.on('exit', (code) => resolve(code)));
+
+    for (let waited = 0; !fs.existsSync(path.join(box.root, 'bin', 'claude.started')) && waited < 5000; waited += 50) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    child.kill('SIGTERM');
+
+    assert.equal(await exit, 130);
+    assert.match(sentEvents(box)[0], /"agent":"claude-code".*"outcome":"failed".*"reason":"aborted"/);
+});
+
+test('git never prompts for credentials', (t) => {
+    const box = sandbox({ bins: { git: '[ "$1" = --version ] && exit 0; echo "GTP=$GIT_TERMINAL_PROMPT" >> "$0.env"; for last; do :; done; mkdir -p "$last/.cursor-plugin"' }, home: { '.cursor/settings.json': '{}' } });
+
+    t.after(box.cleanup);
+    box.run(['--agent', 'cursor']);
+    assert.equal(fs.readFileSync(path.join(box.root, 'bin', 'git.env'), 'utf8').trim(), 'GTP=0');
 });

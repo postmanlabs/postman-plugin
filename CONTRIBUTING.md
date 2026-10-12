@@ -96,7 +96,7 @@ it lands.
 opencode/                         the OpenCode plugin — source, tests, install harnesses, routing evals
 package.json                      makes the repo the package `opencode plugin add` installs; names opencode/src/index.ts
 installer/                        `npx @postman/postman-plugin` — one adapter per agent in src/hosts/ — and the Pi package
-install/install.sh, install.ps1    Node-free install into Claude Code, Codex and Cursor; install/test/ runs the shell one against stub agents. Keep both scripts, and `installer/src/hosts/` for those three agents, in step
+install/install.sh, install.ps1    Node-free install into Claude Code, Codex and Cursor; install/test/ runs both against stub agents (`install-ps1.test.ps1` under Windows PowerShell 5.1 and PowerShell 7 in CI). Keep both scripts, and `installer/src/hosts/` for those three agents, in step
 installer/src/pi-extension.ts     the Pi package's extension: the session-start mandate and the MCP server
 .opencode/plugins/postman.ts      loads that plugin from source when OpenCode runs inside a clone
 mcp.claude-code.json              Claude Code's MCP config

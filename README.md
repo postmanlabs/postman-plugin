@@ -48,8 +48,8 @@ irm https://raw.githubusercontent.com/postmanlabs/postman-plugin/main/install/in
 `--agent claude-code`, `--agent codex` or `--agent cursor` limits the run. On
 Windows, set `$env:POSTMAN_PLUGIN_AGENT = 'claude-code,codex'` before the command,
 or run the downloaded file with `-Agent claude-code,codex`. The
-exit code is 0 when done, 1 when an agent failed, 2 for bad usage and 3 when none
-of the three is installed. Factory Droid, Kimi Code, OpenCode and Pi still
+exit code is 0 when done, 1 when an agent failed, 2 for bad usage, 3 when none
+of the three is installed and 4 when the script itself broke. Factory Droid, Kimi Code, OpenCode and Pi still
 install with the commands below or `npx`.
 
 You can also use the following commands to install individually:
