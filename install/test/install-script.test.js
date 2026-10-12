@@ -31,7 +31,7 @@ function sandbox ({ bins = {}, home = {} } = {}) {
     }
 
     // Tools the script needs, linked in so the stubs stay the only agents on PATH.
-    for (const tool of ['sh', 'grep', 'tr', 'cut', 'sed', 'uname', 'printf', 'cat', 'mkdir', 'head', 'date', 'touch', 'sleep']) {
+    for (const tool of ['sh', 'grep', 'tr', 'cut', 'sed', 'uname', 'printf', 'cat', 'mkdir', 'head', 'date', 'touch', 'sleep', 'mv', 'rm']) {
         const found = spawnSync('sh', ['-c', `command -v ${tool}`]).stdout.toString().trim();
 
         if (found.startsWith('/') && !fs.existsSync(path.join(bin, tool))) {
@@ -201,7 +201,9 @@ test('Cursor: clones the repo into the local plugins folder', (t) => {
     const out = box.run(['--agent', 'cursor']);
 
     assert.equal(out.code, 0);
-    assert.deepEqual(box.commands(), [`git clone --depth 1 --branch main https://github.com/postmanlabs/postman-plugin.git ${box.homeDir}/.cursor/plugins/local/postman`]);
+    assert.deepEqual(box.commands(), [`git clone --depth 1 --branch main https://github.com/postmanlabs/postman-plugin.git ${box.homeDir}/.cursor/plugins/local/postman.partial`]);
+    assert.ok(fs.existsSync(path.join(box.homeDir, '.cursor/plugins/local/postman/.cursor-plugin')), 'renamed into place');
+    assert.ok(!fs.existsSync(path.join(box.homeDir, '.cursor/plugins/local/postman.partial')));
     assert.match(out.stdout, /^result cursor installed$/m);
 });
 
@@ -348,4 +350,47 @@ test('git never prompts for credentials', (t) => {
     t.after(box.cleanup);
     box.run(['--agent', 'cursor']);
     assert.equal(fs.readFileSync(path.join(box.root, 'bin', 'git.env'), 'utf8').trim(), 'GTP=0');
+});
+
+test('Cursor: a failed clone leaves nothing behind, and a leftover partial folder is replaced', (t) => {
+    const failing = sandbox({ bins: { git: '[ "$1" = --version ] && exit 0; for last; do :; done; mkdir -p "$last/half"; echo "fatal: unable to access" >&2; exit 128' }, home: { '.cursor/settings.json': '{}' } }),
+        leftover = sandbox({ bins: { git: '[ "$1" = --version ] && exit 0; for last; do :; done; mkdir -p "$last/.cursor-plugin"' }, home: { '.cursor/plugins/local/postman.partial/stale.txt': 'x' } });
+
+    t.after(failing.cleanup);
+    t.after(leftover.cleanup);
+    assert.match(failing.run(['--agent', 'cursor']).stdout, /^result cursor failed clone-failed$/m);
+    assert.ok(!fs.existsSync(path.join(failing.homeDir, '.cursor/plugins/local/postman.partial')));
+    assert.ok(!fs.existsSync(path.join(failing.homeDir, '.cursor/plugins/local/postman')));
+    assert.match(leftover.run(['--agent', 'cursor']).stdout, /^result cursor installed$/m);
+    assert.ok(!fs.existsSync(path.join(leftover.homeDir, '.cursor/plugins/local/postman/stale.txt')));
+});
+
+test('telemetry: the event names its environment, groups by a fingerprint and says why in its message', (t) => {
+    const box = sandbox({ bins: { claude: claudeStub({ failOn: 'plugin install', message: 'getaddrinfo ENOTFOUND' }), curl: 'exit 0' } }),
+        beta = sandbox({ bins: { claude: claudeStub(), curl: 'exit 0' } });
+
+    t.after(box.cleanup);
+    t.after(beta.cleanup);
+    box.run(['--agent', 'claude-code'], TELEMETRY);
+    beta.run(['--agent', 'claude-code'], { ...TELEMETRY, POSTMAN_PLUGIN_ENVIRONMENT: 'beta;x' });
+    const [event] = sentEvents(box);
+
+    assert.match(event, /"environment":"production"/);
+    assert.match(event, /"message":"postman-plugin-install claude-code failed install-failed network-dns"/);
+    assert.match(event, /"fingerprint":\["postman-plugin-install","claude-code","failed","install-failed","network-dns"\]/);
+    assert.match(sentEvents(beta)[0], /"environment":"beta_x"/);
+    assert.match(event, /--connect-timeout 3 --max-time 5/);
+});
+
+test('telemetry: results are printed before any event is sent', (t) => {
+    // The curl stub copies what the script has printed so far, so it sees whether the result lines came first.
+    const box = sandbox({ bins: { claude: claudeStub(), curl: 'cat "$PRINTED" > "$0.seen"' } }),
+        printed = path.join(box.root, 'printed.txt');
+
+    t.after(box.cleanup);
+    spawnSync(path.join(box.root, 'bin', 'sh'), ['-c', `"${path.join(box.root, 'bin', 'sh')}" "${SCRIPT}" --agent claude-code > "${printed}"`], {
+        env: { PATH: path.join(box.root, 'bin'), HOME: box.homeDir, PRINTED: printed, ...TELEMETRY }
+    });
+
+    assert.match(fs.readFileSync(path.join(box.root, 'bin', 'curl.seen'), 'utf8'), /result claude-code installed/);
 });

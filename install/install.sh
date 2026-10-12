@@ -9,7 +9,8 @@
 # 2 bad usage, 3 no supported agent found, 4 the script itself broke. The last lines are
 # `result <agent> <outcome> [reason]`.
 #
-# POSTMAN_PLUGIN_INSTALL_SOURCE tags the telemetry event (a-z, 0-9, _ and -, 40 characters).
+# POSTMAN_PLUGIN_INSTALL_SOURCE and POSTMAN_PLUGIN_ENVIRONMENT (default production) tag the telemetry
+# event (a-z, 0-9, _ and -, 40 and 20 characters).
 # POSTMAN_PLUGIN_TELEMETRY=0 turns telemetry off. An event holds fixed codes and version strings
 # only, never agent output, paths or user text.
 
@@ -36,7 +37,9 @@ export GIT_TERMINAL_PROMPT
 clean() { tr -cd 'a-zA-Z0-9._ -' | cut -c1-"$1"; }
 
 SOURCE=$(printf '%s' "${POSTMAN_PLUGIN_INSTALL_SOURCE:-}" | tr -c 'a-zA-Z0-9_-' '_' | cut -c1-40)
-OS=$(uname -s 2>/dev/null | tr 'A-Z' 'a-z')
+# Tells a beta app's installs from production ones, the way the CLI installer tags its channel.
+ENVIRONMENT=$(printf '%s' "${POSTMAN_PLUGIN_ENVIRONMENT:-production}" | tr -c 'a-zA-Z0-9_-' '_' | cut -c1-20)
+OS=$(uname -s 2>/dev/null | tr '[:upper:]' '[:lower:]')
 ARCH=$(uname -m 2>/dev/null | clean 20)
 OS_VERSION=$(uname -r 2>/dev/null | clean 40)
 RUN_ID="$(date +%s 2>/dev/null)-$$"
@@ -52,6 +55,7 @@ DETECTED=0
 DONE=0
 ABORTED=0
 RESULTS=''
+PENDING=''
 CURRENT_AGENT=''
 
 usage() {
@@ -61,26 +65,44 @@ usage() {
 }
 
 # Fixed codes and version strings only: a Sentry event must never carry paths, agent output or user text.
+# The fingerprint keeps each failure kind its own Sentry issue instead of one issue per agent.
 report() {
     [ -n "$TELEMETRY_URL" ] || return 0
     [ "${POSTMAN_PLUGIN_TELEMETRY:-1}" = 0 ] && return 0
     command -v curl >/dev/null 2>&1 || return 0
     level=info
     [ "$2" = failed ] && level=error
-    tags="\"agent\":\"$1\",\"outcome\":\"$2\",\"os\":\"$OS\",\"arch\":\"$ARCH\",\"os_version\":\"$OS_VERSION\",\"script_version\":\"$SCRIPT_VERSION\",\"run_id\":\"$RUN_ID\""
+    tags="\"agent\":\"$1\",\"outcome\":\"$2\",\"environment\":\"$ENVIRONMENT\",\"os\":\"$OS\",\"arch\":\"$ARCH\",\"os_version\":\"$OS_VERSION\",\"script_version\":\"$SCRIPT_VERSION\",\"run_id\":\"$RUN_ID\""
     [ -n "$3" ] && tags="$tags,\"reason\":\"$3\""
     [ -n "$CAUSE" ] && tags="$tags,\"cause\":\"$CAUSE\""
     [ -n "$EXIT_CODE" ] && tags="$tags,\"exit_code\":\"$EXIT_CODE\""
     [ -n "$AGENT_VERSION" ] && tags="$tags,\"agent_version\":\"$AGENT_VERSION\""
     [ -n "$SOURCE" ] && tags="$tags,\"source\":\"$SOURCE\""
-    curl -fsS -m 5 -X POST -H 'Content-Type: application/json' \
-        -d "{\"message\":\"postman-plugin-install $1 $2\",\"level\":\"$level\",\"logger\":\"postman-plugin-install\",\"platform\":\"other\",\"tags\":{$tags}}" \
+    curl --silent --fail --connect-timeout 3 --max-time 5 --retry 0 --request POST \
+        --header 'Content-Type: application/json' \
+        --data-raw "{\"message\":\"postman-plugin-install $1 $2${3:+ $3}${CAUSE:+ $CAUSE}\",\"level\":\"$level\",\"logger\":\"postman-plugin-install\",\"platform\":\"other\",\"fingerprint\":[\"postman-plugin-install\",\"$1\",\"$2\",\"$3\",\"$CAUSE\"],\"tags\":{$tags}}" \
         "$TELEMETRY_URL" >/dev/null 2>&1 || true
+}
+
+# Events are queued and sent after the result lines are printed, so a slow or blocked Sentry cannot delay them.
+queue_report() {
+    PENDING="$PENDING
+$1|$2|$3|$CAUSE|$EXIT_CODE|$AGENT_VERSION"
+}
+
+flush_reports() {
+    [ -n "$PENDING" ] || return 0
+    queued=$PENDING
+    PENDING=''
+    printf '%s\n' "$queued" | while IFS='|' read -r r_agent r_outcome r_reason r_cause r_exit r_version; do
+        [ -n "$r_agent" ] || continue
+        CAUSE=$r_cause EXIT_CODE=$r_exit AGENT_VERSION=$r_version report "$r_agent" "$r_outcome" "$r_reason"
+    done
 }
 
 # Maps a failed command's output to a fixed code, so a failure is diagnosable without sending the output.
 classify() {
-    text=$(printf '%s' "$1" | tr 'A-Z' 'a-z')
+    text=$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')
     case "$text" in
         *"no space left"*|*enospc*|*"not enough space"*) echo disk-full ;;
         *"could not resolve"*|*"name or service not known"*|*enotfound*|*getaddrinfo*|*"network is unreachable"*|*"temporary failure in name"*) echo network-dns ;;
@@ -190,7 +212,12 @@ install_cursor() {
     command -v git >/dev/null 2>&1 || { finish failed git-missing; return 0; }
     AGENT_VERSION=$(agent_version git)
 
-    run git clone --depth 1 --branch "$BRANCH" "$GIT_URL" "$clone" || { finish failed clone-failed; return 0; }
+    # Cloned beside the target and renamed, so a run that is killed halfway leaves nothing Cursor could load.
+    # The partial folder is ours alone, so a leftover one is removed first.
+    partial="$clone.partial"
+    rm -rf "$partial"
+    run git clone --depth 1 --branch "$BRANCH" "$GIT_URL" "$partial" || { rm -rf "$partial"; finish failed clone-failed; return 0; }
+    mv "$partial" "$clone" 2>/dev/null || { rm -rf "$partial"; finish failed clone-failed; return 0; }
     finish installed
 }
 
@@ -199,7 +226,7 @@ record() {
     printf '  %s: %s%s\n' "$agent" "$OUTCOME" "${REASON:+ ($REASON)}"
     RESULTS="$RESULTS
 result $agent $OUTCOME${REASON:+ $REASON}"
-    report "$agent" "$OUTCOME" "$REASON"
+    queue_report "$agent" "$OUTCOME" "$REASON"
     [ "$OUTCOME" = failed ] && FAILED=1
 }
 
@@ -269,5 +296,6 @@ if [ "$DETECTED" = 0 ]; then
 fi
 
 printf '%s\n' "$RESULTS" | sed '/^$/d'
+flush_reports
 DONE=1
 [ "$FAILED" = 0 ] || exit 1

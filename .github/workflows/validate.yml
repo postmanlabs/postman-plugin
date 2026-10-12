@@ -235,20 +235,21 @@ jobs:
 
   # install.ps1 on both PowerShells a Windows machine can have, against stub agents and a real Git.
   install-script-windows:
-    name: Install script / Windows ${{ matrix.shell }}
+    name: Install script / Windows
     runs-on: windows-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        shell: [powershell, pwsh]
     steps:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
-      - name: Stub-agent tests
-        shell: ${{ matrix.shell }}
-        run: ${{ matrix.shell }} -NoProfile -ExecutionPolicy Bypass -File install/test/install-ps1.test.ps1
+      - name: Stub-agent tests, Windows PowerShell 5.1
+        shell: pwsh
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File install/test/install-ps1.test.ps1
+
+      - name: Stub-agent tests, PowerShell 7
+        if: ${{ !cancelled() }}
+        shell: pwsh
+        run: pwsh -NoProfile -ExecutionPolicy Bypass -File install/test/install-ps1.test.ps1
 
   # Pi installs the installer's npm tarball as a Pi package. The harness packs it,
   # installs it into a pinned Pi, and checks what Pi sends the model.

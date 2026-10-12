@@ -11,7 +11,8 @@
 # 2 bad usage, 3 no supported agent found, 4 the script itself broke. The last lines are
 # `result <agent> <outcome> [reason]`.
 #
-# POSTMAN_PLUGIN_INSTALL_SOURCE tags the telemetry event (a-z, 0-9, _ and -, 40 characters).
+# POSTMAN_PLUGIN_INSTALL_SOURCE and POSTMAN_PLUGIN_ENVIRONMENT (default production) tag the telemetry
+# event (a-z, 0-9, _ and -, 40 and 20 characters).
 # POSTMAN_PLUGIN_TELEMETRY=0 turns telemetry off. An event holds fixed codes and version strings
 # only, never agent output, paths or user text.
 # Same behavior as install.sh. Keep the two in step.
@@ -41,6 +42,10 @@ function Install-PostmanPlugin {
         $Source = ($env:POSTMAN_PLUGIN_INSTALL_SOURCE -replace '[^a-zA-Z0-9_-]', '_')
         if ($Source.Length -gt 40) { $Source = $Source.Substring(0, 40) }
     }
+
+    # Tells a beta app's installs from production ones, the way the CLI installer tags its channel.
+    $Environment = if ($env:POSTMAN_PLUGIN_ENVIRONMENT) { $env:POSTMAN_PLUGIN_ENVIRONMENT -replace '[^a-zA-Z0-9_-]', '_' } else { 'production' }
+    if ($Environment.Length -gt 20) { $Environment = $Environment.Substring(0, 20) }
 
     # One hashtable, so the helpers below share state without touching the caller's scope under iex.
     $st = @{ Outcome = ''; Reason = ''; Cause = ''; ExitCode = ''; AgentVersion = ''; Detected = $false; Agent = ''; Done = $false }
@@ -79,25 +84,40 @@ function Install-PostmanPlugin {
     }
 
     # Fixed codes and version strings only: a Sentry event must never carry paths, agent output or user text.
-    function Send-Report($agentName, $outcome, $reason) {
+    # The fingerprint keeps each failure kind its own Sentry issue instead of one issue per agent.
+    function Send-Report($agentName, $outcome, $reason, $e) {
         if (-not $TelemetryUrl -or $env:POSTMAN_PLUGIN_TELEMETRY -eq '0') { return }
-        $tags = @{ agent = $agentName; outcome = $outcome; os = 'windows'; script_version = $ScriptVersion }
+        $tags = @{ agent = $agentName; outcome = $outcome; environment = $Environment; os = 'windows'; script_version = $ScriptVersion }
         foreach ($key in $ctx.Keys) { if ($ctx[$key]) { $tags[$key] = [string]$ctx[$key] } }
         if ($reason) { $tags.reason = $reason }
-        if ($st.Cause) { $tags.cause = $st.Cause }
-        if ($st.ExitCode -ne '') { $tags.exit_code = [string]$st.ExitCode }
-        if ($st.AgentVersion) { $tags.agent_version = $st.AgentVersion }
+        if ($e.Cause) { $tags.cause = $e.Cause }
+        if ($e.ExitCode -ne '') { $tags.exit_code = [string]$e.ExitCode }
+        if ($e.AgentVersion) { $tags.agent_version = $e.AgentVersion }
         if ($Source) { $tags.source = $Source }
+        $why = $(if ($reason) { " $reason" } else { '' }) + $(if ($e.Cause) { " $($e.Cause)" } else { '' })
         $body = @{
-            message  = "postman-plugin-install $agentName $outcome"
-            level    = $(if ($outcome -eq 'failed') { 'error' } else { 'info' })
-            logger   = 'postman-plugin-install'
-            platform = 'other'
-            tags     = $tags
+            message     = "postman-plugin-install $agentName $outcome$why"
+            level       = $(if ($outcome -eq 'failed') { 'error' } else { 'info' })
+            logger      = 'postman-plugin-install'
+            platform    = 'other'
+            fingerprint = @('postman-plugin-install', $agentName, $outcome, [string]$reason, [string]$e.Cause)
+            tags        = $tags
         } | ConvertTo-Json -Depth 4 -Compress
         try {
             Invoke-RestMethod -Uri $TelemetryUrl -Method Post -ContentType 'application/json' -Body $body -TimeoutSec 5 | Out-Null
         } catch { }
+    }
+
+    # Events are queued and sent after the result lines are printed, so a slow or blocked Sentry cannot delay them.
+    # A plain array: Constrained Language Mode refuses New-Object for a .NET collection type.
+    $queue = @{ Items = @() }
+    function Add-Pending($agentName, $outcome, $reason) {
+        $queue.Items += , @{ Agent = $agentName; Outcome = $outcome; Reason = $reason; E = @{ Cause = $st.Cause; ExitCode = $st.ExitCode; AgentVersion = $st.AgentVersion } }
+    }
+    function Send-Pending {
+        $items = $queue.Items
+        $queue.Items = @()
+        foreach ($item in $items) { Send-Report $item.Agent $item.Outcome $item.Reason $item.E }
     }
 
     # Maps a failed command's output to a fixed code, so a failure is diagnosable without sending the output.
@@ -216,8 +236,19 @@ function Install-PostmanPlugin {
         if (-not $git) { Finish 'failed' 'git-missing'; return $true }
         $st.AgentVersion = Get-AgentVersion $git
 
-        # A long username plus the plugin tree can pass the 260 character limit unless Git's long path support is on.
-        if (-not (Invoke-Agent $git @('-c', 'core.longpaths=true', 'clone', '--depth', '1', '--branch', $Branch, $GitUrl, $clone))) { Finish 'failed' 'clone-failed'; return $true }
+        # Cloned beside the target and renamed, so a run that is killed halfway leaves nothing Cursor could load.
+        # The partial folder is ours alone, so a leftover one is removed first. A long username plus the plugin
+        # tree can pass the 260 character limit unless Git's long path support is on.
+        $partial = "$clone.partial"
+        if (Test-Path $partial) { Remove-Item $partial -Recurse -Force -ErrorAction SilentlyContinue }
+        if (-not (Invoke-Agent $git @('-c', 'core.longpaths=true', 'clone', '--depth', '1', '--branch', $Branch, $GitUrl, $partial))) {
+            Remove-Item $partial -Recurse -Force -ErrorAction SilentlyContinue
+            Finish 'failed' 'clone-failed'; return $true
+        }
+        try { Move-Item -LiteralPath $partial -Destination $clone -ErrorAction Stop } catch {
+            Remove-Item $partial -Recurse -Force -ErrorAction SilentlyContinue
+            Finish 'failed' 'clone-failed'; return $true
+        }
         Finish 'installed'
         return $true
     }
@@ -251,7 +282,7 @@ function Install-PostmanPlugin {
             $suffix = if ($st.Reason) { " ($($st.Reason))" } else { '' }
             Write-Host "  ${name}: $($st.Outcome)$suffix"
             $results += "result $name $($st.Outcome)$(if ($st.Reason) { " $($st.Reason)" })"
-            Send-Report $name $st.Outcome $st.Reason
+            Add-Pending $name $st.Outcome $st.Reason
             if ($st.Outcome -eq 'failed') { $failed = $true }
         }
         $st.Agent = ''
@@ -259,11 +290,12 @@ function Install-PostmanPlugin {
         if (-not $st.Detected) {
             Write-Err 'No supported agent found. Install Claude Code, Codex or Cursor, or run npx @postman/postman-plugin.'
             $st.Outcome = 'skipped'; $st.Cause = ''; $st.ExitCode = ''; $st.AgentVersion = ''
-            Send-Report 'none' 'skipped' 'no-agent'
+            Send-Report 'none' 'skipped' 'no-agent' @{ Cause = ''; ExitCode = ''; AgentVersion = '' }
             return 3
         }
 
         $results | ForEach-Object { Write-Host $_ }
+        Send-Pending
         if ($failed) { return 1 }
         return 0
     }
@@ -274,7 +306,7 @@ function Install-PostmanPlugin {
     } catch {
         $st.Outcome = 'failed'; $st.Cause = ''; $st.ExitCode = ''; $st.AgentVersion = ''
         $type = Get-Safe { $_.Exception.GetType().Name }
-        Send-Report $(if ($st.Agent) { $st.Agent } else { 'script' }) 'failed' "crashed-$type"
+        Send-Report $(if ($st.Agent) { $st.Agent } else { 'script' }) 'failed' "crashed-$type" @{ Cause = ''; ExitCode = ''; AgentVersion = '' }
         Write-Err 'The Postman plugin installer hit an unexpected error.'
         return 4
     }

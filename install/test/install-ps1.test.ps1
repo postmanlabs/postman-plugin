@@ -178,6 +178,30 @@ New-Scenario '[]' '[]' ''
 $e = (Get-Events '-Agent cursor' "$tel; `$env:POSTMAN_PLUGIN_CURSOR_APP=`$null; Remove-Item Env:LOCALAPPDATA -ErrorAction SilentlyContinue") -join ''
 Check 'telemetry: an unexpected exception is reported by type, exit 4' ($e -match '"reason":\s*"crashed-\w+"' -and $script:LastRun.Code -eq 4) "$e $($script:LastRun.Out)"
 
+# Environment, grouping and message
+New-Scenario '[]' $official 'plugin install' 'getaddrinfo ENOTFOUND'
+$e = (Get-Events '-Agent claude-code' $tel) -join ''
+Check 'telemetry: environment defaults to production, fingerprint and message carry the reason' (
+    $e -match '"environment":\s*"production"' -and $e -match '"message":\s*"postman-plugin-install claude-code failed install-failed network-dns"' -and
+    $e -match '"fingerprint":\s*\[\s*"postman-plugin-install",\s*"claude-code",\s*"failed",\s*"install-failed",\s*"network-dns"\s*\]') $e
+New-Scenario '[]' '[]' ''
+$e = (Get-Events '-Agent claude-code' "$tel; `$env:POSTMAN_PLUGIN_ENVIRONMENT='beta;x'") -join ''
+Check 'telemetry: environment comes from POSTMAN_PLUGIN_ENVIRONMENT, sanitized' ($e -match '"environment":\s*"beta_x"') $e
+
+# Cursor: detected from its real install folder, cloned beside the target, and never left half done
+$fakeLocal = Join-Path $root 'local'
+New-Scenario '[]' '[]' ''
+New-Item -ItemType Directory -Path (Join-Path $fakeLocal 'Programs\cursor') -Force | Out-Null
+Remove-Item (Join-Path $home_ '.cursor') -Recurse -Force -ErrorAction SilentlyContinue
+Set-Content -Path (Join-Path $bin 'git.cmd') -Value @('@echo off', "echo git %* >> `"$log`"", 'echo %* | findstr /C:"--version" >nul && (echo git version 2.0 & exit /b 0)', 'echo fatal: unable to access 1>&2', 'exit /b 128') -Encoding ASCII
+$r = Invoke-Install '-Agent cursor' "`$env:LOCALAPPDATA='$fakeLocal'; `$env:POSTMAN_PLUGIN_CURSOR_APP=`$null"
+Check 'cursor: found by %LOCALAPPDATA%\Programs\cursor, a failed clone leaves nothing' ($r.Out -match 'result cursor failed clone-failed' -and -not (Test-Path (Join-Path $home_ '.cursor\plugins\local\postman*'))) "$($r.Code) $($r.Out)"
+New-Item -ItemType Directory -Path (Join-Path $home_ '.cursor\plugins\local\postman.partial') -Force | Out-Null
+Set-Content -Path (Join-Path $home_ '.cursor\plugins\local\postman.partial\stale.txt') -Value x
+Remove-Item (Join-Path $bin 'git.cmd')
+$r = Invoke-Install '-Agent cursor' "`$env:LOCALAPPDATA='$fakeLocal'; `$env:POSTMAN_PLUGIN_CURSOR_APP=`$null; `$env:PATH=`$env:PATH + ';$env:ProgramFiles\Git\cmd'"
+Check 'cursor: a leftover partial folder is replaced by a real clone' ($r.Out -match 'result cursor installed' -and (Test-Path (Join-Path $home_ '.cursor\plugins\local\postman\.cursor-plugin\plugin.json')) -and -not (Test-Path (Join-Path $home_ '.cursor\plugins\local\postman.partial'))) "$($r.Code) $($r.Out)"
+
 Remove-Item $root -Recurse -Force -ErrorAction SilentlyContinue
 Write-Host "FAILS=$fails"
 if ($fails -gt 0) { exit 1 }
