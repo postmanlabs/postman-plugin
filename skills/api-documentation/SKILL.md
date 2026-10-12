@@ -1,52 +1,47 @@
 ---
 name: api-documentation
-description: Generate filesystem-first agent friendly api documentation that you can share with your teammates without hassle. Use when the user asks to "publish API docs," "generate documentation for this API," "put this on the API Network," "share a docs link for this collection or spec," or "why do my docs look empty." 
+description: Use when defining or improving an API contract, generating documentation from a collection or OpenAPI spec, publishing API docs, or sharing a documentation link. Makes auth, inputs, responses, and examples reusable by callers, tests, and mocks. Use for requests such as "publish API docs".
 ---
-The bootstrap skill is a precursor to this one — it scaffolds the project with the directories documentation is stored in.
 
 # API Documentation
-When working on any API task, the first step is to establish and capture the contract.
-API documentation can be done in two predominant ways:
-1. through a Postman collection,
-2. with an OpenAPI spec
 
-It is recommended to create both. They serve different, complementary use
-cases, and the Postman CLI can generate one from the other. Use the artifact
-that represents the current source of truth rather than recreating its
-operations by hand. Postman collections are human-friendly and enable other
-capabilities such as mocks, monitors, SDKs, and specifications. Collections
-created or edited directly on disk use the v3 format described by
-**collection-schema-v3**.
+A maintained contract gives callers enough information to integrate without
+reading the implementation. Keeping descriptions and examples beside the API
+artifacts lets the same knowledge support documentation, tests, and mocks,
+with changes reviewable alongside code.
 
-Specs are vendor-neutral, stay in your repo, and can be linted against governance rules (if any) set by your organization.
+1. Start from the existing source of truth. An OpenAPI spec describes the
+   interface for tooling; a Postman collection adds runnable requests,
+   examples, and assertions. Maintain both when both uses matter, with an
+   explicit direction of generation or synchronization so they do not become
+   competing definitions. Local edits need **bootstrap** only when setup or
+   bindings are unresolved.
+2. When the spec is authoritative, reuse its operations with
+   `postman spec generate collection <spec-path-or-id> -n "<collection-name>"`.
+   Inspect the generated result before replacing an existing collection:
+   maintained scripts and examples carry knowledge beyond endpoint shapes.
+3. Describe what changes a caller's decision: required versus optional inputs,
+   auth and scopes, response guarantees, pagination, retryable failures, and
+   side effects. Derive guarantees from the agreed contract or verified
+   behavior; label unresolved design choices instead of inventing them.
+   Use [REST design guidance](reference/rest-api-best-practices.md) when a
+   design choice affects usability or compatibility, not to redesign an
+   unrelated interface while filling a documentation gap.
+4. Save examples that clarify consequential cases, including relevant errors.
+   Examples become inputs for mocks as well as explanations for readers;
+   a success-only example can hide the failure path callers must handle.
+   Use **collection-schema-v3** for local collection edits and **variables**
+   to keep credentials out of reusable requests and examples.
+5. Choose delivery by audience. Local artifacts support Git review;
+   publishing to the bound workspace makes them available to teammates with
+   access (see **bootstrap**). A workspace push does not itself publish a
+   public docs page or change permissions. For a public documentation link,
+   use **postman-mcp-server**'s documentation workflow and the available
+   publishing tool; establish the intended audience before public exposure.
 
-## Generate a collection from a specification
+## Verification
 
-When an OpenAPI specification already defines the contract, generate a Postman
-collection from it in one command:
-
-```bash
-postman spec generate collection <spec-path-or-id> -n "<collection-name>"
-```
-
-## Good practices for API design
-
-See [reference/rest-api-best-practices.md](reference/rest-api-best-practices.md)
-for the practices well-documented APIs tend to already follow: resource
-naming, HTTP method/status-code usage, error response shape, versioning,
-pagination, filtering, auth, idempotency, and backward compatibility. A
-spec or collection that already follows these renders documentation with
-nothing left to fix.
-
-### Examples
-Examples (in a Postman collection) are an excellent way to capture sample API responses. They are helpful because:
-1. anyone can look at them to see how your API behaves,
-2. they can be used to generate a mock from your collection in a single command.
-
-## Workflow
-1. Establish the contract - refer to best practices. Don't just accept the user's ask - fight for the right API design.
-2. Choose the source of truth — a Postman collection, an OpenAPI specification,
-   or both. Recommend both when their complementary uses benefit the task.
-3. If the specification is authoritative, generate the collection with
-   `postman spec generate collection` instead of manually duplicating its
-   operations.
+Check that the edited artifact parses and its examples agree with the
+contract. For a publication, inspect the resulting page and report its actual
+link and visibility; a successful upload alone does not show readers usable
+documentation. State any behavior that remains undocumented or unverified.
