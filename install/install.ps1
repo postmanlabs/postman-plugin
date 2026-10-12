@@ -12,7 +12,6 @@
 # Same behavior as install.sh. Keep the two in step.
 
 param(
-    [ValidateSet('claude-code', 'codex', 'cursor')]
     [string[]]$Agent
 )
 
@@ -131,8 +130,7 @@ function Install-Codex {
 
 # Cursor has no install command. Its editor loads any plugin folder under plugins/local.
 function Install-Cursor {
-    $home_ = $HOME
-    $cursorDir = Join-Path $home_ '.cursor'
+    $cursorDir = Join-Path $env:USERPROFILE '.cursor'
     $cursorApp = if ($env:POSTMAN_PLUGIN_CURSOR_APP) { $env:POSTMAN_PLUGIN_CURSOR_APP } else { Join-Path $env:LOCALAPPDATA 'Programs\cursor' }
     if (-not ((Has-Command 'cursor') -or (Has-Command 'cursor-agent') -or (Test-Path $cursorDir) -or (Test-Path $cursorApp))) {
         return $false
@@ -152,6 +150,16 @@ function Install-Cursor {
 }
 
 $agents = if ($Agent) { $Agent } else { @('claude-code', 'codex', 'cursor') }
+foreach ($name in $agents) {
+    if ($name -notin 'claude-code', 'codex', 'cursor') {
+        [Console]::Error.WriteLine('Usage: install.ps1 [-Agent claude-code,codex,cursor]')
+        exit 2
+    }
+}
+if (-not $env:USERPROFILE) {
+    [Console]::Error.WriteLine('USERPROFILE is not set')
+    exit 2
+}
 
 foreach ($name in $agents) {
     $script:Outcome = ''
