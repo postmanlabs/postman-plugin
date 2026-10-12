@@ -266,15 +266,15 @@ test('telemetry: posts fixed codes with a sanitized source, and nothing the agen
     assert.doesNotMatch(sent, /secret|\/Users/);
 });
 
-test('telemetry: off when no endpoint is set or POSTMAN_PLUGIN_TELEMETRY=0', (t) => {
-    const unset = sandbox({ bins: { claude: claudeStub(), curl: 'exit 0' } }),
+test('telemetry: goes to the plugin installer project by default, and is off with POSTMAN_PLUGIN_TELEMETRY=0', (t) => {
+    const byDefault = sandbox({ bins: { claude: claudeStub(), curl: 'exit 0' } }),
         off = sandbox({ bins: { claude: claudeStub(), curl: 'exit 0' } });
 
-    t.after(unset.cleanup);
+    t.after(byDefault.cleanup);
     t.after(off.cleanup);
-    unset.run();
-    off.run([], { POSTMAN_PLUGIN_TELEMETRY_URL: 'https://sentry.test/store', POSTMAN_PLUGIN_TELEMETRY: '0' });
-    assert.ok(!unset.commands().some((line) => line.startsWith('curl ')));
+    byDefault.run();
+    off.run([], { POSTMAN_PLUGIN_TELEMETRY: '0' });
+    assert.match(byDefault.commands().find((line) => line.startsWith('curl ')), /https:\/\/o1224273\.ingest\.us\.sentry\.io\/api\/4512245392867328\/store\/\?sentry_key=[0-9a-f]{32}$/);
     assert.ok(!off.commands().some((line) => line.startsWith('curl ')));
 });
 

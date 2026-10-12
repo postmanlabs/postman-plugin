@@ -71,3 +71,10 @@ test('the two scripts report the same reason codes', () => {
 
     assert.deepEqual([...reasons(sh)].sort(), [...reasons(ps1)].sort());
 });
+
+test('both scripts report to the same Sentry endpoint by default', () => {
+    const endpoint = /https:\/\/[a-z0-9.]+\.ingest\.[a-z.]*sentry\.io\/api\/\d+\/store\/\?sentry_key=[0-9a-f]{32}/;
+
+    assert.ok(sh.match(endpoint));
+    assert.equal(sh.match(endpoint)?.[0], ps1.match(endpoint)?.[0]);
+});

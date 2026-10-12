@@ -25,8 +25,9 @@ CLAUDE_PLUGIN="postman@$CLAUDE_MARKETPLACE"
 CODEX_MARKETPLACE='postman'
 CODEX_PLUGIN="postman@$CODEX_MARKETPLACE"
 SCRIPT_VERSION='2'
-# Sentry store endpoint of the plugin installer project. Empty sends nothing.
-TELEMETRY_URL="${POSTMAN_PLUGIN_TELEMETRY_URL:-}"
+# The plugin installer's Sentry project. The key is a public ingest key that can only send events.
+# POSTMAN_PLUGIN_TELEMETRY_URL replaces it, POSTMAN_PLUGIN_TELEMETRY=0 turns reporting off.
+TELEMETRY_URL="${POSTMAN_PLUGIN_TELEMETRY_URL:-https://o1224273.ingest.us.sentry.io/api/4512245392867328/store/?sentry_key=89624d613f8f105a75eaf131a319a2a6}"
 # Overridable only so tests do not find a Cursor installed on the machine running them.
 CURSOR_APP="${POSTMAN_PLUGIN_CURSOR_APP:-/Applications/Cursor.app}"
 

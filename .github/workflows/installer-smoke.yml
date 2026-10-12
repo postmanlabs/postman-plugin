@@ -53,6 +53,10 @@ jobs:
             label: Linux
           - os: windows-latest
             label: Windows
+    env:
+      # The scripts report to their Sentry project, so tag these runs and they can be filtered out.
+      POSTMAN_PLUGIN_ENVIRONMENT: ci
+      POSTMAN_PLUGIN_INSTALL_SOURCE: installer-smoke
     steps:
       - uses: actions/checkout@v7
         with:

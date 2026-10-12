@@ -41,7 +41,7 @@ function Get-Commands { @(Get-Content $log | Where-Object { $_ -and $_ -notmatch
 # Runs the script in a child PowerShell with a PATH holding only the stubs. $mode is file or iex.
 function Invoke-Install($agentArgs, $envs = '', $mode = 'file', $prefix = '', $policy = 'Bypass') {
     $path = "$bin;$env:SystemRoot\System32;$env:SystemRoot\System32\WindowsPowerShell\v1.0;$env:ProgramFiles\Git\cmd"
-    $setup = "`$env:PATH='$path'; `$env:USERPROFILE='$home_'; `$env:POSTMAN_PLUGIN_CURSOR_APP='$root\none'; $envs"
+    $setup = "`$env:PATH='$path'; `$env:USERPROFILE='$home_'; `$env:POSTMAN_PLUGIN_CURSOR_APP='$root\none'; `$env:POSTMAN_PLUGIN_TELEMETRY='0'; $envs"
     $run = if ($mode -eq 'iex') { "Get-Content -Raw '$script' | iex; exit `$LASTEXITCODE" } else { "& '$script' $agentArgs; exit `$LASTEXITCODE" }
     $out = & $ps -NoProfile -ExecutionPolicy $policy -Command "$setup; $prefix $run" 2>&1 | Out-String
     return @{ Code = $LASTEXITCODE; Out = $out }
@@ -80,10 +80,10 @@ Check 'comma list runs both' ($r.Out -match 'result claude-code installed' -and 
 # `powershell -File install.ps1 -Agent a,b` passes the string 'a,b', which is how the README tells people to run it.
 New-Scenario '[]' '[]' ''
 $path = "$bin;$env:SystemRoot\System32;$env:SystemRoot\System32\WindowsPowerShell\v1.0"
-$env:PATH_BACKUP = $env:PATH; $env:PATH = $path; $env:USERPROFILE_BACKUP = $env:USERPROFILE; $env:USERPROFILE = $home_; $env:POSTMAN_PLUGIN_CURSOR_APP = "$root\none"
+$env:POSTMAN_PLUGIN_TELEMETRY = '0'; $env:PATH_BACKUP = $env:PATH; $env:PATH = $path; $env:USERPROFILE_BACKUP = $env:USERPROFILE; $env:USERPROFILE = $home_; $env:POSTMAN_PLUGIN_CURSOR_APP = "$root\none"
 $fileOut = & $ps -NoProfile -ExecutionPolicy Bypass -File $script -Agent claude-code,codex 2>&1 | Out-String
 $fileCode = $LASTEXITCODE
-$env:PATH = $env:PATH_BACKUP; $env:USERPROFILE = $env:USERPROFILE_BACKUP; Remove-Item Env:POSTMAN_PLUGIN_CURSOR_APP
+$env:PATH = $env:PATH_BACKUP; $env:USERPROFILE = $env:USERPROFILE_BACKUP; Remove-Item Env:POSTMAN_PLUGIN_CURSOR_APP; Remove-Item Env:POSTMAN_PLUGIN_TELEMETRY
 Check 'powershell -File with -Agent a,b: both agents run' ($fileCode -eq 0 -and $fileOut -match 'result claude-code installed' -and $fileOut -match 'result codex installed') "$fileCode $fileOut"
 
 # Cursor with real git, under a profile folder that has a space and a non-ASCII letter
