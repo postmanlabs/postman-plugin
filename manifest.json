@@ -68,13 +68,13 @@
     {
       "name": "api-mocking",
       "plugin": "postman",
-      "description": "Finds, builds, runs and publishes a stand-in for one API — the owning team's published mock when there is one, otherwise one built from its spec or collection that behaves like the real API, stateful when callers write then read. Use when something needs an API that isn't built or reachable yet (a frontend, client, demo or one dependency), when other teams should build against your API before it ships, or when asked to mock an API or fake a backend. For running your own service against everything it calls, use api-simulation. Covers `postman mock` and `postman dependency add mock`.",
+      "description": "Finds, builds, runs and publishes a stand-in for one API — the owning team's published mock when there is one, otherwise one built from its spec or collection that behaves like the real API, stateful when callers write then read. Use when something needs an API that isn't built or reachable yet (a frontend, client, demo or one dependency), when other teams should build against your API before it ships, or when asked to mock an API or fake a backend. For several APIs served together, use api-simulation. Covers `postman mock` and `postman dependency add mock`.",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/api-mocking/SKILL.md",
-          "bytes": 11210,
-          "sha256": "a0a4181025a54564a715c2896378f1dc3132d446ee4b2005fc21d9530dfab2cb"
+          "bytes": 7786,
+          "sha256": "a090b69770a4d6acbce8663ece2281f9813122eaed2bb5d2facecc5a4909e803"
         }
       ]
     },
@@ -94,19 +94,19 @@
     {
       "name": "api-simulation",
       "plugin": "postman",
-      "description": "Runs the service you're building for real against stand-ins for the HTTP services it calls, on one local port. Use when you add or change code that calls other services and need to run it, test it, prove a fix or reproduce an upstream failure (timeouts, 5xx, 409, 429) end to end, locally or in CI, without the real services, because they're unreachable, need credentials, cost money, have side effects or don't exist yet. Also answers what happens when a service it calls goes down, is slow or returns errors, by running each failure instead of reading the code. Applies even when nobody says mock or simulation. Not for a stand-in backend with no service of your own running (use api-mocking). Covers `postman simulation`.",
+      "description": "Runs your code for real against stand-ins for the HTTP services it calls, served together as one environment on one local port or one deployed URL, whether that code is a service you're changing, a frontend, a test suite or a demo. Use when you add or change code that calls other services and need to run it, test it, prove a fix or reproduce an upstream failure (timeouts, 5xx, 409, 429) end to end, locally or in CI, without the real services because they're unreachable, need credentials, cost money, have side effects or don't exist yet. Also answers what happens when a service it calls goes down, is slow or returns errors, by running each failure instead of reading the code. Applies even when nobody says mock or simulation. For one API alone, use api-mocking. Covers `postman simulation`.",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/api-simulation/SKILL.md",
-          "bytes": 9405,
-          "sha256": "d57130bdf1fae5b3492ffbe4783ccd00d174a52583510bd0bc79882e5278233f"
+          "bytes": 7777,
+          "sha256": "fa65cb7ae1ef9a786cd34bcc38bc3650a1e9f657721c49363cef5942137540ad"
         },
         {
           "target": "reference/sim_yaml_schema.md",
           "source": "skills/api-simulation/reference/sim_yaml_schema.md",
-          "bytes": 4044,
-          "sha256": "23a47d974a63762c445b5772d7b7a92d1bf7f0a84fd655e24bbd01f155e4d4ea"
+          "bytes": 2772,
+          "sha256": "f8493cd617b5702d4f3798a41dc19ea10b9a4ae5158e027d97912b020df4d9bc"
         }
       ]
     },
@@ -118,8 +118,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-testing/SKILL.md",
-          "bytes": 5750,
-          "sha256": "e717e6ba5f50f43da3680d8ee2a4adc9fb9946a2835af27acb368cdafe287c4d"
+          "bytes": 5814,
+          "sha256": "43a2f59d5f9697d04a07be89df91c45aabd958303ee56c971ba9079c43154ec4"
         }
       ]
     },

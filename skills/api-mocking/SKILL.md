@@ -1,201 +1,136 @@
 ---
 name: api-mocking
-description: Finds, builds, runs and publishes a stand-in for one API — the owning team's published mock when there is one, otherwise one built from its spec or collection that behaves like the real API, stateful when callers write then read. Use when something needs an API that isn't built or reachable yet (a frontend, client, demo or one dependency), when other teams should build against your API before it ships, or when asked to mock an API or fake a backend. For running your own service against everything it calls, use api-simulation. Covers `postman mock` and `postman dependency add mock`.
+description: Finds, builds, runs and publishes a stand-in for one API — the owning team's published mock when there is one, otherwise one built from its spec or collection that behaves like the real API, stateful when callers write then read. Use when something needs an API that isn't built or reachable yet (a frontend, client, demo or one dependency), when other teams should build against your API before it ships, or when asked to mock an API or fake a backend. For several APIs served together, use api-simulation. Covers `postman mock` and `postman dependency add mock`.
 ---
 
 # API Mocking
 
-## Overview
+A mock is a folder, `config.yaml` plus a handler such as `default.js`, that
+answers like an API. The handler is a Node HTTP server that calls
+`listen(process.env.PORT)`. It loads as CommonJS even in an ESM project, so
+`import` fails: use `require`. The same mock lives in your repo
+(`postman/mocks/<name>/`, run with `postman mock run`, no sign-in needed),
+in a Postman workspace after `postman mock push`, where other teams pull it
+from, and on a mock server after `postman mock deploy`, for callers that
+can't run it themselves.
 
-A mock is a small program that answers like an API: a folder with
-`config.yaml` (name, port, scenarios) and `default.js`, a Node HTTP server
-that calls `listen(process.env.PORT)`. The runner provides `pm.state` and the
-other `pm.*` APIs, and loads the handler as CommonJS even in an ESM project,
-so use `require`, not `import`. The same folder lives in three places:
-
-- **Your repo**, as `postman/mocks/<name>/`, served by `postman mock run`. It
-  needs no sign-in, and it's a complete answer when only you and your tests
-  call it.
-- **A Postman workspace**, after `postman mock push`. Other teams pull it into
-  their own simulations with `postman dependency add mock`, so push it to the
-  workspace that owns the service: that's where they look.
-- **A mock server**, after `postman mock deploy`: a URL for callers that can't
-  run it themselves, such as a deployed frontend, a webhook sender or CI
-  elsewhere.
-
-Run `-h` on a `postman mock` command before you use one of its flags, and
-believe it over this file.
-
-Running your own service against everything it calls? Use `api-simulation`,
-which gets each dependency's mock here.
+Several APIs at once, for a service, a frontend or a test suite? Use
+`api-simulation`, which gets each member's mock here.
 
 ## Use the owner's mock first
 
 When the API belongs to another team, look for their published mock before
-writing one: theirs encodes their contract and their service's state, and
-yours would encode a guess. This needs `postman login`; signed out, build one
-(below) and say the owner search was skipped.
+writing one: theirs encodes their contract and their service's state; yours
+encodes a guess. It needs `postman login`; signed out, build one and say the
+owner search was skipped.
 
-1. Find the owner's workspace with
-   `postman search workspaces "<service>" -o json`. Name the service plainly,
-   as your code does ("the inventory service"), not by what it returns: a
+1. Find the owner's workspace with `postman search workspaces "<service>" -o json`.
+   Name the service plainly, as your code does, not by what it returns: a
    description matches lookalike services. Prefer a Git-connected workspace
-   (`isGitConnected`) named for that service; its team publishes there. If
-   your team has the Context Graph,
-   `postman context-graph ask "Which Postman workspace holds the collections and mocks for <service>?" --wait`
-   can confirm or break a tie. It's often not set up, so go on without it.
-2. `postman mock list -w <workspaceId> --json` lists its mocks (`search`
-   misses some). A same-named mock elsewhere isn't the owner's. Of several,
-   prefer one the owner has deployed, updated recently, whose endpoints
-   (`postman mock get <mockId>`) cover your calls.
-3. `postman dependency add mock <mockId>` copies it into
-   `postman/.dependencies/mocks/`. Use it as it is. Never edit that folder:
-   `dependency update` overwrites it, so to change a pulled mock, copy it to
-   `postman/mocks/` as a fork. A mock is code that runs as you, so pull only
-   from workspaces you trust. Then run `postman workspace lint --meta`: a
-   `WSP019` is a `path` that doesn't exist, which `dependency add` sometimes
-   writes. Paths in `.postman/resources.yaml` are relative to `.postman/`, so
-   make it `../postman/.dependencies/mocks/<name>`; a `WSP005` only means the
-   repo isn't linked to a workspace.
+   (`isGitConnected`) named for that service.
+2. List its mocks with `postman mock list -w <workspaceId> --json`; `search`
+   misses some. A same-named mock in another workspace isn't the owner's.
+3. Pull it with `postman dependency add mock <mockId>` and use it as it is.
+   Never edit `postman/.dependencies/`: `dependency update` overwrites it,
+   so copy a mock to `postman/mocks/` to change it. A pulled copy loses
+   `interceptRequests`, so fork one whose handler reads `req.body` or relies
+   on sessions. A mock is code that runs as you; pull only from workspaces
+   you trust.
 
 `search mocks` also finds **classic mocks** (`mockType: classicMock`), which
-`mock list` leaves out and `postman mock` commands can't read ("No code mock
-found"). One serves a collection's saved examples at
-`https://<mockId>.mock.pstmn.io`, so call it with `postman request`. To run it
-locally or in a simulation, pull that collection with
-`postman dependency add collection <id>` (`postman workspace get <workspaceId> --elements`
-lists a workspace's collections) and generate a mock from it.
+`postman mock` commands can't read. One serves its collection's saved
+examples at `https://<mockId>.mock.pstmn.io`, so call it with
+`postman request`, or pull that collection and generate a code mock from it.
 
 ## Or build one that behaves like the real API
 
 Callers shouldn't be able to tell the difference on the paths they use. A
-mock that returns invented JSON passes your tests and fails against the real
-service.
+mock that returns invented JSON passes your tests and fails against the
+real service.
 
-1. **Start from the contract.** `postman mock generate <openapi.yaml or collection> -n <name>`
-   writes `postman/mocks/<name>/` with each documented response. It serves
-   the spec's base path too (a server URL ending `/v2` gives `/v2/...`
-   routes), and an `x-mock-response-code: 404` header returns the documented
-   404. It's a replay: a `POST` and a later `GET` share nothing. A large
-   contract gives a very large handler, so keep the routes callers use.
-   `--update <path>` regenerates `default.js` from the source and overwrites
-   hand edits. With no contract, `postman mock generate -n <name>` gives a
-   small stateful sample to adapt.
-2. **Cover what callers handle**, not just the 200: the 404 for an unknown
-   id, the 409 on a conflict, the 400 on bad input, in the contract's error
-   shape. Where the contract is silent, say what you assumed.
-3. **Set `interceptRequests: true` in `config.yaml`.** It parses `req.body`
-   and `req.query`, makes `x-mock-session` work locally, and turns a handler
-   that throws into a `500` instead of a server that stops answering.
-4. **Make it stateful when callers write then read.** Keep records in
-   `pm.state`, the mock's async key-value store (`get`, `set`, `delete`,
-   `has`, `keys`, `clear`, `size`, `toObject`, `increment`, `push`,
-   `addToSet`). Seed starting records on first use, add a reset route so a
-   test can start clean, and answer an unknown id with the real 404. Each
-   `mock run` starts empty; a deployed mock server keeps its state across
-   pushes and redeploys.
-5. **Know who shares state.** Locally, every caller shares one state unless
-   it sends `x-mock-session: <id>`. A mock server deployed from the CLI is the
-   other way round: each caller is isolated, and a caller that doesn't send
-   the same `x-mock-session` on every request starts from the seed each time,
-   so its `POST` and later `GET` never meet. Tell consumers to send one per
-   test run or CI job.
-6. **Add scenarios for other behaviour.** A scenario is a named handler in
-   `config.yaml`, with optional conditions. A caller picks one per request
-   with `x-mock-scenario: <name>`. An unknown name falls back to the default
-   locally, and is a `404` on a mock server. A simulation always serves the
-   default.
+- **Start from the contract.** `postman mock generate <spec or collection>`
+  writes each documented response. It's a replay: a `POST` and a later
+  `GET` share nothing, and it accepts any request. An
+  `x-mock-response-code: 404` header returns the documented 404. From a spec
+  it serves the server URL's base path (`/v2/...`); from a collection,
+  routes start after the base-URL variable. `--update` regenerates the
+  handler and overwrites your edits. With no contract, write it from how
+  your code calls the API and say what you assumed.
+- **Cover what callers handle,** not just the 200: the unknown-id 404, the
+  conflict 409, the bad-input 400, in the contract's error shape.
+- **Set `interceptRequests: true` in `config.yaml`.** Without it `req.body`
+  and `req.query` are undefined and `x-mock-session` is ignored.
+- **Make it stateful when callers write then read.** Keep records in
+  `pm.state`, the mock's async store (`get`, `set`, `delete`, `has`, `keys`,
+  `clear`, `size`, `toObject`, `increment`, `push`, `addToSet`). Seed on
+  first use, add a reset route so a test can start clean, and answer an
+  unknown id with the real 404. Every `mock run` starts empty.
+- **Know who shares state.** Locally, all callers share one state unless
+  each sends `x-mock-session: <id>`. A mock server deployed from the CLI
+  isolates each caller: one that keeps neither the same `x-mock-session` nor
+  the `pm_mock_session` cookie starts from the seed on every request, so its
+  `POST` and later `GET` never meet.
+- **Scenarios** are named handlers in `config.yaml`'s `scenarios` list, picked
+  per request with `x-mock-scenario: <name>`. An unknown name falls back to
+  the default locally but is a `404` on a mock server.
 
-   ```yaml
-   scenarios:
-     - name: default
-       path: ./default.js
-       default: true
-     - name: out-of-stock            # x-mock-scenario: out-of-stock
-       path: ./out-of-stock.js
-     - name: slow
-       path: ./default.js
-       conditions:
-         latency: { delay_ms: 3000 }  # also error, rate_limit, chaos
-   ```
+## Check it against the contract
 
-## Run and check it
+`postman mock run` prints the URL it bound; a busy configured port moves
+unless you pass `--port`, so take the URL from that line. Nothing reloads:
+restart it after an edit.
 
-`postman mock run postman/mocks/<name>` prints the URL it bound. If the
-configured port is busy it picks another one, unless you passed `--port`, so
-take the URL from that line. Nothing reloads: restart it after an edit. A
-handler that throws answers `500 Handler error` with the message.
-`--output ndjson` prints one event per request.
-
-Check it against the contract, not against the handler you just wrote: a mock
-checked against itself proves nothing. Send real requests with
-`postman request`, or run the API's collection against it:
+A mock checked against the handler you just wrote proves nothing, so call
+it with requests from the contract: `postman request`, or the API's
+collection with
 `postman collection run <collection> --use-mock "{{baseUrl}} mock:postman/mocks/<name>"`
-sends that variable's requests to the mock (`--mock` alone only starts it).
+(`--mock` alone only starts it). That form replaces the variable's whole
+value, base path included, so a mock generated from a spec that serves
+`/v2/...` answers `404`; start that one with `--mock <path> --port <n>` and
+pass `--env-var "baseUrl=http://localhost:<n>/v2"`.
 
 A mock doesn't check what it's sent: a call that breaks the contract still
-gets its answer. To check calls against a contract, compare each one, from
-the code or a simulation log's `request` events (they carry the body), with
-the spec, and end with a table: call, what it sends, what the spec wants,
-match or not.
+gets its answer. To check your calls against a contract, compare each one,
+from the code or a simulation log, with the spec.
 
 ## Publish it for other teams
 
-1. **Push it to the service's workspace**, the one in `.postman/resources.yaml`
-   or the one the user names. Never choose a workspace by name match.
-   `postman mock push postman/mocks/<name>` creates the mock the first time,
-   updates it after, and records the mapping in `.postman/resources.yaml`;
-   commit that. Signed out, push fails with `Authentication required`; the
-   local mock still works, so tell the user to run `postman login` and push.
-2. **Keep it honest.** Change the mock in the same PR as the API, and run the
-   API's collection against it, so consumers never build against a stale
-   contract.
-3. **Deploy it only when a caller needs a URL.**
-   `postman mock deploy <mockId> -s <slug> -y` serves it at
-   `https://<slug>.mock.<team-domain>.postman.dev`. Pass `-s`: the slug must
-   be 3–32 lowercase letters, digits and hyphens, and the generated default
-   can be longer. It's private by default: callers send a Postman API key as
-   `x-api-key`. Your CLI login isn't an API key, so you can't call a private
-   server yourself without one; `postman mock list -w <workspaceId> --json`
-   shows its URL and whether it's private. The first deploy fixes the slug
-   and visibility; a scripted redeploy can turn `--public` on but never off.
-   Deploying needs a paid Postman plan, a new server can take a minute or two
-   to answer, and each later `push` updates what it serves.
-4. **Write it for where it will run.** A mock server runs only the one handler
-   file, with Node's built-in modules. It has no local `require`s, no
-   `pm.mock` example lookups, no `-e` environment and no console output, and
-   it never sees caller headers such as `authorization`, `cookie` or
-   `x-api-key`. A mock that relies on any of these works locally and breaks
-   once deployed.
+- **Push it to the service's own workspace,** the one in
+  `.postman/resources.yaml` or the one the user names, never one chosen by
+  name match: other teams' simulations look there. Commit the
+  `resources.yaml` change. Signed out, the push fails but the local mock
+  still works; say so and ask the user to sign in. Keep it honest: change
+  the mock in the same PR as the API and run the API's collection against
+  it.
+- **Deploy only when a caller needs a URL.** `postman mock deploy <mockId> -s <slug>`
+  serves it at `https://<slug>.mock.<team-domain>.postman.dev`. The server
+  takes 3–32 lowercase letters, digits and single hyphens, starting and
+  ending with a letter or digit; the CLI accepts more, and its default can
+  be too long. It's private: callers send a Postman API key as `x-api-key`,
+  or an access token as `x-access-token` if they can view the workspace.
+  Deploying needs a paid plan; a team's first server can take minutes to
+  answer, and teams that review deploys hold them for approval. Each later
+  `push` updates what it serves.
+- **Write it for where it runs.** A mock server runs each scenario as one
+  file with Node's built-ins, not `fs` or `child_process`: no local
+  `require`s, no `pm.mock` examples, no environment, no console output, and
+  no caller `authorization`, `cookie` or `x-api-key` headers. A mock that
+  relies on any of these works locally and breaks once deployed.
+- **`postman mock log` takes the `mockServerId`** from `postman mock get`,
+  not the mock's id.
 
-## History and logs
+## Rules
 
-`postman mock log <mockServerId>` lists what a deployed server received and
-returned (filter with `--status 5xx`, `--path` or `--since`); the
-`mockServerId` comes from `postman mock get <mockId>`. A run of a mock that's
-in a workspace is recorded as a start ("Previous starts" in Postman), by mock
-id automatically, by path only with `-w <workspaceId>`; `--no-history` opts
-out.
+1. **Ask before `--public`.** It serves the mock and its data to anyone with
+   the URL, and a scripted redeploy can't make it private again.
+2. **`generate -w` writes nothing to the repo.** The mock exists only in the
+   workspace; generate locally and push instead.
+3. **`mock delete` refuses a mock that's running or deployed,** and deleting
+   it from the workspace leaves its line in `.postman/resources.yaml`.
 
-## Critical Rules
+## Before you say it's done
 
-1. **Ask before `--public`.** It serves the mock, and any data in it, to
-   anyone with the URL, and a scripted redeploy can't take that back.
-2. **`generate -w` writes nothing to the repo.** It creates the mock only in
-   the workspace, so there's no folder to `run`. Generate locally and push.
-3. **`mock delete` refuses a mock that's running or deployed.** Deleting the
-   workspace copy leaves its line in `.postman/resources.yaml`; remove it.
-
-## Verification
-
-A mock isn't done because `run` exited 0. Call it: a documented error status
-comes back, a valid scenario changes the response, and a `POST` then `GET`
-shows state if it's meant to be stateful. Then report:
-
-- **Where it runs:** the local URL or the mock server URL, and whether it's
-  private (needs `x-api-key`) or public.
-- **Where it lives:** the repo only, or which workspace, and why that one.
-- **What it covers:** routes, error statuses, state, sessions, scenarios, and
-  what you assumed.
-- **Anything that failed**, such as sign-in, the plan or a permission error,
-  stated plainly.
+A mock isn't done because `run` exited 0. Call it: a documented error comes
+back, a valid scenario changes the response, a `POST` then `GET` shows state
+if it should. Say where it runs and who can call it, where it lives, and
+what you assumed.

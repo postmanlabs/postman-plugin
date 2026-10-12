@@ -59,9 +59,10 @@ executing whatever `pm.test` scripts are already saved in it.
 `-d`/`--iteration-data` (or the beta `--iteration-data-dataset` +
 `--iteration-data-view` pair) drives data-driven runs across a CSV/JSON
 file or a Postman Dataset. `-r junit,html` for CI-consumable reports.
-`--use-mock "{{baseUrl}} mock:postman/mocks/<name>"` sends that URL's
+`--use-mock "{{baseUrl}} mock:postman/mocks/<name>"` sends that variable's
 requests to a mock for the run instead of the real backend (`--mock` alone
-only starts one; see the `api-mocking` skill) — reach for this to test
+only starts one; see the `api-mocking` skill, which covers a mock that
+serves a base path such as `/v2`) — reach for this to test
 request/assertion logic without depending on a live service.
 
 ## `application test` — contract-matching real traffic
