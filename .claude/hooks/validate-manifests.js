@@ -11,7 +11,7 @@
 const fs = require('fs'),
     path = require('path'),
     { execFileSync, spawnSync } = require('child_process'),
-    { MANIFEST_ROUTES, MANIFEST_DIR_PATTERN, PACKAGE_ROUTES } = require('../../scripts/routes.js');
+    { MANIFEST_ROUTES, MANIFEST_DIR_PATTERN, NESTED_MANIFEST_DIRS, PACKAGE_ROUTES } = require('../../scripts/routes.js');
 
 // Each of these keys is read by one set of vendors and ignored without an error
 // by the rest, so the wrong spelling leaves a route that loads, connects and
@@ -287,8 +287,11 @@ function theOtherKey (pair, key) {
 }
 
 function manifestRouteDirs () {
-    return fs.readdirSync(ROOT)
-        .filter((d) => MANIFEST_DIR_PATTERN.test(d) && exists(`${d}/plugin.json`))
+    return [
+        ...fs.readdirSync(ROOT).filter((d) => MANIFEST_DIR_PATTERN.test(d)),
+        ...NESTED_MANIFEST_DIRS
+    ]
+        .filter((d) => exists(`${d}/plugin.json`))
         .sort();
 }
 

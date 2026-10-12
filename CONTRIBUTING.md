@@ -13,6 +13,7 @@ plugin route below — each route's manifest or package points back at the same
 | --- | --- | --- | --- |
 | Claude Code plugin | `/plugin marketplace add postmanlabs/postman-plugin` clones this repo | `mcp.claude-code.json` | `postman-claude-code-plugin` |
 | Cursor plugin | `.cursor-plugin/plugin.json` points at this repo's `skills/` dir | `mcp.cursor.json` | `postman-cursor-plugin` |
+| GitHub Copilot CLI plugin | `.github/plugin/plugin.json` points at the same `skills/` dir and `hooks/hooks.json` | `mcp.copilot.json` | `postman-copilot-plugin` |
 | Kimi Code plugin | `.kimi-plugin/plugin.json` points at the same `skills/` dir | `mcpServers` in `.kimi-plugin/plugin.json` | `postman-kimi-plugin` |
 | Codex plugin | `.codex-plugin/plugin.json` points at the same `skills/` dir | `mcp.codex.json` | `postman-codex-plugin` |
 | Factory Droid plugin | `.factory-plugin/marketplace.json` installs this repo root as the plugin, so Droid reads the same root `skills/` dir | `mcp.json` | `postman-factory-plugin` |
@@ -64,6 +65,7 @@ it lands.
 .claude-plugin/marketplace.json   the marketplace Claude Code adds
 .claude-plugin/plugin.json        the Claude Code plugin manifest
 .cursor-plugin/plugin.json        the Cursor plugin manifest
+.github/plugin/plugin.json        the GitHub Copilot CLI plugin manifest — never a root `plugin.json`, which would send Codex down its Agent Plugins loader
 .kimi-plugin/plugin.json          the Kimi Code plugin manifest — carries its MCP block inline, and names Kimi's generated copy of the mandate
 .codex-plugin/plugin.json         the Codex plugin manifest
 .factory-plugin/marketplace.json  the Factory Droid marketplace
@@ -93,6 +95,7 @@ traffic can be attributed to the agent it came from:
 ```
 mcp.claude-code.json        <- .claude-plugin/plugin.json  "mcpServers": "./mcp.claude-code.json"
 mcp.cursor.json             <- .cursor-plugin/plugin.json  "mcpServers": "./mcp.cursor.json"
+mcp.copilot.json            <- .github/plugin/plugin.json  "mcpServers": "./mcp.copilot.json"
 mcp.codex.json              <- .codex-plugin/plugin.json   "mcpServers": "./mcp.codex.json"
 .kimi-plugin/plugin.json       inline — Kimi documents no path form
 mcp.json                    <- Factory Droid reads this root filename from the installed plugin
@@ -313,6 +316,7 @@ wherever one exists:
 | --- | --- |
 | Claude Code | `claude plugin` against Anthropic's `claude-plugins-official` catalog, then uninstalls a user-scope `postman@postman` so skills don't load twice; a failed install leaves that copy in place |
 | Codex | `codex plugin` against this repo as the `postman` marketplace |
+| GitHub Copilot CLI | `copilot plugin` against this repo as the `postman` marketplace (Copilot reads `.claude-plugin/marketplace.json`), replacing a direct install, which Copilot is deprecating |
 | Cursor | a clone at `~/.cursor/plugins/local/postman`. A fresh install is skipped when the Cursor Marketplace copy is present, but an existing clone is kept and updated: Cursor keeps a disabled Marketplace copy on disk too, so the installer can't tell whether that copy is enabled |
 | Factory Droid | `droid plugin` against this repo as the `postman-plugin` marketplace |
 | Kimi Code | `npx --package=plugins@1.3.4 plugins add postmanlabs/postman-plugin --target kimi`, because Kimi installs plugins only from its TUI |

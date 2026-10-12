@@ -24,8 +24,8 @@ Install Postman in every compatible coding agent detected on your machine:
 npx @postman/postman-plugin
 ```
 
-One command configures **Claude Code, Codex, Cursor, Factory Droid, Kimi Code,
-OpenCode and Pi**. Run it again to update, `status` to see what's installed,
+One command configures **Claude Code, Codex, GitHub Copilot CLI, Cursor, Factory Droid,
+Kimi Code, OpenCode and Pi**. Run it again to update, `status` to see what's installed,
 and `remove` to uninstall; `--agent <id>` limits any of them to one agent.
 
 You can also use the following commands to install individually:
@@ -59,6 +59,16 @@ codex plugin add postman@postman
 ```text
 /add-plugin postman
 ```
+
+### GitHub Copilot CLI
+
+```bash
+copilot plugin marketplace add postmanlabs/postman-plugin
+copilot plugin install postman@postman
+```
+
+`copilot plugin marketplace update postman`, then `copilot plugin update postman`, updates it. Sign in to Postman's MCP server
+with `/mcp` inside a Copilot CLI session.
 
 ### Factory Droid
 
