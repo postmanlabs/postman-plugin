@@ -193,5 +193,5 @@ function Install-PostmanPlugin {
 
 # Run as a file, `exit` ends only this process. Piped to iex it would close the caller's window, so set the code and return.
 $code = Install-PostmanPlugin -Agent $Agent
-if ($MyInvocation.MyCommand.Path) { exit $code }
+if ($PSCommandPath) { exit $code }
 $global:LASTEXITCODE = $code
