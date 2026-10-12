@@ -38,7 +38,7 @@ yours would encode a guess. This needs `postman login`; signed out, build one
 
 1. Find the owner's workspace with
    `postman search workspaces "<service>" -o json`. Name the service plainly,
-   as your code does ("the workspace service"), not by what it returns: a
+   as your code does ("the inventory service"), not by what it returns: a
    description matches lookalike services. Prefer a Git-connected workspace
    (`isGitConnected`) named for that service; its team publishes there. If
    your team has the Context Graph,
@@ -52,7 +52,19 @@ yours would encode a guess. This needs `postman login`; signed out, build one
    `postman/.dependencies/mocks/`. Use it as it is. Never edit that folder:
    `dependency update` overwrites it, so to change a pulled mock, copy it to
    `postman/mocks/` as a fork. A mock is code that runs as you, so pull only
-   from workspaces you trust.
+   from workspaces you trust. Then run `postman workspace lint --meta`: a
+   `WSP019` is a `path` that doesn't exist, which `dependency add` sometimes
+   writes. Paths in `.postman/resources.yaml` are relative to `.postman/`, so
+   make it `../postman/.dependencies/mocks/<name>`; a `WSP005` only means the
+   repo isn't linked to a workspace.
+
+`search mocks` also finds **classic mocks** (`mockType: classicMock`), which
+`mock list` leaves out and `postman mock` commands can't read ("No code mock
+found"). One serves a collection's saved examples at
+`https://<mockId>.mock.pstmn.io`, so call it with `postman request`. To run it
+locally or in a simulation, pull that collection with
+`postman dependency add collection <id>` (`postman workspace get <workspaceId> --elements`
+lists a workspace's collections) and generate a mock from it.
 
 ## Or build one that behaves like the real API
 
@@ -121,6 +133,12 @@ checked against itself proves nothing. Send real requests with
 `postman collection run <collection> --use-mock "{{baseUrl}} mock:postman/mocks/<name>"`
 sends that variable's requests to the mock (`--mock` alone only starts it).
 
+A mock doesn't check what it's sent: a call that breaks the contract still
+gets its answer. To check calls against a contract, compare each one, from
+the code or a simulation log's `request` events (they carry the body), with
+the spec, and end with a table: call, what it sends, what the spec wants,
+match or not.
+
 ## Publish it for other teams
 
 1. **Push it to the service's workspace**, the one in `.postman/resources.yaml`
@@ -139,11 +157,10 @@ sends that variable's requests to the mock (`--mock` alone only starts it).
    can be longer. It's private by default: callers send a Postman API key as
    `x-api-key`. Your CLI login isn't an API key, so you can't call a private
    server yourself without one; `postman mock list -w <workspaceId> --json`
-   shows its URL and whether it's private, and `postman mock log` shows its
-   traffic. The first deploy fixes the slug and visibility; a scripted
-   redeploy can turn `--public` on but never off. Deploying needs a paid
-   Postman plan, a new server can take a minute or two to answer, and each
-   later `push` updates what it serves.
+   shows its URL and whether it's private. The first deploy fixes the slug
+   and visibility; a scripted redeploy can turn `--public` on but never off.
+   Deploying needs a paid Postman plan, a new server can take a minute or two
+   to answer, and each later `push` updates what it serves.
 4. **Write it for where it will run.** A mock server runs only the one handler
    file, with Node's built-in modules. It has no local `require`s, no
    `pm.mock` example lookups, no `-e` environment and no console output, and
@@ -153,14 +170,12 @@ sends that variable's requests to the mock (`--mock` alone only starts it).
 
 ## History and logs
 
-- **Start history.** Each run of a mock that's in a workspace is recorded as
-  a start ("Previous starts" in Postman): a run by mock id records
-  automatically, a run by path only with `-w <workspaceId>`. `--no-history`
-  opts out.
-- **Mock server traffic.** `postman mock log <mockServerId>` lists what a
-  deployed server received and returned; filter with `--status 5xx`,
-  `--path` or `--since`. Its `mockServerId` comes from
-  `postman mock get <mockId>`, and is not the mock's id.
+`postman mock log <mockServerId>` lists what a deployed server received and
+returned (filter with `--status 5xx`, `--path` or `--since`); the
+`mockServerId` comes from `postman mock get <mockId>`. A run of a mock that's
+in a workspace is recorded as a start ("Previous starts" in Postman), by mock
+id automatically, by path only with `-w <workspaceId>`; `--no-history` opts
+out.
 
 ## Critical Rules
 

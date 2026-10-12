@@ -4,13 +4,13 @@
     {
       "name": "api-engineer",
       "plugin": "postman",
-      "description": "Makes coding agents faster and more accurate with fewer tokens when designing, implementing, mocking, testing, monitoring, documenting, or deploying an API, including building or testing code that calls other services, and giving other teams something to build against.",
+      "description": "Makes coding agents faster and more accurate with fewer tokens when designing, implementing, mocking, testing, monitoring, documenting, or deploying an API, including running or testing code that calls other services, and giving other teams something to build against.",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/api-engineer/SKILL.md",
-          "bytes": 3543,
-          "sha256": "dd3865469002260142375459fced378c640076b65144e0e7d28df80b2132ebcb"
+          "bytes": 3699,
+          "sha256": "1ff928ca3ae6429496a4629984c419711efa5bef1d27cca975f07c3ed5cbac42"
         }
       ]
     },
@@ -73,8 +73,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-mocking/SKILL.md",
-          "bytes": 10240,
-          "sha256": "0fcbdf6bf7dee4a15df5564f93076eaf8e03823ac27ef2b1873af1e145c81dba"
+          "bytes": 11210,
+          "sha256": "a0a4181025a54564a715c2896378f1dc3132d446ee4b2005fc21d9530dfab2cb"
         }
       ]
     },
@@ -94,19 +94,19 @@
     {
       "name": "api-simulation",
       "plugin": "postman",
-      "description": "Runs the service you're building for real against stand-ins for the HTTP services it calls — each owning team's published mock where one exists, one built from the contract where not — served on one local port from a `.sim.yaml`. Use when you add or change code that calls other services and need to run it, test it, prove a fix or reproduce an upstream failure (timeouts, 5xx, 409, 429) end to end, locally or in CI, without the real services, because they're unreachable, need credentials, cost money, have side effects or don't exist yet. Applies even when nobody says mock or simulation. Not for a stand-in backend with no service of your own running (use api-mocking). Covers `postman simulation`.",
+      "description": "Runs the service you're building for real against stand-ins for the HTTP services it calls, on one local port. Use when you add or change code that calls other services and need to run it, test it, prove a fix or reproduce an upstream failure (timeouts, 5xx, 409, 429) end to end, locally or in CI, without the real services, because they're unreachable, need credentials, cost money, have side effects or don't exist yet. Also answers what happens when a service it calls goes down, is slow or returns errors, by running each failure instead of reading the code. Applies even when nobody says mock or simulation. Not for a stand-in backend with no service of your own running (use api-mocking). Covers `postman simulation`.",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/api-simulation/SKILL.md",
-          "bytes": 8313,
-          "sha256": "e0f0245b38e0e5d7cf3c0cd2104f99bdfb353c4afdb1198b869f2b99527ad616"
+          "bytes": 9405,
+          "sha256": "d57130bdf1fae5b3492ffbe4783ccd00d174a52583510bd0bc79882e5278233f"
         },
         {
           "target": "reference/sim_yaml_schema.md",
           "source": "skills/api-simulation/reference/sim_yaml_schema.md",
-          "bytes": 3843,
-          "sha256": "b9e9cafd73475a24e759cc33c2743346bb36f08169864c74a4a292b3edb7efb2"
+          "bytes": 4044,
+          "sha256": "23a47d974a63762c445b5772d7b7a92d1bf7f0a84fd655e24bbd01f155e4d4ea"
         }
       ]
     },

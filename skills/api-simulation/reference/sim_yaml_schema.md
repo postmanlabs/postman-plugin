@@ -40,7 +40,7 @@ neither:
 | --- | --- |
 | `400 Prefix the request path with the member routing token` | The path was `/`, or under `header` routing the header was missing. |
 | `404 Unknown simulation member '<x>'` (lists the valid ones) | `<x>` isn't a routeKey. Often a client that dropped its base URL's path, so `<x>` is the endpoint's own first segment. |
-| `502 Proxy error` | The member's handler threw. Nothing is logged; run that mock alone with `postman mock run` to see the error. |
+| `502 Proxy error` | The member's handler threw, and the member is down until you restart. Nothing is logged; run that mock alone with `postman mock run` and resend to see the error. `interceptRequests: true` in its `config.yaml` turns a throw into a `500`; pulled copies lose that setting (CLI 1.70.0), so fork one that needs it. |
 
 ## Conditions
 
