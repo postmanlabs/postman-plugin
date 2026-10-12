@@ -42,7 +42,7 @@ Implementation notes:
   schemas, so take them from the brief rather than from memory.
 - `Orbit-Client-Name` is an optional request header (both endpoints, max 128
   chars) that names the calling client/agent for Orbit's anonymous usage
-  analytics. The documented convention is `client/model`, slash-separated —
+  analytics. The convention is `client/model`, slash-separated —
   e.g. `claude/opus-4.8`, `cursor/composer-2.5`, `codex/gpt-5.6-sol` — or a bare
   client name like `vscode`. Set it to the host agent and model running this
   plugin. It never affects results and can be omitted.
