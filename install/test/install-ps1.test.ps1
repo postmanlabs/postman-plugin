@@ -220,11 +220,23 @@ Remove-Item (Join-Path $home_ '.cursor') -Recurse -Force -ErrorAction SilentlyCo
 Set-Content -Path (Join-Path $bin 'git.cmd') -Value @('@echo off', "echo git %* >> `"$log`"", 'echo %* | findstr /C:"--version" >nul && (echo git version 2.0 & exit /b 0)', 'echo fatal: unable to access 1>&2', 'exit /b 128') -Encoding ASCII
 $r = Invoke-Install '-Agent cursor' "`$env:LOCALAPPDATA='$fakeLocal'; `$env:POSTMAN_PLUGIN_CURSOR_APP=`$null"
 Check 'cursor: found by %LOCALAPPDATA%\Programs\cursor, a failed clone leaves nothing' ($r.Out -match 'result cursor failed clone-failed' -and -not (Test-Path (Join-Path $home_ '.cursor\plugins\local\postman*'))) "$($r.Code) $($r.Out)"
-New-Item -ItemType Directory -Path (Join-Path $home_ '.cursor\plugins\local\postman.partial') -Force | Out-Null
-Set-Content -Path (Join-Path $home_ '.cursor\plugins\local\postman.partial\stale.txt') -Value x
+$localDir = Join-Path $home_ '.cursor\plugins\local'
+New-Item -ItemType Directory -Path (Join-Path $localDir 'postman.partial.111'), (Join-Path $localDir 'postman.partial.222') -Force | Out-Null
+(Get-Item (Join-Path $localDir 'postman.partial.111')).LastWriteTime = (Get-Date).AddHours(-3)
 Remove-Item (Join-Path $bin 'git.cmd')
 $r = Invoke-Install '-Agent cursor' "`$env:LOCALAPPDATA='$fakeLocal'; `$env:POSTMAN_PLUGIN_CURSOR_APP=`$null; `$env:PATH=`$env:PATH + ';$env:ProgramFiles\Git\cmd'"
-Check 'cursor: a leftover partial folder is replaced by a real clone' ($r.Out -match 'result cursor installed' -and (Test-Path (Join-Path $home_ '.cursor\plugins\local\postman\.cursor-plugin\plugin.json')) -and -not (Test-Path (Join-Path $home_ '.cursor\plugins\local\postman.partial'))) "$($r.Code) $($r.Out)"
+Check 'cursor: only an old leftover partial folder is removed, a real clone is installed' ($r.Out -match 'result cursor installed' -and (Test-Path (Join-Path $localDir 'postman\.cursor-plugin\plugin.json')) -and -not (Test-Path (Join-Path $localDir 'postman.partial.111')) -and (Test-Path (Join-Path $localDir 'postman.partial.222'))) "$($r.Code) $($r.Out)"
+
+# Telemetry must never change how an install ends: a PowerShell that cannot load one of its modules fails ConvertTo-Json.
+New-Scenario '[]' '[]' ''
+$r = Invoke-Install '-Agent claude-code' "`$env:POSTMAN_PLUGIN_TELEMETRY='1'; `$env:POSTMAN_PLUGIN_TELEMETRY_URL='http://127.0.0.1:9/'; function ConvertTo-Json { throw 'module could not be loaded' }"
+Check 'telemetry: a failing report does not fail a finished install' ($r.Code -eq 0 -and $r.Out -match 'result claude-code installed') "$($r.Code) $($r.Out)"
+
+# A failing list command says why, and the report names the language and the commit that was cloned.
+New-Scenario '[]' '[]' ''
+Set-Content -Path (Join-Path $bin 'claude.cmd') -Encoding ASCII -Value @('@echo off', 'echo %* | findstr /C:"--version" >nul && (echo 1.0.0 & exit /b 0)', 'echo error: unknown command plugin 1>&2', 'exit /b 1')
+$e = (Get-Events '-Agent claude-code' $tel) -join ''
+Check 'telemetry: a failing list command carries its cause, and the language is reported' ($e -match '"reason":\s*"list-failed"' -and $e -match '"cause":\s*"cli-unsupported"' -and $e -match '"lang":\s*"[a-z]{2,3}"') $e
 
 Remove-Item $root -Recurse -Force -ErrorAction SilentlyContinue
 Write-Host "FAILS=$fails"

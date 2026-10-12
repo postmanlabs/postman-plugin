@@ -34,7 +34,7 @@ function Install-PostmanPlugin {
     $ClaudePlugin = "postman@$ClaudeMarketplace"
     $CodexMarketplace = 'postman'
     $CodexPlugin = "postman@$CodexMarketplace"
-    $ScriptVersion = '2'
+    $ScriptVersion = '3'
     # The plugin installer's Sentry project. The key is a public ingest key that can only send events.
     # POSTMAN_PLUGIN_TELEMETRY_URL replaces it, POSTMAN_PLUGIN_TELEMETRY=0 turns reporting off.
     $TelemetryUrl = if ($env:POSTMAN_PLUGIN_TELEMETRY_URL) { $env:POSTMAN_PLUGIN_TELEMETRY_URL } else { 'https://o1224273.ingest.us.sentry.io/api/4512245392867328/store/?sentry_key=89624d613f8f105a75eaf131a319a2a6' }
@@ -50,7 +50,7 @@ function Install-PostmanPlugin {
     if ($Environment.Length -gt 20) { $Environment = $Environment.Substring(0, 20) }
 
     # One hashtable, so the helpers below share state without touching the caller's scope under iex.
-    $st = @{ Outcome = ''; Reason = ''; Cause = ''; ExitCode = ''; AgentVersion = ''; Detected = $false; Agent = ''; Done = $false }
+    $st = @{ Outcome = ''; Reason = ''; Cause = ''; ExitCode = ''; AgentVersion = ''; Ref = ''; Detected = $false; Agent = ''; Done = $false }
 
     # A background install has no terminal, so a credential prompt would hang until the caller gives up.
     $env:GIT_TERMINAL_PROMPT = '0'
@@ -66,6 +66,7 @@ function Install-PostmanPlugin {
         arch           = (Get-Safe { [string]$env:PROCESSOR_ARCHITECTURE })
         os_version     = (Get-Safe { [Environment]::OSVersion.Version.ToString() })
         via            = $(if ($PSCommandPath) { 'file' } else { 'iex' })
+        lang           = (Get-Safe { (Get-Culture).TwoLetterISOLanguageName.ToLowerInvariant() })
     }
 
     # Windows PowerShell 5.1 can default to TLS 1.0, which the telemetry endpoint refuses.
@@ -89,25 +90,28 @@ function Install-PostmanPlugin {
     # The fingerprint keeps each failure kind its own Sentry issue instead of one issue per agent. A user with the
     # address 0.0.0.0 stops Sentry from recording the sender's own IP address and its geolocation.
     function Send-Report($agentName, $outcome, $reason, $e) {
-        if (-not (Test-Telemetry)) { return }
-        $tags = @{ agent = $agentName; outcome = $outcome; environment = $Environment; os = 'windows'; script_version = $ScriptVersion }
-        foreach ($key in $ctx.Keys) { if ($ctx[$key]) { $tags[$key] = [string]$ctx[$key] } }
-        if ($reason) { $tags.reason = $reason }
-        if ($e.Cause) { $tags.cause = $e.Cause }
-        if ($e.ExitCode -ne '') { $tags.exit_code = [string]$e.ExitCode }
-        if ($e.AgentVersion) { $tags.agent_version = $e.AgentVersion }
-        if ($Source) { $tags.source = $Source }
-        $why = $(if ($reason) { " $reason" } else { '' }) + $(if ($e.Cause) { " $($e.Cause)" } else { '' })
-        $body = @{
-            message     = "postman-plugin-install $agentName $outcome$why"
-            level       = $(if ($outcome -eq 'failed') { 'error' } else { 'info' })
-            logger      = 'postman-plugin-install'
-            platform    = 'other'
-            user        = @{ ip_address = '0.0.0.0' }
-            fingerprint = @('postman-plugin-install', $agentName, $outcome, [string]$reason, [string]$e.Cause)
-            tags        = $tags
-        } | ConvertTo-Json -Depth 4 -Compress
+        # Reporting must never change how an install ends. A PowerShell that cannot load one of its own
+        # modules fails ConvertTo-Json, and that must not turn a finished install into a failed run.
         try {
+            if (-not (Test-Telemetry)) { return }
+            $tags = @{ agent = $agentName; outcome = $outcome; environment = $Environment; os = 'windows'; script_version = $ScriptVersion }
+            foreach ($key in $ctx.Keys) { if ($ctx[$key]) { $tags[$key] = [string]$ctx[$key] } }
+            if ($reason) { $tags.reason = $reason }
+            if ($e.Cause) { $tags.cause = $e.Cause }
+            if ($e.ExitCode -ne '') { $tags.exit_code = [string]$e.ExitCode }
+            if ($e.AgentVersion) { $tags.agent_version = $e.AgentVersion }
+            if ($e.Ref) { $tags.ref = $e.Ref }
+            if ($Source) { $tags.source = $Source }
+            $why = $(if ($reason) { " $reason" } else { '' }) + $(if ($e.Cause) { " $($e.Cause)" } else { '' })
+            $body = @{
+                message     = "postman-plugin-install $agentName $outcome$why"
+                level       = $(if ($outcome -eq 'failed') { 'error' } else { 'info' })
+                logger      = 'postman-plugin-install'
+                platform    = 'other'
+                user        = @{ ip_address = '0.0.0.0' }
+                fingerprint = @('postman-plugin-install', $agentName, $outcome, [string]$reason, [string]$e.Cause)
+                tags        = $tags
+            } | ConvertTo-Json -Depth 4 -Compress
             Invoke-RestMethod -Uri $TelemetryUrl -Method Post -ContentType 'application/json' -Body $body -TimeoutSec 5 | Out-Null
         } catch { }
     }
@@ -116,12 +120,14 @@ function Install-PostmanPlugin {
     # A plain array: Constrained Language Mode refuses New-Object for a .NET collection type.
     $queue = @{ Items = @() }
     function Add-Pending($agentName, $outcome, $reason) {
-        $queue.Items += , @{ Agent = $agentName; Outcome = $outcome; Reason = $reason; E = @{ Cause = $st.Cause; ExitCode = $st.ExitCode; AgentVersion = $st.AgentVersion } }
+        $queue.Items += , @{ Agent = $agentName; Outcome = $outcome; Reason = $reason; E = @{ Cause = $st.Cause; ExitCode = $st.ExitCode; AgentVersion = $st.AgentVersion; Ref = $st.Ref } }
     }
     function Send-Pending {
         $items = $queue.Items
         $queue.Items = @()
-        foreach ($item in $items) { Send-Report $item.Agent $item.Outcome $item.Reason $item.E }
+        foreach ($item in $items) {
+            try { Send-Report $item.Agent $item.Outcome $item.Reason $item.E } catch { }
+        }
     }
 
     # Maps a failed command's output to a fixed code, so a failure is diagnosable without sending the output.
@@ -139,6 +145,11 @@ function Install-PostmanPlugin {
         if ($t -match 'unknown option|unrecognized|unexpected argument|unknown command|no such command|invalid command') { return 'cli-unsupported' }
         if ($t -match 'another process|already running|lock file|resource busy') { return 'busy' }
         return 'unknown'
+    }
+
+    # Why a list command failed. It is read-only, so running it again for its error text is safe.
+    function Get-ListCause($exe, [string[]]$arguments) {
+        try { return (Get-Cause ((& $exe @arguments 2>&1 | Out-String))) } catch { return '' }
     }
 
     # Runs a command and shows its output only when it fails. Returns $true on exit code 0.
@@ -180,14 +191,14 @@ function Install-PostmanPlugin {
         $st.AgentVersion = Get-AgentVersion $claude
 
         $plugins = & $claude plugin list --json 2>$null | Out-String
-        if ($LASTEXITCODE -ne 0) { $st.ExitCode = $LASTEXITCODE; Finish 'failed' 'list-failed'; return $true }
+        if ($LASTEXITCODE -ne 0) { $st.ExitCode = $LASTEXITCODE; $st.Cause = Get-ListCause $claude @('plugin', 'list', '--json'); Finish 'failed' 'list-failed'; return $true }
         # postman@postman is the same plugin from our own marketplace; adding the official one would load it twice.
         if ($plugins -match "`"id`"\s*:\s*`"($([regex]::Escape($ClaudePlugin))|postman@postman)`"") {
             Finish 'already-installed'; return $true
         }
 
         $marketplaces = & $claude plugin marketplace list --json 2>$null | Out-String
-        if ($LASTEXITCODE -ne 0) { $st.ExitCode = $LASTEXITCODE; Finish 'failed' 'list-failed'; return $true }
+        if ($LASTEXITCODE -ne 0) { $st.ExitCode = $LASTEXITCODE; $st.Cause = Get-ListCause $claude @('plugin', 'marketplace', 'list', '--json'); Finish 'failed' 'list-failed'; return $true }
         if ($marketplaces -match "`"name`"\s*:\s*`"$([regex]::Escape($ClaudeMarketplace))`"") {
             if ($marketplaces -notmatch [regex]::Escape($ClaudeRepo)) { Finish 'failed' 'marketplace-source-mismatch'; return $true }
             # A stale marketplace would install an old release. Refreshing it is best effort.
@@ -210,11 +221,11 @@ function Install-PostmanPlugin {
         $st.AgentVersion = Get-AgentVersion $codex
 
         $plugins = & $codex plugin list --json 2>$null | Out-String
-        if ($LASTEXITCODE -ne 0) { $st.ExitCode = $LASTEXITCODE; Finish 'failed' 'list-failed'; return $true }
+        if ($LASTEXITCODE -ne 0) { $st.ExitCode = $LASTEXITCODE; $st.Cause = Get-ListCause $codex @('plugin', 'list', '--json'); Finish 'failed' 'list-failed'; return $true }
         if ($plugins -match "`"pluginId`"\s*:\s*`"$([regex]::Escape($CodexPlugin))`"") { Finish 'already-installed'; return $true }
 
         $marketplaces = & $codex plugin marketplace list --json 2>$null | Out-String
-        if ($LASTEXITCODE -ne 0) { $st.ExitCode = $LASTEXITCODE; Finish 'failed' 'list-failed'; return $true }
+        if ($LASTEXITCODE -ne 0) { $st.ExitCode = $LASTEXITCODE; $st.Cause = Get-ListCause $codex @('plugin', 'marketplace', 'list', '--json'); Finish 'failed' 'list-failed'; return $true }
         if ($marketplaces -match "`"name`"\s*:\s*`"$([regex]::Escape($CodexMarketplace))`"") {
             if ($marketplaces -notmatch [regex]::Escape($Repo)) { Finish 'failed' 'marketplace-source-mismatch'; return $true }
             & $codex plugin marketplace upgrade $CodexMarketplace --json *> $null
@@ -246,13 +257,28 @@ function Install-PostmanPlugin {
         $st.AgentVersion = Get-AgentVersion $git
 
         # Cloned beside the target and renamed, so a run that is killed halfway leaves nothing Cursor could load.
-        # The partial folder is ours alone, so a leftover one is removed first. A long username plus the plugin
-        # tree can pass the 260 character limit unless Git's long path support is on.
-        $partial = "$clone.partial"
-        if (Test-Path $partial) { Remove-Item $partial -Recurse -Force -ErrorAction SilentlyContinue }
+        # The name carries this run's id, so two runs at once (two Postman channels, say) do not share a folder.
+        # A partial folder left behind by a run that died is removed once it is an hour old. A long username plus
+        # the plugin tree can pass the 260 character limit unless Git's long path support is on.
+        $partial = "$clone.partial.$PID"
+        try {
+            Get-ChildItem -Path (Split-Path $clone) -Filter 'postman.partial.*' -Directory -ErrorAction SilentlyContinue |
+                Where-Object { $_.LastWriteTime -lt (Get-Date).AddHours(-1) } |
+                ForEach-Object { Remove-Item $_.FullName -Recurse -Force -ErrorAction SilentlyContinue }
+        } catch { }
         if (-not (Invoke-Agent $git @('-c', 'core.longpaths=true', 'clone', '--depth', '1', '--branch', $Branch, $GitUrl, $partial))) {
             Remove-Item $partial -Recurse -Force -ErrorAction SilentlyContinue
             Finish 'failed' 'clone-failed'; return $true
+        }
+        # The commit that was cloned, so a bad push to the repository can be traced to the installs it reached.
+        try {
+            $sha = (& $git -C $partial rev-parse --short=12 HEAD 2>$null | Out-String).Trim()
+            if ($sha -match '^[0-9a-f]{1,12}$') { $st.Ref = $sha }
+        } catch { }
+        # Another run may have finished while this one cloned. Moving into an existing folder would nest the clone.
+        if (Test-Path $clone) {
+            Remove-Item $partial -Recurse -Force -ErrorAction SilentlyContinue
+            Finish 'already-installed'; return $true
         }
         try { Move-Item -LiteralPath $partial -Destination $clone -ErrorAction Stop } catch {
             Remove-Item $partial -Recurse -Force -ErrorAction SilentlyContinue
@@ -286,7 +312,7 @@ function Install-PostmanPlugin {
         $failed = $false
         $results = @()
         foreach ($name in $agents) {
-            $st.Outcome = ''; $st.Reason = ''; $st.Cause = ''; $st.ExitCode = ''; $st.AgentVersion = ''
+            $st.Outcome = ''; $st.Reason = ''; $st.Cause = ''; $st.ExitCode = ''; $st.AgentVersion = ''; $st.Ref = ''
             $st.Agent = $name
             $ran = switch ($name) {
                 'claude-code' { Install-ClaudeCode }
@@ -305,8 +331,8 @@ function Install-PostmanPlugin {
 
         if (-not $st.Detected) {
             Write-Err 'No supported agent found. Install Claude Code, Codex or Cursor, or run npx @postman/postman-plugin.'
-            $st.Outcome = 'skipped'; $st.Cause = ''; $st.ExitCode = ''; $st.AgentVersion = ''
-            Send-Report 'none' 'skipped' 'no-agent' @{ Cause = ''; ExitCode = ''; AgentVersion = '' }
+            $st.Outcome = 'skipped'; $st.Cause = ''; $st.ExitCode = ''; $st.AgentVersion = ''; $st.Ref = ''
+            Send-Report 'none' 'skipped' 'no-agent' @{ Cause = ''; ExitCode = ''; AgentVersion = ''; Ref = '' }
             return 3
         }
 
@@ -322,7 +348,7 @@ function Install-PostmanPlugin {
     } catch {
         $st.Outcome = 'failed'; $st.Cause = ''; $st.ExitCode = ''; $st.AgentVersion = ''
         $type = Get-Safe { $_.Exception.GetType().Name }
-        Send-Report $(if ($st.Agent) { $st.Agent } else { 'script' }) 'failed' "crashed-$type" @{ Cause = ''; ExitCode = ''; AgentVersion = '' }
+        Send-Report $(if ($st.Agent) { $st.Agent } else { 'script' }) 'failed' "crashed-$type" @{ Cause = ''; ExitCode = ''; AgentVersion = ''; Ref = '' }
         Write-Err 'The Postman plugin installer hit an unexpected error.'
         return 4
     }

@@ -31,7 +31,7 @@ function sandbox ({ bins = {}, home = {} } = {}) {
     }
 
     // Tools the script needs, linked in so the stubs stay the only agents on PATH.
-    for (const tool of ['sh', 'grep', 'tr', 'cut', 'sed', 'uname', 'printf', 'cat', 'mkdir', 'head', 'date', 'touch', 'sleep', 'mv', 'rm']) {
+    for (const tool of ['sh', 'grep', 'tr', 'cut', 'sed', 'uname', 'printf', 'cat', 'mkdir', 'head', 'date', 'touch', 'sleep', 'mv', 'rm', 'find', 'dirname']) {
         const found = spawnSync('sh', ['-c', `command -v ${tool}`]).stdout.toString().trim();
 
         if (found.startsWith('/') && !fs.existsSync(path.join(bin, tool))) {
@@ -195,15 +195,15 @@ test('Codex: a registered marketplace is upgraded, and a foreign source blocks',
 });
 
 test('Cursor: clones the repo into the local plugins folder', (t) => {
-    const box = sandbox({ bins: { git: '[ "$1" = --version ] && exit 0; for last; do :; done; mkdir -p "$last/.cursor-plugin"' }, home: { '.cursor/settings.json': '{}' } });
+    const box = sandbox({ bins: { git: '[ "$1" = --version ] && exit 0; [ "$1" = -C ] && { echo abcdef0123456789; exit 0; }; for last; do :; done; mkdir -p "$last/.cursor-plugin"' }, home: { '.cursor/settings.json': '{}' } });
 
     t.after(box.cleanup);
     const out = box.run(['--agent', 'cursor']);
 
     assert.equal(out.code, 0);
-    assert.deepEqual(box.commands(), [`git clone --depth 1 --branch main https://github.com/postmanlabs/postman-plugin.git ${box.homeDir}/.cursor/plugins/local/postman.partial`]);
+    assert.match(box.commands()[0], new RegExp(`^git clone --depth 1 --branch main https://github.com/postmanlabs/postman-plugin.git ${box.homeDir.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/.cursor/plugins/local/postman.partial.\\d+$`));
     assert.ok(fs.existsSync(path.join(box.homeDir, '.cursor/plugins/local/postman/.cursor-plugin')), 'renamed into place');
-    assert.ok(!fs.existsSync(path.join(box.homeDir, '.cursor/plugins/local/postman.partial')));
+    assert.deepEqual(partials(box), []);
     assert.match(out.stdout, /^result cursor installed$/m);
 });
 
@@ -278,6 +278,9 @@ test('telemetry: goes to the plugin installer project by default, and is off wit
     assert.ok(!off.commands().some((line) => line.startsWith('curl ')));
 });
 
+// What a run left beside the clone: the folders it clones into before renaming.
+const partials = (box) => fs.readdirSync(path.join(box.homeDir, '.cursor/plugins/local')).filter((name) => name.startsWith('postman.partial'));
+
 const sentEvents = (box) => box.commands().filter((line) => line.startsWith('curl '));
 const TELEMETRY = { POSTMAN_PLUGIN_TELEMETRY_URL: 'https://sentry.test/store' };
 
@@ -345,24 +348,67 @@ test('telemetry: a run killed mid-install reports an abort and exits 130', async
 });
 
 test('git never prompts for credentials', (t) => {
-    const box = sandbox({ bins: { git: '[ "$1" = --version ] && exit 0; echo "GTP=$GIT_TERMINAL_PROMPT" >> "$0.env"; for last; do :; done; mkdir -p "$last/.cursor-plugin"' }, home: { '.cursor/settings.json': '{}' } });
+    const box = sandbox({ bins: { git: '[ "$1" = --version ] && exit 0; [ "$1" = -C ] && exit 0; echo "GTP=$GIT_TERMINAL_PROMPT" >> "$0.env"; for last; do :; done; mkdir -p "$last/.cursor-plugin"' }, home: { '.cursor/settings.json': '{}' } });
 
     t.after(box.cleanup);
     box.run(['--agent', 'cursor']);
     assert.equal(fs.readFileSync(path.join(box.root, 'bin', 'git.env'), 'utf8').trim(), 'GTP=0');
 });
 
-test('Cursor: a failed clone leaves nothing behind, and a leftover partial folder is replaced', (t) => {
+test('Cursor: a failed clone leaves nothing behind, and only an old leftover partial folder is removed', (t) => {
     const failing = sandbox({ bins: { git: '[ "$1" = --version ] && exit 0; for last; do :; done; mkdir -p "$last/half"; echo "fatal: unable to access" >&2; exit 128' }, home: { '.cursor/settings.json': '{}' } }),
-        leftover = sandbox({ bins: { git: '[ "$1" = --version ] && exit 0; for last; do :; done; mkdir -p "$last/.cursor-plugin"' }, home: { '.cursor/plugins/local/postman.partial/stale.txt': 'x' } });
+        leftover = sandbox({ bins: { git: '[ "$1" = --version ] && exit 0; [ "$1" = -C ] && { echo abcdef0123456789; exit 0; }; for last; do :; done; mkdir -p "$last/.cursor-plugin"' }, home: { '.cursor/plugins/local/postman.partial.111/old.txt': 'x', '.cursor/plugins/local/postman.partial.222/fresh.txt': 'x' } });
 
     t.after(failing.cleanup);
     t.after(leftover.cleanup);
     assert.match(failing.run(['--agent', 'cursor']).stdout, /^result cursor failed clone-failed$/m);
-    assert.ok(!fs.existsSync(path.join(failing.homeDir, '.cursor/plugins/local/postman.partial')));
+    assert.deepEqual(partials(failing), []);
     assert.ok(!fs.existsSync(path.join(failing.homeDir, '.cursor/plugins/local/postman')));
+
+    // A run that died hours ago left the first folder. A run that started a moment ago owns the second.
+    const hoursAgo = new Date(Date.now() - 3 * 3600 * 1000);
+
+    fs.utimesSync(path.join(leftover.homeDir, '.cursor/plugins/local/postman.partial.111'), hoursAgo, hoursAgo);
     assert.match(leftover.run(['--agent', 'cursor']).stdout, /^result cursor installed$/m);
-    assert.ok(!fs.existsSync(path.join(leftover.homeDir, '.cursor/plugins/local/postman/stale.txt')));
+    assert.deepEqual(partials(leftover), ['postman.partial.222']);
+});
+
+test('Cursor: another run finishing first is reported as installed, not nested into a second folder', (t) => {
+    const box = sandbox({ bins: { git: '[ "$1" = --version ] && exit 0; [ "$1" = -C ] && exit 0; for last; do :; done; mkdir -p "$last/.cursor-plugin"; mkdir -p "${last%.partial.*}/.cursor-plugin"' }, home: { '.cursor/settings.json': '{}' } });
+
+    t.after(box.cleanup);
+    const out = box.run(['--agent', 'cursor']);
+
+    assert.match(out.stdout, /^result cursor already-installed$/m);
+    assert.deepEqual(partials(box), []);
+    assert.ok(!fs.existsSync(path.join(box.homeDir, '.cursor/plugins/local/postman/postman.partial')));
+});
+
+test('Cursor: the macOS git stub does not count without the Command Line Tools, and the commit cloned is reported', (t) => {
+    const shim = sandbox({ bins: { git: 'exit 0', 'xcode-select': 'exit 2', uname: 'case "$1" in -s) echo Darwin ;; -r) echo 25.1.0 ;; *) echo arm64 ;; esac', curl: 'exit 0' }, home: { '.cursor/settings.json': '{}' } }),
+        real = sandbox({ bins: { git: '[ "$1" = --version ] && exit 0; [ "$1" = -C ] && { echo abcdef0123456789; exit 0; }; for last; do :; done; mkdir -p "$last/.cursor-plugin"', 'xcode-select': 'exit 0', uname: 'case "$1" in -s) echo Darwin ;; -r) echo 25.1.0 ;; *) echo arm64 ;; esac', curl: 'exit 0' }, home: { '.cursor/settings.json': '{}' } });
+
+    t.after(shim.cleanup);
+    t.after(real.cleanup);
+    const env = (box) => ({ ...TELEMETRY, POSTMAN_PLUGIN_SYSTEM_GIT: path.join(box.root, 'bin', 'git') });
+
+    assert.match(shim.run(['--agent', 'cursor'], env(shim)).stdout, /^result cursor failed git-missing$/m);
+    assert.ok(!shim.commands().some((line) => line.startsWith('git clone')), 'the stub is never run');
+    assert.match(real.run(['--agent', 'cursor'], env(real)).stdout, /^result cursor installed$/m);
+    assert.match(sentEvents(real)[0], /"ref":"abcdef012345"/);
+});
+
+test('telemetry: a failing list command says why, and the language is reported without the region', (t) => {
+    const box = sandbox({ bins: { claude: `case "$*" in "--version") echo 1.0.0 ;; "plugin list --json") echo "error: unknown command 'plugin'" >&2; exit 1 ;; esac`, curl: 'exit 0' } });
+
+    t.after(box.cleanup);
+    const out = box.run(['--agent', 'claude-code'], { ...TELEMETRY, LANG: 'ru_RU.UTF-8' });
+    const [event] = sentEvents(box);
+
+    assert.match(out.stdout, /^result claude-code failed list-failed$/m);
+    assert.match(event, /"cause":"cli-unsupported"/);
+    assert.match(event, /"lang":"ru"/);
+    assert.doesNotMatch(event, /RU|UTF/);
 });
 
 test('telemetry: the event names its environment, groups by a fingerprint and says why in its message', (t) => {

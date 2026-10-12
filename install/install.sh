@@ -25,12 +25,14 @@ CLAUDE_REPO='anthropics/claude-plugins-official'
 CLAUDE_PLUGIN="postman@$CLAUDE_MARKETPLACE"
 CODEX_MARKETPLACE='postman'
 CODEX_PLUGIN="postman@$CODEX_MARKETPLACE"
-SCRIPT_VERSION='2'
+SCRIPT_VERSION='3'
 # The plugin installer's Sentry project. The key is a public ingest key that can only send events.
 # POSTMAN_PLUGIN_TELEMETRY_URL replaces it, POSTMAN_PLUGIN_TELEMETRY=0 turns reporting off.
 TELEMETRY_URL="${POSTMAN_PLUGIN_TELEMETRY_URL:-https://o1224273.ingest.us.sentry.io/api/4512245392867328/store/?sentry_key=89624d613f8f105a75eaf131a319a2a6}"
 # Overridable only so tests do not find a Cursor installed on the machine running them.
 CURSOR_APP="${POSTMAN_PLUGIN_CURSOR_APP:-/Applications/Cursor.app}"
+# The macOS stub git, overridable only so tests do not depend on the machine running them.
+SYSTEM_GIT="${POSTMAN_PLUGIN_SYSTEM_GIT:-/usr/bin/git}"
 
 # A background install has no terminal, so a credential prompt would hang until the caller gives up.
 GIT_TERMINAL_PROMPT=0
@@ -46,6 +48,8 @@ ARCH=$(uname -m 2>/dev/null | clean 20)
 # Only the leading numbers: a kernel release can carry a host or vendor name after them.
 OS_VERSION=$(uname -r 2>/dev/null | sed -n 's/^\([0-9][0-9]*\.[0-9][0-9]*\).*/\1/p')
 RUN_ID="$(date +%s 2>/dev/null)-$$"
+# The language only, so an `unknown` cause can be split by the language the agent's message came in.
+LANG_TAG=$(printf '%s' "${LC_ALL:-${LANG:-}}" | cut -d_ -f1 | cut -d. -f1 | tr -cd 'a-zA-Z' | tr '[:upper:]' '[:lower:]' | cut -c1-3)
 HOME_DIR="${HOME:-}"
 
 OUTCOME=''
@@ -53,6 +57,7 @@ REASON=''
 CAUSE=''
 EXIT_CODE=''
 AGENT_VERSION=''
+PLUGIN_REF=''
 FAILED=0
 DETECTED=0
 DONE=0
@@ -87,6 +92,8 @@ report() {
     [ -n "$CAUSE" ] && tags="$tags,\"cause\":\"$CAUSE\""
     [ -n "$EXIT_CODE" ] && tags="$tags,\"exit_code\":\"$EXIT_CODE\""
     [ -n "$AGENT_VERSION" ] && tags="$tags,\"agent_version\":\"$AGENT_VERSION\""
+    [ -n "$LANG_TAG" ] && tags="$tags,\"lang\":\"$LANG_TAG\""
+    [ -n "$PLUGIN_REF" ] && tags="$tags,\"ref\":\"$PLUGIN_REF\""
     [ -n "$SOURCE" ] && tags="$tags,\"source\":\"$SOURCE\""
     curl --silent --fail --connect-timeout 3 --max-time 5 --retry 0 --request POST \
         --header 'Content-Type: application/json' \
@@ -97,16 +104,16 @@ report() {
 # Events are queued and sent after the result lines are printed, so a slow or blocked Sentry cannot delay them.
 queue_report() {
     PENDING="$PENDING
-$1|$2|$3|$CAUSE|$EXIT_CODE|$AGENT_VERSION"
+$1|$2|$3|$CAUSE|$EXIT_CODE|$AGENT_VERSION|$PLUGIN_REF"
 }
 
 flush_reports() {
     [ -n "$PENDING" ] || return 0
     queued=$PENDING
     PENDING=''
-    printf '%s\n' "$queued" | while IFS='|' read -r r_agent r_outcome r_reason r_cause r_exit r_version; do
+    printf '%s\n' "$queued" | while IFS='|' read -r r_agent r_outcome r_reason r_cause r_exit r_version r_ref; do
         [ -n "$r_agent" ] || continue
-        CAUSE=$r_cause EXIT_CODE=$r_exit AGENT_VERSION=$r_version report "$r_agent" "$r_outcome" "$r_reason"
+        CAUSE=$r_cause EXIT_CODE=$r_exit AGENT_VERSION=$r_version PLUGIN_REF=$r_ref report "$r_agent" "$r_outcome" "$r_reason"
     done
 }
 
@@ -147,6 +154,21 @@ finish() {
     REASON=${2:-}
 }
 
+# Why a list command failed. It is read-only, so running it again for its error text is safe.
+list_cause() {
+    classify "$("$@" 2>&1 >/dev/null)"
+}
+
+# On macOS /usr/bin/git is a stub. Without the Command Line Tools it opens an install dialog the
+# user never asked for, so it only counts when the tools are there.
+git_usable() {
+    git_path=$(command -v git 2>/dev/null) || return 1
+    if [ "$OS" = darwin ] && [ "$git_path" = "$SYSTEM_GIT" ]; then
+        xcode-select -p >/dev/null 2>&1 || return 1
+    fi
+    return 0
+}
+
 has_id() {
     printf '%s' "$1" | grep -q "\"$2\"[[:space:]]*:[[:space:]]*\"$3\""
 }
@@ -156,14 +178,14 @@ install_claude_code() {
     DETECTED=1
     AGENT_VERSION=$(agent_version claude)
 
-    plugins=$(claude plugin list --json 2>/dev/null) || { EXIT_CODE=$?; finish failed list-failed; return 0; }
+    plugins=$(claude plugin list --json 2>/dev/null) || { EXIT_CODE=$?; CAUSE=$(list_cause claude plugin list --json); finish failed list-failed; return 0; }
     # postman@postman is the same plugin from our own marketplace; adding the official one would load it twice.
     if has_id "$plugins" id "$CLAUDE_PLUGIN" || has_id "$plugins" id 'postman@postman'; then
         finish already-installed
         return 0
     fi
 
-    marketplaces=$(claude plugin marketplace list --json 2>/dev/null) || { EXIT_CODE=$?; finish failed list-failed; return 0; }
+    marketplaces=$(claude plugin marketplace list --json 2>/dev/null) || { EXIT_CODE=$?; CAUSE=$(list_cause claude plugin marketplace list --json); finish failed list-failed; return 0; }
     if has_id "$marketplaces" name "$CLAUDE_MARKETPLACE"; then
         printf '%s' "$marketplaces" | grep -qi "$CLAUDE_REPO" || { finish failed marketplace-source-mismatch; return 0; }
         # A stale marketplace would install an old release. Refreshing it is best effort.
@@ -183,13 +205,13 @@ install_codex() {
     DETECTED=1
     AGENT_VERSION=$(agent_version codex)
 
-    plugins=$(codex plugin list --json 2>/dev/null) || { EXIT_CODE=$?; finish failed list-failed; return 0; }
+    plugins=$(codex plugin list --json 2>/dev/null) || { EXIT_CODE=$?; CAUSE=$(list_cause codex plugin list --json); finish failed list-failed; return 0; }
     if has_id "$plugins" pluginId "$CODEX_PLUGIN"; then
         finish already-installed
         return 0
     fi
 
-    marketplaces=$(codex plugin marketplace list --json 2>/dev/null) || { EXIT_CODE=$?; finish failed list-failed; return 0; }
+    marketplaces=$(codex plugin marketplace list --json 2>/dev/null) || { EXIT_CODE=$?; CAUSE=$(list_cause codex plugin marketplace list --json); finish failed list-failed; return 0; }
     if has_id "$marketplaces" name "$CODEX_MARKETPLACE"; then
         printf '%s' "$marketplaces" | grep -qi "$REPO" || { finish failed marketplace-source-mismatch; return 0; }
         run codex plugin marketplace upgrade "$CODEX_MARKETPLACE" --json >/dev/null 2>&1 || true
@@ -219,14 +241,23 @@ install_cursor() {
         return 0
     fi
     [ ! -e "$clone" ] || { finish failed target-exists; return 0; }
-    command -v git >/dev/null 2>&1 || { finish failed git-missing; return 0; }
+    git_usable || { finish failed git-missing; return 0; }
     AGENT_VERSION=$(agent_version git)
 
     # Cloned beside the target and renamed, so a run that is killed halfway leaves nothing Cursor could load.
-    # The partial folder is ours alone, so a leftover one is removed first.
-    partial="$clone.partial"
-    rm -rf "$partial"
+    # The name carries this run's id, so two runs at once (two Postman channels, say) do not share a folder.
+    # A partial folder left behind by a run that died is removed once it is an hour old.
+    partial="$clone.partial.$$"
+    find "$(dirname "$clone")" -maxdepth 1 -name 'postman.partial.*' -mmin +60 -exec rm -rf {} + 2>/dev/null || true
     run git clone --depth 1 --branch "$BRANCH" "$GIT_URL" "$partial" || { rm -rf "$partial"; finish failed clone-failed; return 0; }
+    # The commit that was cloned, so a bad push to the repository can be traced to the installs it reached.
+    PLUGIN_REF=$(git -C "$partial" rev-parse --short=12 HEAD 2>/dev/null | tr -cd '0-9a-f' | cut -c1-12)
+    # Another run may have finished while this one cloned. Moving into an existing folder would nest the clone.
+    if [ -e "$clone" ]; then
+        rm -rf "$partial"
+        finish already-installed
+        return 0
+    fi
     mv "$partial" "$clone" 2>/dev/null || { rm -rf "$partial"; finish failed clone-failed; return 0; }
     finish installed
 }
@@ -248,6 +279,7 @@ on_exit() {
     CAUSE=''
     EXIT_CODE=$code
     AGENT_VERSION=''
+    PLUGIN_REF=''
     if [ "$ABORTED" = 1 ]; then reason=aborted; else reason=crashed; fi
     report "${CURRENT_AGENT:-script}" failed "$reason"
     [ "$ABORTED" = 1 ] || exit 4
@@ -288,6 +320,7 @@ for agent in $AGENTS; do
     CAUSE=''
     EXIT_CODE=''
     AGENT_VERSION=''
+    PLUGIN_REF=''
     CURRENT_AGENT=$agent
     case "$agent" in
         claude-code) install_claude_code ;;
@@ -304,6 +337,7 @@ if [ "$DETECTED" = 0 ]; then
     CAUSE=''
     EXIT_CODE=''
     AGENT_VERSION=''
+    PLUGIN_REF=''
     report none skipped no-agent
     DONE=1
     exit 3
