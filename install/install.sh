@@ -11,8 +11,9 @@
 #
 # POSTMAN_PLUGIN_INSTALL_SOURCE and POSTMAN_PLUGIN_ENVIRONMENT (default production) tag the telemetry
 # event (a-z, 0-9, _ and -, 40 and 20 characters).
-# POSTMAN_PLUGIN_TELEMETRY=0 turns telemetry off. An event holds fixed codes and version strings
-# only, never agent output, paths or user text.
+# POSTMAN_PLUGIN_TELEMETRY=0 or DO_NOT_TRACK=1 turns telemetry off. An event holds fixed codes and
+# numeric version strings only, never agent output, paths, host names or user text, and it carries no
+# identifier that survives the run.
 
 set -u
 
@@ -42,7 +43,8 @@ SOURCE=$(printf '%s' "${POSTMAN_PLUGIN_INSTALL_SOURCE:-}" | tr -c 'a-zA-Z0-9_-' 
 ENVIRONMENT=$(printf '%s' "${POSTMAN_PLUGIN_ENVIRONMENT:-production}" | tr -c 'a-zA-Z0-9_-' '_' | cut -c1-20)
 OS=$(uname -s 2>/dev/null | tr '[:upper:]' '[:lower:]')
 ARCH=$(uname -m 2>/dev/null | clean 20)
-OS_VERSION=$(uname -r 2>/dev/null | clean 40)
+# Only the leading numbers: a kernel release can carry a host or vendor name after them.
+OS_VERSION=$(uname -r 2>/dev/null | sed -n 's/^\([0-9][0-9]*\.[0-9][0-9]*\).*/\1/p')
 RUN_ID="$(date +%s 2>/dev/null)-$$"
 HOME_DIR="${HOME:-}"
 
@@ -65,12 +67,18 @@ usage() {
     exit 2
 }
 
-# Fixed codes and version strings only: a Sentry event must never carry paths, agent output or user text.
+telemetry_enabled() {
+    [ -n "$TELEMETRY_URL" ] || return 1
+    [ "${POSTMAN_PLUGIN_TELEMETRY:-1}" != 0 ] || return 1
+    case "${DO_NOT_TRACK:-}" in 1|true) return 1 ;; esac
+    return 0
+}
+
+# Fixed codes and numeric versions only: a Sentry event must never carry paths, agent output or user text.
 # The fingerprint keeps each failure kind its own Sentry issue instead of one issue per agent. A user with the
 # address 0.0.0.0 stops Sentry from recording the sender's own IP address and its geolocation.
 report() {
-    [ -n "$TELEMETRY_URL" ] || return 0
-    [ "${POSTMAN_PLUGIN_TELEMETRY:-1}" = 0 ] && return 0
+    telemetry_enabled || return 0
     command -v curl >/dev/null 2>&1 || return 0
     level=info
     [ "$2" = failed ] && level=error
@@ -129,9 +137,9 @@ run() {
     return 1
 }
 
-# The agent's own version string, kept to a safe character set.
+# The agent's own version, reduced to its first dotted number. Whatever else the agent prints is dropped.
 agent_version() {
-    "$1" --version 2>/dev/null | head -n 1 | clean 30
+    "$1" --version 2>/dev/null | head -n 1 | sed -n 's/[^0-9]*\([0-9][0-9]*\(\.[0-9][0-9]*\)\{1,3\}\).*/\1/p'
 }
 
 finish() {
@@ -268,6 +276,10 @@ if [ -z "$HOME_DIR" ]; then
     printf 'HOME is not set\n' >&2
     DONE=1
     exit 2
+fi
+
+if telemetry_enabled && [ -t 2 ]; then
+    printf 'This installer reports whether it worked, with no personal data. Set DO_NOT_TRACK=1 to turn that off.\n' >&2
 fi
 
 for agent in $AGENTS; do

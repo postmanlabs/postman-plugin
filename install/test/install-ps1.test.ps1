@@ -126,7 +126,7 @@ $probe = & $ps -NoProfile -ExecutionPolicy Bypass -Command "`$env:PATH='$bin;$en
 Check 'iex: session stays open and no variable leaks' ($probe -match 'alive' -and $probe -match 'leaked=0') $probe
 
 # Telemetry goes to a local listener. Returns the bodies of the events one run sends.
-function Get-Events($agentArgs, $envs, $count = 1) {
+function Get-Events($agentArgs, $envs, $count = 1, $waitMs = 20000) {
     $listener = [System.Net.HttpListener]::new()
     $listener.Prefixes.Add("http://127.0.0.1:$port/")
     $listener.Start()
@@ -142,7 +142,7 @@ function Get-Events($agentArgs, $envs, $count = 1) {
         } -ArgumentList $ps, $script, $bin, $home_, $root, $agentArgs, $envs
         for ($i = 0; $i -lt $count; $i++) {
             $pending = $listener.GetContextAsync()
-            if (-not $pending.Wait(20000)) { break }
+            if (-not $pending.Wait($waitMs)) { break }
             $ctx = $pending.Result
             $events += (New-Object IO.StreamReader($ctx.Request.InputStream)).ReadToEnd()
             $ctx.Response.StatusCode = 200
@@ -161,7 +161,7 @@ New-Scenario '[]' $official 'plugin install' 'getaddrinfo ENOTFOUND github.com C
 $e = (Get-Events '-Agent claude-code' "$tel; `$env:POSTMAN_PLUGIN_INSTALL_SOURCE='auto new/download;x'") -join ''
 Check 'telemetry: failure has cause, exit code, versions, run id, source, host facts' (
     $e -match '"reason":\s*"install-failed"' -and $e -match '"cause":\s*"network-dns"' -and $e -match '"exit_code":\s*"1"' -and
-    $e -match '"agent_version":\s*"2\.1\.296 Agent Name"' -and $e -match '"run_id":\s*"[0-9a-f]{12}"' -and
+    $e -match '"agent_version":\s*"2\.1\.296"' -and $e -match '"run_id":\s*"[0-9a-f]{12}"' -and
     $e -match '"source":\s*"auto_new_download_x"' -and $e -match '"ps_version":\s*"\d' -and $e -match '"exec_policy":' -and
     $e -match '"language_mode":\s*"FullLanguage"' -and $e -match '"via":\s*"file"' -and $e -match '"arch":') $e
 Check 'telemetry: the sender IP address is not recorded' ($e -match '"user":\s*\{\s*"ip_address":\s*"0\.0\.0\.0"') $e
@@ -189,6 +189,18 @@ Check 'telemetry: no supported agent is reported' ($e -match '"agent":\s*"none"'
 New-Scenario '[]' '[]' ''
 $e = (Get-Events '-Agent cursor' "$tel; `$env:POSTMAN_PLUGIN_CURSOR_APP=`$null; Remove-Item Env:LOCALAPPDATA -ErrorAction SilentlyContinue") -join ''
 Check 'telemetry: an unexpected exception is reported by type, exit 4' ($e -match '"reason":\s*"crashed-\w+"' -and $script:LastRun.Code -eq 4) "$e $($script:LastRun.Out)"
+
+# Privacy: whatever the agent prints and the machine is called, only a number and fixed words are sent.
+New-Scenario '[]' $official 'plugin install' 'getaddrinfo ENOTFOUND'
+Set-Content -Path (Join-Path $bin 'claude.cmd') -Encoding ASCII -Value @('@echo off', "echo claude %* >> `"$log`"", 'echo %* | findstr /C:"--version" >nul && (echo wrapper alice-laptop 3.4.5 C:\Users\alice\.claude & exit /b 0)', 'echo %* | findstr /C:"plugin install" >nul && (echo getaddrinfo ENOTFOUND 1>&2 & exit /b 1)', 'echo %* | findstr /C:"plugin list --json" >nul && (echo [] & exit /b 0)', ('echo %* | findstr /C:"marketplace list --json" >nul && (echo ' + $official + ' & exit /b 0)'), 'exit /b 0')
+$e = (Get-Events '-Agent claude-code' "$tel; `$env:USERNAME='alice'; `$env:COMPUTERNAME='alice-laptop'") -join ''
+Check 'privacy: agent text, host, user and path never reach the event' ($e -match '"agent_version":\s*"3\.4\.5"' -and $e -notmatch 'alice|laptop|wrapper|Users|\.claude' -and $e -notmatch [regex]::Escape($env:COMPUTERNAME.ToLowerInvariant()) -and $e -notmatch [regex]::Escape($env:USERNAME)) $e
+
+New-Scenario '[]' '[]' ''
+$e = (Get-Events '-Agent claude-code' "$tel; `$env:DO_NOT_TRACK='1'" 1 4000) -join ''
+Check 'privacy: DO_NOT_TRACK=1 sends nothing' ($e -eq '') $e
+$e = (Get-Events '-Agent claude-code' "$tel; `$env:DO_NOT_TRACK='true'" 1 4000) -join ''
+Check 'privacy: DO_NOT_TRACK=true sends nothing' ($e -eq '') $e
 
 # Environment, grouping and message
 New-Scenario '[]' $official 'plugin install' 'getaddrinfo ENOTFOUND'

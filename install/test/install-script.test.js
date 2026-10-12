@@ -57,9 +57,9 @@ function sandbox ({ bins = {}, home = {} } = {}) {
 }
 
 // What `claude` prints for the two list commands; every other command succeeds silently.
-const claudeStub = ({ plugins = '[]', marketplaces = OFFICIAL, failOn = '', message = 'boom: /Users/someone/secret' } = {}) => `
+const claudeStub = ({ plugins = '[]', marketplaces = OFFICIAL, failOn = '', message = 'boom: /Users/someone/secret', version = '2.1.296 (Claude Code)' } = {}) => `
 case "$*" in
-  "--version") echo '2.1.296 (Claude Code)' ;;
+  "--version") echo '${version}' ;;
   "plugin list --json") echo '${plugins}' ;;
   "plugin marketplace list --json") echo '${marketplaces}' ;;
   *"${failOn || 'NEVER_MATCHES'}"*) echo "${message}" >&2; exit 1 ;;
@@ -290,7 +290,7 @@ test('telemetry: a failure carries a fixed cause, the exit code, the agent versi
 
     assert.match(event, /"cause":"network-dns"/);
     assert.match(event, /"exit_code":"1"/);
-    assert.match(event, /"agent_version":"2.1.296 Claude Code"/);
+    assert.match(event, /"agent_version":"2\.1\.296"/);
     assert.match(event, /"run_id":"\d+-\d+"/);
     assert.match(event, /"arch":"[^"]+"/);
     assert.doesNotMatch(event, /secret|ENOTFOUND|github/);
@@ -394,4 +394,40 @@ test('telemetry: results are printed before any event is sent', (t) => {
     });
 
     assert.match(fs.readFileSync(path.join(box.root, 'bin', 'curl.seen'), 'utf8'), /result claude-code installed/);
+});
+
+test('privacy: an event holds no host, user or path text, whatever the machine and the agent print', (t) => {
+    const box = sandbox({
+        bins: {
+            claude: claudeStub({ failOn: 'plugin install', version: 'wrapper alice-laptop 1.2.3 /home/alice/.claude' }),
+            uname: 'case "$1" in -r) echo 6.1.0-corp-secret-host-alice ;; -m) echo x86_64 ;; *) echo Linux ;; esac',
+            curl: 'exit 0'
+        }
+    });
+
+    t.after(box.cleanup);
+    box.run(['--agent', 'claude-code'], { ...TELEMETRY, USER: 'alice', LOGNAME: 'alice', HOSTNAME: 'alice-laptop' });
+    const [event] = sentEvents(box);
+
+    assert.match(event, /"os_version":"6\.1"/);
+    assert.match(event, /"agent_version":"1\.2\.3"/);
+    assert.doesNotMatch(event, /alice|laptop|secret|corp|\/home|\/Users|wrapper/i);
+});
+
+test('privacy: DO_NOT_TRACK turns reporting off, and only a terminal sees the notice', (t) => {
+    const off = sandbox({ bins: { claude: claudeStub(), curl: 'exit 0' } }),
+        offTrue = sandbox({ bins: { claude: claudeStub(), curl: 'exit 0' } }),
+        on = sandbox({ bins: { claude: claudeStub(), curl: 'exit 0' } });
+
+    t.after(off.cleanup);
+    t.after(offTrue.cleanup);
+    t.after(on.cleanup);
+    off.run(['--agent', 'claude-code'], { ...TELEMETRY, DO_NOT_TRACK: '1' });
+    offTrue.run(['--agent', 'claude-code'], { ...TELEMETRY, DO_NOT_TRACK: 'true' });
+    const out = on.run(['--agent', 'claude-code'], { ...TELEMETRY, DO_NOT_TRACK: '0' });
+
+    assert.equal(sentEvents(off).length, 0);
+    assert.equal(sentEvents(offTrue).length, 0);
+    assert.equal(sentEvents(on).length, 1);
+    assert.doesNotMatch(out.stderr, /reports whether it worked/, 'no notice when stderr is not a terminal');
 });

@@ -13,8 +13,9 @@
 #
 # POSTMAN_PLUGIN_INSTALL_SOURCE and POSTMAN_PLUGIN_ENVIRONMENT (default production) tag the telemetry
 # event (a-z, 0-9, _ and -, 40 and 20 characters).
-# POSTMAN_PLUGIN_TELEMETRY=0 turns telemetry off. An event holds fixed codes and version strings
-# only, never agent output, paths or user text.
+# POSTMAN_PLUGIN_TELEMETRY=0 or DO_NOT_TRACK=1 turns telemetry off. An event holds fixed codes and
+# numeric version strings only, never agent output, paths, host names or user text, and it carries no
+# identifier that survives the run.
 # Same behavior as install.sh. Keep the two in step.
 
 param([string[]]$Agent)
@@ -88,7 +89,7 @@ function Install-PostmanPlugin {
     # The fingerprint keeps each failure kind its own Sentry issue instead of one issue per agent. A user with the
     # address 0.0.0.0 stops Sentry from recording the sender's own IP address and its geolocation.
     function Send-Report($agentName, $outcome, $reason, $e) {
-        if (-not $TelemetryUrl -or $env:POSTMAN_PLUGIN_TELEMETRY -eq '0') { return }
+        if (-not (Test-Telemetry)) { return }
         $tags = @{ agent = $agentName; outcome = $outcome; environment = $Environment; os = 'windows'; script_version = $ScriptVersion }
         foreach ($key in $ctx.Keys) { if ($ctx[$key]) { $tags[$key] = [string]$ctx[$key] } }
         if ($reason) { $tags.reason = $reason }
@@ -152,14 +153,19 @@ function Install-PostmanPlugin {
         return $true
     }
 
-    # The agent's own version string, kept to a safe character set.
+    # The agent's own version, reduced to its first dotted number. Whatever else the agent prints is dropped.
     function Get-AgentVersion($exe) {
         try {
-            $v = (& $exe --version 2>$null | Select-Object -First 1 | Out-String).Trim()
-            $v = $v -replace '[^a-zA-Z0-9._ -]', ''
-            if ($v.Length -gt 30) { $v = $v.Substring(0, 30) }
-            return $v
-        } catch { return '' }
+            $line = (& $exe --version 2>$null | Select-Object -First 1 | Out-String)
+            if ($line -match '(\d+(\.\d+){1,3})') { return $Matches[1] }
+        } catch { }
+        return ''
+    }
+
+    function Test-Telemetry {
+        if (-not $TelemetryUrl -or $env:POSTMAN_PLUGIN_TELEMETRY -eq '0') { return $false }
+        if ($env:DO_NOT_TRACK -eq '1' -or $env:DO_NOT_TRACK -eq 'true') { return $false }
+        return $true
     }
 
     function Finish($outcome, $reason = '') {
@@ -269,6 +275,12 @@ function Install-PostmanPlugin {
         if (-not $env:USERPROFILE) {
             Write-Err 'USERPROFILE is not set'
             return 2
+        }
+
+        $quiet = $false
+        try { $quiet = [Console]::IsErrorRedirected } catch { }
+        if ((Test-Telemetry) -and -not $quiet) {
+            Write-Host 'This installer reports whether it worked, with no personal data. Set DO_NOT_TRACK=1 to turn that off.'
         }
 
         $failed = $false
