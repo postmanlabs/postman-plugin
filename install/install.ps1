@@ -254,8 +254,9 @@ function Install-PostmanPlugin {
     }
 
     function Invoke-Run {
-        if (-not $Agent -and $env:POSTMAN_PLUGIN_AGENT) { $Agent = $env:POSTMAN_PLUGIN_AGENT -split ',' | ForEach-Object { $_.Trim() } }
-        $agents = if ($Agent) { $Agent } else { @('claude-code', 'codex', 'cursor') }
+        if (-not $Agent -and $env:POSTMAN_PLUGIN_AGENT) { $Agent = @($env:POSTMAN_PLUGIN_AGENT) }
+        # `powershell -File install.ps1 -Agent a,b` hands over the string 'a,b', not an array, so split every element.
+        $agents = if ($Agent) { @($Agent | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ }) } else { @('claude-code', 'codex', 'cursor') }
         foreach ($name in $agents) {
             if ($name -notin 'claude-code', 'codex', 'cursor') {
                 Write-Err 'Usage: install.ps1 [-Agent claude-code,codex,cursor]'

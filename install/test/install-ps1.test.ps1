@@ -6,7 +6,7 @@
 
 $ErrorActionPreference = 'Continue'
 $ps = (Get-Process -Id $PID).Path
-$script = (Resolve-Path (Join-Path $PSScriptRoot '..\install.ps1')).Path
+$script = (Resolve-Path (Join-Path $PSScriptRoot '..\install.ps1')).ProviderPath
 $root = Join-Path ([IO.Path]::GetTempPath()) ("pm plug-" + [guid]::NewGuid().ToString('N').Substring(0, 8))
 $bin = Join-Path $root 'bin'
 $log = Join-Path $root 'cmds.log'
@@ -76,6 +76,15 @@ Check 'codex: installed plugin left alone' ($r.Code -eq 0 -and $r.Out -match 're
 New-Scenario '[]' '[]' ''
 $r = Invoke-Install '-Agent claude-code,codex'
 Check 'comma list runs both' ($r.Out -match 'result claude-code installed' -and $r.Out -match 'result codex') $r.Out
+
+# `powershell -File install.ps1 -Agent a,b` passes the string 'a,b', which is how the README tells people to run it.
+New-Scenario '[]' '[]' ''
+$path = "$bin;$env:SystemRoot\System32;$env:SystemRoot\System32\WindowsPowerShell\v1.0"
+$env:PATH_BACKUP = $env:PATH; $env:PATH = $path; $env:USERPROFILE_BACKUP = $env:USERPROFILE; $env:USERPROFILE = $home_; $env:POSTMAN_PLUGIN_CURSOR_APP = "$root\none"
+$fileOut = & $ps -NoProfile -ExecutionPolicy Bypass -File $script -Agent claude-code,codex 2>&1 | Out-String
+$fileCode = $LASTEXITCODE
+$env:PATH = $env:PATH_BACKUP; $env:USERPROFILE = $env:USERPROFILE_BACKUP; Remove-Item Env:POSTMAN_PLUGIN_CURSOR_APP
+Check 'powershell -File with -Agent a,b: both agents run' ($fileCode -eq 0 -and $fileOut -match 'result claude-code installed' -and $fileOut -match 'result codex installed') "$fileCode $fileOut"
 
 # Cursor with real git, under a profile folder that has a space and a non-ASCII letter
 New-Scenario '[]' '[]' ''
