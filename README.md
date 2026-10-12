@@ -39,7 +39,15 @@ need no Node, leave an installed plugin alone, and print a `result <agent>
 curl -fsSL https://raw.githubusercontent.com/postmanlabs/postman-plugin/main/install/install.sh | sh
 ```
 
-`--agent claude-code`, `--agent codex` or `--agent cursor` limits the run. The
+On Windows, in PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/postmanlabs/postman-plugin/main/install/install.ps1 | iex
+```
+
+`--agent claude-code`, `--agent codex` or `--agent cursor` limits the run. On
+Windows, set `$env:POSTMAN_PLUGIN_AGENT = 'claude-code,codex'` before the command,
+or run the downloaded file with `-Agent claude-code,codex`. The
 exit code is 0 when done, 1 when an agent failed, 2 for bad usage and 3 when none
 of the three is installed. Factory Droid, Kimi Code, OpenCode and Pi still
 install with the commands below or `npx`.
