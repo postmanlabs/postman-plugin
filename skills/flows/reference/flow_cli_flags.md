@@ -57,8 +57,9 @@ takes `on|off`.
 with `Invalid command parameters: trigger: At least one option is required:
 --trigger or --auth`.
 
-Both are mutating and confirmation-gated. `--auth off` strips authentication
-from a live trigger — never run it as a convenience.
+Both change the live trigger for other callers. Apply an already authorized
+change within its scope; obtain consent before an unrequested access change.
+`--auth off` removes authentication, so it is not a remedy for a failed login.
 
 ## `flows run <path>`
 

@@ -2,7 +2,7 @@
   "name": "@postman/opencode-plugin",
   "version": "0.1.0",
   "private": true,
-  "description": "Postman skills and MCP integration for OpenCode.",
+  "description": "API Engineering for Agents: Postman skills for the complete API lifecycle in OpenCode.",
   "type": "module",
   "license": "Apache-2.0",
   "scripts": {

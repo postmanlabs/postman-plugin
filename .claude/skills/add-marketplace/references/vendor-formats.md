@@ -7,8 +7,8 @@ vendor has a manifest at all.
 
 | | Claude Code | Cursor | Kimi Code | Codex | OpenCode | Pi | Factory Droid |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Route kind | manifest | manifest | manifest | manifest | **package** (npm) | **package** (npm) — the installer's own | manifest |
-| Manifest | `.claude-plugin/plugin.json` | `.cursor-plugin/plugin.json` | `.kimi-plugin/plugin.json` | `.codex-plugin/plugin.json` | `opencode/package.json` — no plugin-manifest format exists | the `pi` key in `installer/package.json` | `.factory-plugin/plugin.json`, metadata only — Droid installs by marketplace entry, from `.factory-plugin/marketplace.json` |
+| Route kind | manifest | manifest | manifest | manifest | **package** — installed from this repo with `opencode plugin add github:postmanlabs/postman-plugin` | **package** (npm) — the installer's own | manifest |
+| Manifest | `.claude-plugin/plugin.json` | `.cursor-plugin/plugin.json` | `.kimi-plugin/plugin.json` | `.codex-plugin/plugin.json` | `opencode/package.json`, whose version the root `package.json` repeats; that root file names the entrypoint `opencode plugin add` loads — no plugin-manifest format exists | the `pi` key in `installer/package.json` | `.factory-plugin/plugin.json`, metadata only — Droid installs by marketplace entry, from `.factory-plugin/marketplace.json` |
 | Skills pointer | *(implicit — no key)* | `"skills": "skills"` | `"skills": ["./skills"]` | `"skills": "./skills/"` | plugin code: v1 appends the packaged dir to `skills.paths`, v2 calls `skill.transform` | `"pi": { "skills": ["./skills"] }`, staged into the tarball at pack time | *(implicit — `skills/` at the plugin root)* |
 | MCP config | `"mcpServers": "./mcp.claude-code.json"` | `"mcpServers": "./mcp.cursor.json"` | inline object | `"mcpServers": "./mcp.codex.json"` | `mcp.opencode.json`, read by the plugin at runtime | `mcp.pi.json`, registered by the extension with `pi.registerMcpServer()` | `mcp.json` at the plugin root — no manifest key |
 | MCP header key | `headers` | `headers` | `headers` | `http_headers` | `headers` | `headers` | `headers` |

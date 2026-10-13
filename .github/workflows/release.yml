@@ -32,6 +32,8 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # Holds the run until a headless-postman member approves it.
+    environment: npm-publish
     permissions:
       contents: read
       id-token: write

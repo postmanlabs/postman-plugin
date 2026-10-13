@@ -21,6 +21,13 @@
     ]
   },
   {
+    "id": "api-simulation",
+    "prompt": "I'm adding a new endpoint that calls four upstream services. Mock them all so I can run and test the newly added endpoint locally before I push.",
+    "expected": [
+      "api-simulation"
+    ]
+  },
+  {
     "id": "api-testing",
     "prompt": "Run this Postman collection and verify that the API still satisfies its assertions.",
     "expected": [
@@ -63,6 +70,13 @@
     ]
   },
   {
+    "id": "api-discovery-service-dependency",
+    "prompt": "I'm in the orders service repository and need to inspect and use the payments collection from another Postman workspace without changing this repository's workspace binding.",
+    "expected": [
+      "api-discovery"
+    ]
+  },
+  {
     "id": "ai-readiness",
     "prompt": "Score this OpenAPI specification for how easily an AI agent can use it.",
     "expected": [
@@ -95,6 +109,27 @@
     "prompt": "Run this collection once per row of my customers CSV, but only the rows where status is active, and save that query so I can rerun it later.",
     "expected": [
       "datasets"
+    ]
+  },
+  {
+    "id": "variables",
+    "prompt": "Where should I store my API's base URL versus its bearer token so the token never ends up committed, and how do I reference each from a request?",
+    "expected": [
+      "variables"
+    ]
+  },
+  {
+    "id": "webhook-testing",
+    "prompt": "Build me a stripe webhook handler on my API running at localhost:3000. Get Stripe's test events to it, show me exactly what each delivery contained, and let me re-send the same event after I fix the bug.",
+    "expected": [
+      "webhook-testing"
+    ]
+  },
+  {
+    "id": "webhook-testing-outgoing",
+    "prompt": "Our orders API sends an order.shipped webhook to subscribers. Capture what it actually sends and check the signature header and payload shape on every delivery.",
+    "expected": [
+      "webhook-testing"
     ]
   },
   {

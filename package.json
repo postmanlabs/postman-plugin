@@ -1,0 +1,22 @@
+{
+  "name": "postman-plugin",
+  "version": "0.1.0",
+  "private": true,
+  "description": "API Engineering for Agents: Postman skills for the complete API lifecycle in every coding agent this repo supports. OpenCode installs the repo through this file, which names its entrypoint; the other agents read their own manifests.",
+  "license": "Apache-2.0",
+  "main": "./opencode/src/index.ts",
+  "exports": {
+    "./server": "./opencode/src/index.ts"
+  },
+  "files": [
+    "opencode/src/index.ts",
+    "opencode/package.json",
+    "skills/",
+    "hooks/session-start-context.md",
+    "manifest.json",
+    "mcp.opencode.json"
+  ],
+  "engines": {
+    "node": ">=22"
+  }
+}

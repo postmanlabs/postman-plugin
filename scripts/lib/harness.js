@@ -22,7 +22,7 @@ export function workspace (name) {
     fs.mkdirSync(home, { recursive: true });
     fs.mkdirSync(project, { recursive: true });
 
-    return { root, home, project, remove: () => fs.rmSync(root, { recursive: true, force: true }) };
+    return { root, home, project, remove: () => fs.rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }) };
 }
 
 // Some agents find their project from $PWD rather than the working directory they are started in.
@@ -66,11 +66,11 @@ export function commit (target) {
     run('git', ['-c', 'user.name=harness', '-c', 'user.email=harness@localhost', '-c', 'commit.gpgsign=false', 'commit', '--quiet', '--message', 'harness'], { cwd: target });
 }
 
-/** A line of the skill's body, past its frontmatter, that only a loaded skill puts in the session. */
+/** The first numbered instruction, which only a loaded skill puts in the session. */
 export function skillExcerpt (skill, root = repoRoot) {
     const body = fs.readFileSync(path.join(root, 'skills', skill, 'SKILL.md'), 'utf8').split(/^---\r?$/m).slice(2).join('---');
 
-    return body.split(/\r?\n/).find((line) => line.trim().length > 40 && !line.startsWith('#')).trim();
+    return body.split(/\r?\n/).find((line) => /^1\.\s+\S/.test(line)).trim();
 }
 
 /** The entry skill exactly as the mandate spells it, so a name the agent can't resolve fails later. */
@@ -146,7 +146,7 @@ export function pointMcpAt (file, url, serversKey = 'mcpServers') {
 
 /** Only the JSON-RPC POSTs carry a server's configured headers; the OAuth probes after the 401 don't. */
 export function assertMcpHeaders (agent, mcpRequests, headers) {
-    const toServer = mcpRequests.filter(({ method, url }) => method === 'POST' && url === '/mcp');
+    const toServer = mcpRequests.filter(({ method, url }) => method === 'POST' && url.split('?')[0] === '/mcp');
 
     assert.ok(toServer.length > 0, `${agent} never connected to the Postman MCP server: ${JSON.stringify(mcpRequests.map(({ method, url }) => `${method} ${url}`))}`);
 
