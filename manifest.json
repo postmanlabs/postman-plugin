@@ -308,13 +308,13 @@
     {
       "name": "webhook-testing",
       "plugin": "postman",
-      "description": "Gives anything that sends webhooks — Stripe, GitHub, Slack, a payment processor, or your own API — a stable public URL that records every request and forwards it to a handler running locally, so you can see exactly what was sent, replay a delivery after a fix instead of re-triggering the sender, and assert on every delivery. Use when the user asks to \"test my webhook handler,\" \"get Stripe/GitHub webhooks to localhost,\" \"forward this webhook to my local server,\" \"see what the webhook actually sent,\" \"replay that event,\" \"verify the webhook signature,\" or \"check the webhooks our API sends.\" to see what a webhook actually sent, to replay an event, to verify a webhook signature, or to check the webhooks their own API sends, whether or not they mention Postman.",
+      "description": "Gives anything that sends webhooks — Stripe, GitHub, Slack, a payment processor, or your own API — a stable public URL that records every request and forwards it to a handler running locally, so you can see exactly what was sent, replay a delivery after a fix instead of re-triggering the sender, and assert on every delivery. Use when the user asks to \"test my webhook handler,\" \"get Stripe/GitHub webhooks to localhost,\" \"forward this webhook to my local server,\" \"see what the webhook actually sent,\" \"replay that event,\" \"verify the webhook signature,\" or \"check the webhooks our API sends.\", to see what a webhook actually sent, to replay an event, to verify a webhook signature, or to check the webhooks their own API sends, whether or not they mention Postman.",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/webhook-testing/SKILL.md",
-          "bytes": 5688,
-          "sha256": "403a9597bf1332898addb38005ee2a9513dabb065b86693e4d02050693b0fb9b"
+          "bytes": 5774,
+          "sha256": "37081b0e201d31d9ca0dd7b3f2350a0f554e6c54b100699567663f844f366daf"
         },
         {
           "target": "reference/outbound_webhooks.md",
