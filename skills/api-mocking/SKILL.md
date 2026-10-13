@@ -28,19 +28,18 @@ owner search was skipped.
    Name the service plainly, as your code does, not by what it returns: a
    description matches lookalike services. Prefer a Git-connected workspace
    (`isGitConnected`) named for that service.
-2. List its mocks with `postman mock list -w <workspaceId> --json`; `search`
-   misses some. A same-named mock in another workspace isn't the owner's.
+2. List its mocks with `postman mock list -w <workspaceId> --json`.
+   `postman search mocks` misses some, and its `classicMock` results only
+   replay a collection's saved examples: `postman mock` can't pull or run
+   them, so call one at `https://<mockId>.mock.pstmn.io` with
+   `postman request`, or generate a code mock from its collection. A
+   same-named mock in another workspace isn't the owner's.
 3. Pull it with `postman dependency add mock <mockId>` and use it as it is.
    Never edit `postman/.dependencies/`: `dependency update` overwrites it,
    so copy a mock to `postman/mocks/` to change it. A pulled copy loses
    `interceptRequests`, so fork one whose handler reads `req.body` or relies
    on sessions. A mock is code that runs as you; pull only from workspaces
    you trust.
-
-`search mocks` also finds **classic mocks** (`mockType: classicMock`), which
-`postman mock` commands can't read. One serves its collection's saved
-examples at `https://<mockId>.mock.pstmn.io`, so call it with
-`postman request`, or pull that collection and generate a code mock from it.
 
 ## Or build one that behaves like the real API
 
