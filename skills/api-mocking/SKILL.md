@@ -61,10 +61,9 @@ real service.
 - **Set `interceptRequests: true` in `config.yaml`.** Without it `req.body`
   and `req.query` are undefined and `x-mock-session` is ignored.
 - **Make it stateful when callers write then read.** Keep records in
-  `pm.state`, the mock's async store (`get`, `set`, `delete`, `has`, `keys`,
-  `clear`, `size`, `toObject`, `increment`, `push`, `addToSet`). Seed on
-  first use, add a reset route so a test can start clean, and answer an
-  unknown id with the real 404. Every `mock run` starts empty.
+  `pm.state`, seed them on first use, add a reset route so a test can start
+  clean, and answer an unknown id with the real 404. Every `mock run` starts
+  empty.
 - **Know who shares state.** Locally, all callers share one state unless
   each sends `x-mock-session: <id>`. A mock server deployed from the CLI
   isolates each caller: one that keeps neither the same `x-mock-session` nor
@@ -95,10 +94,9 @@ from the code or a simulation log, with the spec.
 
 ## Publish it for other teams
 
-- **Push it to the service's own workspace,** the one in
-  `.postman/resources.yaml` or the one the user names, never one chosen by
-  name match: other teams' simulations look there. Commit the
-  `resources.yaml` change. Signed out, the push fails but the local mock
+- **Push it to the service's own workspace,** the one this repo is linked
+  to or the one the user names, never one chosen by name match: other
+  teams' simulations look there. Signed out, the push fails but the local mock
   still works; say so and ask the user to sign in. Keep it honest: change
   the mock in the same PR as the API and run the API's collection against
   it.
@@ -125,8 +123,6 @@ from the code or a simulation log, with the spec.
    the URL, and a scripted redeploy can't make it private again.
 2. **`generate -w` writes nothing to the repo.** The mock exists only in the
    workspace; generate locally and push instead.
-3. **`mock delete` refuses a mock that's running or deployed,** and deleting
-   it from the workspace leaves its line in `.postman/resources.yaml`.
 
 ## Before you say it's done
 

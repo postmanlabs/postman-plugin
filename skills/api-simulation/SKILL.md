@@ -106,8 +106,8 @@ stock reserved and never released.
 
 ## Keeping it
 
-Commit your own mocks, the `.sim.yaml` and `.postman/resources.yaml`, so the
-next session or CI reruns it in one command. Don't commit
+Commit your own mocks, the `.sim.yaml` and what `postman dependency add`
+changed, so the next session or CI reruns it in one command. Don't commit
 `postman/.dependencies/`: a copy goes stale when its owner updates theirs,
 and `postman dependency install` restores it. Don't commit `sim.ndjson`; it
 holds headers and bodies, tokens included. In CI,
@@ -120,13 +120,10 @@ with `403` on a pulled member, which keeps its owner's `id:`; fork it first.
 
 1. **What you're testing is never a member.** It must run for real, or the
    test only proves the mock.
-2. **`pm.state` belongs to each mock.** Don't pass data between members
-   through it. As of CLI 1.73.0 local members still see each other's keys,
-   so give each mock its own key names.
-3. **Pull the owner's mock even if it's deployed.** Only members take
+2. **Pull the owner's mock even if it's deployed.** Only members take
    conditions and appear in the log, and a private mock server wants a key
    your code won't send.
-4. **`simulation deploy` is public by default,** unlike `mock deploy`. Ask
+3. **`simulation deploy` is public by default,** unlike `mock deploy`. Ask
    before deploying without `--private`; a local run needs no deploy.
 
 ## Before you say it works
