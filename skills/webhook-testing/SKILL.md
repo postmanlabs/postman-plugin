@@ -26,16 +26,18 @@ The command is singular, and every subcommand needs a signed-in session. Run wha
 and read `bootstrap` only if a command fails with a setup error such as `Authentication required`.
 When all you have is the URL, its subdomain is the webhook id.
 
+For capture or inspection alone, create or reuse a webhook and inspect its
+recorded requests; no local service or forwarding to a local port is needed.
+
+Use replays and [scripts](reference/webhook_scripts.md) to validate incoming events.
+
 ## Get a sender reaching localhost
 
-For capture or inspection alone, create or reuse a webhook and inspect its
-recorded requests; no local service is needed.
-
 When the task is to reach a local handler, check the path from the public URL
-through forwarding to the service:
+meant to be forwarded to the local service:
 
-1. **Make sure the route exists.** A URL that forwards to a service with no
-   matching route only ever returns 404. Check the service for a handler for
+1. **Make sure the route exists.** A URL that forwards to a local service with no
+   matching route only ever returns 404. Check the local service for a handler for
    this event. Add a missing handler when implementing the receiver is part
    of the task. Senders retry, and replay re-sends an identical request, so
    deduplicate using the sender's stable event identifier where available.
@@ -45,7 +47,7 @@ through forwarding to the service:
 2. **Reuse the existing webhook or create a new endpoint.** To create one,
    use `postman webhook create --title <name>`. When a new endpoint is clearly
    needed, creating it directly avoids an unnecessary discovery step.
-3. **Start the service, then forward to its port** with
+3. **Start the local service, then forward to its port** with
    `postman webhook forward <webhookId> <port>`. `forward` runs until it's
    stopped, so run it in the background. For stopping the forwarding process,
    see [Forwarding lifecycle](reference/forwarding.md).
@@ -56,12 +58,11 @@ through forwarding to the service:
 
 For a connectivity task, one successful probe demonstrates that the tested
 path reaches the handler. Sender compatibility and handler correctness need
-evidence from actual sender deliveries and relevant scenarios; use replays
-and scripts when that behaviour is the work.
+evidence from actual sender deliveries and relevant scenarios.
 
-## Judgement calls
+## Gotchas / Notes
 
-- **Build the test event from the sender's contract, not from your handler.**
+- **Build the webhook script's test event from the sender's contract, not from your handler.**
   A payload written to match the handler you just wrote only proves the two
   agree with each other. Take it from the sender's documented event schema.
   Better, use a real delivery: send one from the sender's test mode (such as
@@ -77,9 +78,6 @@ and scripts when that behaviour is the work.
   timestamp, and their SDKs reject one older than about five minutes.
   Send a fresh event instead of loosening verification. GitHub's signature has no
   timestamp, so its replays still verify.
-- **The event log is shared with the workspace, and anyone with the URL can
-  post to it.** Use the sender's test mode. Summarize a delivery instead of
-  pasting `describe` output into a PR, issue, commit or `postman feedback`.
 - **Confirm before `delete`.** It's permanent, and a sender still registered
   to the URL starts failing. Replay also reaches application code, so account
   for the handler's side effects when choosing which delivery to resend.
@@ -94,12 +92,12 @@ can be replayed. Give the user:
 
 - the URL with the route's path;
 - for local forwarding, the two commands that start the loop again: start
-  the service, then `postman webhook forward <webhookId> <port>`;
-- any changes made to the service;
+  the local service, then `postman webhook forward <webhookId> <port>`;
+- any changes made to the local service;
 - what was verified: the captured delivery or the response and handler receipt
   for a forwarding test.
 
-To check repeated deliveries automatically with a `pm.test` script, see
+To validate deliveries automatically with a `pm.test` script, see
 [reference/webhook_scripts.md](reference/webhook_scripts.md). To test the
 webhooks your own API sends, with a Postman webhook as the subscriber, see
 [reference/outbound_webhooks.md](reference/outbound_webhooks.md).
