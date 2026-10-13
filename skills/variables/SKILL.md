@@ -1,106 +1,63 @@
 ---
 name: variables
-description: How to parameterize a collection with variables and where each value belongs — a plain value goes in an environment or collection variable, a secret (token, password, API key) goes in the team's shared vault via `postman secret create` so its value never passes through the coding harness or lands in a committed file. Covers the variable scopes and their resolution order, reading and writing variables at runtime from pre-request and post-response scripts (`pm.environment`, `pm.collectionVariables`, `pm.variables`), and composing variables out of other variables. Use when the user asks where to put a base URL, token, or password, how to reference a secret without exposing it, how `{{variables}}` resolve, or how to set a value in a script. Covers `postman secret`.
+description: Use when parameterizing requests across environments, choosing variable scopes, chaining values in scripts, or referencing credentials without committing or exposing them. Keeps one reusable collection while separating target configuration from secret values. Use for requests such as "where should I put this API key".
 ---
 
 # Variables
 
-A variable lets a request name a value — `{{base_url}}`, `{{authToken}}` —
-instead of hardcoding it, so one collection runs against staging and
-production and a secret never has to be typed into a request. The only real
-decision is **where the value lives**, and it turns on one question: is it a
-secret?
+Variables let one maintained collection run against different targets without
+forking its requests. Scope determines which value wins; secret references
+allow the same files to be shared without sharing credential values.
 
-## Core foundations
-1. One collection, many targets. Parameterize everything that changes between
-   environments so the same requests run everywhere — a diff in values, not in
-   requests.
-2. Where a value lives is a security decision, not a convenience one. A plain
-   value is a variable; a secret belongs in the vault, nowhere else.
-3. A secret's value should never reach this harness, the terminal, or a
-   committed file. `type: secret` only hides it in the UI — the value still
-   sits in clear text in the YAML. The vault is the only place it stays out of
-   the repo. (ref: postman secret command) 
-4. Resolution is narrowest-wins: `local (script) > data (iteration row) >
-   environment > collection > global`. This is what lets a collection ship a
-   default and an environment override just the few that differ.
-5. Variables compose. A value can reference another (`usersUrl =
-   {{base_url}}/users`), and a script can set one at runtime to chain requests
-   (capture a token, use it on the next call). Resolution happens at send
-   time, not at definition time.
+1. Put API defaults in collection variables and target-specific values, such
+   as `base_url`, in an environment. Parameterize values that actually vary;
+   a stable literal need not become another configuration choice. Reference
+   values as `{{key}}` in URLs, headers, parameters, or bodies.
+2. Resolve surprises through precedence: local script values override
+   iteration data, then environment, collection, and global values. A correct
+   environment file can still lose to a row or script override. Values can
+   reference other variables and resolve at send time, so inspect the chain
+   rather than just the final request field.
+3. Use runtime values for chaining responses into later requests. Choose
+   `pm.environment` or `pm.collectionVariables` when the scope is intentional;
+   `pm.variables.get` reads across scopes, and `pm.variables.set` holds a local
+   value for the current run. For transient sensitive values, avoid persisting
+   them to an environment or logging them.
+4. Store durable credentials in the shared vault and commit references.
+   `type: secret` alone masks the UI but still leaves a literal YAML value
+   readable. **collection-schema-v3**'s environment reference describes the
+   file schema; command-specific `-h` supplies supported vault operations.
 
-## Non-secret variables
+For non-sensitive target configuration:
 
-A base URL, a non-sensitive id, a feature flag, a default page size — store it
-as a variable and commit it. Reference it as `{{key}}` in a URL, header, query
-param, or body. Scope picks the file:
-
-- **Collection variable** — travels with the collection; use it for a default
-  that belongs to the API itself and rarely changes.
-- **Environment variable** — swapped per target; use it for anything that
-  differs between staging and production. One file per environment, selected
-  at run time.
-
-
-You can either directly edit into collection / environment file or use the cli commands to achieve the same.
 ```bash
 postman environment new "Staging"
 postman environment var set base_url https://staging.example.com \
   --environment "postman/environments/Staging.environment.yaml"
-postman environment lint postman/environments --fail-severity warning
 ```
 
-Set one at runtime from a script when you need to chain requests:
-
-```javascript
-// post-response: capture for later requests
-pm.environment.set("authToken", pm.response.json().access_token);
-// pre-request: read it back (any scope, resolution order applies)
-const base = pm.variables.get("base_url");
-```
-
-Use `pm.environment`/`pm.collectionVariables` to target a scope, `pm.variables`
-to read across all of them, and `pm.variables.set` for a local value that
-lives only for the current run.
-
-## Secret keys
-
-Passport is how people, services, and agents call APIs without ever holding
-the secret. `postman secret` is the vault side of the same idea: it stores and
-links secrets without putting their values in agent context or repository
-files. Run `postman secret -h` for the supported vault operations and flags.
-
-A bearer token, password, API key, client secret, or signing key goes in the
-team's **shared vault**:
+For a secret, have the user supply the value through the CLI's masked prompt,
+not through agent context or a literal command argument:
 
 ```bash
-# interactive masked prompt (default when stdin is a terminal)
-postman secret create STRIPE_API_KEY --workspace <workspaceId>
-```
-By default only the creator of secret can view the secret. Others in workspace can resolve the secret in their runs but can not see the secret value.
-
-You then link the secret to an environment variable to use it in a request —
-the CLI writes the link for you from `secret create`'s output:
-
-```bash
+postman secret create STRIPE_API_KEY --workspace <workspace-id>
 postman environment var set api_key --secret-id <secret-id> --vault-id <vault-id> \
   --environment "postman/environments/Staging.environment.yaml"
 ```
 
-The variable now points at the vault instead of holding a value; the file
-carries only the reference, never the secret:
+The environment then carries the vault/secret IDs rather than the value.
+Secret resolution and permission to view the secret are distinct; a teammate's
+ability to run a request need not expose the credential to them. Use
+**bootstrap** when the vault operation needs unresolved authentication.
 
-```yaml
-values:
-  - key: api_key
-    enabled: true
-    type: secret
-    description: API key
-    secret: true
-    source:
-      provider: postman
-      postman:
-        type: cloud
-        secretId: <secret-id>
-        vaultId: <vault-id>
-```
+## Verification
+
+Run `postman environment lint <path> --fail-severity warning` to fail on
+warnings as well as errors in the saved environment. Lint checks the artifact;
+it does not prove that the session can resolve a vault secret. Verify resolution
+with an appropriate authenticated request and a contract-derived assertion,
+keeping credentials out of output. An unresolved-reference or authorization
+failure needs investigation, not a claim that the secret worked.
+Report the selected environment and scope
+or reference that supplies the value; a masked display alone does not prove
+that the committed file contains no literal secret.

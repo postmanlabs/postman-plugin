@@ -1,6 +1,5 @@
 ---
 description: Generate, improve, and publish API documentation from Postman collections.
-allowed-tools: Read, Write, Glob, Grep, mcp__postman__getWorkspaces, mcp__postman__getAllSpecs, mcp__postman__getSpecDefinition, mcp__postman__getCollections, mcp__postman__getCollection, mcp__postman__updateCollectionRequest, mcp__postman__publishDocumentation, mcp__postman__unpublishDocumentation, mcp__postman__syncCollectionWithSpec, mcp__postman__syncSpecWithCollection, mcp__postman__getCollectionUpdatesTasks
 ---
 
 # API Documentation
