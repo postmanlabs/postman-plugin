@@ -96,8 +96,10 @@ with the spec; the mock won't reject a wrong one.
 
 - **Push it to the service's own workspace,** the one this repo is linked
   to or the one the user names, never one chosen by name match: other
-  teams' simulations look there. Keep it honest: change the mock in the same
-  PR as the API and run the API's collection against it.
+  teams' simulations look there. Signed out, the push fails but the local
+  mock still works; build it, say so and ask the user to sign in. Keep it
+  honest: change the mock in the same PR as the API and run the API's
+  collection against it.
 - **Deploy only when a caller needs a URL.** The server takes a slug of 3–32
   lowercase letters, digits and single hyphens, starting and ending with a
   letter or digit; the CLI accepts more, and its default can be too long.

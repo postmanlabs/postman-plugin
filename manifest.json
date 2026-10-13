@@ -73,8 +73,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-mocking/SKILL.md",
-          "bytes": 7185,
-          "sha256": "607d3b78518e1e9deead70c9711ee453d2b04384cc8020842f463839fcc27e5f"
+          "bytes": 7294,
+          "sha256": "9cf047af111dddb4f849a3d5287335aeaae2a70c895ac79961d4ab00ac934c87"
         }
       ]
     },
@@ -94,13 +94,13 @@
     {
       "name": "api-simulation",
       "plugin": "postman",
-      "description": "Runs your code for real against stand-ins for the HTTP services it calls, served together as one environment on one local port or one deployed URL, whether that code is a service you're changing, a frontend, a test suite or a demo. Use when you add or change code that calls other services and need to run it, test it, prove a fix or reproduce an upstream failure (timeouts, 5xx, 409, 429) end to end, locally or in CI, without the real services because they're unreachable, need credentials, cost money, have side effects or don't exist yet. Also answers what happens when a service it calls goes down, is slow or returns errors, by running each failure instead of reading the code. Applies even when nobody says mock or simulation. To give a frontend or another team a stand-in for an API, use api-mocking. Covers `postman simulation`.",
+      "description": "Runs your code for real against stand-ins for the HTTP services it calls, served together as one environment on one local port or one deployed URL, whether that code is a service you're changing, a frontend, a test suite or a demo. Use when you add or change code that calls other services and need to run it, test it, prove a fix or reproduce an upstream failure (timeouts, 5xx, 409, 429) end to end, locally or in CI, without the real services because they're unreachable, need credentials, cost money, have side effects or don't exist yet. Also answers what happens to a request, or to the data it writes, when a service it calls goes down, is slow or returns errors (\"what happens to a booking if the email service is down?\"), by running each failure instead of reading the code. Applies even when nobody says mock or simulation. To give a frontend or another team a stand-in for an API, use api-mocking. Covers `postman simulation`.",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/api-simulation/SKILL.md",
-          "bytes": 7551,
-          "sha256": "96ec80f07a29502cabd73591158c54ff74e48a73d23bf713a6286580e188016a"
+          "bytes": 7651,
+          "sha256": "1d950a04b2023efcaa7d7198c186b22c064e2afc72b24a5154c96faad9223783"
         },
         {
           "target": "reference/sim_yaml_schema.md",
