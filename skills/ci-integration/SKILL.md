@@ -1,122 +1,62 @@
 ---
 name: ci-integration
-description: Common CI integrations that can added as independent pass/fail gates. Use when the user asks to "add Postman to CI," "run this collection on every PR," "fail the build on a governance violation," or "push to the postman cloud workspace after merge to main", "add some api related operation in my Github actions". 
+description: Use when adding API tests, structural or governance lint, or AI-readiness gates to CI, or publishing reviewed API artifacts to a Postman workspace after merge. Makes contract checks repeatable and separates validation from shared workspace changes. Use for requests such as "run this collection on every PR".
 ---
 
 # CI Integration
 
-## Overview
-These are some common workflows that one can add in their CI pipeline leveraging postman cli.
+Versioned collections and specs let a PR carry its API checks beside the code
+change. CI reruns those checks independently of the author's session, while
+publishing after merge makes the reviewed contract available to teammates and
+future work. **api-discovery** helps identify consumers the gate should cover;
+the author's own passing tests do not establish cross-service compatibility.
 
-## Run a collection — a gated pipeline step
+1. Select checks by the guarantee they establish:
 
-`postman collection run <path/id>` exits nonzero on a failed `pm.test`
-assertion, which is what makes it a usable gate — see `api-testing` for how
-that exit code actually gets set. What's CI-specific: `-r junit,html` (or
-`--reporter-*-export`) writes a report your CI provider can surface as
-build artifacts or test annotations, instead of leaving the result buried in
-a log. `--bail` stops the run early on the first failure when a fast signal
-matters more than a full report.
+   | Guarantee | Gate |
+   | --- | --- |
+   | Saved behavioral assertions pass | `postman collection run <path-or-id>` |
+   | A collection's structure/style is valid | `postman collection lint <path> -f error` |
+   | A spec meets workspace governance rules | `postman spec lint <spec> --workspace-id <id> -f error` |
+   | Workspace entities and bindings pass lint/governance | `postman workspace lint --workspace-id <id> -f error` |
+   | Agent consumability meets an agreed threshold | `postman collection ai-readiness <path> --min-score <n>` or the spec equivalent |
 
-## Lint — pick the target that matches the gate you want
-
-Three verbs look interchangeable and aren't — only two of them apply your
-organization's governance rules, and the CLI's own `-h` output is where that
-becomes visible (no assumption below goes further than what it printed):
-
-| Want to check | Command | Applies org governance? |
-| --- | --- | --- |
-| One spec against your rules | `spec lint <spec> --workspace-id <id> -f error` | Yes, via `--workspace-id` |
-| One collection's structure/style | `collection lint <path> -f error` | **No** — this verb takes no `--workspace-id` at all |
-| The whole workspace: every entity plus `.postman/resources.yaml` | `workspace lint --workspace-id <id> -f error` | Yes |
-
-`collection lint` is a schema/style check only — running it and reporting
-"governance passed" overstates what it did. If the ask is "does this
-collection violate our rules," `workspace lint` is the one that actually
-answers it (and covers every collection in the repo in one pass); reach for
-bare `collection lint` only when there's no workspace to fetch rules from
-yet.
-
-## Persist and share context — only after merge
-
-`postman workspace push -y` persists the merged repository's API context in
-the workspace for future work and enables sharing it with others. It is the one
-command in this skill that changes shared workspace state, so it belongs behind
-a merge-to-main trigger, not a PR trigger. `-y` skips confirmation prompts a
-non-interactive job can't answer. Leave `--no-prepare` off — the default
-prepare step is what assigns real IDs to entities that are new since the last
-push; skipping it because a run felt slow trades a few seconds for a push that
-silently fails to create anything new.
-
-`--push-strategy force-sync` mirrors the whole workspace, deleting any cloud
-entity with no local counterpart — genuinely destructive, and not the
-default for a reason. See Critical Rules before adding it to a merge job.
-
-## AI readiness threshold
-
-`collection ai-readiness <path> --min-score <n>` and its spec-side
-counterpart `spec ai-readiness <path> --min-score <n>` (see `ai-readiness`
-skill) are a fourth, separate gate — they score AI-agent consumability, not
-test results or governance/structural style. Keep either in its own step:
-folding it into the same step as `run` or one of the `lint` verbs above
-hides which kind of check actually failed when the job goes red. Pick the
-verb that matches what's checked into the repo — `collection ai-readiness`
-for a git-synced collection, `spec ai-readiness` for an OpenAPI spec with no
-collection generated from it yet.
-
-```yaml
-- run: postman collection ai-readiness ./postman/collections/My\ API --min-score 70
-```
-
-## Critical Rules
-
-1. **Never collapse `run`, `lint`, and `ai-readiness` into one step, and
-   never pass `-x`/`--suppress-exit-code` to a CI run.** One combined exit
-   code hides which check broke; a suppressed one hides that anything broke
-   at all.
-2. **Gate `workspace push` to the merge event, never a PR event.** Everything
-   else in this skill is read-only against the cloud; this is the one
-   command that writes to it, so a PR-triggered push ships an unmerged
-   branch's entities to the shared workspace.
-3. **`--push-strategy force-sync` deletes cloud entities absent locally.**
-   Only add it to a job whose explicit job is mirroring the workspace exactly,
-   with that intent confirmed — never as the default merge step, where the
-   default (create/update-only) strategy is the safe choice.
-4. **Authenticate once, non-interactively:**
-   `postman login --with-api-key "$POSTMAN_API_KEY"`, reading the key from
-   the CI provider's secret store. Don't reach for `collection run`'s
-   `--postman-api-key` as the general answer — it's US-region only — and
-   `spec lint`/`workspace push` don't take it at all.
-
-   ```yaml
-   # WRONG — key committed in plain text, and scoped to one command anyway
-   - run: postman collection run api.json --postman-api-key PMAK-abc123...
-
-   # CORRECT — one non-interactive login, key from the provider's secret store
-   - run: postman login --with-api-key "$POSTMAN_API_KEY"
-   - run: postman collection run api.json
-   - run: postman spec lint spec.yaml --workspace-id $WS -f error
-   ```
-5. **Never `newman run` in place of `postman collection run`.** The CLI is
-   the supported runner every other skill here assumes; Newman forks the
-   toolchain and skips whatever reporting/governance depends on the CLI
-   specifically.
+   Collection lint does not apply organization governance. Workspace-aware
+   lint evaluates the rules available to that workspace; it does not author
+   the policy. Confirm the intended rules are configured before claiming
+   compliance. Read command-specific `-h` for installed options.
+2. Keep gate results distinguishable so a failed build identifies behavior,
+   structure, governance, or readiness. Preserve nonzero exits; suppressing
+   them with `-x`/`--suppress-exit-code` removes the gate. For collection runs,
+   `-r junit,html` produces reviewable reports; `--bail` trades a complete
+   failure inventory for an earlier signal. See **api-testing** for assertion
+   semantics and **ai-readiness** for score limitations.
+3. Restore declared dependencies with `postman dependency install` when tests
+   use them. Choose the target deliberately: a mock checks behavior under a
+   model, while a live run sends real requests and can write data. PR gates
+   should use a suitable isolated target and credentials; being a test does
+   not make the command read-only.
+4. Authenticate only jobs that need workspace resources. Use the CI secret
+   store to supply `POSTMAN_API_KEY`, then
+   `postman login --with-api-key "$POSTMAN_API_KEY"`. A local-only gate need
+   not log in. Command-specific API-key flags are not a general replacement
+   for login across lint and push operations. Use **bootstrap** for unresolved
+   bindings, and **variables** for request credentials.
+5. Publish only the reviewed branch after its merge checks pass.
+   `postman workspace push -y` changes shared context; a PR-triggered push
+   would publish an unmerged contract. The normal prepare phase assigns IDs
+   to new entities, so `--no-prepare` can leave additions unpublished.
+   Inspect the intended diff and binding when configuring this job; `-y`
+   supplies noninteractive execution, not authorization for a different scope.
+6. Use the default create/update strategy unless exact mirroring is the
+   explicit requirement. `--push-strategy force-sync` can delete workspace
+   entities absent from the checkout, including resources managed elsewhere.
+   Follow **bootstrap**'s diff and consent boundary for that branch.
 
 ## Verification
 
-State each gate that ran and its individual result — not "CI passed," but
-which check ran, what it checked (governance vs. structure per the Lint
-table above, or AI-agent consumability for `ai-readiness`), and its exit
-code. If `workspace push` ran, confirm it was triggered by the merge event
-and not a PR event, state which push strategy was used, and report
-`Created`/`Updated` per entity rather than just "push succeeded." Confirm
-no secret value appears literally in the committed workflow file.
-
-## Reference
-
-- `api-testing` skill — `collection run`'s exit-code semantics and reporter
-  flags in full.
-- `collection-schema-v3` skill — what `workspace push` is actually pushing.
-- `bootstrap` skill — CLI resolution, workspace linking, `.postman/resources.yaml`.
-- `ai-readiness` skill — `collection ai-readiness`, `spec ai-readiness`, and
-  their `--min-score` gate.
+Validate the workflow's event conditions and secret references, then report
+which gates actually ran, their targets and individual results. Distinguish a
+locally checked workflow from an observed CI run. For publication, establish
+the merge trigger, push strategy, created/updated entities, and conflicts;
+a green job alone does not prove the intended artifacts became available.

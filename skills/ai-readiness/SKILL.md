@@ -1,50 +1,46 @@
 ---
 name: ai-readiness
-description: Scores a Postman collection or an OpenAPI spec for how well an AI agent can discover, understand, call, and recover from errors with it — missing examples, undocumented errors, and ambiguous parameters all cost points. Use when the user asks "is my API agent-ready," "can AI agents use my API," "how agent-friendly is my API," or wants to scan, score, or improve a collection or spec for AI/agent consumption. Covers `postman collection ai-readiness` and `postman spec ai-readiness`.
+description: Use when assessing or improving how well AI agents can discover, call, and recover from errors with an API. Scores an existing Postman collection or OpenAPI spec and turns measured gaps into contract improvements; supports a separate CI readiness threshold. Use for requests such as "is this API ready for agents".
 ---
 
 # AI Readiness
 
-## Overview
+An agent must choose an operation, supply valid inputs, and interpret failures
+from the contract it can see. Postman's readiness check exposes gaps in that
+context—such as missing examples or ambiguous parameters—so improvements live
+in the shared contract instead of being rediscovered in each agent session.
 
-An "agent-ready" API is one that an AI agent can discover, understand, call correctly, and recover from errors without human intervention. Most APIs aren't there yet.
+Skip scoring for a typo fix, a one-off endpoint check, or a task that changes
+neither the contract nor agent usability; inspect the relevant fields or use
+**api-testing** instead. Score when prioritizing consumability improvements,
+checking their effect, or enforcing an agreed readiness gate.
 
-Two ways to run this check, same rubric family, different target — pick by what exists:
+1. Score the artifact consumers actually use. `postman collection ai-readiness
+   <path-or-id>` reads a collection, including a local v3 directory;
+   `postman spec ai-readiness <path-or-id>` reads an OpenAPI spec directly.
+   Generating a collection solely to score a spec adds a second artifact
+   without improving the evidence. Use the installed command's `-h` for options.
+2. Use the reported `readiness` score and bucket (Limited, Fair, Good,
+   Excellent). Keep `confidence` separate: low confidence means signals could
+   not be measured, so even a high score may leave consequential unknowns.
+   Report low documentation coverage when flagged; it modifies the score
+   rather than acting as an independent pass/fail gate.
+3. Prioritize gaps that would change a caller's behavior: unclear required
+   inputs, missing auth instructions, or errors with no recovery guidance.
+   Establish the actual behavior before adding descriptions or examples;
+   invented certainty can raise apparent completeness while misleading agents.
+   See **api-documentation** for improving the authoritative contract and
+   **collection-schema-v3** for saved examples.
+4. Re-run against the edited artifact to show which measured gaps closed.
+   A readiness score measures consumability, not live correctness; use
+   **api-testing** when the claim also depends on API behavior.
+5. A `--min-score` gate is useful when the team wants to prevent readiness
+   regressions. Choose the threshold from its baseline and expectations;
+   keep it separate from tests and lint through **ci-integration** so a failure
+   identifies the kind of regression.
 
-- `collection ai-readiness <collectionId/path>` scores a Postman collection
-  — by cloud ID, local file path, or a `postman/collections/<name>`
-  local-mode directory.
-- `spec ai-readiness <spec>` scores an OpenAPI specification directly — by
-  cloud ID or local file path — with no collection involved at all.
+## Verification
 
-
-
-## Scoring
-
-The command computes and prints the score itself — read the fields it
-gives you, don't recompute them:
-
-- **`readiness`** (score 0-100 + bucket) is the headline number. Buckets,
-  low to high: **Limited → Fair → Good → Excellent**.
-- **`confidence`** (`high`/`medium`/`low`) says how many signals it
-  could actually measure vs. had to mark `unknown` — a data-quality
-  caveat, not part of the score.
-
-## Interpreting Results
-
-Report the bucket, score, and confidence the command actually printed
-— don't infer a percentage band. Doc coverage is a modifier via its
-adjustment, not a separate gate; call it out by name when it's `low`,
-since recommendations flag that first. Also state which verb ran
-(`collection` vs. `spec` `ai-readiness`), which target was scored
-(local path vs. cloud ID), the output mode, and — if `--min-score` was
-set — the resulting exit code, not just "it passed."
-
-You can ask user if they would like to set this check with a min score guarantee to run on their CI.
-
-## Reference
-
-- `collection-schema-v3` skill — what saved examples and descriptions look
-  like in the git-synced format this command reads.
-- `ci-integration` skill — where `--min-score` fits as a pipeline gate
-  alongside `spec lint`/`collection lint`/`workspace lint`.
+Report the target, collection/spec mode, actual score, bucket, confidence,
+and remaining gaps. If a threshold ran, include its exit code; a successful
+scan alone does not establish that the threshold passed.
