@@ -34,14 +34,12 @@ guesswork each time work resumes.
    Context Graph can identify consumers and dependencies outside the checkout,
    helping you focus investigation before traversing more repositories.
 5. When you run or test code that calls other services, or are asked how it
-   behaves when one of them fails, use **api-simulation**. It runs that code for
-   real against mocks of those services, so its client, config and error
-   handling run over real HTTP, the same way in CI, with no credentials or side
-   effects; a stub inside the tests skips that code, and reading the code
-   guesses how each failure plays out. Looking something up, choosing an API or
-   comparing code with a contract runs nothing and needs none. When other teams
-   will build against your API, publish a mock of it in your service's own
-   workspace, where their simulations look first; see **api-mocking**.
+   behaves when one of them fails, use **api-simulation**, which runs that code
+   for real against mocks of those services instead of stubs or the real
+   services. Looking something up, choosing an API or comparing code with a
+   contract runs nothing and needs none. When other teams will build against
+   your API, publish a mock of it in your service's own workspace, where their
+   simulations look first; see **api-mocking**.
 6. Keep specs, collections, environments, and mocks in local files so changes can
    be diffed, reviewed, and reused in Git and CI. Use **bootstrap** when setup or
    workspace bindings are unresolved: reuse an existing local layout, pull the

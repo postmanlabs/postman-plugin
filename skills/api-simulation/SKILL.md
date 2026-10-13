@@ -30,8 +30,9 @@ CLI answers `postman simulation -h` with its general help).
   shared code; ask about the repo by its `git remote` name, because a close
   name matches another repo.
 - **Each member needs a mock: see `api-mocking`,** which looks for the owning
-  team's published mock before building one. For a question, any mock that
-  answers will do. In a mock you build, answer `501` for calls this path
+  team's published mock before building one. For a question, one built from
+  the contract will do; one that invents responses can send the caller down a
+  path the real service never would. In a mock you build, answer `501` for calls this path
   doesn't make: a `404` reads to the caller like a real "not found".
 - **Prefix each mock's `pm.state` keys with its name.** As of CLI 1.73.0,
   members of a local run read each other's keys, so two mocks storing
