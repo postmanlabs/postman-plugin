@@ -16,9 +16,6 @@ mocks:                                 # required: one entry per member
             latency: { delay_ms: 250 }
 ```
 
-A member's `path` resolves from the `.sim.yaml`'s folder, then from the
-working directory. Don't write `port:` on a member: each gets an internal
-port behind the simulation's one, and two equal `port:` values stop the run.
 Run the `.sim.yaml` rather than a simulation id: a run by id drops every
 member's conditions (CLI 1.70.0–1.73.0).
 
@@ -38,18 +35,16 @@ member's conditions (CLI 1.70.0–1.73.0).
   optionally with `latency`.
 - An unknown condition name is ignored silently, so a misspelling injects
   nothing. `overrides.bypass` prints a warning and is ignored.
-- An injected failure never reaches the mock and isn't logged. A `latency`
-  request is served and logged, with a `duration` that leaves out the delay.
+- A `latency` request is served and logged, with a `duration` that leaves
+  out the delay.
 
 ## The log (`--output ndjson`)
 
 One JSON event per line on stdout; notices go to stderr, so keep them apart.
 
-- `listening`: the port and each member's address (and its `x-mock-slug`
-  under header routing). Every member starts before it; a member that fails
-  to start stops the run with `Error: …` and exit code 1.
-- `request`: one per request a member served: `routeKey`, `method`, `path`,
-  `statusCode`, `duration` in ms, headers and bodies.
+- `listening`: every member has started; a member that fails to start
+  stops the run with `Error: …` and exit code 1.
+- `request`: one per request a member served.
 - `summary`, on stop: `requestsServed` (under 400), `requestsFailed` (400
   and up), `uptimeMs` and `signal`. Injected failures and the simulation's
   own `400`, `404` and `502` aren't counted.

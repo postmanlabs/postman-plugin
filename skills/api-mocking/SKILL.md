@@ -1,6 +1,6 @@
 ---
 name: api-mocking
-description: Finds, builds, runs and publishes a stand-in for one API — the owning team's published mock when there is one, otherwise one built from its spec or collection that behaves like the real API, stateful when callers write then read. Use when something needs an API that isn't built or reachable yet (a frontend, client, demo or one dependency), when other teams should build against your API before it ships, or when asked to mock an API or fake a backend. For several APIs served together, use api-simulation. Covers `postman mock` and `postman dependency add mock`.
+description: Finds, builds, runs and publishes a stand-in for one API — the owning team's published mock when there is one, otherwise one built from its spec or collection that behaves like the real API, stateful when callers write then read. Use when something needs an API that isn't built or reachable yet (a frontend, client or demo), when other teams should build against your API before it ships, or when asked to mock an API or fake a backend. To run and test your own code against the services it calls, use api-simulation. Covers `postman mock` and `postman dependency add mock`.
 ---
 
 # API Mocking
@@ -50,16 +50,18 @@ real service.
 
 - **Start from the contract.** `postman mock generate <spec or collection>`
   writes each documented response. It's a replay: a `POST` and a later
-  `GET` share nothing, and it accepts any request. An
-  `x-mock-response-code: 404` header returns the documented 404. From a spec
+  `GET` share nothing, and it accepts any request, so a call that breaks the
+  contract still gets its answer. `x-mock-response-code` picks only a
+  documented status; any other code gets the default 200, so put the errors
+  callers handle (the unknown-id 404, the conflict 409, the bad-input 400) in
+  the contract. From a spec
   it serves the server URL's base path (`/v2/...`); from a collection,
   routes start after the base-URL variable. `--update` regenerates the
   handler and overwrites your edits. With no contract, write it from how
   your code calls the API and say what you assumed.
-- **Cover what callers handle,** not just the 200: the unknown-id 404, the
-  conflict 409, the bad-input 400, in the contract's error shape.
 - **Set `interceptRequests: true` in `config.yaml`.** Without it `req.body`
-  and `req.query` are undefined and `x-mock-session` is ignored.
+  and `req.query` are undefined, `x-mock-session` is ignored, and a throw in
+  an async handler kills the mock instead of returning a `500`.
 - **Make it stateful when callers write then read.** Keep records in
   `pm.state`, seed them on first use, add a reset route so a test can start
   clean, and answer an unknown id with the real 404. Every `mock run` starts
@@ -86,47 +88,35 @@ collection with
 (`--mock` alone only starts it). That form replaces the variable's whole
 value, base path included, so a mock generated from a spec that serves
 `/v2/...` answers `404`; start that one with `--mock <path> --port <n>` and
-pass `--env-var "baseUrl=http://localhost:<n>/v2"`.
-
-A mock doesn't check what it's sent: a call that breaks the contract still
-gets its answer. To check your calls against a contract, compare each one,
-from the code or a simulation log, with the spec.
+pass `--env-var "baseUrl=http://localhost:<n>/v2"`. To check your own calls
+against a contract, compare each one, from the code or a simulation log,
+with the spec; the mock won't reject a wrong one.
 
 ## Publish it for other teams
 
 - **Push it to the service's own workspace,** the one this repo is linked
   to or the one the user names, never one chosen by name match: other
-  teams' simulations look there. Signed out, the push fails but the local mock
-  still works; say so and ask the user to sign in. Keep it honest: change
-  the mock in the same PR as the API and run the API's collection against
-  it.
-- **Deploy only when a caller needs a URL.** `postman mock deploy <mockId> -s <slug>`
-  serves it at `https://<slug>.mock.<team-domain>.postman.dev`. The server
-  takes 3–32 lowercase letters, digits and single hyphens, starting and
-  ending with a letter or digit; the CLI accepts more, and its default can
-  be too long. It's private: callers send a Postman API key as `x-api-key`,
-  or an access token as `x-access-token` if they can view the workspace.
-  Deploying needs a paid plan; a team's first server can take minutes to
-  answer, and teams that review deploys hold them for approval. Each later
-  `push` updates what it serves.
+  teams' simulations look there. Keep it honest: change the mock in the same
+  PR as the API and run the API's collection against it.
+- **Deploy only when a caller needs a URL.** The server takes a slug of 3–32
+  lowercase letters, digits and single hyphens, starting and ending with a
+  letter or digit; the CLI accepts more, and its default can be too long.
+  It's private: callers send an API key as `x-api-key`, or, if they can
+  view the workspace, an access token as `x-access-token`. Deploying needs a paid plan; a team's first
+  server can take minutes to answer, and teams that review deploys hold them
+  for approval. Each later `push` changes what every caller of the server
+  gets, so treat it as a release, not a backup.
 - **Write it for where it runs.** A mock server runs each scenario as one
   file with Node's built-ins, not `fs` or `child_process`: no local
   `require`s, no `pm.mock` examples, no environment, no console output, and
   no caller `authorization`, `cookie` or `x-api-key` headers. A mock that
   relies on any of these works locally and breaks once deployed.
-- **`postman mock log` takes the `mockServerId`** from `postman mock get`,
-  not the mock's id.
-
-## Rules
-
-1. **Ask before `--public`.** It serves the mock and its data to anyone with
-   the URL, and a scripted redeploy can't make it private again.
-2. **`generate -w` writes nothing to the repo.** The mock exists only in the
-   workspace; generate locally and push instead.
+- **Ask before `--public`.** It serves the mock and its data to anyone with
+  the URL, and a scripted redeploy can't make it private again.
 
 ## Before you say it's done
 
-A mock isn't done because `run` exited 0. Call it: a documented error comes
+A mock isn't done because it started. Call it: a documented error comes
 back, a valid scenario changes the response, a `POST` then `GET` shows state
 if it should. Say where it runs and who can call it, where it lives, and
 what you assumed.

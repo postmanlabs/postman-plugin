@@ -1,15 +1,13 @@
 ---
 name: api-simulation
-description: Runs your code for real against stand-ins for the HTTP services it calls, served together as one environment on one local port or one deployed URL, whether that code is a service you're changing, a frontend, a test suite or a demo. Use when you add or change code that calls other services and need to run it, test it, prove a fix or reproduce an upstream failure (timeouts, 5xx, 409, 429) end to end, locally or in CI, without the real services because they're unreachable, need credentials, cost money, have side effects or don't exist yet. Also answers what happens when a service it calls goes down, is slow or returns errors, by running each failure instead of reading the code. Applies even when nobody says mock or simulation. For one API alone, use api-mocking. Covers `postman simulation`.
+description: Runs your code for real against stand-ins for the HTTP services it calls, served together as one environment on one local port or one deployed URL, whether that code is a service you're changing, a frontend, a test suite or a demo. Use when you add or change code that calls other services and need to run it, test it, prove a fix or reproduce an upstream failure (timeouts, 5xx, 409, 429) end to end, locally or in CI, without the real services because they're unreachable, need credentials, cost money, have side effects or don't exist yet. Also answers what happens when a service it calls goes down, is slow or returns errors, by running each failure instead of reading the code. Applies even when nobody says mock or simulation. To give a frontend or another team a stand-in for an API, use api-mocking. Covers `postman simulation`.
 ---
 
 # API Simulation
 
-A simulation serves several mocks as one environment: one local port, or one
-URL once deployed. Each mock is a member with a routeKey. Under `path`
-routing (the default) a caller reaches it at `/<routeKey>/...`, prefix
-stripped; under `header` routing paths stay as they are and the caller sends
-`x-mock-slug: <routeKey>`.
+A simulation serves several mocks as one environment, each reached by its
+routeKey: as a path prefix by default, or as an `x-mock-slug` header when the
+caller's paths can't change.
 
 Run your code against it rather than stubbing its HTTP client in tests or
 calling the real services. A stub skips the client, config, timeouts and
@@ -27,18 +25,17 @@ CLI answers `postman simulation -h` with its general help).
 
 ## Building it
 
-- **Members are the code's HTTP dependencies,** read from its clients and
-  base-URL settings. Databases, queues and caches aren't; run them locally.
-  If your team has the Context Graph,
-  `postman context-graph ask "What services and APIs does <repo> call?" --wait`
-  can add calls made through shared code. Take `<repo>` from
-  `git remote get-url origin`: a close name can match another repo, and "no
-  service named …" means it isn't in the graph, not that it calls nothing.
+- **Members are the code's HTTP dependencies.** Databases, queues and caches
+  aren't; run them locally. **api-discovery** can find calls made through
+  shared code; ask about the repo by its `git remote` name, because a close
+  name matches another repo.
 - **Each member needs a mock: see `api-mocking`,** which looks for the owning
   team's published mock before building one. For a question, any mock that
-  answers will do. Have it answer `501` for calls this path doesn't make, so
-  a call you missed fails loudly instead of returning plausible data.
-- `postman simulation create` writes the `.sim.yaml` from mock paths.
+  answers will do. In a mock you build, answer `501` for calls this path
+  doesn't make: a `404` reads to the caller like a real "not found".
+- **Prefix each mock's `pm.state` keys with its name.** As of CLI 1.73.0,
+  members of a local run read each other's keys, so two mocks storing
+  `orders` overwrite each other.
 
 ## Running it
 
@@ -51,10 +48,11 @@ postman simulation run postman/simulations/checkout-dev.sim.yaml --port 4900 --o
 
 Without `--port`, a busy 3000 silently becomes a random port and every base
 URL points at nothing. It's up when `sim.ndjson` has a `listening` event; a
-start-up error is in `sim.err`. It listens on 127.0.0.1 only. Stop it with
+start-up error is in `sim.err`. It listens on 127.0.0.1 only, so a caller in
+a container or VM can't reach it. Stop it with
 `pkill -INT -f "simulation run <file>"`; `kill $!` leaves it running,
 because the `postman` launcher ignores the signal. Nothing reloads: restart
-the caller after a code change and the simulation after a mock edit.
+it after a mock edit.
 
 Point the caller at it without changing what the code does once deployed.
 Under path routing, swap only the host and keep the path:
@@ -63,23 +61,22 @@ Under path routing, swap only the host and keep the path:
 `404`. A hard-coded base URL should read an environment variable with
 today's value as the default. If the code mustn't change at all,
 `simulation run --proxy` reaches the members through `HTTPS_PROXY` instead;
-it needs a `simulation.yaml` naming each member's real host, applies no
-conditions, and passes any other host through to the real service.
+it applies no conditions, and passes any other host through to the real
+service.
 
 ## Reading the log
 
-Exit codes prove nothing here: read `sim.ndjson`. Each request a member
-served is a `request` event with its routeKey, status and bodies. A member
-with no events isn't wired or isn't on this path. Some answers come from the
-simulation itself and mean wiring, not code:
+A passing test command doesn't show the dependency path ran: read
+`sim.ndjson`. A member with no `request` events isn't wired or isn't on this
+path. Some answers come from the simulation itself and mean wiring, not code:
 
 - `404 Unknown simulation member`: a base URL lost its routeKey, or a client
   sent the wrong `x-mock-slug`.
 - `501`, or a generated mock's `404 Endpoint not defined`: a call the mock
   doesn't model yet.
-- `502 Proxy error`: the member's async code threw and its process exited;
-  it stays down until you restart. Run that mock alone with
-  `postman mock run` to see why.
+- `502 Proxy error`: the member's process died, usually an async throw in a
+  mock without `interceptRequests: true`. It stays down and logs nothing
+  until you restart; run that mock alone with `postman mock run` to see why.
 
 ## When a dependency goes down
 
@@ -96,10 +93,10 @@ each, with the others answering normally:
 - **An error with an HTML body,** as proxies send: a copy of its mock whose
   default handler answers `500` with HTML. No condition can do this.
 
-Only `overrides.conditions` on a member change it; members always serve
-their default handler, and a `scenarios` entry with just a `path`, as the
-Postman app writes, does nothing. Fields and the other conditions are in
-[reference/sim_yaml_schema.md](reference/sim_yaml_schema.md). An injected
+Only `overrides.conditions` on a member change it. Members always serve
+their default handler and ignore `x-mock-scenario`, and a `scenarios` entry
+with just a `path`, as the Postman app writes, does nothing. Fields and the
+other conditions are in [reference/sim_yaml_schema.md](reference/sim_yaml_schema.md). An injected
 failure never reaches the mock and isn't logged, so judge it by what the
 caller did, and check the other members' logs for side effects, such as
 stock reserved and never released.
@@ -109,12 +106,15 @@ stock reserved and never released.
 Commit your own mocks, the `.sim.yaml` and what `postman dependency add`
 changed, so the next session or CI reruns it in one command. Don't commit
 `postman/.dependencies/`: a copy goes stale when its owner updates theirs,
-and `postman dependency install` restores it. Don't commit `sim.ndjson`; it
-holds headers and bodies, tokens included. In CI,
-`postman dependency install` needs `POSTMAN_API_KEY`, and
-`postman collection run <collection> --simulation <file>` starts and stops
-the simulation around a collection run. `postman simulation push` fails
-with `403` on a pulled member, which keeps its owner's `id:`; fork it first.
+and `postman dependency install` restores it. Don't commit `sim.ndjson`: the
+CLI redacts common auth headers and fields, but other headers and bodies are
+logged as sent. In CI, `postman dependency install` needs `POSTMAN_API_KEY`,
+and `postman collection run <collection> --simulation <file> --port <n>`
+starts and stops the simulation around a collection run.
+
+`postman simulation push` uploads every member to the workspace, so ask
+first. It fails on a pulled member, which keeps its owner's `id:`; copy it to
+`postman/mocks/` and delete that line.
 
 ## Rules
 
@@ -132,5 +132,6 @@ Claim nothing until what you're testing actually ran: a service printed
 that it's listening and answered your request, or the frontend or test
 suite finished, and its calls are in the log. If its start command exited
 or hung, the run proved nothing; say so and why. Say what a pass proves,
-your code against these stand-ins rather than the real services, and where
-each mock came from, including when you skipped the owner's.
+your code against these stand-ins rather than the real services, what still
+needs the real service before release, and where each mock came from,
+including when you skipped the owner's.
