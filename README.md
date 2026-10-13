@@ -53,11 +53,12 @@ of the three is installed and 4 when the script itself broke. Factory Droid, Kim
 install with the commands below or `npx`.
 
 The scripts report whether the install worked, so failures can be fixed. An event
-holds the agent name, the result, a short failure code, the agent's and the
-operating system's version numbers, the CPU architecture and a random id for that
-one run. It holds no user name, host name, path, IP address, agent output or
-identifier that survives the run. Set `DO_NOT_TRACK=1` (or
-`POSTMAN_PLUGIN_TELEMETRY=0`) to turn it off.
+holds the agent name, the result, a short failure code and a coarse cause, the
+agent's and the operating system's version numbers, the CPU architecture, the
+language code of the machine (for example `en`), the commit of this repository
+that a Cursor install cloned, and a random id for that one run. It holds no user
+name, host name, path, IP address, agent output or identifier that survives the
+run. Set `DO_NOT_TRACK=1` (or `POSTMAN_PLUGIN_TELEMETRY=0`) to turn it off.
 
 You can also use the following commands to install individually:
 
