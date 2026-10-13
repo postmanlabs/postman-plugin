@@ -308,19 +308,25 @@
     {
       "name": "webhook-testing",
       "plugin": "postman",
-      "description": "Tests webhooks end to end with a Postman webhook — a stable public URL that records every request sent to it — by forwarding deliveries to a handler on localhost, inspecting the exact headers and body that arrived, replaying a captured event after a fix or to check idempotency, and asserting on every delivery with an `onEvent` script. Works in both directions — developing a handler for a provider's webhooks (Stripe, GitHub, Slack, …) and checking the webhooks your own API sends. Use when the user asks to \"test my webhook handler,\" \"get Stripe/GitHub webhooks to localhost,\" \"forward webhooks to my local server,\" \"see what the webhook actually sent,\" \"replay that event,\" \"verify the webhook signature,\" or \"check the webhooks our API sends.\"",
+      "description": "Gives anything that sends webhooks — Stripe, GitHub, Slack, a payment processor, or your own API — a stable public URL that records every request and forwards it to a handler running locally, so you can see exactly what was sent, replay a delivery after a fix instead of re-triggering the sender, and assert on every delivery. Use when the user asks to \"test my webhook handler,\" \"get Stripe/GitHub webhooks to localhost,\" \"forward this webhook to my local server,\" \"see what the webhook actually sent,\" \"replay that event,\" \"verify the webhook signature,\" or \"check the webhooks our API sends.\" to see what a webhook actually sent, to replay an event, to verify a webhook signature, or to check the webhooks their own API sends, whether or not they mention Postman.",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/webhook-testing/SKILL.md",
-          "bytes": 13157,
-          "sha256": "65ff6a1d155092f14dc4d815659e3537f1a094df0430484c51ab1376c9b30a87"
+          "bytes": 5688,
+          "sha256": "403a9597bf1332898addb38005ee2a9513dabb065b86693e4d02050693b0fb9b"
+        },
+        {
+          "target": "reference/outbound_webhooks.md",
+          "source": "skills/webhook-testing/reference/outbound_webhooks.md",
+          "bytes": 1248,
+          "sha256": "3eaaf849da1ee7a38de09c2dc6303fef5c044f6ec6e0a6ffe6e9dedf3d99e4a3"
         },
         {
           "target": "reference/webhook_scripts.md",
           "source": "skills/webhook-testing/reference/webhook_scripts.md",
-          "bytes": 5336,
-          "sha256": "c8b2af1ff20734c26991d4e501da5fcd0779f3984b197708fb5e6e076f891ebc"
+          "bytes": 6828,
+          "sha256": "afc392d3e0573ef9f9b3061fe12b777eee2b8b93be7d660f4657ed251fc057b2"
         }
       ]
     }

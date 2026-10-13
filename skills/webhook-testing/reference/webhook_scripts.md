@@ -12,9 +12,34 @@ postman webhook scripts set <webhookId> ./webhooks/github-on-event.js --event on
 
 ## Contents
 
+- [How webhook scripts behave](#how-webhook-scripts-behave)
 - [What a script can use](#what-a-script-can-use)
 - [Asserting on the payload](#asserting-on-the-payload)
 - [Signature checks](#signature-checks): GitHub, Stripe, Slack, any HMAC
+
+## How webhook scripts behave
+
+- **`onEvent`** runs when a request arrives, before Postman forwards or
+  responds. Use it to validate the payload, verify the signature, or modify
+  the request. **`onResponse`** runs after Postman has responded to the
+  sender. Use it for logging and follow-up work from your local responder
+  or the configured forwarding endpoint.
+- **The file in the repo is the only copy you can read.** The CLI has
+  `scripts set` but no command that reads a script back, and a second `set`
+  replaces the first. Commit the script beside the handler it guards, and set
+  it again after you edit it. The file can be JavaScript or TypeScript.
+- **No state carries over between deliveries.** A script can't remember which
+  event ids it has already seen, so test duplicate handling in the handler, by
+  replaying a request twice.
+- **Secrets come from the linked environment.** Read a signing secret with
+  `pm.environment.get` and never write it into the file. An environment is
+  linked to a webhook in its settings in the Postman app. See the `variables`
+  skill for where a secret belongs.
+- **Results are per delivery.** The console output that `--verbose` shows is
+  capped at 25 KB per event.
+- **A script is a test, not your handler's guard.** Postman doesn't document
+  that a failing `pm.test` stops the request from being routed. Your handler
+  verifies signatures itself, whatever the script reports.
 
 ## What a script can use
 
