@@ -325,8 +325,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/webhook-testing/SKILL.md",
-          "bytes": 6338,
-          "sha256": "137010b011b3577ec5565994d68e4e3de6e51f9bcadc7755621efb939d3d5363"
+          "bytes": 6219,
+          "sha256": "29b77772909cae14ca852b080fa5e964fa6ec010650fa68f9487ef7ed76da53d"
         },
         {
           "target": "reference/forwarding.md",
