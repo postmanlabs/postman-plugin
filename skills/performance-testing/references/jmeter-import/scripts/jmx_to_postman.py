@@ -573,14 +573,15 @@ def walk(hashtree, ctx, plan, out_items):
             req['post_scripts'] = sc.post_scripts
             req['pre_scripts'] = sc.pre_scripts
             if sub is not None:
-                # timers under the sampler -> granular think time (pre-request delay)
+                # timers under the sampler = think time, which Postman performance
+                # runs have no equivalent for. Report it; never fake it.
                 for tel, _ in iter_pairs(sub):
                     if tel is not None and _localname(tel.tag) in TIMER_TAGS:
                         ttag = _localname(tel.tag)
                         req['timers'].append(ttag)
                         d = timer_delay_ms(tel, ttag)
-                        if d:
-                            req['think_ms'] = max(req.get('think_ms') or 0, d)
+                        suffix = f' ({d}ms)' if d else ''
+                        plan['warnings'].append(f'Timer "{tel.get("testname", ttag)}"{suffix} on request "{req["name"]}" is think time; Postman performance runs have no think time, so it was dropped.')
             out_items.append({'type': 'request', 'req': req})
 
         elif tag in SCRIPT_SAMPLER_TAGS:
@@ -612,11 +613,8 @@ def walk(hashtree, ctx, plan, out_items):
 
         elif tag in TIMER_TAGS:
             d = timer_delay_ms(el, tag)
-            if d:
-                plan['request_delay_ms'] = max(plan.get('request_delay_ms') or 0, d)
-                plan['warnings'].append(f'Timer "{el.get("testname", tag)}" ({tag}, {d}ms) at group/plan scope -> uniform --delay-request {d}ms between requests (JMeter random/gaussian jitter approximated by its fixed offset).')
-            else:
-                plan['warnings'].append(f'Timer "{el.get("testname", tag)}" ({tag}) represents think time / pacing; no fixed delay found, so it was dropped.')
+            suffix = f', {d}ms' if d else ''
+            plan['warnings'].append(f'Timer "{el.get("testname", tag)}" ({tag}{suffix}) at group/plan scope is think time / pacing; Postman performance runs have no think time, so it was dropped.')
 
         elif tag == 'TestAction':
             plan['warnings'].append(f'Test Action "{el.get("testname","")}" (pause/stop) has no Postman performance equivalent and was dropped.')
@@ -982,11 +980,6 @@ def build_request_scripts(req, manual_tasks):
             manual_tasks.append({'request': req['name'], 'kind': 'if_condition',
                                  'detail': f'If Controller condition "{cond}" is not valid JS; add a pm.execution.skipRequest() guard manually.'})
 
-    # Granular think time: a timer attached to this sampler becomes a pre-request pause.
-    if req.get('think_ms'):
-        pre_lines.append(f'// JMeter think-time timer ({req["think_ms"]}ms) — pre-request pause')
-        pre_lines.append(f'const _end = Date.now() + {req["think_ms"]}; while (Date.now() < _end) {{}}')
-
     for sc in req.get('pre_scripts', []):
         tr = groovy_translate(sc['script'], sc.get('lang', 'groovy'))
         pre_lines.append(f'// --- imported from JMeter {sc.get("lang","")} pre-processor "{sc.get("name","")}" (REVIEW) ---')
@@ -1227,8 +1220,6 @@ def build_perf_config(plan, pass_if_hints, extras=None, base=None):
         'data_files': [{'filename': ds['filename'], 'columns': ds['variableNames']} for ds in plan['data_sets']],
         'notes': [],
     }
-    if plan.get('request_delay_ms'):
-        cfg['delay_request_ms'] = plan['request_delay_ms']
     if len(runs) > 1:
         cfg['notes'].append('JMeter had multiple thread groups. Postman performance runs execute ONE collection repeated across VUs; they cannot run multiple thread groups concurrently. Each thread group is listed as a separate suggested run — run them individually, or merge into one collection and pick a combined VU/duration.')
     if len(plan['data_sets']) > 1:
@@ -1259,8 +1250,6 @@ def render_perf_md(cfg, collection_filename):
         cmd = f'postman performance run <COLLECTION_UID> \\\n    --vu-count {run["vus"]} \\\n    --duration {run["duration_min"]} \\\n    --load-profile {run["load_profile"]}'
         if cfg['data_files']:
             cmd += f' \\\n    --data-file {cfg["data_files"][0]["filename"]}'
-        if cfg.get('delay_request_ms'):
-            cmd += f' \\\n    --delay-request {cfg["delay_request_ms"]}'
         if cfg['pass_if']:
             cmd += f' \\\n    --pass-if "{cfg["pass_if"]}"'
         else:

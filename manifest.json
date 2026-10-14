@@ -213,61 +213,6 @@
       ]
     },
     {
-      "name": "jmeter-to-postman",
-      "plugin": "postman",
-      "description": "Import a JMeter .jmx load test into a Postman collection (v2.1) plus a ready-to-run performance-test configuration and an import report. Use when a user wants to migrate a JMeter test plan to Postman performance testing, has a .jmx file to import, or asks to turn JMeter requests/extractors/assertions/thread-groups into a Postman collection and `postman performance run` settings.",
-      "files": [
-        {
-          "target": "README.md",
-          "source": "skills/jmeter-to-postman/README.md",
-          "bytes": 5138,
-          "sha256": "110613dacee2f1ebdbb0c64741eb1fcce97077b1987c575da4b723d89fc1210c"
-        },
-        {
-          "target": "SKILL.md",
-          "source": "skills/jmeter-to-postman/SKILL.md",
-          "bytes": 10480,
-          "sha256": "6557fe107a7a9072b048b0383591db98f90c3e26b739bcb1691e320b58a3fd96"
-        },
-        {
-          "target": "references/mapping-table.md",
-          "source": "skills/jmeter-to-postman/references/mapping-table.md",
-          "bytes": 6823,
-          "sha256": "728a61828361d9b11495d64b94047c05dc536fc905d667a4b6f5470d4d54fa79"
-        },
-        {
-          "target": "references/postman-perf-capabilities.md",
-          "source": "skills/jmeter-to-postman/references/postman-perf-capabilities.md",
-          "bytes": 3843,
-          "sha256": "6ae82d2dbc215d362dc76df11018230f23e47c490b582ee8955690d62930b3bb"
-        },
-        {
-          "target": "references/script-translation.md",
-          "source": "skills/jmeter-to-postman/references/script-translation.md",
-          "bytes": 5899,
-          "sha256": "83396eaf60d9018bd333f9f314486cd68d95509b3e812966f92b35d059879fee"
-        },
-        {
-          "target": "scripts/groovy_to_js.py",
-          "source": "skills/jmeter-to-postman/scripts/groovy_to_js.py",
-          "bytes": 3867,
-          "sha256": "bb4d41dda1d0f118e6373e2c6e511a6977f89199fc14c4058280673c1c68d4a4"
-        },
-        {
-          "target": "scripts/jmx_to_postman.py",
-          "source": "skills/jmeter-to-postman/scripts/jmx_to_postman.py",
-          "bytes": 64962,
-          "sha256": "1ea3e6bbb3495f808c5a90477b3fb766b9f6051e8c6c5cfe4e33e8f2574f0f6b"
-        },
-        {
-          "target": "templates/import-report.md",
-          "source": "skills/jmeter-to-postman/templates/import-report.md",
-          "bytes": 1843,
-          "sha256": "966a939fd57de1c7eb4853d3ed634a25ba7bc7bbd50e30661afc9f377f9eb804"
-        }
-      ]
-    },
-    {
       "name": "performance-testing",
       "plugin": "postman",
       "description": "Load-tests a collection with concurrent virtual users, a chosen load profile, and pass/fail thresholds on latency or error rate — run locally or on Postman's cloud runners. Use when the user asks to \"load test this API,\" \"run a performance test,\" \"check how this holds up under load,\" or \"benchmark this collection.\" Covers `postman performance run`. This generates real traffic against a real target — confirm the target and scale before running, the same way any action with effects outside this session gets confirmed.",
@@ -275,8 +220,50 @@
         {
           "target": "SKILL.md",
           "source": "skills/performance-testing/SKILL.md",
-          "bytes": 4226,
-          "sha256": "41da742e5cf847c86353518a666122e6bbced2d756ade1f09023004fda54215c"
+          "bytes": 4825,
+          "sha256": "4ff178b37eaf1022d6a8e8695baa7fbd739286ea371a0f489dccfee12b330524"
+        },
+        {
+          "target": "references/jmeter-import/README.md",
+          "source": "skills/performance-testing/references/jmeter-import/README.md",
+          "bytes": 10115,
+          "sha256": "be5dcbb79897bc388aa535feecd54375f1fc33e41de4ad81855d10da68716a12"
+        },
+        {
+          "target": "references/jmeter-import/import-report.md",
+          "source": "skills/performance-testing/references/jmeter-import/import-report.md",
+          "bytes": 1843,
+          "sha256": "966a939fd57de1c7eb4853d3ed634a25ba7bc7bbd50e30661afc9f377f9eb804"
+        },
+        {
+          "target": "references/jmeter-import/mapping-table.md",
+          "source": "skills/performance-testing/references/jmeter-import/mapping-table.md",
+          "bytes": 6823,
+          "sha256": "728a61828361d9b11495d64b94047c05dc536fc905d667a4b6f5470d4d54fa79"
+        },
+        {
+          "target": "references/jmeter-import/postman-perf-capabilities.md",
+          "source": "skills/performance-testing/references/jmeter-import/postman-perf-capabilities.md",
+          "bytes": 3843,
+          "sha256": "6ae82d2dbc215d362dc76df11018230f23e47c490b582ee8955690d62930b3bb"
+        },
+        {
+          "target": "references/jmeter-import/script-translation.md",
+          "source": "skills/performance-testing/references/jmeter-import/script-translation.md",
+          "bytes": 5899,
+          "sha256": "83396eaf60d9018bd333f9f314486cd68d95509b3e812966f92b35d059879fee"
+        },
+        {
+          "target": "references/jmeter-import/scripts/groovy_to_js.py",
+          "source": "skills/performance-testing/references/jmeter-import/scripts/groovy_to_js.py",
+          "bytes": 3867,
+          "sha256": "bb4d41dda1d0f118e6373e2c6e511a6977f89199fc14c4058280673c1c68d4a4"
+        },
+        {
+          "target": "references/jmeter-import/scripts/jmx_to_postman.py",
+          "source": "skills/performance-testing/references/jmeter-import/scripts/jmx_to_postman.py",
+          "bytes": 64385,
+          "sha256": "ec4f80db8d4ebb2ed67d8d9bb1cfb5008712a070f623da88dbf706d15f5a4aa2"
         }
       ]
     },

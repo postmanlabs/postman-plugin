@@ -44,6 +44,10 @@ that would fail every VU's request identically).
   Dataset instead of a flat `--data-file`; `--dataset-distribution` controls
   whether rows are spread round-robin, fixed, or randomly across VUs.
 
+## Importing an existing JMeter test
+
+If the user already has a JMeter `.jmx` plan, don't rebuild it by hand — import it with the bundled tool, then treat the result as an ordinary performance run (above). See `references/jmeter-import/README.md`: run `references/jmeter-import/scripts/jmx_to_postman.py <plan>.jmx -o <out>`, then read the generated import report. It states what mapped exactly, what is approximated, and which JMeter features have no equivalent here — think-time timers, multiple concurrent thread groups, and non-HTTP (JDBC/FTP/LDAP/Java) samplers are reported, never faked.
+
 ## Critical Rules
 
 1. **Running this against a real, non-mock backend generates real load with

@@ -1,9 +1,7 @@
----
-name: jmeter-to-postman
-description: Import a JMeter .jmx load test into a Postman collection (v2.1) plus a ready-to-run performance-test configuration and an import report. Use when a user wants to migrate a JMeter test plan to Postman performance testing, has a .jmx file to import, or asks to turn JMeter requests/extractors/assertions/thread-groups into a Postman collection and `postman performance run` settings.
----
 
-# JMeter (.jmx) → Postman importer
+# Importing a JMeter `.jmx` into Postman
+
+> Reference for the `performance-testing` skill. Run the importer, review the report, then the result is an ordinary performance run.
 
 Turn a JMeter test plan into three artifacts:
 
@@ -15,7 +13,7 @@ The parsing and building are **deterministic Python** (`scripts/`). You (the mod
 
 ## When NOT to guess
 
-Postman performance runs do not support everything JMeter does. The scripts already encode the gaps (see `references/postman-perf-capabilities.md`). Never invent a Postman feature to cover a JMeter one. If something can't import, it goes in the report's "Needs manual work" or "Not supported" section — that is a correct outcome, not a failure.
+Postman performance runs do not support everything JMeter does. The scripts already encode the gaps (see `postman-perf-capabilities.md`). Never invent a Postman feature to cover a JMeter one. If something can't import, it goes in the report's "Needs manual work" or "Not supported" section — that is a correct outcome, not a failure.
 
 ## Correctness rules the importer reproduces (do not regress)
 
@@ -50,7 +48,7 @@ Python 3.8+ only, standard library — no pip installs.
 
 Open `<name>.ir.json` and read `manual_tasks`. Each has `request`, `kind`, `detail`. Handle by kind:
 
-- **`script`** — a JSR223/BeanShell pre/post-processor was auto-translated to JS and wrapped in an IIFE. Open that request's `event` script in the collection, read the `// REVIEW` block, and correct the translation. Use `references/script-translation.md` for the mapping. Common fixes: `prev`/`ctx`/`sampler` accessors, `.each{}` loops, `import`/`new` statements.
+- **`script`** — a JSR223/BeanShell pre/post-processor was auto-translated to JS and wrapped in an IIFE. Open that request's `event` script in the collection, read the `// REVIEW` block, and correct the translation. Use `script-translation.md` for the mapping. Common fixes: `prev`/`ctx`/`sampler` accessors, `.each{}` loops, `import`/`new` statements.
 - **`script_sampler`** — a standalone JSR223/BeanShell *sampler* (no HTTP). The stub is a GET to an empty URL carrying the translated script. Decide with the user: delete it, fold its logic into an adjacent request's pre/post script, or replace with a real request.
 - **`xpath` / `css`** — the Postman sandbox has no built-in XPath/CSS selector engine. Rewrite the extractor against the JSON body if the response is JSON, or use `xml2js`/`cheerio` via `require(...)` in the script (confirm availability), or drop it with a note.
 - **`jsonpath` too complex** — the path used wildcards/filters/recursion. Rewrite it as explicit property access in the request's test script.
@@ -87,9 +85,9 @@ Smoke-test with `postman collection run` — the **same runtime that executes th
 
 If this environment has no code execution, do **not** refuse — import by hand, following the exact same rules the script encodes. Output must be identical in shape (collection v2.1 + perf config + report).
 
-1. **Read first:** `references/mapping-table.md` (what maps to what), `references/postman-perf-capabilities.md` (the hard limits), `references/script-translation.md` (Groovy/BeanShell → JS). These ARE the algorithm.
+1. **Read first:** `mapping-table.md` (what maps to what), `postman-perf-capabilities.md` (the hard limits), `script-translation.md` (Groovy/BeanShell → JS). These ARE the algorithm.
 2. **Parse the JMX by the one structural rule:** every element is followed by a sibling `<hashTree>` holding its children. Walk those pairs. A config element (Header Manager, Auth, HTTP Defaults, extractor, assertion) applies to every sampler in its subtree; the same element inside a sampler's own hashTree applies only to that sampler.
-3. **Apply the non-negotiable rules** (same as the script). Use the **exact JS templates in `references/script-translation.md`** for extractors and assertions so a hand import matches the script output byte-for-byte:
+3. **Apply the non-negotiable rules** (same as the script). Use the **exact JS templates in `script-translation.md`** for extractors and assertions so a hand import matches the script output byte-for-byte:
    - `${var}` → `{{var}}`; `${__UUID}`→`{{$guid}}`, `${__time}`→`{{$timestamp}}`, `${__Random(..)}`→`{{$randomInt}}`, `${__RandomString(..)}`→`{{$randomAlphaNumeric}}`.
    - Every request gets a default `pm.test` asserting HTTP 200–399 — **unless** that request has a Response Assertion whose `test_field` is `response_code` **or** `response_message`, **or** any assertion with `assume_success=true`. An assertion on the **body** (`response_data`) does NOT suppress it.
    - Port 0/-1 → omit. Full-URL path (`path` starts with `http://`/`https://`) → use verbatim, ignore domain/port. HEAD/TRACE args → drop + note. Keep inherited headers as-is even on a GET (JMeter still sends them); don't prune.
@@ -103,7 +101,7 @@ This fallback is lower-reliability than running the script — flag anything you
 
 ## Mapping
 
-The full per-element mapping (fidelity + whether the script or the model owns it) is `references/mapping-table.md` — it's the algorithm for the fallback and the regression contract, so it's kept there, not restated here.
+The full per-element mapping (fidelity + whether the script or the model owns it) is `mapping-table.md` — it's the algorithm for the fallback and the regression contract, so it's kept there, not restated here.
 
 ## Scope limits (hard facts, verified against the CLI/engine code)
 
