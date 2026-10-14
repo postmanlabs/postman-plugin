@@ -163,6 +163,12 @@ postman app setup-capture --help
 
 ## Debugging
 
+**If a flag in this skill is unrecognized** (e.g. `--yes`, `--generate-collection`, `--dry-run`) or the behaviour described here doesn't match what you see, check the CLI version first:
+```bash
+postman --version
+```
+This skill targets the latest CLI release. If the version is outdated, load the `bootstrap` skill for installation and update steps, then re-run. The `--help` output for each command shows the flags actually available in the installed version.
+
 Read the CLI error output first — it names the specific failure and what to fix. Two scenarios where the output alone is not enough:
 
 ### "No network traffic was captured"
