@@ -14,6 +14,13 @@
     ]
   },
   {
+    "id": "bootstrap-not-enough-credits",
+    "prompt": "A Postman CLI command I just ran failed saying the operation isn't allowed because I don't have enough credits left. What should I do?",
+    "expected": [
+      "bootstrap"
+    ]
+  },
+  {
     "id": "api-mocking",
     "prompt": "Set up a fake backend for my API so frontend development can continue before the real service exists.",
     "expected": [

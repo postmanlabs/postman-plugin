@@ -1,6 +1,6 @@
 ---
 name: bootstrap
-description: Use when resolving Postman CLI setup, authentication, or a repository workspace binding; initializing local API files; or importing, pulling, pushing, syncing, or sharing workspace resources. Reuses existing context and chooses sync direction without duplicating a workspace or rebinding a dependency. Use for requests such as "set up Postman for this repo".
+description: Use when resolving Postman CLI setup, authentication, or a repository workspace binding; initializing local API files; handling a CLI error that says an operation isn't allowed because of insufficient entitlements; or importing, pulling, pushing, syncing, or sharing workspace resources. Reuses existing context and chooses sync direction without duplicating a workspace or rebinding a dependency. Use for requests such as "set up Postman for this repo".
 ---
 
 # Bootstrap Postman for This Repo
@@ -87,6 +87,27 @@ creation; with it, creation and binding are requested. Read `bindings` and
 contract, not a confirmed source of truth. Exit 2 means multiple specs need
 selection with `--spec <path>`. Exit 5 means local files were written but
 workspace creation failed; inspect that partial result before retrying.
+
+## Not enough credits
+
+A CLI command can fail because the operation isn't allowed with the credits
+the user has left. There is no fixed message for this; recognize it by
+meaning, such as an error saying credits or usage are used up, insufficient,
+or exhausted for the operation. Unlike a temporary rate limit, retrying won't
+clear it, so stop retrying and run `postman whoami` to see whose session the
+CLI is using.
+
+If it reports a guest session ("Using Postman as a guest", or
+`"status": "guest"` with `--json`), such as the one `postman init` creates
+without a login, ask the user to sign up for a Postman account with
+`postman signup`, which also keeps the work done as a guest. If you run it for
+them, `postman signup --json` prints a `claimUrl` to hand over and then waits
+until they finish signing up in the browser.
+
+If it reports a signed-in account, ask the user to upgrade their plan at
+https://postman.postman.co/settings/team/billing.
+
+Retry the failed command after the user has signed up or upgraded.
 
 ## Verification
 

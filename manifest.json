@@ -9,8 +9,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-engineer/SKILL.md",
-          "bytes": 5050,
-          "sha256": "75ed7762347903bbfa7e4591a6219a0ae830761c5f2735fa7dd5e585656555f0"
+          "bytes": 5210,
+          "sha256": "39c7fb6a6caeb64bea745f2e5b1f85bac63cb769505b1388329e14be5a7e3126"
         }
       ]
     },
@@ -126,13 +126,13 @@
     {
       "name": "bootstrap",
       "plugin": "postman",
-      "description": "Use when resolving Postman CLI setup, authentication, or a repository workspace binding; initializing local API files; or importing, pulling, pushing, syncing, or sharing workspace resources. Reuses existing context and chooses sync direction without duplicating a workspace or rebinding a dependency. Use for requests such as \"set up Postman for this repo\".",
+      "description": "Use when resolving Postman CLI setup, authentication, or a repository workspace binding; initializing local API files; handling a CLI error that says an operation isn't allowed because not enough credits are left; or importing, pulling, pushing, syncing, or sharing workspace resources. Reuses existing context and chooses sync direction without duplicating a workspace or rebinding a dependency. Use for requests such as \"set up Postman for this repo\".",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/bootstrap/SKILL.md",
-          "bytes": 6073,
-          "sha256": "aad950c99302cc4360a503ae94243f17db06c3c9079b4d62d93c8ae8bbcf327d"
+          "bytes": 7185,
+          "sha256": "9a629038796367aec61f5044c5c0cf258567c584008112c57a8f067bc3047751"
         },
         {
           "target": "reference/cli_installation.md",
