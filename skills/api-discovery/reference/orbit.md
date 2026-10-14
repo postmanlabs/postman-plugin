@@ -10,18 +10,21 @@ signup and no API key, and works entirely against publicly available APIs.
 ## Implementation
 
 Two REST calls, both `POST`, both read-only (safe to retry). No auth header —
-send `Content-Type: application/json` and a JSON body. Run search first,
-surface candidates, then integrate the chosen ids.
+send `Content-Type: application/json` and a JSON body. Optionally identify your
+client with `Orbit-Client-Name` (see below). Run search first, surface
+candidates, then integrate the chosen ids.
 
 ```bash
 # Step 1 — search
-curl -sS https://api.buildwithorbit.ai/v1/search \
+curl -sS 'https://api.buildwithorbit.ai/v1/search?limit=10' \
   -H 'Content-Type: application/json' \
-  -d '{ "q": "send email via SMTP", "limit": 10 }'
+  -H 'Orbit-Client-Name: claude/opus-4.8' \
+  -d '{ "q": "send email via SMTP" }'
 
 # Step 2 — integrate (ids come from the search response, verbatim)
 curl -sS https://api.buildwithorbit.ai/v1/integrate \
   -H 'Content-Type: application/json' \
+  -H 'Orbit-Client-Name: claude/opus-4.8' \
   -d '{
     "task": "Send a welcome email when a user signs up",
     "resources": [{ "id": "urn:orbit:endpoint:v1:...", "type": "endpoint" }]
@@ -37,11 +40,21 @@ Implementation notes:
   than making one call per endpoint.
 - Auth, request bodies, `Threading`, and `GOTCHAS` come from live public API
   schemas, so take them from the brief rather than from memory.
+- `Orbit-Client-Name` is an optional request header (both endpoints, max 128
+  chars) that names the calling client/agent for Orbit's anonymous usage
+  analytics. The convention is `client/model`, slash-separated —
+  e.g. `claude/opus-4.8`, `cursor/composer-2.5`, `codex/gpt-5.6-sol` — or a bare
+  client name like `vscode`. Set it to the host agent and model running this
+  plugin. It never affects results and can be omitted.
 
 ## Step 1 — Search (`POST /v1/search`)
 
 Describe the task, not a provider name. Good: `"send an invoice to a customer"`.
 Worse: `"PayPal"`. Provider name is fine to include when it is fixed.
+
+Request body (JSON):
+
+- `q` — the query; max 512 characters.
 
 ```json
 { "q": "send email via SMTP" }
@@ -51,7 +64,6 @@ Query params:
 
 - `limit` — default 10, max 25.
 - `cursor` — from `meta.nextCursor`; pagination stops at 40 results.
-- `q` — max 512 characters.
 
 Returns `data[]`. Each item has:
 

@@ -1,6 +1,5 @@
 ---
 description: Create Postman mock servers for frontend development. Generates missing examples, provides integration config.
-allowed-tools: Bash, Read, Write, Glob, Grep, mcp__postman__getWorkspaces, mcp__postman__getCollections, mcp__postman__getCollection, mcp__postman__getCollectionRequest, mcp__postman__createCollectionResponse, mcp__postman__createSpec, mcp__postman__generateCollection, mcp__postman__getGeneratedCollectionSpecs, mcp__postman__getSpecCollections, mcp__postman__getAsyncSpecTaskStatus, mcp__postman__getMocks, mcp__postman__getMock, mcp__postman__createMock, mcp__postman__publishMock, mcp__postman__unpublishMock
 ---
 
 # Create Mock Servers

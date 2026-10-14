@@ -1,6 +1,5 @@
 ---
 description: Search the Postman Learning Center for how-to guidance, feature explanations, and suggested workflows. Use for "how do I..." questions about the Postman product.
-allowed-tools: Read, mcp__postman__searchLearningCenter, mcp__postman__getEnabledTools
 ---
 
 # Learn Postman
@@ -11,14 +10,16 @@ Use this to learn *about Postman itself* — not to search the user's own collec
 
 ## Prerequisites
 
-This workflow uses `searchLearningCenter`, which the Postman MCP Server exposes only in **Full mode**.
+Use `searchLearningCenter` when it is exposed by the connected server. Follow
+**postman-mcp-server**'s toolset inspection guidance before diagnosing a missing
+tool; a remembered mode-to-tool mapping is not evidence of current availability.
+The route's MCP endpoint determines its configured surface. `POSTMAN_MCP_MODE`
+is not read by this plugin's routes and cannot switch that surface.
 
-The mode is fixed by the endpoint in each route's MCP config, not by the environment. A route pinned to `https://mcp.postman.com/mcp` has the tool; a route pinned to `https://mcp.postman.com/minimal` does not. Read it off the route's own MCP config rather than inferring it from the agent's name — which endpoint an agent gets is a per-route product decision, and new routes are added. **`POSTMAN_MCP_MODE` is not read on any route** — never tell the user to set or unset it to change the tool set.
-
-- If MCP tools aren't available at all, follow `references/setup.md` to connect the Postman MCP Server.
-- If `searchLearningCenter` is missing, call `getEnabledTools` to confirm the active tool set, then split on which endpoint the route is pinned to. On a `/minimal` route it is absent by design and the user cannot change it from the client: say the Learning Center tool isn't part of that route's tool set and point them at https://learning.postman.com to search directly. On a `/mcp` route its absence is not a mode problem — the server isn't connected as configured: follow `references/setup.md` to reconnect it.
-
-Do not answer a "how do I..." question from memory when the tool is unavailable. Cite only URLs the tool returned, or send the user to the Learning Center.
+If no MCP tools are available, follow `references/setup.md`. If only the learning
+tool is absent, use an available web search/browser to read the official Learning
+Center and cite the pages actually consulted. Without either capability, report
+the limitation and link the Learning Center rather than inventing product steps.
 
 ## Workflow
 
@@ -68,6 +69,6 @@ To create a mock server in Postman:
 ## Error Handling
 
 - **MCP not configured:** Follow `references/setup.md` to connect the Postman MCP Server.
-- **`searchLearningCenter` unavailable:** Confirm with `getEnabledTools`. Expected on any route pinned to the `minimal` endpoint — say the tool isn't in that route's tool set and point the user at https://learning.postman.com. On a `/mcp` route: follow `references/setup.md` to reconnect it.
+- **`searchLearningCenter` unavailable:** Use the toolset inspection and official-documentation fallback under Prerequisites.
 - **401 Unauthorized:** "Your Postman API key was rejected. Generate a new one at https://go.postman.co/settings/me/api-keys." Then re-authenticate with `references/setup.md`.
 - **No results:** "Nothing matched in the Learning Center. Try rephrasing with the Postman feature name, or ask about a more specific step."
