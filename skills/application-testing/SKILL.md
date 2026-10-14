@@ -42,28 +42,35 @@ postman login --with-api-key <api-key>
 
 ### Step 2 — Link a workspace
 
-A `.postman/resources.yaml` with a `workspace.id` must exist. If it is missing, the CLI exits with an error. Load the `bootstrap` skill for the full workspace setup flow — it covers `postman init` and workspace linking in one place.
+A `.postman/resources.yaml` with a `workspace.id` is needed to upload results (default behaviour). If it is missing:
+
+- **In a TTY**: the CLI runs an interactive setup — create a new workspace or connect an existing one.
+- **Outside a TTY / CI**: the CLI prints guidance and exits. The workspace must be set up locally first, then `.postman/resources.yaml` committed. Load the `bootstrap` skill for the full workspace setup flow.
+
+To skip workspace setup entirely (results kept local only):
+```bash
+postman app test --report-events false
+```
 
 ### Step 3 — Install the capture plugin
 
-`postman app test` checks for the capture plugin before running your tests and prompts to install it automatically if it is missing. You do not need to run a separate command.
-
-To set it up in advance (or to re-run setup explicitly):
-
+Check whether the capture plugin is already set up before doing anything:
 ```bash
-postman app setup-capture
+postman app setup-capture --dry-run
 ```
+This shows the current state and what would be installed or patched — no files changed. If everything is already in place, skip this step entirely.
 
-`setup-capture` prompts `Set up capture with withPostman() via npm? › (Y/n)`. Answer non-interactively:
+If setup is needed, apply it:
 ```bash
-printf 'Y\n' | postman app setup-capture
+postman app setup-capture --yes
 # with a non-default playwright config location:
-printf 'Y\n' | postman app setup-capture --config apps/web/playwright.config.ts
+postman app setup-capture --yes --config apps/web/playwright.config.ts
 ```
+Outside an interactive terminal, the command exits with code 2 unless `--yes` is passed.
 
-Both paths install `postman-playwright` and wrap `playwright.config.ts/js` with `withPostman()`, auto-detecting npm / yarn / pnpm / bun from lockfiles.
+`postman app test --yes` also installs and patches automatically as part of the run — so this step is only needed if you want to set up capture explicitly before the first test.
 
-If the command hangs or the automatic patch fails in a non-interactive environment, set it up manually:
+If the automatic patch fails (e.g. non-standard export pattern), set it up manually:
 ```bash
 npm install --save-dev postman-playwright
 ```
@@ -73,13 +80,6 @@ import { withPostman } from 'postman-playwright';
 import { defineConfig } from '@playwright/test';
 
 export default withPostman(defineConfig({ ... }));
-```
-
-To verify the config was wrapped correctly, `playwright.config.ts` should contain:
-
-```ts
-import { withPostman } from 'postman-playwright';
-export default withPostman({ ... });
 ```
 
 > **Legacy setup:** If the project uses `attachNetworkCapture()` in spec files instead of `withPostman()`, that is still supported — do not re-run `postman app setup-capture`. The CLI detects it automatically and uses the NDJSON capture path. Only migrate to `withPostman()` if the user asks to upgrade.
@@ -96,240 +96,93 @@ export default withPostman({ ... });
 
 ### Step 4 — Run the command
 
-**Preferred — let the wizard generate the config** (the test script prompt requires TTY; pass `--command` to skip it):
+Outside an interactive terminal, setup never prompts. What you need to provide:
 
-First, find the right test command — check `package.json` scripts for a Playwright-related script, or ask the user:
+**Command** — the CLI defaults to `npx playwright test` when a `playwright.config.*` is found and no command is configured. Check `package.json` scripts for a more specific Playwright script (e.g. `npm run test:e2e`) and confirm with the user which one to use.
+
+**Collection** — check what's available before deciding:
 ```bash
-cat package.json | grep -A1 '"scripts"' # or read package.json and look for playwright/test scripts
+ls postman/collections/
 ```
+- Collections exist → present them to the user, confirm which to use, pass `--target-collection "postman/collections/<name>"`
+- No collections → use `--yes` or `--generate-collection` to generate one from traffic (saved to `postman.config.cjs` automatically)
 
-Then run:
+**Before running** — verify the app is reachable. `postman app test` spawns Playwright, which drives the live app; if the servers aren't up, tests fail immediately and nothing is captured. Check whether `webServer` in `playwright.config.*` starts them automatically. If not, start them first.
+
+**Typical first run (no config yet):**
 ```bash
-postman app test --command "<test-cmd>"            # no collection yet: auto-generates, no prompts
-printf '\n' | postman app test --command "<test-cmd>"  # collection exists: answers collection prompt only
+postman app test --yes                                        # uses npx playwright test default, generates collection
+postman app test --yes --command "npm run test:e2e"           # custom command, generates collection
+postman app test --target-collection "postman/collections/Orders API"   # use existing collection, default command
 ```
-The wizard creates `postman.config.cjs` and optionally generates a collection from captured traffic — all in one step.
+`--yes` also installs/patches the capture plugin if needed.
 
-**If piped input is not supported**, write the config manually instead:
-```js
-// postman.config.cjs
-module.exports = {
-  command: 'npx playwright test',
-  targets: { default: { collections: ['postman/collections/Orders API'] } }
-};
-```
-Then run `postman app test`.
-
-**Subsequent runs** (config already written): do not re-pass `--command` or `--target-collection` — the config is the source of truth. Just run:
+**Config already exists** — just run:
 ```bash
 postman app test
 ```
+The config is the source of truth. Pass flags to override values for a single run without editing it:
+```bash
+postman app test --command "npx playwright test --project=chromium"
+postman app test --target-collection "postman/collections/Payments"
+```
+
+**`--capture-only`** — skips collection matching entirely and writes captured traffic as a v3 collection to `pm-results/captured/` (use `--output <path>` to write elsewhere). No assertions run, config is not updated. Use this only to stage and review traffic before committing a collection manually.
 
 ---
 
 ## Config File (`postman.config.cjs`)
 
-Full shape — every field is optional:
+The generated `postman.config.cjs` includes comments explaining every field — read it for the full reference. It stays current with the CLI version installed in the repo.
 
-```js
-module.exports = {
-  // Default command to run (overridden by --command flag)
-  command: 'npx playwright test',
+To edit config for common needs:
+- **Change the test command** — update `command`
+- **Add or change a collection** — update `targets.default.collections`
+- **Exclude noisy requests** — add `filters` (urlPatterns, methods, headers)
+- **Rewrite URLs before matching** — add `transformers`
+- **Multiple named environments** — add entries under `targets`
 
-  // Where the CLI looks for capture artifacts (default: Playwright's outputDir, then pm-results/)
-  networkLog: './pm-results',
-
-  // Filters exclude matching network requests from analysis.
-  // A request is dropped if it matches any rule below.
-  filters: {
-    urlPatterns: ['https://fonts.googleapis.com/**'],  // drop requests matching these URLs
-    methods: ['OPTIONS'],                              // drop these HTTP methods
-    headers: { 'x-internal-call': 'true' }            // drop requests with this header
-  },
-  // Alternatively, use the array form to scope rules to specific tests:
-  // Each entry adds optional `target` (string/regex matched against "project › file › test title")
-  // and/or `tags` (Playwright test tags, any-of). An entry with neither is global.
-  // filters: [
-  //   { target: 'checkout', urlPatterns: ['https://analytics.example.com/**'] },  // only in checkout tests
-  //   { tags: ['@smoke'], methods: ['OPTIONS'] },                                  // only in @smoke-tagged tests
-  //   { urlPatterns: ['https://fonts.googleapis.com/**'] }                         // global (no scope)
-  // ],
-  // Note: `tags` scoping requires withPostman() — not supported with legacy attachNetworkCapture.
-
-  // Rewrite URLs before matching (e.g. strip staging prefix)
-  // transformRequest(body, context) → return { url?, method? } with only the fields to override
-  transformers: [
-    {
-      url: /https:\/\/staging\.example\.com\/(.*)/,
-      transformRequest: (body, context) => ({
-        url: `https://api.example.com/${context.url.match(/staging\.example\.com\/(.*)/)[1]}`
-      })
-    }
-  ],
-
-  // Named targets — a target is a named configuration set (collections + optional environment).
-  // Select one at runtime with --target <name>. The "default" target is used when no --target is passed.
-  targets: {
-    default: {
-      collections: ['postman/collections/Orders API'],
-      environment: 'postman/environments/staging.env.yaml'
-    },
-    payments: {
-      collections: ['postman/collections/Payments API'],
-      environment: 'postman/environments/payments-staging.env.yaml'
-    }
-  }
-};
-```
-
-**Select a target at runtime:**
-
+A **target** is a named set of collections + optional environment. The `default` target is used when no `--target` flag is passed. Override for a single run without editing config:
 ```bash
-postman app test --target payments
+postman app test --target <name>
+postman app test --target-collection "postman/collections/Orders API"
+postman app test --target-environment postman/environments/prod.env.yaml
 ```
-
-Each target is independent — only one runs per invocation. If the target name does not exist in config, the CLI finds no collections and falls through to the missing-collections prompt — it does not error. Make sure the target name matches exactly what is in `postman.config.cjs`.
-
-**Override collections/environment for a single run without editing config:**
-
-```bash
-postman app test --target-collection "postman/collections/Orders API" --target-environment postman/environments/prod.env.yaml
-```
-
-`--target-collection` replaces the selected target's collections entirely for this run — config collections are ignored when this flag is present. `--target-environment` replaces the environment (last value wins if repeated). Neither changes the config file.
-
-Both `--target-collection` and `collections` in config accept a **local path** or a **cloud UID**:
-- Local path: `postman/collections/Orders API` — resolved relative to cwd
-- Cloud UID: the collection's UUID from Postman — fetched directly from the cloud
-- If a local path is not found but a cloud UID is mapped in `.postman/resources.yaml`, it falls back to the cloud automatically
 
 ---
 
 ## Key Flags
 
-For the full flag reference, run:
+If unsure about any command's options or behavior, run `--help` on it:
 ```bash
 postman app test --help
+postman app setup-capture --help
 ```
 
 ---
 
 ## Debugging
 
-### `postman app setup-capture` fails
-
-**No Playwright config found**
-The CLI searches upward 4 levels and downward 3 levels for `playwright.config.ts/js/mts/cjs/mjs`. If it cannot find one, point at it explicitly:
-```bash
-postman app setup-capture --config apps/api/playwright.config.ts
-```
-
-**`--config` points at a wrong filename**
-The file must be named exactly `playwright.config.ts`, `.js`, `.mts`, `.cjs`, or `.mjs`. A path like `playwright.setup.ts` is rejected.
-
-**Package install failed**
-The CLI runs your package manager (`npm`/`yarn`/`pnpm`/`bun` — detected from lockfiles) to install `postman-playwright`. If it fails (e.g. registry unreachable, permissions), install manually:
-```bash
-npm install --save-dev postman-playwright
-```
-
-**Config patch failed**
-The automatic codemod could not rewrite your `playwright.config.*` (e.g. non-standard export pattern). Set it up manually:
-1. `npm install --save-dev postman-playwright`
-2. Add `import { withPostman } from 'postman-playwright'` to your config
-3. Wrap the export: `export default withPostman(defineConfig({ ... }))`
+Read the CLI error output first — it names the specific failure and what to fix. Two scenarios where the output alone is not enough:
 
 ### "No network traffic was captured"
 
-The capture plugin is not writing artifacts. Check in order:
+The CLI doesn't diagnose why. Check:
 
-1. Are Playwright browsers installed? If tests fail with "Executable doesn't exist," check how the repo installs browsers — look for a `playwright install` step in `package.json` scripts, a Makefile, or CI config before running `npx playwright install` yourself.
-2. Is `withPostman()` wrapping the Playwright config? Run `postman app setup-capture` if not.
-3. Is Playwright writing test results to the expected dir? The CLI looks in: Playwright config's `outputDir`, then `test-results/` and `pm-results/` relative to the Playwright config directory, then the same relative to cwd — pass `--network-log <your-outputDir>` if artifacts land elsewhere.
-4. Did Playwright crash before any tests ran? Fix the crash first — no captures are written until at least one test executes.
-5. Are artifacts stale? The CLI ignores files older than command start time to avoid using a previous run's captures.
+1. **Browsers not installed** — if tests fail with "Executable doesn't exist", run `npx playwright install` (check `package.json` scripts or CI config for how the repo installs them).
+2. **`withPostman()` not wrapping the config** — run `postman app setup-capture --yes` to patch it.
+3. **Artifacts in a non-default directory** — pass `--network-log <path>` if Playwright's `outputDir` is custom.
 
-### Tests run but most requests show "not matched"
+### Tests run but requests show "not matched"
 
-The CLI found captures but could not find matching collection items.
+Run with `--verbose` to see the unmatched URLs. Then:
 
-- Is the correct collection selected? Check `targets.default.collections` in config or pass `--target-collection` explicitly.
-- Do the URLs actually match anything in the collection? Run with `--verbose` to see all unmatched URLs printed.
-- Are URLs going through a proxy, staging prefix, or auth gateway? Add a `transformers` entry in config to rewrite them before matching.
-- Are your collections in v3 format (YAML directory under `postman/collections/`)? Pass the directory path, not an individual file.
-
-### "Config file has a syntax error"
-
-The error output includes the file path and location. Fix the syntax in `postman.config.cjs`. CommonJS syntax only — `module.exports = { ... }`, not ES module `export default`.
-
-### Upload fails (401 / 403 / 429 / 5xx)
-
-Auth is checked lazily — **tests always run regardless of auth state**, but results are not recorded if the upload fails. Re-authenticate and re-run to get results stored in Postman.
-
-Fix for 401: `postman login --with-api-key <api-key>`
-
-### Assertions failing unexpectedly
-
-Run with `--verbose` to see sandbox errors inline per request. Sandbox errors mean the `pm.test` script itself threw — check the test script in the collection item for runtime errors, not the API response.
-
-### No workspace configured
-
-If `.postman/resources.yaml` has no `workspace.id`, the CLI exits with:
-```
-[app:test] Setup failed: workspace id was not recorded in .postman/resources.yaml.
-```
-Fix: run `postman init` — it sets up the full Postman scaffolding including the workspace id.
-
-### Captured lines skipped (oversized) — legacy path only
-
-This warning only appears with the legacy `attachNetworkCapture()` setup, not with `withPostman()`.
-
-If a yellow warning appears — `Skipped N NDJSON line(s) longer than N MiB` — a captured line exceeded the per-line parse limit (typically a large response body). Add `urlPatterns` or `methods` exclude filters in config to drop the offending traffic before it reaches the size check.
+- Wrong collection selected — check `targets.default.collections` in config or pass `--target-collection`.
+- URLs have a staging prefix or proxy path — add a `transformers` entry in `postman.config.cjs` to rewrite them before matching.
 
 ---
 
 > **Note — Exit code:** The CLI exits with the **test runner's exit code** (Playwright's), not the Postman assertion pass/fail count. A run where Postman assertions fail but all Playwright `expect()` calls pass will exit 0. If you need CI to fail on Postman assertion failures, check the summary table output or the published results.
-
----
-
-## Bootstrapping a Collection from Real Traffic
-
-### First-run interactive generation (recommended)
-
-When `postman app test` finds no collections configured, it prompts:
-
-```
-Which Postman Collection tests your application's APIs?
-  ❯ Generate a collection from my test traffic
-    <existing collections listed here>
-```
-
-Choosing **Generate** runs the test command, captures the network traffic, builds a v3 collection organised by host and endpoint, saves it to `postman/collections/application-api-tests/`, writes that path into `postman.config.cjs` under `targets.default.collections`, and immediately runs assertions against it — all in one step. No second run needed.
-
-**Agents:** the test script prompt requires a TTY and cannot be answered via piped input. Check `package.json` scripts (or ask the user) to find the Playwright test command, then pass it via `--command` to skip the prompt:
-```bash
-postman app test --command "<test-cmd>"                 # no collection: auto-generates, no prompts
-printf '\n' | postman app test --command "<test-cmd>"   # collection exists: answers collection prompt only
-```
-Only fall back to `--capture-only` if the environment truly cannot accept piped input — but then you will need to manually add the generated collection path to `postman.config.cjs`.
-
-### `--capture-only` flag
-
-Skips collection matching entirely and just writes the captured traffic as a v3 collection:
-
-```bash
-postman app test --capture-only
-# output goes to pm-results/captured/ by default
-# use --output <path> to write elsewhere
-```
-
-No assertions are run. Unlike the interactive generation flow, this does not update `postman.config.cjs` or run the analysis pipeline.
-
-**Path difference:**
-| Mode | Output path |
-|---|---|
-| Interactive generate | `postman/collections/application-api-tests/` — inside tracked collections, picked up by git sync |
-| `--capture-only` | `pm-results/captured/` — outside tracked collections, a staging area to review before committing |
 
 ---
 
@@ -342,9 +195,8 @@ No assertions are run. Unlike the interactive generation flow, this does not upd
 
 ## Anti-patterns
 
-- **Do not pre-create `postman.config.cjs` with empty `collections: []`** — it triggers the interactive collection prompt just the same as having no config. Only pre-create the config when you already have a collection path to put in it.
-- **Do not use `--capture-only` when the wizard can run** — `--capture-only` puts the collection in `pm-results/captured/` and requires manual config setup. The interactive wizard (`postman app test --command "..."`) generates the collection and wires the config correctly in one step.
-- **Do not run `postman app init`** — it is deprecated. Use `postman app test` directly; it runs the same wizard on first run.
+- **Do not use `--capture-only` when `--yes` or `--generate-collection` can run** — `--capture-only` puts the collection in `pm-results/captured/` and requires manual config setup. `postman app test --yes` (or `--generate-collection`) generates the collection, tests with it immediately, and saves it to config when no collection is already configured.
+- **Do not run `postman app init`** — it is deprecated. `postman app test` runs the same setup on first use.
 - **Do not combine `--capture-only` with `--target-collection`** — `--capture-only` skips collection matching entirely; passing a collection alongside it has no effect and signals a misunderstanding of the mode.
 
 ## Verification
