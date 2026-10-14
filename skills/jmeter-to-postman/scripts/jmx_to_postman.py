@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-jmx_to_postman.py — deterministic JMeter (.jmx) -> Postman converter.
+jmx_to_postman.py — deterministic JMeter (.jmx) -> Postman importer.
 
 Pipeline:  JMX XML  ->  intermediate model (IR)  ->  Collection v2.1 JSON
                                                   ->  performance run config
-                                                  ->  conversion report
+                                                  ->  import report
 
 Design: everything structural is deterministic and stdlib-only (xml.etree, json,
 argparse). The only judgment calls left to a model are (a) translating
@@ -19,7 +19,7 @@ Outputs in OUTDIR:
     <name>.postman_collection.json   Collection v2.1
     <name>.perf.json                 machine-readable perf config
     <name>.perf.md                   human-readable perf config + CLI command
-    <name>.report.md                 conversion report (what/approx/manual)
+    <name>.report.md                 import report (what/approx/manual)
 """
 import argparse
 import json
@@ -100,7 +100,7 @@ def iter_pairs(hashtree):
 
 
 # ---------------------------------------------------------------------------
-# Expression conversion: JMeter ${...} -> Postman {{...}}
+# Expression import: JMeter ${...} -> Postman {{...}}
 # ---------------------------------------------------------------------------
 
 # A few common JMeter functions with Postman dynamic-variable equivalents.
@@ -596,7 +596,7 @@ def walk(hashtree, ctx, plan, out_items):
                 out_items.append(folder)
 
         elif tag == 'IfController':
-            # Convert the condition into a per-request skip guard rather than
+            # Import the condition into a per-request skip guard rather than
             # running the enclosed requests unconditionally.
             cond_js = convert_if_condition(get_prop(el, 'IfController.condition'))
             inner = []
@@ -747,9 +747,9 @@ def parse_jmx(path):
     if testplan_el is None:
         # some plans put thread groups directly under top (rare)
         testplan_ht = top
-        plan['name'] = 'Converted Test Plan'
+        plan['name'] = 'Imported Test Plan'
     else:
-        plan['name'] = testplan_el.get('testname', 'Converted Test Plan')
+        plan['name'] = testplan_el.get('testname', 'Imported Test Plan')
         udv = get_element_prop(testplan_el, 'TestPlan.user_defined_variables')
         if udv is not None:
             plan['variables'].update({k: convert_expr(v) for k, v in parse_user_variables(udv).items()})
@@ -792,7 +792,7 @@ def parse_jmx(path):
             plan['warnings'].append('No thread group wraps these requests; assumed a default 1-VU load. Set your own VU count and duration.')
 
     if not plan['thread_groups']:
-        plan['warnings'].append('No enabled thread groups (or convertible HTTP samplers) found; the collection is empty.')
+        plan['warnings'].append('No enabled thread groups (or importable HTTP samplers) found; the collection is empty.')
 
     # dedupe warnings (preserve order) and data sets (by filename)
     seen, dd = set(), []
@@ -855,26 +855,26 @@ def extractor_to_js(ext, manual_tasks, req_name):
         for ref, expr, dflt in zip(ext['refs'], ext['exprs'], ext['defaults'] + [''] * len(ext['refs'])):
             access = _jsonpath_to_js(expr, manual_tasks, req_name, ref)
             if access is None:
-                lines.append(f'// [manual] JSONPath "{expr}" -> set "{ref}"; too complex for auto-conversion')
+                lines.append(f'// [manual] JSONPath "{expr}" -> set "{ref}"; too complex for auto-import')
             else:
                 lines.append(f'try {{ pm.collectionVariables.set("{_escape_js(ref)}", {access}); }} catch (e) {{ pm.collectionVariables.set("{_escape_js(ref)}", "{_escape_js(dflt)}"); }}')
     elif k == 'jsonpath_single':
         ref = ext['ref'] or 'extracted'
         access = _jsonpath_to_js(ext['expr'], manual_tasks, req_name, ref)
         if access is None:
-            lines.append(f'// [manual] JSONPath "{ext["expr"]}" -> set "{ref}"; too complex for auto-conversion')
+            lines.append(f'// [manual] JSONPath "{ext["expr"]}" -> set "{ref}"; too complex for auto-import')
         else:
             lines.append(f'try {{ pm.collectionVariables.set("{_escape_js(ref)}", {access}); }} catch (e) {{ pm.collectionVariables.set("{_escape_js(ref)}", "{_escape_js(ext.get("default",""))}"); }}')
     elif k in ('xpath', 'css'):
         ref = ext.get('ref') or 'extracted'
         manual_tasks.append({'request': req_name, 'kind': k,
-                             'detail': f'{k.upper()} extractor "{ref}" ({ext.get("query") or ext.get("expr")}) needs manual conversion; Postman sandbox has no built-in {k.upper()} support.'})
-        lines.append(f'// [manual] {k.upper()} extractor "{ref}" — see conversion report')
+                             'detail': f'{k.upper()} extractor "{ref}" ({ext.get("query") or ext.get("expr")}) needs manual import; Postman sandbox has no built-in {k.upper()} support.'})
+        lines.append(f'// [manual] {k.upper()} extractor "{ref}" — see import report')
     return lines
 
 
 def _jsonpath_to_js(expr, manual_tasks, req_name, ref):
-    """Convert simple JSONPath ($.a.b[0].c) into a JS accessor on the parsed body.
+    """Import simple JSONPath ($.a.b[0].c) into a JS accessor on the parsed body.
     Returns None for anything with filters/wildcards/recursion."""
     if not expr:
         return None
@@ -924,7 +924,7 @@ def assertion_to_js(asrt, idx, req_name):
                 return [f'pm.test("JSONPath {path} == {exp}", function () {{',
                         f'    pm.expect(String({access})).to.eql("{_escape_js(exp)}");', '});'], None
             return [f'pm.test("JSONPath {path} exists", function () {{', f'    pm.expect({access}).to.not.be.undefined;', '});'], None
-        return [f'// [manual] JSONPath assertion "{path}" needs manual conversion'], None
+        return [f'// [manual] JSONPath assertion "{path}" needs manual import'], None
     return [], None
 
 
@@ -974,10 +974,10 @@ def build_request_scripts(req, manual_tasks):
     # so a JMeter placeholder/expression never breaks the whole script.
     for cond in req.get('guards', []):
         if _safe_condition(cond):
-            pre_lines.append('// If Controller guard (converted from JMeter) — review condition')
+            pre_lines.append('// If Controller guard (imported from JMeter) — review condition')
             pre_lines.append(f'if (!({cond})) {{ pm.execution.skipRequest(); }}')
         else:
-            pre_lines.append(f'// [manual] If Controller condition could not be safely converted: {cond}')
+            pre_lines.append(f'// [manual] If Controller condition could not be safely imported: {cond}')
             pre_lines.append('// Guard this request with pm.execution.skipRequest() once the condition is rewritten.')
             manual_tasks.append({'request': req['name'], 'kind': 'if_condition',
                                  'detail': f'If Controller condition "{cond}" is not valid JS; add a pm.execution.skipRequest() guard manually.'})
@@ -989,7 +989,7 @@ def build_request_scripts(req, manual_tasks):
 
     for sc in req.get('pre_scripts', []):
         tr = groovy_translate(sc['script'], sc.get('lang', 'groovy'))
-        pre_lines.append(f'// --- converted from JMeter {sc.get("lang","")} pre-processor "{sc.get("name","")}" (REVIEW) ---')
+        pre_lines.append(f'// --- imported from JMeter {sc.get("lang","")} pre-processor "{sc.get("name","")}" (REVIEW) ---')
         pre_lines.extend(_wrap_iife(tr['js'].splitlines()))
         manual_tasks.append({'request': req['name'], 'kind': 'script',
                              'detail': f'Pre-processor script ({sc.get("lang")}) auto-translated; review: ' + '; '.join(tr['reasons']) if tr['reasons'] else f'Pre-processor script ({sc.get("lang")}) auto-translated; review for fidelity.'})
@@ -1016,7 +1016,7 @@ def build_request_scripts(req, manual_tasks):
 
     for sc in req.get('post_scripts', []):
         tr = groovy_translate(sc['script'], sc.get('lang', 'groovy'))
-        test_lines.append(f'// --- converted from JMeter {sc.get("lang","")} post-processor "{sc.get("name","")}" (REVIEW) ---')
+        test_lines.append(f'// --- imported from JMeter {sc.get("lang","")} post-processor "{sc.get("name","")}" (REVIEW) ---')
         test_lines.extend(_wrap_iife(tr['js'].splitlines()))
         manual_tasks.append({'request': req['name'], 'kind': 'script',
                              'detail': f'Post-processor script ({sc.get("lang")}) auto-translated; review for fidelity.'})
@@ -1309,11 +1309,11 @@ def render_report(plan, cfg, manual_tasks, collection_name):
         total_folders += f
         total_scripts += s
 
-    lines = [f'# Conversion Report — {plan["name"]}', '']
+    lines = [f'# Import Report — {plan["name"]}', '']
     lines.append('## Summary')
     lines.append('')
     lines.append(f'- Thread groups: {len(plan["thread_groups"])}')
-    lines.append(f'- HTTP requests converted: {total_reqs}')
+    lines.append(f'- HTTP requests imported: {total_reqs}')
     lines.append(f'- Folders: {total_folders}')
     lines.append(f'- Script-only samplers (stubs): {total_scripts}')
     lines.append(f'- Collection variables: {len(plan["variables"])}')
@@ -1321,7 +1321,7 @@ def render_report(plan, cfg, manual_tasks, collection_name):
     lines.append(f'- Items needing manual work: {len(manual_tasks)}')
     lines.append('')
 
-    lines.append('## Converted exactly')
+    lines.append('## Imported exactly')
     lines.append('')
     lines.append('- HTTP requests (method, URL, headers, query/body params)')
     lines.append('- Response assertions → `pm.test` (status / body contains / equals / matches)')
@@ -1363,7 +1363,7 @@ def render_report(plan, cfg, manual_tasks, collection_name):
 # ===========================================================================
 
 def main():
-    ap = argparse.ArgumentParser(description='Convert a JMeter .jmx file to a Postman collection + perf config.')
+    ap = argparse.ArgumentParser(description='Import a JMeter .jmx file to a Postman collection + perf config.')
     ap.add_argument('input', help='path to the .jmx file')
     ap.add_argument('-o', '--outdir', default='.', help='output directory')
     ap.add_argument('--name', help='override the collection/output base name')
@@ -1377,7 +1377,7 @@ def main():
         print(f'ERROR  {args.input}: malformed JMeter XML — {e}', file=sys.stderr)
         sys.exit(2)
     except (ValueError, KeyError) as e:
-        print(f'ERROR  {args.input}: could not convert — {e}', file=sys.stderr)
+        print(f'ERROR  {args.input}: could not import — {e}', file=sys.stderr)
         sys.exit(2)
     base = args.name or os.path.splitext(os.path.basename(args.input))[0]
     os.makedirs(args.outdir, exist_ok=True)
@@ -1387,7 +1387,7 @@ def main():
         collection, pass_if_hints, extras = build_collection(plan, manual_tasks)
         cfg = build_perf_config(plan, pass_if_hints, extras, base)
     except Exception as e:  # build-phase failure: fail cleanly, never a stack trace
-        print(f'ERROR  {args.input}: conversion failed in build phase — {type(e).__name__}: {e}', file=sys.stderr)
+        print(f'ERROR  {args.input}: import failed in build phase — {type(e).__name__}: {e}', file=sys.stderr)
         sys.exit(2)
 
     coll_path = os.path.join(args.outdir, f'{base}.postman_collection.json')

@@ -1,6 +1,6 @@
 # Translating JSR223 / BeanShell scripts to Postman JavaScript
 
-`scripts/groovy_to_js.py` does a best-effort mechanical pass and the converter wraps every result in an IIFE so it is always syntactically valid. It is **never trusted** — each converted script is flagged as a manual task. This file is how you (the model) finish the job.
+`scripts/groovy_to_js.py` does a best-effort mechanical pass and the importer wraps every result in an IIFE so it is always syntactically valid. It is **never trusted** — each imported script is flagged as a manual task. This file is how you (the model) finish the job.
 
 ## Execution-context map
 
@@ -33,7 +33,7 @@ JMeter runs these inside a sampler's processor. Postman runs them as a request's
 
 ## Procedure
 
-1. Read the `// --- converted ... (REVIEW) ---` block in the request's event script.
+1. Read the `// --- imported ... (REVIEW) ---` block in the request's event script.
 2. Compare against the original `<script>` text in the `.jmx` (the IR keeps the element's name).
 3. Rewrite line by line using the table. Preserve variable names so `{{var}}` references elsewhere still resolve.
 4. Remove the `// REVIEW` marker once correct.
@@ -59,7 +59,7 @@ console.log("got " + token);
 
 ## Canonical JS templates (match the script byte-for-byte in fallback mode)
 
-When converting by hand, emit exactly these so hand output equals the script's. `<default>` empty-string if JMeter has none. Source is `pm.response.text()` normally, or `pm.response.headers.toString()` when the extractor's `useHeaders` is true.
+When importing by hand, emit exactly these so hand output equals the script's. `<default>` empty-string if JMeter has none. Source is `pm.response.text()` normally, or `pm.response.headers.toString()` when the extractor's `useHeaders` is true.
 
 **Regex extractor** (`$n$` template → group `n`):
 ```javascript
@@ -71,11 +71,11 @@ try { var _m = String(pm.response.text()).match(new RegExp("<REGEX>")); pm.colle
 try { var _b = String(pm.response.text()).match(new RegExp("<lboundary>([\\s\\S]*?)<rboundary>")); pm.collectionVariables.set("<ref>", _b ? _b[1] : "<default>"); } catch (e) { pm.collectionVariables.set("<ref>", "<default>"); }
 ```
 
-**JSON extractor** (`JSONPostProcessor` / plugin). Only **simple** paths (`$.a.b`, `$.a[0].c`) convert; `$`/`$.` → `pm.response.json()`:
+**JSON extractor** (`JSONPostProcessor` / plugin). Only **simple** paths (`$.a.b`, `$.a[0].c`) import; `$`/`$.` → `pm.response.json()`:
 ```javascript
 try { pm.collectionVariables.set("<ref>", pm.response.json().a.b[0]); } catch (e) { pm.collectionVariables.set("<ref>", "<default>"); }
 ```
-Wildcards / filters / recursive descent (`*`, `..`, `?`, `@`) → do NOT convert; emit `// [manual] JSONPath "<expr>" too complex` and add a manual task.
+Wildcards / filters / recursive descent (`*`, `..`, `?`, `@`) → do NOT import; emit `// [manual] JSONPath "<expr>" too complex` and add a manual task.
 
 **Implicit HTTP success** (first test on every request unless a `response_code`/`response_message` assertion or `assume_success` exists):
 ```javascript

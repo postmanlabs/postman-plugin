@@ -1,8 +1,8 @@
-# What Postman performance testing supports (the conversion target)
+# What Postman performance testing supports (the import target)
 
-Grounded in the `postman-cli`, `performance-test-api`, and `postman-performance-test` source — not the marketing docs. This is the ceiling the converter maps onto. When JMeter asks for something not here, it is reported, never faked.
+Grounded in the `postman-cli`, `performance-test-api`, and `postman-performance-test` source — not the marketing docs. This is the ceiling the importer maps onto. When JMeter asks for something not here, it is reported, never faked.
 
-## `postman performance run` CLI flags that matter for conversion
+## `postman performance run` CLI flags that matter for import
 
 | Concern | Flag | Notes |
 |---------|------|-------|
@@ -26,7 +26,7 @@ Four named shapes only, each derived from `(vu-count, duration)`:
 - `spike` — low baseline, one spike to full mid-run, back down.
 - `peak` — baseline, ramp up, hold, ramp down.
 
-JMeter custom ramp curves, stepping schedules, and arrival-rate shapes **cannot be reproduced**. Pick the closest of the four and report the approximation. Rule used by the converter: any ramp/stepping/concurrency/ultimate/arrivals group → `ramp-up`; a flat group with zero ramp → `fixed`.
+JMeter custom ramp curves, stepping schedules, and arrival-rate shapes **cannot be reproduced**. Pick the closest of the four and report the approximation. Rule used by the importer: any ramp/stepping/concurrency/ultimate/arrivals group → `ramp-up`; a flat group with zero ramp → `fixed`.
 
 ## `--pass-if` metrics and operators
 
@@ -40,14 +40,14 @@ JMeter custom ramp curves, stepping schedules, and arrival-rate shapes **cannot 
 - Pre-request / test scripts run per VU per iteration via `postman-runtime`.
 - `postman.setNextRequest(...)` **is supported** — flow control within one VU's iteration works.
 - Vault access **in scripts** is disabled; per-request timeouts are forced to infinite; each VU gets its own cookie jar.
-- Known engine caveat: mutating `pm.request` inside a script can bleed across VUs. `pm.iterationData` / `pm.variables` are correctly isolated. Avoid converting JMeter logic into `pm.request` mutation.
+- Known engine caveat: mutating `pm.request` inside a script can bleed across VUs. `pm.iterationData` / `pm.variables` are correctly isolated. Avoid importing JMeter logic into `pm.request` mutation.
 
 ## Data
 
 - One `--data-file` (JSON array of objects, or CSV) per run. Multiple JMeter CSV Data Sets must be merged or a primary chosen.
 - Rows map to VUs/iterations; rows < VUs repeat. The CLI CSV parser is a naive comma split — **no quoted-field/escape support**, so JMeter CSVs with embedded commas/quotes need cleaning.
 
-## Hard limits to encode in every conversion
+## Hard limits to encode in every import
 
 1. One collection, repeated across VUs. **No concurrent thread groups.**
 2. Time-based, not iteration-based. **Loop counts → duration.**

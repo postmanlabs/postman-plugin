@@ -215,13 +215,19 @@
     {
       "name": "jmeter-to-postman",
       "plugin": "postman",
-      "description": "Convert a JMeter .jmx load test into a Postman collection (v2.1) plus a ready-to-run performance-test configuration and a conversion report. Use when a user wants to migrate a JMeter test plan to Postman performance testing, has a .jmx file to convert, or asks to turn JMeter requests/extractors/assertions/thread-groups into a Postman collection and `postman performance run` settings.",
+      "description": "Import a JMeter .jmx load test into a Postman collection (v2.1) plus a ready-to-run performance-test configuration and an import report. Use when a user wants to migrate a JMeter test plan to Postman performance testing, has a .jmx file to import, or asks to turn JMeter requests/extractors/assertions/thread-groups into a Postman collection and `postman performance run` settings.",
       "files": [
+        {
+          "target": "README.md",
+          "source": "skills/jmeter-to-postman/README.md",
+          "bytes": 5138,
+          "sha256": "110613dacee2f1ebdbb0c64741eb1fcce97077b1987c575da4b723d89fc1210c"
+        },
         {
           "target": "SKILL.md",
           "source": "skills/jmeter-to-postman/SKILL.md",
-          "bytes": 13788,
-          "sha256": "256a155cb8f09228573b154c6b4e83fe17ea81106a369f171e007cc37ee9a6cb"
+          "bytes": 10480,
+          "sha256": "6557fe107a7a9072b048b0383591db98f90c3e26b739bcb1691e320b58a3fd96"
         },
         {
           "target": "references/mapping-table.md",
@@ -232,14 +238,14 @@
         {
           "target": "references/postman-perf-capabilities.md",
           "source": "skills/jmeter-to-postman/references/postman-perf-capabilities.md",
-          "bytes": 3858,
-          "sha256": "20a18b40d8ec00dda6d62ce8584e9448d0ceb3f7e0424f4355f97ac23f30c4f3"
+          "bytes": 3843,
+          "sha256": "6ae82d2dbc215d362dc76df11018230f23e47c490b582ee8955690d62930b3bb"
         },
         {
           "target": "references/script-translation.md",
           "source": "skills/jmeter-to-postman/references/script-translation.md",
-          "bytes": 5905,
-          "sha256": "8275b098725a89818a4554af7402e8a748570ae4540a7875d4fa8539b4602835"
+          "bytes": 5899,
+          "sha256": "83396eaf60d9018bd333f9f314486cd68d95509b3e812966f92b35d059879fee"
         },
         {
           "target": "scripts/groovy_to_js.py",
@@ -250,14 +256,14 @@
         {
           "target": "scripts/jmx_to_postman.py",
           "source": "skills/jmeter-to-postman/scripts/jmx_to_postman.py",
-          "bytes": 65016,
-          "sha256": "6b8c94b4c33ff2023415d7a3c4166e540e164214193e423758051660698f63cb"
+          "bytes": 64962,
+          "sha256": "1ea3e6bbb3495f808c5a90477b3fb766b9f6051e8c6c5cfe4e33e8f2574f0f6b"
         },
         {
-          "target": "templates/conversion-report.md",
-          "source": "skills/jmeter-to-postman/templates/conversion-report.md",
-          "bytes": 1849,
-          "sha256": "8545399a0faad3a24475e7978f947516f89d1fc4ead258ea5d3fc437f83d85a7"
+          "target": "templates/import-report.md",
+          "source": "skills/jmeter-to-postman/templates/import-report.md",
+          "bytes": 1843,
+          "sha256": "966a939fd57de1c7eb4853d3ed634a25ba7bc7bbd50e30661afc9f377f9eb804"
         }
       ]
     },
