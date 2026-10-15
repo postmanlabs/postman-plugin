@@ -119,6 +119,20 @@
     ]
   },
   {
+    "id": "webhook-testing",
+    "prompt": "Build me a stripe webhook handler on my API running at localhost:3000. Get Stripe's test events to it, show me exactly what each delivery contained, and let me re-send the same event after I fix the bug.",
+    "expected": [
+      "webhook-testing"
+    ]
+  },
+  {
+    "id": "webhook-testing-outgoing",
+    "prompt": "Our orders API sends an order.shipped webhook to subscribers. Capture what it actually sends and check the signature header and payload shape on every delivery.",
+    "expected": [
+      "webhook-testing"
+    ]
+  },
+  {
     "id": "irrelevant-readme",
     "prompt": "Fix a spelling mistake in the project README.",
     "expected": []

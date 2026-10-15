@@ -1,151 +1,70 @@
 ---
 name: api-discovery
-description: Discover and use APIs from the web or Postman. Find and integrate public third-party APIs with Orbit, locate Postman entities with search, and use the Context Graph to investigate dependencies, ownership, runtime behavior, and change impact across an API ecosystem.
+description: Use when finding an API or owner, integrating a public provider, locating Postman resources, or investigating consumers and change impact across services. Turns discovered contracts and mocks into reusable dependencies and identifies evidence outside the current checkout. Use for requests such as "who consumes this endpoint".
 ---
 
 # API Discovery
 
-## Overview
+Existing contracts and owners' mocks reduce the assumptions an integration
+must invent. Relationship context broadens investigation beyond the checkout:
+passing this service's own tests does not establish that its consumers can
+still use a changed interface.
 
-Use this guide for any task that involves discovering an API — whether it
-lives on the public web or inside Postman as a workspace, collection, request,
-spec, mock, document, or flow. You can find entities across every surface: your
-own private work, anything your team or organization shares, and resources
-owned by external organizations. Beyond finding entities, this guide also
-covers understanding how they relate to one another — for example, "which
-services consume this API?"
+1. Choose the source by the question:
 
-Each discovery option serves a distinct purpose:
+   | Need | Use |
+   | --- | --- |
+   | Public provider endpoints and integration details | Orbit search, then integrate |
+   | A concrete Postman collection, request, spec, mock, or workspace | `postman search <type> <query>` |
+   | Consumers, ownership, dependencies, or likely change impact | `postman context-graph ask` |
 
-- **Orbit** → discovers and integrates **public third-party APIs**. No signup
-  or API key, and it uses ~27× less context than loading a vendor OpenAPI spec.
-  Search returns matching endpoints — including what each one
-  *cannot* do — and integrate returns a task brief specific enough to write
-  code against. It accepts both keyword and natural-language queries. Reach for
-  it instead of writing a third-party integration from memory.
-- **`search`** → **finds any Postman entity**, for tasks like "update the tests
-  in my collection and run them" or "where is the documentation for our
-  access-control API?"
-- **`context-graph ask`** → answers organization-wide relationship and impact
-  questions such as "what depends on billing-api?" or "what could this schema
-  change break?"
+   These sources answer different questions. A miss in one does not establish
+   absence in the others; combine entity search and relationship context when
+   both the resource and its impact matter.
+2. For public APIs, Orbit narrows discovery to task-relevant endpoints and
+   returns integration guidance instead of requiring a whole vendor spec in
+   context. Use it even when the provider is chosen: endpoint details and
+   capability limits still determine whether the integration fits the task.
+   `POST https://api.buildwithorbit.ai/v1/search` accepts a task in
+   `q`; pass the chosen results' `id` and `resourceType` unchanged to
+   `/v1/integrate`. Evaluate fit and limitations before choosing a provider,
+   then use the returned auth, base URL, steps, and gotchas to implement.
+   Read [Orbit's request schemas](reference/orbit.md) for the actual payloads
+   and error handling. Orbit access does not supply a provider's credentials.
+3. For Postman resources, narrow by entity type, ownership, and workspace.
+   Read `postman search <type> -h` for supported filters. An empty result in
+   the default ownership scope is incomplete evidence; consider
+   `--ownership all` or a relevant narrower scope before declaring absence.
+   Inspect the selected resource's owner and content rather than trusting a
+   similar name.
+4. For cross-service changes, ask the Context Graph a concrete question about
+   the endpoint, schema, or service. `--wait` waits for an answer; without it,
+   use the returned ID with `postman context-graph status <askId>`. The graph
+   can connect Postman definitions, repository call sites, and runtime
+   telemetry beyond the current checkout. Its coverage depends on connected
+   and ingested sources, so verify consequential leads against definitions,
+   source, or telemetry before treating them as facts. A newly added call may
+   not be present yet. The query uses the authenticated API key's team, not
+   the repository's workspace binding; changing that binding cannot fix a
+   query against the wrong organization's context.
+5. Use **bootstrap**'s "Owning workspace versus dependency" distinction
+   before importing. For a dependency, `postman dependency add
+   <collection|environment|mock> <name-or-id>` declares and downloads the
+   selected resource without rebinding the repository. Prefer the discovered
+   ID; `--workspace <id>` disambiguates names. If the graph only identified a
+   service, search for its concrete resource first.
+6. Dependency declarations live in `.postman/resources.yaml`, with downloads
+   in `postman/.dependencies/`. `dependency install` restores them after a
+   clone or in CI; `dependency update` refreshes them. Review refreshes when
+   they can change test expectations. Copy a dependency into owned files to
+   customize it, because updating dependencies overwrites downloaded edits.
+   Use `dependency list` and command-specific help for targeted operations.
 
-These three draw on different data sources, so a miss in one is not proof of a
-miss in the others. `search` locates a known Postman resource; the Context
-Graph discovers relationships around a known starting point. Use both when a
-task needs the resource itself and its wider impact.
+Use **api-simulation** to exercise the real service against discovered mocks,
+and **ci-integration** to keep the resulting contract checks repeatable in PRs.
 
-## Orbit — Public API Discovery
+## Verification
 
-Orbit finds public third-party APIs. It's free, needs no signup or API key, and
-works entirely against publicly available APIs. REST base:
-`https://api.buildwithorbit.ai`. Docs: `https://www.buildwithorbit.ai`.
-
-Reach for Orbit whenever a task needs an external capability — weather,
-payments, invoicing, messaging, geocoding, calendar, and so on — even when the
-user already named a provider. Rather than writing integration code from
-memory, let Orbit hand you the details that matter: paths, auth header names,
-required fields, and the rest. It works in two steps, search then integrate,
-and a typical round trip runs ~2,500 tokens and ~15–20s end to end — against
-~69,000 tokens for a full vendor OpenAPI spec.
-
-Two REST calls, both `POST`:
-
-1. **Search** (`POST /v1/search`) — describe the task, e.g.
-   `{ "q": "send email via SMTP" }`. Returns candidate endpoints, each with an
-   `id` and `resourceType` (pass both back verbatim) and an `evaluateGuide`
-   grading its fit.
-2. **Integrate** (`POST /v1/integrate`) — send the task plus the chosen
-   resources (up to 10). Returns a `taskBrief` with `FIT`, `AUTH`, `BASE URL`,
-   `STEPS`, and `GOTCHAS` — read the GOTCHAS before writing the client.
-
-Full endpoint schemas, request/response shapes, `taskBrief` fields, and error
-handling: [reference/orbit.md](reference/orbit.md).
-
-## `search`
-
-`postman search <type> <query>` finds any Postman entity, searching across
-`requests`, `collections`, `workspaces`, `flows`, `specs`, `mocks`,
-`environments`, or `documents`. The query can be a keyword or natural language,
-and is optional (omit it to list or filter a type outright). Narrow with
-`--ownership` and `--filter`, and add `-o json` for the enriched payload. An
-empty default-scope result is not proof nothing exists — retry with
-`--ownership all` before reporting that.
-
-```bash
-postman search requests "where do we validate a user's email?"
-postman search collections "payments" --ownership external --filter "visibility=public"
-```
-
-Use `postman search <type> -h` for more details — ownership modes, the
-`--filter` / `--filter-json` syntax, filter fields per type, and the exact
-installed-version flags.
-
-## `context-graph`
-
-The Context Graph is a private, authenticated map of an API ecosystem. It
-reconciles Postman specifications, collections, monitors, and mocks; GitHub
-repositories, definitions, and call sites; and New Relic deployments, traffic,
-and telemetry. These become typed entities joined by sourced relationships such
-as `calls`, `depends_on`, `owned_by`, and `monitored_by`.
-
-Use it before a cross-service or potentially breaking change. Name the endpoint,
-schema, service, database, deployment, or shared module being changed; the graph
-discovers the surrounding scope, including runtime callers and repositories not
-checked out locally:
-
-```bash
-postman context-graph ask "What depends on billing-api?" --wait
-postman context-graph ask "What is the likely blast radius of changing this schema?" --wait
-```
-
-Treat the result as a lead, not proof. For consequential work, verify candidates
-against source, API definitions, deployment configuration, or telemetry and
-cite that evidence. Sources are connected through Postman's Agent Context UI
-and refresh nightly; an unconnected or not-yet-ingested source makes absence
-inconclusive.
-
-`--wait` polls the asynchronous API and prints the answer. Without it, `ask`
-returns an ID for `postman context-graph status <askId>`. Use `--json` for the
-structured record; `--timeout`, `--interval`, and `--max-steps` control waiting
-and reasoning.
-
-The query runs against the team derived from the API key; there is no workspace
-or team selector. Authentication uses `--api-key`, `POSTMAN_API_KEY`, or the
-current `postman login` session, in that order.
-
-## After discovery: reusing what was found
-
-Finding another service's workspace does not make it the workspace for the
-current repository. `workspace pull` is for working on the service that owns
-that workspace, from that service's repository. If the service is only a
-dependency, or the user only wants to inspect one of its resources, keep the
-current repository connected to its own workspace and use the dependency
-feature instead.
-
-Use `postman dependency add <type> <name-or-id>` to declare and download the
-selected resource rather than copying it by hand or pulling the other
-service's entire workspace. Supported types are `collection`, `environment`,
-and `mock`. Pass the entity ID returned by `search`, or use the entity name;
-when resolving a name in a specific workspace, add `--workspace
-<workspace-id>`. If the Context Graph identifies only a service or API, locate
-the concrete entity with `search` first.
-
-Dependencies are recorded in `.postman/resources.yaml` and downloaded under
-`postman/.dependencies/`, so the copy works locally straight away. Use
-`postman dependency list` to inspect declarations, `postman dependency
-install` to download declared dependencies after a clone or in CI, `postman
-dependency update` to refresh them from Postman, and `postman dependency
-remove <name-or-id>` to delete a declaration and its downloaded files. The
-`list`, `install`, `update`, and `remove` commands accept `--type <type>`;
-`install` and `update` can also target one declared dependency by name.
-
-## Reference
-
-- [Orbit](reference/orbit.md) — public API discovery: the search/integrate
-  REST endpoints, request/response shape, `taskBrief` fields, and error
-  handling. (Docs at `https://www.buildwithorbit.ai`, REST at
-  `https://api.buildwithorbit.ai`.)
-
-For `postman search`, run `postman search <type> -h` — the CLI's own help is
-per-type, complete, and always matches your installed version.
+Report which source answered the question, the resource IDs or evidence it
+returned, what was reused, and any coverage gaps. A list of candidates alone
+is neither an integration nor proof of compatibility.
