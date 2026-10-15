@@ -15,6 +15,7 @@ plugin route below — each route's manifest or package points back at the same
 | Cursor plugin | `.cursor-plugin/plugin.json` points at this repo's `skills/` dir | `mcp.cursor.json` | `postman-cursor-plugin` |
 | GitHub Copilot CLI plugin | `.github/plugin/plugin.json` points at the same `skills/` dir and `hooks/hooks.json` | `mcp.copilot.json` | `postman-copilot-plugin` |
 | Kimi Code plugin | `.kimi-plugin/plugin.json` points at the same `skills/` dir | `mcpServers` in `.kimi-plugin/plugin.json` | `postman-kimi-plugin` |
+| Antigravity plugin | `agy plugin install https://github.com/postmanlabs/postman-plugin` clones this repo; `.antigravity-plugin/plugin.json` points at the same `skills/` dir | `mcp_config.json` | `postman-antigravity-plugin` |
 | Codex plugin | `.codex-plugin/plugin.json` points at the same `skills/` dir | `mcp.codex.json` | `postman-codex-plugin` |
 | Factory Droid plugin | `.factory-plugin/marketplace.json` installs this repo root as the plugin, so Droid reads the same root `skills/` dir | `mcp.json` | `postman-factory-plugin` |
 | OpenCode plugin | `opencode plugin add github:postmanlabs/postman-plugin` installs this repo's `main`, whose root `package.json` names `opencode/src/index.ts`; or a clone of this repo, loaded by a one-line local plugin | `mcp.opencode.json` | `postman-opencode-plugin` |
@@ -91,6 +92,8 @@ it lands.
 .cursor-plugin/plugin.json        the Cursor plugin manifest
 .github/plugin/plugin.json        the GitHub Copilot CLI plugin manifest — never a root `plugin.json`, which would send Codex down its Agent Plugins loader
 .kimi-plugin/plugin.json          the Kimi Code plugin manifest — carries its MCP block inline, and names Kimi's generated copy of the mandate
+.antigravity-plugin/plugin.json   the Antigravity plugin manifest
+rules/GEMINI.md                   Antigravity's generated copy of the mandate, loaded as an always-on rule
 .codex-plugin/plugin.json         the Codex plugin manifest
 .factory-plugin/marketplace.json  the Factory Droid marketplace
 .factory-plugin/plugin.json       the Factory Droid plugin metadata
@@ -106,9 +109,10 @@ mcp.codex.json                    Codex's MCP config — spells its headers `htt
 mcp.json                          Factory Droid's MCP config — must keep this exact root filename
 mcp.opencode.json                 OpenCode's MCP config, read by the plugin at runtime
 mcp.pi.json                       Pi's MCP config, registered by the Pi extension at runtime
+mcp_config.json                   Antigravity's MCP config — must keep this exact root filename
 skills/<name>/SKILL.md            one skill per directory — see skills/ for the current list
 manifest.json                     generated index of the skill files
-scripts/build-manifest.js         regenerates it, and Kimi's copy of the mandate
+scripts/build-manifest.js         regenerates it, and Kimi's and Antigravity's copies of the mandate
 scripts/routes.js                 every route, read by the pre-commit guard and the installer's tests
 ```
 
@@ -123,6 +127,7 @@ mcp.cursor.json             <- .cursor-plugin/plugin.json  "mcpServers": "./mcp.
 mcp.copilot.json            <- .github/plugin/plugin.json  "mcpServers": "./mcp.copilot.json"
 mcp.codex.json              <- .codex-plugin/plugin.json   "mcpServers": "./mcp.codex.json"
 .kimi-plugin/plugin.json       inline — Kimi documents no path form
+mcp_config.json             <- Antigravity reads this root filename from the installed plugin
 mcp.json                    <- Factory Droid reads this root filename from the installed plugin
 mcp.opencode.json           <- opencode/src/index.ts       read at runtime; opencode/package.json holds the version
 mcp.pi.json                 <- installer/src/pi-extension.ts   read at runtime; installer/package.json holds the version
@@ -145,7 +150,8 @@ all:
   surface. Unifying it changes which tools the `/minimal` routes (Kimi Code,
   opencode) get — a product decision, not a tidy-up.
 - **The header key is `headers` everywhere except Codex**, which spells it
-  `http_headers`. Codex deserializes a plugin's MCP config into its own
+  `http_headers`, and the URL key is `url` everywhere except Antigravity,
+  which reads `serverUrl`. Codex deserializes a plugin's MCP config into its own
   `RawMcpServerConfig`, which has only `http_headers` and carries
   `#[schemars(deny_unknown_fields)]` — schemars, for schema generation, not
   serde. So serde ignores unknown keys: a `headers` block in `mcp.codex.json`
@@ -158,7 +164,7 @@ There is no generator, deliberately: a tool whose job is to keep these
 identical is wrong once versions are per-route.
 
 Every route names its endpoint outright — `/mcp` for Claude Code, Cursor,
-Codex, Factory Droid and Pi, `/minimal` for Kimi Code and OpenCode. Don't reintroduce a `${POSTMAN_MCP_MODE:-...}`
+Codex, Copilot CLI, Factory Droid, Antigravity and Pi, `/minimal` for Kimi Code and OpenCode. Don't reintroduce a `${POSTMAN_MCP_MODE:-...}`
 placeholder to express the default: no route expands `${...}` inside an MCP URL,
 so the whole segment ships literally and the request never reaches the intended
 mode. `claude plugin list --json` reports the registered URL with the
@@ -193,7 +199,7 @@ npm run eval:skills            # live routing eval against a configured model
 `npm run eval:skills -- --case <id>` runs one case, and `--model provider/model`
 picks the model. The cases live in `opencode/evals/cases.json`. A routing fix
 belongs in the shared skill description or `hooks/session-start-context.md`, and
-both reach every route — Kimi's copy of the mandate once
+both reach every route — Kimi's and Antigravity's copies of the mandate once
 `node scripts/build-manifest.js` regenerates it — so rerun the full set after
 changing either and don't tune wording for OpenCode alone.
 
@@ -269,6 +275,24 @@ file it names, `.kimi-plugin/session-start-context.md`, is
 `node scripts/build-manifest.js` writes it, so don't edit it by hand: `--check`
 fails CI and the pre-commit guard when it is stale.
 
+## The Antigravity plugin
+
+`agy plugin install <git URL>` clones this repo into
+`~/.gemini/config/plugins/postman` and reads `.antigravity-plugin/plugin.json`.
+Installing again replaces that copy, which is how it updates; agy has no update
+command. Antigravity has no session-start hook (it never runs `hooks/`), so the
+mandate reaches it as an always-on rule: agy loads `rules/GEMINI.md` from the
+plugin root with no frontmatter. That file is `hooks/session-start-context.md`
+with `` `postman:<skill>` `` rewritten to `` `<skill>` ``, the same copy Kimi
+gets; `node scripts/build-manifest.js` writes it, so don't edit it by hand.
+
+agy 1.3.5 ignores the manifest's `mcpServers` path, though Antigravity's docs
+describe it, and loads only its default, `mcp_config.json` at the plugin root.
+The manifest names that same file, so the route keeps working if agy starts
+honouring the key. The server's URL key is `serverUrl`; `url` is dropped with no
+error. `scripts/routes.js` registers the route with `mcpConfig: 'mcp_config.json'`
+so the pre-commit guard checks that file's headers.
+
 ## The Factory Droid plugin
 
 Droid reads `.factory-plugin/marketplace.json` first and falls back to
@@ -317,6 +341,7 @@ against the latest one nightly.
 CLAUDE_BIN=<path to claude> node scripts/claude-code-harness.js
 CODEX_BIN=<path to codex> node scripts/codex-harness.js
 KIMI_BIN=<path to kimi> node scripts/kimi-harness.js
+AGY_BIN=<path to agy> node scripts/antigravity-harness.js
 CURSOR_API_KEY=<key> CURSOR_BIN=<path to cursor-agent> node scripts/cursor-harness.js
 DROID_BIN=<path to droid> node scripts/factory-harness.js
 (cd opencode && npm run test:harness)
@@ -337,6 +362,14 @@ the plugin, not the installer's Cursor install. It runs on Linux only: the
 Cursor CLI on Windows runs no `sessionStart` hook headless
 ([#83](https://github.com/postmanlabs/postman-plugin/issues/83)).
 
+Antigravity's harness checks less than the others: what `agy plugin list --json`
+registers from this checkout (every skill, `rules/GEMINI.md`, the `postman` MCP
+server) and the installed copies of the rule and MCP config. agy reaches a
+stand-in model through `AGY_LLM_GATEWAY_URL` with any `GEMINI_API_KEY`, but
+signed out it sends that model no skills and no rules, not even project ones, so
+checking what reaches the model needs a signed-in account. CI runs it on Linux,
+against the latest agy, since its installer takes no version.
+
 ## The installer
 
 `installer/` is `npx @postman/postman-plugin`. It detects each supported agent
@@ -350,6 +383,7 @@ wherever one exists:
 | GitHub Copilot CLI | `copilot plugin` against this repo as the `postman` marketplace (Copilot reads `.claude-plugin/marketplace.json`), replacing a direct install, which Copilot is deprecating |
 | Cursor | a clone at `~/.cursor/plugins/local/postman`. A fresh install is skipped when the Cursor Marketplace copy is present, but an existing clone is kept and updated: Cursor keeps a disabled Marketplace copy on disk too, so the installer can't tell whether that copy is enabled |
 | Factory Droid | `droid plugin` against this repo as the `postman-plugin` marketplace |
+| Antigravity | `agy plugin install https://github.com/postmanlabs/postman-plugin`, again on a re-run, which replaces the installed copy; `agy plugin uninstall postman` removes it |
 | Kimi Code | `npx --package=plugins@1.3.4 plugins add postmanlabs/postman-plugin --target kimi`, because Kimi installs plugins only from its TUI |
 | OpenCode | `opencode plugin add github:postmanlabs/postman-plugin` on OpenCode 2.0.4 or later, `opencode plugin --global …` on OpenCode 1.14.33 or later. A re-run refetches that spec in place, so it moves to the newest commit on `main`, and replaces an entry for any other spec of the repository (a branch, a tag or a git URL) by adding the bare spec and then removing the old one; on OpenCode 1 the add is forced, which replaces the same package in place. It reads the global config (`plugins`, or `plugin` on OpenCode 1, in `opencode.json` or `opencode.jsonc`) to see what is installed, removes with `opencode plugin remove` on OpenCode 2 and otherwise by editing the config entry — on OpenCode 1, and on 2 when the entry is in `opencode.jsonc` beside an `opencode.json`, the only file `plugin remove` edits — and then deletes an older clone-and-loader install so no skill loads twice. It refetches by re-running with `--force` on OpenCode 1 and, on OpenCode 2, by deleting the cached copy under `<cache>/opencode/npm/git-postman-plugin-*` and adding again: `plugin add` reuses that cache, and `plugin update`, `list` and `check` need OpenCode's background service, which a second instance on the same port or a cold start answers wrongly. It refuses to refresh an entry that the refresh would not write back to, where it would register a second copy instead: on OpenCode 2 one outside the first of `opencode.json`, `opencode.jsonc` and their `.opencode/` copies that exists, which is the file `plugin add` edits; on OpenCode 1 one in `OPENCODE_CONFIG_DIR`, which `plugin --global` ignores. `POSTMAN_PLUGIN_OPENCODE_SPEC` installs another spec instead, which installer smoke sets to a one-commit copy of its checkout on every run but the nightly one |
 | Pi | `pi install npm:@postman/postman-plugin`, or `pi update` when it's installed, then `pi remove` for any git install of this repo, which would load the same skills twice |

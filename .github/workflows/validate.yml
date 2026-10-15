@@ -6,8 +6,9 @@
 # vendor plugin manifest against that vendor's own published schema. One job per
 # route installs this checkout into a pinned agent (Cursor: the latest) and checks what it sends
 # its model and the MCP server: `claude-code`, `codex`, `cursor`, `factory`, `kimi`,
-# `opencode` and `pi`. Every job but `skills`, `manifest`, `schema` and `cursor` runs on Linux,
-# and on Windows too unless a pull request changes only skills or docs (see `os`).
+# `opencode` and `pi`; `antigravity` checks only what agy registers (see that job). Every job but
+# `skills`, `manifest`, `schema`, `cursor` and `antigravity` runs on Linux, and on Windows too
+# unless a pull request changes only skills or docs (see `os`).
 name: Validate
 
 on:
@@ -378,6 +379,29 @@ jobs:
       - name: Kimi Code loads the skills, the mandate and the MCP server from the plugin
         run: node scripts/kimi-harness.js
 
+  # Antigravity's installer takes no version and agy updates itself, so this runs the latest. The
+  # harness checks what agy registers from this checkout, not what reaches its model: signed out,
+  # agy sends a stand-in model no skills or rules at all. Linux only until it's measured on Windows.
+  antigravity:
+    name: Antigravity plugin
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+
+      - name: Install Antigravity CLI
+        run: |
+          curl -fsSL --retry 3 https://antigravity.google/cli/install.sh | bash -s -- --dir "$HOME/.local/bin"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Antigravity registers the skills, the mandate rule and the MCP server from the plugin
+        run: node scripts/antigravity-harness.js
+
   # The Cursor CLI talks only to Cursor's backend, so this harness runs on Cursor's model with a
   # Cursor API key, which a fork's pull request doesn't get. Cursor's installer takes no version.
   # Linux only: the Cursor CLI on Windows runs no sessionStart hook headless, so the mandate can't
@@ -426,8 +450,9 @@ jobs:
   # One check per official schema. Schemas are fetched from the vendor's source
   # on every run, so a vendor tightening its schema fails CI here rather than
   # at marketplace review. Files with no published schema (.kimi-plugin/plugin.json,
-  # .codex-plugin/plugin.json, .factory-plugin/*.json, the other mcp.*.json,
-  # mcp.json, manifest.json) are covered by the `manifest` job above. Codex
+  # .codex-plugin/plugin.json, .factory-plugin/*.json, .antigravity-plugin/plugin.json,
+  # the other mcp.*.json, mcp.json, mcp_config.json, manifest.json) are covered by the
+  # `manifest` job above, and Antigravity's by `agy plugin validate` in `antigravity`. Codex
   # documents its manifest in prose only and publishes no schema for it; the
   # agent-plugins.org schema is not a substitute, since it describes the
   # root-level `plugin.json` Agent Plugins format, which Codex selects by path

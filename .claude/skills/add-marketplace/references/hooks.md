@@ -25,6 +25,7 @@ install path. Every vendor names that differently, and only some substitute
 | Agent Plugins 1.0 (root `plugin.json`) | `PLUGIN_ROOT`, `PLUGIN_DATA` | **no** — the spec restricts expansion to `args`, `env` values and `cwd`, and defines no hooks component at all |
 | OpenCode | **none, and none should be added** — the plugin locates the repo's files from `import.meta.url`, in an installed copy or a clone | n/a — it never reads `hooks/hooks.json` |
 | Pi | **none** — the extension locates the tarball's files from `import.meta.url` | n/a — it never reads `hooks/hooks.json` |
+| Antigravity | `${PLUGIN_ROOT}`, also exported to hooks; cwd is the plugin root | yes, per its docs. Unused here: it has no session-start event and never reads `hooks/hooks.json` |
 
 So a single vendor token is wrong on every other route, and forking the file per
 route re-creates the problem the shared `skills/` directory exists to avoid.
@@ -59,11 +60,11 @@ route re-creates the problem the shared `skills/` directory exists to avoid.
 `hooks/session-start-context.md` is one file read by every route that has a
 context mechanism — Claude Code, Cursor and Factory Droid through
 `hooks/hooks.json`, Codex through its fallback to that same file, OpenCode and
-Pi through their own code, and Kimi through a copy `scripts/build-manifest.js`
-generates. Cursor, Droid, OpenCode, Pi and Kimi name skills without the
+Pi through their own code, and Kimi and Antigravity through copies `scripts/build-manifest.js`
+generate. Cursor, Droid, OpenCode, Pi, Kimi and Antigravity name skills without the
 `postman:` prefix, so each gets `` `postman:<skill>` `` rewritten to the bare
 name: the two plugins in code, the hook scripts for Droid and Cursor, and the
-build script for Kimi's copy. Droid's Skill tool answers
+build script for the Kimi and Antigravity copies. Droid's Skill tool answers
 `Skill "postman:api-engineer" not found` otherwise; Cursor sends a plugin skill
 to its backend by path, and invokes it as `/<skill>`. So the file must not name
 one vendor's machinery: "invoke it with the Skill tool" is an
@@ -124,6 +125,7 @@ Discovery is the other half, and it is not uniform either:
 | Kimi Code | **nowhere.** Hooks are an inline `hooks` array in the manifest, entries shaped `event` / `matcher` / `command` / `timeout`, and Kimi documents no default file to discover. It also discards a SessionStart hook's output, so the mandate goes through the manifest's `systemPromptPath` instead |
 | OpenCode | **no `hooks.json`.** Nothing session-shaped in its config schema; the plugin pushes the mandate into the system prompt from its own hooks — see item 1 below |
 | Pi | **no `hooks.json`.** Its extensions subscribe to events instead; the package's extension sets the mandate as a system-prompt section on `before_agent_start` |
+| Antigravity | `hooks.json` at the plugin root only, and with no session-start event. The mandate goes through `rules/GEMINI.md`, an always-on rule `scripts/build-manifest.js` generates |
 
 The Kimi Code row is what a new route inherits if Step 3 is skipped: nothing
 points the vendor at `hooks/hooks.json`, so the route ships without the

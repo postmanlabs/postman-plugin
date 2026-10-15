@@ -78,7 +78,7 @@ function generatedFilesAreInSync () {
         });
     }
     catch (e) {
-        errors.push('manifest.json or .kimi-plugin/session-start-context.md is stale. Run `node scripts/build-manifest.js` and stage the result.');
+        errors.push('manifest.json or a generated copy of the mandate (.kimi-plugin/session-start-context.md, rules/GEMINI.md) is stale. Run `node scripts/build-manifest.js` and stage the result.');
     }
 }
 

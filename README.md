@@ -24,11 +24,21 @@ Install Postman in every compatible coding agent detected on your machine:
 npx @postman/postman-plugin
 ```
 
-One command configures **Claude Code, Codex, GitHub Copilot CLI, Cursor, Factory Droid,
-Kimi Code, OpenCode and Pi**. Run it again to update, `status` to see what's installed,
+One command configures **Antigravity, Claude Code, Codex, GitHub Copilot CLI, Cursor,
+Factory Droid, Kimi Code, OpenCode and Pi**. Run it again to update, `status` to see what's installed,
 and `remove` to uninstall; `--agent <id>` limits any of them to one agent.
 
 You can also use the following commands to install individually:
+
+### Antigravity
+
+```bash
+agy plugin install https://github.com/postmanlabs/postman-plugin
+```
+
+Run the same command again to update; `agy plugin uninstall postman` removes it.
+In the Antigravity app, **Customizations → Plugins → + Install from URL** takes
+the same URL.
 
 ### Claude Code
 
