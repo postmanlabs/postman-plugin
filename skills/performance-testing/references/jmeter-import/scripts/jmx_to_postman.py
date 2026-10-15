@@ -1212,11 +1212,11 @@ def build_perf_config(plan, pass_if_hints, extras=None, base=None):
     rt_hints = [h for h in pass_if_hints if h['metric'] in ('p95', 'avg')]
     if rt_hints:
         tightest = min(rt_hints, key=lambda h: _to_int(h['value'], 1 << 30))
-        pass_if = f'{tightest["metric"]}({tightest["op"]}, {tightest["value"]})'
+        pass_if = f'{tightest["op"]}({tightest["metric"]}, {tightest["value"]})'
     cfg = {
         'runs': runs,
         'pass_if': pass_if,
-        'pass_if_suggested': pass_if or 'error_rate(less_than, 5)',
+        'pass_if_suggested': pass_if or 'less_than(error_rate, 5)',
         'data_files': [{'filename': ds['filename'], 'columns': ds['variableNames']} for ds in plan['data_sets']],
         'notes': [],
     }

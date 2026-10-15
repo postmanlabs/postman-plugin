@@ -95,4 +95,4 @@ Wrap each in `pm.test("<name>", function () { <expr>; });`.
 ```javascript
 pm.test("Response time < <ms>ms", function () { pm.expect(pm.response.responseTime).to.be.below(<ms>); });
 ```
-and set the run's `--pass-if "p95(less_than, <ms>)"`.
+and set the run's `--pass-if "less_than(p95, <ms>)"`.

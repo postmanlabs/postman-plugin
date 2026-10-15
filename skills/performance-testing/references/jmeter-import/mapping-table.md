@@ -56,7 +56,7 @@ Owner: **script** (deterministic Python) · **model** (judgment call).
 | — test_field response_code | | `pm.response.code` | exact | script |
 | — test_field response_data | | `pm.response.text()` | exact | script |
 | — test_field headers/message | | `pm.response.headers`/`.status` | exact | script |
-| Duration Assertion | `DurationAssertion` | `pm.test` responseTime + `--pass-if p95(less_than, ms)` hint | exact | script |
+| Duration Assertion | `DurationAssertion` | `pm.test` responseTime + `--pass-if less_than(p95, ms)` hint | exact | script |
 | Size Assertion | `SizeAssertion` | `pm.test` on `responseSize` | approx | script |
 | JSON Assertion | `JSONPathAssertion` | `pm.test` on simple path | approx | script→model |
 

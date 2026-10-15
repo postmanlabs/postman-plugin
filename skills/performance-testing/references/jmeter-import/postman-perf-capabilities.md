@@ -33,7 +33,7 @@ JMeter custom ramp curves, stepping schedules, and arrival-rate shapes **cannot 
 - Functions (operators): `less_than`, `greater_than`, `less_than_eq`, `greater_than_eq`.
 - Metrics (CLI): `avg`, `p90`, `p95`, `p99` (ms); `error_rate`, `failure_rate` (%); `rps`.
 - **Server-side (cloud) accepts a narrower set**: `responseTime.average/p90/p95/p99`, `throughput`, `errorRate`. `failure_rate` is local-only — if you emit it, note it won't gate a cloud run.
-- Only one condition per run. A JMeter Duration Assertion is the only clean source (→ `p95(less_than, <ms>)`); otherwise suggest `error_rate(less_than, 5)` and tell the user it's a default.
+- Only one condition per run. A JMeter Duration Assertion is the only clean source (→ `less_than(p95, <ms>)`); otherwise suggest `less_than(error_rate, 5)` and tell the user it's a default.
 
 ## Scripts under load
 
