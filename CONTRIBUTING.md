@@ -15,7 +15,7 @@ plugin route below — each route's manifest or package points back at the same
 | Cursor plugin | `.cursor-plugin/plugin.json` points at this repo's `skills/` dir | `mcp.cursor.json` | `postman-cursor-plugin` |
 | GitHub Copilot CLI plugin | `.github/plugin/plugin.json` points at the same `skills/` dir and `hooks/hooks.json` | `mcp.copilot.json` | `postman-copilot-plugin` |
 | Kimi Code plugin | `.kimi-plugin/plugin.json` points at the same `skills/` dir | `mcpServers` in `.kimi-plugin/plugin.json` | `postman-kimi-plugin` |
-| Antigravity plugin | `agy plugin install https://github.com/postmanlabs/postman-plugin` clones this repo; `.antigravity-plugin/plugin.json` points at the same `skills/` dir | none — it ships no MCP server | n/a |
+| Antigravity plugin | `agy plugin install https://github.com/postmanlabs/postman-plugin` clones this repo; `.antigravity-plugin/plugin.json` points at the same `skills/` dir | `mcp_config.json` | `postman-antigravity-plugin` |
 | Codex plugin | `.codex-plugin/plugin.json` points at the same `skills/` dir | `mcp.codex.json` | `postman-codex-plugin` |
 | Factory Droid plugin | `.factory-plugin/marketplace.json` installs this repo root as the plugin, so Droid reads the same root `skills/` dir | `mcp.json` | `postman-factory-plugin` |
 | OpenCode plugin | `opencode plugin add github:postmanlabs/postman-plugin` installs this repo's `main`, whose root `package.json` names `opencode/src/index.ts`; or a clone of this repo, loaded by a one-line local plugin | `mcp.opencode.json` | `postman-opencode-plugin` |
@@ -109,6 +109,7 @@ mcp.codex.json                    Codex's MCP config — spells its headers `htt
 mcp.json                          Factory Droid's MCP config — must keep this exact root filename
 mcp.opencode.json                 OpenCode's MCP config, read by the plugin at runtime
 mcp.pi.json                       Pi's MCP config, registered by the Pi extension at runtime
+mcp_config.json                   Antigravity's MCP config — must keep this exact root filename
 skills/<name>/SKILL.md            one skill per directory — see skills/ for the current list
 manifest.json                     generated index of the skill files
 scripts/build-manifest.js         regenerates it, and Kimi's and Antigravity's copies of the mandate
@@ -126,6 +127,7 @@ mcp.cursor.json             <- .cursor-plugin/plugin.json  "mcpServers": "./mcp.
 mcp.copilot.json            <- .github/plugin/plugin.json  "mcpServers": "./mcp.copilot.json"
 mcp.codex.json              <- .codex-plugin/plugin.json   "mcpServers": "./mcp.codex.json"
 .kimi-plugin/plugin.json       inline — Kimi documents no path form
+mcp_config.json             <- Antigravity reads this root filename from the installed plugin
 mcp.json                    <- Factory Droid reads this root filename from the installed plugin
 mcp.opencode.json           <- opencode/src/index.ts       read at runtime; opencode/package.json holds the version
 mcp.pi.json                 <- installer/src/pi-extension.ts   read at runtime; installer/package.json holds the version
@@ -148,7 +150,8 @@ all:
   surface. Unifying it changes which tools the `/minimal` routes (Kimi Code,
   opencode) get — a product decision, not a tidy-up.
 - **The header key is `headers` everywhere except Codex**, which spells it
-  `http_headers`. Codex deserializes a plugin's MCP config into its own
+  `http_headers`, and the URL key is `url` everywhere except Antigravity,
+  which reads `serverUrl`. Codex deserializes a plugin's MCP config into its own
   `RawMcpServerConfig`, which has only `http_headers` and carries
   `#[schemars(deny_unknown_fields)]` — schemars, for schema generation, not
   serde. So serde ignores unknown keys: a `headers` block in `mcp.codex.json`
@@ -161,7 +164,7 @@ There is no generator, deliberately: a tool whose job is to keep these
 identical is wrong once versions are per-route.
 
 Every route names its endpoint outright — `/mcp` for Claude Code, Cursor,
-Codex, Copilot CLI, Factory Droid and Pi, `/minimal` for Kimi Code and OpenCode. Don't reintroduce a `${POSTMAN_MCP_MODE:-...}`
+Codex, Copilot CLI, Factory Droid, Antigravity and Pi, `/minimal` for Kimi Code and OpenCode. Don't reintroduce a `${POSTMAN_MCP_MODE:-...}`
 placeholder to express the default: no route expands `${...}` inside an MCP URL,
 so the whole segment ships literally and the request never reaches the intended
 mode. `claude plugin list --json` reports the registered URL with the
@@ -283,12 +286,12 @@ plugin root with no frontmatter. That file is `hooks/session-start-context.md`
 with `` `postman:<skill>` `` rewritten to `` `<skill>` ``, the same copy Kimi
 gets; `node scripts/build-manifest.js` writes it, so don't edit it by hand.
 
-The route ships no MCP server; its skills use the Postman CLI. Don't add a
-root `mcp_config.json` without meaning to: agy loads that file from the plugin
-root whatever the manifest says (1.3.5 ignores the manifest's documented
-`mcpServers` path), and its server URL key is `serverUrl`, not `url`.
-`scripts/routes.js` names it as the route's `defaultMcpConfig`, so the
-pre-commit guard reports the file if it appears.
+agy 1.3.5 ignores the manifest's `mcpServers` path, though Antigravity's docs
+describe it, and loads only its default, `mcp_config.json` at the plugin root.
+The manifest names that same file, so the route keeps working if agy starts
+honouring the key. The server's URL key is `serverUrl`; `url` is dropped with no
+error. `scripts/routes.js` registers the route with `mcpConfig: 'mcp_config.json'`
+so the pre-commit guard checks that file's headers.
 
 ## The Factory Droid plugin
 
@@ -360,8 +363,8 @@ Cursor CLI on Windows runs no `sessionStart` hook headless
 ([#83](https://github.com/postmanlabs/postman-plugin/issues/83)).
 
 Antigravity's harness checks less than the others: what `agy plugin list --json`
-registers from this checkout (every skill, `rules/GEMINI.md`, and no MCP server)
-and the installed copy of the rule. agy reaches a
+registers from this checkout (every skill, `rules/GEMINI.md`, the `postman` MCP
+server) and the installed copies of the rule and MCP config. agy reaches a
 stand-in model through `AGY_LLM_GATEWAY_URL` with any `GEMINI_API_KEY`, but
 signed out it sends that model no skills and no rules, not even project ones, so
 checking what reaches the model needs a signed-in account. CI runs it on Linux,

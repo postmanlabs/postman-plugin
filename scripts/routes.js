@@ -15,9 +15,9 @@ const MANIFEST_ROUTES = {
         '.cursor-plugin': { defaultMcpConfig: 'mcp.json' },
         '.factory-plugin': { mcpConfig: 'mcp.json' },
         '.kimi-plugin': {},
-        // Ships no MCP server. agy loads mcp_config.json from the plugin root when
-        // one exists, whatever the manifest says, so the guard reports one appearing.
-        '.antigravity-plugin': { defaultMcpConfig: 'mcp_config.json' },
+        // agy 1.3.5 ignores the manifest's `mcpServers` path and reads only its
+        // default, mcp_config.json; the manifest names that file too.
+        '.antigravity-plugin': { mcpConfig: 'mcp_config.json' },
         // GitHub Copilot CLI's legacy manifest. It sits inside `.github/`, so
         // MANIFEST_DIR_PATTERN cannot find it; NESTED_MANIFEST_DIRS lists it instead.
         '.github/plugin': {}

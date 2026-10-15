@@ -30,5 +30,6 @@
   ],
   "skills": [
     "./skills"
-  ]
+  ],
+  "mcpServers": "./mcp_config.json"
 }

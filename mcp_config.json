@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "postman": {
+      "serverUrl": "https://mcp.postman.com/mcp",
+      "headers": {
+        "X-Source": "postman-antigravity-plugin",
+        "X-Plugin-Version": "0.1.0",
+        "User-Agent": "postman-antigravity-plugin/0.1.0"
+      }
+    }
+  }
+}
