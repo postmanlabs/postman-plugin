@@ -160,31 +160,32 @@ jobs:
       # Installed only now: before the installer ran, Cursor had to be found by its home directory alone.
       # Linux only: the Cursor CLI on Windows runs no sessionStart hook headless
       # (https://github.com/postmanlabs/postman-plugin/issues/83).
-      - name: Install the Cursor CLI
-        if: ${{ !cancelled() && runner.os != 'Windows' && github.event.pull_request.head.repo.fork != true }}
-        run: |
-          # The vendor's download host sometimes times out; a second try usually gets through.
-          for attempt in 1 2 3; do
-            curl -fsSL --retry 3 https://cursor.com/install | bash && break
-            [ "$attempt" -lt 3 ] || exit 1
-            sleep 15
-          done
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-
-      # Windows, once https://github.com/postmanlabs/postman-plugin/issues/83 is fixed:
+      # Disabled for now: the Cursor harness needs a CURSOR_API_KEY. Uncomment the two steps below to bring it back.
       # - name: Install the Cursor CLI
-      #   if: ${{ !cancelled() && runner.os == 'Windows' && github.event.pull_request.head.repo.fork != true }}
-      #   shell: pwsh
+      #   if: ${{ !cancelled() && runner.os != 'Windows' && github.event.pull_request.head.repo.fork != true }}
       #   run: |
-      #     irm 'https://cursor.com/install?win32=true' | iex
-      #     "$env:LOCALAPPDATA\cursor-agent" >> $env:GITHUB_PATH
+      #     # The vendor's download host sometimes times out; a second try usually gets through.
+      #     for attempt in 1 2 3; do
+      #       curl -fsSL --retry 3 https://cursor.com/install | bash && break
+      #       [ "$attempt" -lt 3 ] || exit 1
+      #       sleep 15
+      #     done
+      #     echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
-      # A fork's pull request gets no secrets, and the Cursor CLI runs only on Cursor's model.
-      - name: The latest Cursor CLI loads this checkout
-        if: ${{ !cancelled() && runner.os != 'Windows' && github.event.pull_request.head.repo.fork != true }}
-        run: node ../scripts/cursor-harness.js
-        env:
-          CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+      # # Windows, once https://github.com/postmanlabs/postman-plugin/issues/83 is fixed:
+      # # - name: Install the Cursor CLI
+      # #   if: ${{ !cancelled() && runner.os == 'Windows' && github.event.pull_request.head.repo.fork != true }}
+      # #   shell: pwsh
+      # #   run: |
+      # #     irm 'https://cursor.com/install?win32=true' | iex
+      # #     "$env:LOCALAPPDATA\cursor-agent" >> $env:GITHUB_PATH
+
+      # # A fork's pull request gets no secrets, and the Cursor CLI runs only on Cursor's model.
+      # - name: The latest Cursor CLI loads this checkout
+      #   if: ${{ !cancelled() && runner.os != 'Windows' && github.event.pull_request.head.repo.fork != true }}
+      #   run: node ../scripts/cursor-harness.js
+      #   env:
+      #     CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
 
       # Both OpenCode steps below run from here.
       - name: Install the OpenCode package's dependencies
