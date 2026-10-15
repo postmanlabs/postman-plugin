@@ -238,8 +238,8 @@
         {
           "target": "references/jmeter-import/README.md",
           "source": "skills/performance-testing/references/jmeter-import/README.md",
-          "bytes": 10115,
-          "sha256": "be5dcbb79897bc388aa535feecd54375f1fc33e41de4ad81855d10da68716a12"
+          "bytes": 10581,
+          "sha256": "22471dd58edfb0251ca397bfbe5a856528b9500f3a2e2c65e371b7e43d17cd10"
         },
         {
           "target": "references/jmeter-import/import-report.md",
@@ -264,6 +264,12 @@
           "source": "skills/performance-testing/references/jmeter-import/script-translation.md",
           "bytes": 5899,
           "sha256": "83396eaf60d9018bd333f9f314486cd68d95509b3e812966f92b35d059879fee"
+        },
+        {
+          "target": "references/jmeter-import/scripts/__pycache__/groovy_to_js.cpython-313.pyc",
+          "source": "skills/performance-testing/references/jmeter-import/scripts/__pycache__/groovy_to_js.cpython-313.pyc",
+          "bytes": 3199,
+          "sha256": "261a1a2c71ef1bd65b7d1256bc594cdd701e531692d70afb755846fa443c49e6"
         },
         {
           "target": "references/jmeter-import/scripts/groovy_to_js.py",

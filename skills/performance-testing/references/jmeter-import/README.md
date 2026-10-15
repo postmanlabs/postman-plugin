@@ -76,6 +76,7 @@ Only on explicit user consent — and **never make the user paste a workspace ID
 - **Otherwise present a choice, don't demand an ID.** Run `postman workspace list --json`, show the **names**, and ask the user to pick one *or* create a new one:
   - **pick existing** → connect it once with `postman workspace pull <id>` (ID taken from the list), then push.
   - **create new** → the CLI has no `create`; make it via MCP `createWorkspace` (or the Postman app), then `pull` and push.
+- **Get the imported collection into the bound workspace before pushing.** The importer emits a standalone v2.1 `*.postman_collection.json`; a pulled workspace is a git-native v3 tree. After `pull`, bring the file in with `postman collection migrate <file>.postman_collection.json` into the workspace's collections directory (check `postman collection migrate -h`), then `postman workspace push`. Pushing a folder that has no collection in its tree uploads nothing.
 - **Push through the CLI, not MCP.** MCP `createCollection` drops each request's URL (requests land blank); use MCP only if the `postman` binary genuinely can't be installed, and repair URLs afterward.
 - Interrogate `postman <cmd> -h` for exact flags — the help is authoritative, this file is not.
 
