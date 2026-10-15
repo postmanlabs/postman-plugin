@@ -14,9 +14,15 @@ const MANIFEST_ROUTES = {
         '.codex-plugin': { headerKey: 'http_headers' },
         '.cursor-plugin': { defaultMcpConfig: 'mcp.json' },
         '.factory-plugin': { mcpConfig: 'mcp.json' },
-        '.kimi-plugin': {}
+        '.kimi-plugin': {},
+        // GitHub Copilot CLI's legacy manifest. It sits inside `.github/`, so
+        // MANIFEST_DIR_PATTERN cannot find it; NESTED_MANIFEST_DIRS lists it instead.
+        '.github/plugin': {}
     },
     MANIFEST_DIR_PATTERN = /^\..+-plugin$/,
+
+    // Manifest routes whose directory is not a top-level `.*-plugin/`.
+    NESTED_MANIFEST_DIRS = ['.github/plugin'],
 
     // Routes shipped as a registry package, so MANIFEST_DIR_PATTERN never matches
     // them. A route missing here is never checked, which looks exactly like passing.
@@ -26,4 +32,4 @@ const MANIFEST_ROUTES = {
         { manifest: 'installer/package.json', mcpConfig: 'mcp.pi.json' }
     ];
 
-module.exports = { MANIFEST_ROUTES, MANIFEST_DIR_PATTERN, PACKAGE_ROUTES };
+module.exports = { MANIFEST_ROUTES, MANIFEST_DIR_PATTERN, NESTED_MANIFEST_DIRS, PACKAGE_ROUTES };

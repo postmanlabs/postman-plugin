@@ -383,44 +383,45 @@ jobs:
   # Linux only: the Cursor CLI on Windows runs no sessionStart hook headless, so the mandate can't
   # reach its model there (https://github.com/postmanlabs/postman-plugin/issues/83). Put the `os`
   # matrix and the Windows install step below back once it does.
-  cursor:
-    name: Cursor plugin / Linux
-    runs-on: ubuntu-latest
-    if: github.event.pull_request.head.repo.fork != true
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          persist-credentials: false
+  # Disabled for now: this job needs a CURSOR_API_KEY. Uncomment it to bring the Cursor harness back.
+  # cursor:
+  #   name: Cursor plugin / Linux
+  #   runs-on: ubuntu-latest
+  #   if: github.event.pull_request.head.repo.fork != true
+  #   defaults:
+  #     run:
+  #       shell: bash
+  #   steps:
+  #     - uses: actions/checkout@v7
+  #       with:
+  #         persist-credentials: false
 
-      - uses: actions/setup-node@v7
-        with:
-          node-version: lts/*
+  #     - uses: actions/setup-node@v7
+  #       with:
+  #         node-version: lts/*
 
-      - name: Install the Cursor CLI
-        run: |
-          # The vendor's download host sometimes times out; a second try usually gets through.
-          for attempt in 1 2 3; do
-            curl -fsSL --retry 3 https://cursor.com/install | bash && break
-            [ "$attempt" -lt 3 ] || exit 1
-            sleep 15
-          done
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+  #     - name: Install the Cursor CLI
+  #       run: |
+  #         # The vendor's download host sometimes times out; a second try usually gets through.
+  #         for attempt in 1 2 3; do
+  #           curl -fsSL --retry 3 https://cursor.com/install | bash && break
+  #           [ "$attempt" -lt 3 ] || exit 1
+  #           sleep 15
+  #         done
+  #         echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
-      # Windows, once https://github.com/postmanlabs/postman-plugin/issues/83 is fixed:
-      # - name: Install the Cursor CLI
-      #   if: runner.os == 'Windows'
-      #   shell: pwsh
-      #   run: |
-      #     irm 'https://cursor.com/install?win32=true' | iex
-      #     "$env:LOCALAPPDATA\cursor-agent" >> $env:GITHUB_PATH
+  #     # Windows, once https://github.com/postmanlabs/postman-plugin/issues/83 is fixed:
+  #     # - name: Install the Cursor CLI
+  #     #   if: runner.os == 'Windows'
+  #     #   shell: pwsh
+  #     #   run: |
+  #     #     irm 'https://cursor.com/install?win32=true' | iex
+  #     #     "$env:LOCALAPPDATA\cursor-agent" >> $env:GITHUB_PATH
 
-      - name: Cursor delivers the mandate, loads the skill it names and connects to the MCP server
-        run: node scripts/cursor-harness.js
-        env:
-          CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+  #     - name: Cursor delivers the mandate, loads the skill it names and connects to the MCP server
+  #       run: node scripts/cursor-harness.js
+  #       env:
+  #         CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
 
   # One check per official schema. Schemas are fetched from the vendor's source
   # on every run, so a vendor tightening its schema fails CI here rather than

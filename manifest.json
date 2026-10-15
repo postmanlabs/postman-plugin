@@ -9,8 +9,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-engineer/SKILL.md",
-          "bytes": 5163,
-          "sha256": "e00af47d69eeeeee4c5e89c61bce6ff344f93baf1a95e81d30c468230a14df30"
+          "bytes": 5417,
+          "sha256": "5d8b2dd5225cb131c45b279d7ad5d91911894169eccea6a4b0b81a913bcd2260"
         }
       ]
     },
@@ -126,13 +126,13 @@
     {
       "name": "bootstrap",
       "plugin": "postman",
-      "description": "Use when resolving Postman CLI setup, authentication, or a repository workspace binding; initializing local API files; or importing, pulling, pushing, syncing, or sharing workspace resources. Reuses existing context and chooses sync direction without duplicating a workspace or rebinding a dependency. Use for requests such as \"set up Postman for this repo\".",
+      "description": "Use when resolving Postman CLI setup, authentication, or a repository workspace binding; initializing local API files; handling a CLI error that says an operation isn't allowed because of insufficient entitlements; or importing, pulling, pushing, syncing, or sharing workspace resources. Reuses existing context and chooses sync direction without duplicating a workspace or rebinding a dependency. Use for requests such as \"set up Postman for this repo\".",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/bootstrap/SKILL.md",
-          "bytes": 6073,
-          "sha256": "aad950c99302cc4360a503ae94243f17db06c3c9079b4d62d93c8ae8bbcf327d"
+          "bytes": 7693,
+          "sha256": "6b3652f38a788f7a2a3dca30fb134b8aabb59f853bf8ee0f07a3fe9fd45b0f27"
         },
         {
           "target": "reference/cli_installation.md",
@@ -320,13 +320,13 @@
     {
       "name": "webhook-testing",
       "plugin": "postman",
-      "description": "Gives anything that sends webhooks — Stripe, GitHub, Slack, a payment processor, or your own API — a stable public URL that records every request and forwards it to a handler running locally, so you can see exactly what was sent, replay a delivery after a fix instead of re-triggering the sender, and assert on every delivery. Use when the user asks to \"test my webhook handler,\" \"get Stripe/GitHub webhooks to localhost,\" \"forward this webhook to my local server,\" \"see what the webhook actually sent,\" \"replay that event,\" \"verify the webhook signature,\" or \"check the webhooks our API sends,\" whether or not they mention Postman.",
+      "description": "Capture, forward to localhost, replay, and validate webhook deliveries using a reusable public URL. Keep sender configuration across debugging sessions and record arrivals even while local forwarding is stopped, helping distinguish delivery failures from local connectivity issues. Use for implementing or debugging incoming handlers and testing webhooks an API sends, whether or not Postman is mentioned. Example requests include \"get payment events to localhost,\" \"inspect a webhook delivery,\" and \"replay an event after a fix\"; these illustrate intent, not an exhaustive list or exact phrases to match.",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/webhook-testing/SKILL.md",
-          "bytes": 6219,
-          "sha256": "29b77772909cae14ca852b080fa5e964fa6ec010650fa68f9487ef7ed76da53d"
+          "bytes": 6210,
+          "sha256": "0f7b600d8c2a9954b1ef35707ccfa407c366d73dd2b8fbe5bd4bed4c4b15ba94"
         },
         {
           "target": "reference/forwarding.md",

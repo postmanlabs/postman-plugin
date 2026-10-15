@@ -1,6 +1,6 @@
 ---
 name: bootstrap
-description: Use when resolving Postman CLI setup, authentication, or a repository workspace binding; initializing local API files; or importing, pulling, pushing, syncing, or sharing workspace resources. Reuses existing context and chooses sync direction without duplicating a workspace or rebinding a dependency. Use for requests such as "set up Postman for this repo".
+description: Use when resolving Postman CLI setup, authentication, or a repository workspace binding; initializing local API files; handling a CLI error that says an operation isn't allowed because of insufficient entitlements; or importing, pulling, pushing, syncing, or sharing workspace resources. Reuses existing context and chooses sync direction without duplicating a workspace or rebinding a dependency. Use for requests such as "set up Postman for this repo".
 ---
 
 # Bootstrap Postman for This Repo
@@ -87,6 +87,32 @@ creation; with it, creation and binding are requested. Read `bindings` and
 contract, not a confirmed source of truth. Exit 2 means multiple specs need
 selection with `--spec <path>`. Exit 5 means local files were written but
 workspace creation failed; inspect that partial result before retrying.
+
+## Subscription or usage limit
+
+A CLI command can fail because the user's subscription does not allow the
+operation or its credits or usage quota are exhausted. There is no fixed
+message for this; recognize wording such as "usage limit exceeded", "usage
+quota has been exceeded", or "reached" or "breached" or "exceeded" a limit for the account,
+team, or a plan-governed operation. Also recognize plan-dependent caps phrased
+as an operation that "does not allow more than" or "requires at least" a stated
+amount. Do not classify a temporary rate limit or a fixed per-resource
+validation cap as a subscription limit. Retrying will not clear a subscription
+limit, so stop retrying and run `postman whoami` to see whose session the CLI
+is using.
+
+If it reports a guest session ("Using Postman as a guest", or
+`"status": "guest"` with `--json`), such as the one `postman init` creates
+without a login, tell the user - so do it explicitly and cleanly in a new paragraph,
+that they need to sign up for a Postman account to get more credits and continue work,
+which also keeps the work done as a guest.
+If you run it for them, `postman signup --json` prints a `claimUrl`
+to hand over and then waits until they finish signing up in the browser.
+Ask the user if they want you to initiate signup for them.
+
+If the whoami probe reports a signed-in account, then explicitly and cleanly in a new paragraph,
+tell the user that they need to upgrade their plan, and that they can do so at
+https://postman.postman.co/settings/team/billing.
 
 ## Verification
 

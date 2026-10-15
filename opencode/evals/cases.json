@@ -14,6 +14,13 @@
     ]
   },
   {
+    "id": "bootstrap-not-enough-credits",
+    "prompt": "A Postman CLI command I just ran failed saying the operation isn't allowed because I don't have enough credits left. What should I do?",
+    "expected": [
+      "bootstrap"
+    ]
+  },
+  {
     "id": "api-mocking",
     "prompt": "Set up a fake backend for my API so frontend development can continue before the real service exists.",
     "expected": [
@@ -159,6 +166,60 @@
     "expected": [
       "webhook-testing"
     ]
+  },
+  {
+    "id": "webhook-testing-example-forward",
+    "prompt": "Get payment events to localhost.",
+    "expected": [
+      "webhook-testing"
+    ]
+  },
+  {
+    "id": "webhook-testing-example-inspect",
+    "prompt": "Inspect a webhook delivery.",
+    "expected": [
+      "webhook-testing"
+    ]
+  },
+  {
+    "id": "webhook-testing-example-replay",
+    "prompt": "Replay an event after a fix.",
+    "expected": [
+      "webhook-testing"
+    ]
+  },
+  {
+    "id": "webhook-testing-reuse-across-sessions",
+    "prompt": "I'm debugging a payment provider's callbacks on my laptop over several days. I want to register the callback address once and keep using it after restarting my dev server tomorrow.",
+    "expected": [
+      "webhook-testing"
+    ]
+  },
+  {
+    "id": "webhook-testing-capture-offline",
+    "prompt": "Our supplier says it posted an inventory callback while my dev server was shut down. Set up a receiver that saves those deliveries even when my laptop is offline so I can inspect them later.",
+    "expected": [
+      "webhook-testing"
+    ]
+  },
+  {
+    "id": "webhook-testing-signature",
+    "prompt": "GitHub deliveries reach my local receiver, but it rejects the X-Hub-Signature-256 header. Capture a real delivery and help me debug why signature verification fails.",
+    "expected": [
+      "webhook-testing"
+    ]
+  },
+  {
+    "id": "webhook-testing-background-context",
+    "prompt": "For context, this is a TypeScript monorepo with a React storefront, an Express orders service on port 4100, Redis caching, and PostgreSQL. We recently changed invoice exports, but leave that alone. Our CI already runs unit tests and lint, and we aren't changing deployment today. The current problem is our shipping partner's callbacks: I need to see the headers and body it actually sends to my laptop, then feed the same delivery through again after I correct the receiver.",
+    "expected": [
+      "webhook-testing"
+    ]
+  },
+  {
+    "id": "irrelevant-webhook-concept",
+    "prompt": "What is the difference between webhooks and polling? Answer briefly without setting anything up.",
+    "expected": []
   },
   {
     "id": "irrelevant-readme",
