@@ -20,3 +20,4 @@ installer/skills/
 installer/hooks/
 installer/mcp.pi.json
 
+**/__pycache__/
