@@ -766,6 +766,10 @@ def parse_jmx(path):
                 plan['warnings'].append(f'Thread group "{el.get("testname","")}" is disabled; skipped.')
                 continue
             load = parse_thread_group(el)
+            for prop_name in ('ThreadGroup.num_threads', 'ThreadGroup.ramp_time', 'ThreadGroup.duration', 'TargetLevel', 'RampUp', 'Hold'):
+                raw = get_prop(el, prop_name)
+                if raw and '${' in raw:
+                    plan['warnings'].append(f'Thread group "{load["name"]}" has a variable-driven load value {prop_name}="{raw}" that could not be resolved to a number; set VUs/duration manually.')
             # setUp / tearDown thread groups run once per lifecycle, not looped by
             # every VU. Tag them so they are severed into their own collections.
             if 'SetupThreadGroup' in tag:
@@ -906,9 +910,14 @@ def assertion_to_js(asrt, idx, req_name):
     if k == 'response':
         return _response_assertion_js(asrt, idx), None
     if k == 'duration':
-        ms = asrt.get('ms')
-        js = [f'pm.test("Response time < {ms}ms", function () {{', f'    pm.expect(pm.response.responseTime).to.be.below({ms or 0});', '});']
-        hint = {'metric': 'p95', 'op': 'less_than', 'value': ms} if ms else None
+        ms = (asrt.get('ms') or '').strip()
+        if ms.isdigit():
+            js = [f'pm.test("Response time < {ms}ms", function () {{', f'    pm.expect(pm.response.responseTime).to.be.below({ms});', '});']
+            hint = {'metric': 'p95', 'op': 'less_than', 'value': ms}
+        else:
+            # a variable-driven threshold (e.g. ${max_ms}) must not be emitted into JS
+            js = [f'// [manual] Duration Assertion threshold "{ms}" is not a literal number; add a numeric pm.response.responseTime check by hand.']
+            hint = None
         return js, hint
     if k == 'size':
         return [f'pm.test("Response size check", function () {{',
@@ -1249,7 +1258,7 @@ def render_perf_md(cfg, collection_filename):
         lines.append('')
         cmd = f'postman performance run <COLLECTION_UID> \\\n    --vu-count {run["vus"]} \\\n    --duration {run["duration_min"]} \\\n    --load-profile {run["load_profile"]}'
         if cfg['data_files']:
-            cmd += f' \\\n    --data-file {cfg["data_files"][0]["filename"]}'
+            cmd += f' \\\n    --data-file "{cfg["data_files"][0]["filename"]}"'
         if cfg['pass_if']:
             cmd += f' \\\n    --pass-if "{cfg["pass_if"]}"'
         else:
@@ -1324,6 +1333,7 @@ def render_report(plan, cfg, manual_tasks, collection_name):
     lines.append('')
     lines.append('- **Thread group load** → VU count + duration + one of 4 load profiles (JMeter custom ramp curves are not reproducible; closest profile chosen).')
     lines.append('- **Loop counts / iterations** → duration in minutes (Postman runs by time, not iteration count).')
+    lines.append('- **JMeter functions → Postman dynamic variables** are approximate: `__time` is epoch-ms in JMeter vs epoch-s for `{{$timestamp}}`; `__Random`/`__RandomString` lose their argument bounds. Verify where exact values matter.')
     for w in plan['warnings']:
         lines.append(f'- {w}')
     lines.append('')
@@ -1355,7 +1365,7 @@ def main():
     ap = argparse.ArgumentParser(description='Import a JMeter .jmx file to a Postman collection + perf config.')
     ap.add_argument('input', help='path to the .jmx file')
     ap.add_argument('-o', '--outdir', default='.', help='output directory')
-    ap.add_argument('--name', help='override the collection/output base name')
+    ap.add_argument('--name', help='override the collection name and output base filename')
     ap.add_argument('--json-report', action='store_true', help='also emit the raw IR and manual tasks as JSON')
     ap.add_argument('--fail-on-blockers', action='store_true', help='exit non-zero if any item needs manual work (CI gate)')
     args = ap.parse_args()
@@ -1369,6 +1379,8 @@ def main():
         print(f'ERROR  {args.input}: could not import — {e}', file=sys.stderr)
         sys.exit(2)
     base = args.name or os.path.splitext(os.path.basename(args.input))[0]
+    if args.name:
+        plan['name'] = args.name  # --name overrides the collection name, not just the filenames
     os.makedirs(args.outdir, exist_ok=True)
 
     manual_tasks = []

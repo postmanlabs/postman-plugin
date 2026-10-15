@@ -274,8 +274,8 @@
         {
           "target": "references/jmeter-import/scripts/jmx_to_postman.py",
           "source": "skills/performance-testing/references/jmeter-import/scripts/jmx_to_postman.py",
-          "bytes": 64385,
-          "sha256": "889b13ab84419cd4bd98df57bc731d1195ed685644b6475bf211bf4083d36b00"
+          "bytes": 65485,
+          "sha256": "ed4b4d20252bea91be00100caaa4619d0610bd0a69fa4e2ae99a80448ed63641"
         }
       ]
     },
