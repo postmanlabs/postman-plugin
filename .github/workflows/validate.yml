@@ -399,7 +399,7 @@ jobs:
           curl -fsSL --retry 3 https://antigravity.google/cli/install.sh | bash -s -- --dir "$HOME/.local/bin"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
-      - name: Antigravity registers the skills, the mandate rule and the MCP server from the plugin
+      - name: Antigravity registers the skills and the mandate rule from the plugin
         run: node scripts/antigravity-harness.js
 
   # The Cursor CLI talks only to Cursor's backend, so this harness runs on Cursor's model with a
@@ -451,7 +451,7 @@ jobs:
   # on every run, so a vendor tightening its schema fails CI here rather than
   # at marketplace review. Files with no published schema (.kimi-plugin/plugin.json,
   # .codex-plugin/plugin.json, .factory-plugin/*.json, .antigravity-plugin/plugin.json,
-  # the other mcp.*.json, mcp.json, mcp_config.json, manifest.json) are covered by the
+  # the other mcp.*.json, mcp.json, manifest.json) are covered by the
   # `manifest` job above, and Antigravity's by `agy plugin validate` in `antigravity`. Codex
   # documents its manifest in prose only and publishes no schema for it; the
   # agent-plugins.org schema is not a substitute, since it describes the
