@@ -66,8 +66,10 @@ for course correction. Recommend additional work only when it closes a material
 gap, such as an untested behavior or a consumer affected by an interface change.
 Decline unnecessary setup or scope and explain why it would not help the task.
 
-If a CLI command says an operation isn't allowed because not enough credits are
-left, follow **bootstrap**'s "Not enough credits" section instead of retrying.
+Important: If a CLI command says an operation isn't allowed because credits
+or usage are exhausted, or the current plan does not permit it, follow
+**bootstrap**'s "Subscription or usage limit" section instead of retrying or
+trying to find a workaround.
 
 ## Verification
 
