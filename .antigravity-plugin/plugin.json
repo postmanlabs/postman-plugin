@@ -6,7 +6,7 @@
   "logo": "https://voyager.postman.com/logo/postman-logo-icon-orange.svg",
   "suggestedPrompts": [
     "Create a collection for the API in this repo, add tests, and run them.",
-    "I’m changing the credit card service. What APIs in my company use it?",
+    "I'm changing the credit card service. What APIs in my company use it?",
     "What depends on the billing-api collection, and what would changing its response schema break?"
   ],
   "category": "Developer Tools",
