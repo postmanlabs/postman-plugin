@@ -266,12 +266,6 @@
           "sha256": "83396eaf60d9018bd333f9f314486cd68d95509b3e812966f92b35d059879fee"
         },
         {
-          "target": "references/jmeter-import/scripts/__pycache__/groovy_to_js.cpython-313.pyc",
-          "source": "skills/performance-testing/references/jmeter-import/scripts/__pycache__/groovy_to_js.cpython-313.pyc",
-          "bytes": 3199,
-          "sha256": "261a1a2c71ef1bd65b7d1256bc594cdd701e531692d70afb755846fa443c49e6"
-        },
-        {
           "target": "references/jmeter-import/scripts/groovy_to_js.py",
           "source": "skills/performance-testing/references/jmeter-import/scripts/groovy_to_js.py",
           "bytes": 3867,
