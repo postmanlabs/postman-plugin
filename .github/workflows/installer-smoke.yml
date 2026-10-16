@@ -1,3 +1,5 @@
+# Also runs install/install.sh and install.ps1 against the latest Claude Code and Codex, because they read
+# those CLIs' `--json` output and a renamed key would silently break detection.
 # Runs `npx @postman/postman-plugin` against the latest release of every agent
 # it supports, on Linux and Windows. The unit tests pin the commands the
 # installer sends; this checks the agents still accept them, and that each one
@@ -15,9 +17,9 @@ run-name: ${{ inputs.ref && format('Installer smoke on {0}', inputs.ref) || '' }
 on:
   push:
     branches: ['main']
-    paths: ['package.json', 'installer/**', 'opencode/**', 'scripts/lib/**', 'scripts/*-harness.js', '.github/workflows/installer-smoke.yml']
+    paths: ['package.json', 'install/**', 'installer/**', 'opencode/**', 'scripts/lib/**', 'scripts/*-harness.js', '.github/workflows/installer-smoke.yml']
   pull_request:
-    paths: ['package.json', 'installer/**', 'opencode/**', 'scripts/lib/**', 'scripts/*-harness.js', '.github/workflows/installer-smoke.yml']
+    paths: ['package.json', 'install/**', 'installer/**', 'opencode/**', 'scripts/lib/**', 'scripts/*-harness.js', '.github/workflows/installer-smoke.yml']
   schedule:
     - cron: '23 4 * * *'
   # The release-installer skill passes the exact commit it is about to tag.
@@ -38,6 +40,63 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # install/install.sh and install.ps1 against the latest Claude Code and Codex, from this checkout.
+  install-script:
+    name: Install script against real CLIs / ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            label: Linux
+          - os: windows-latest
+            label: Windows
+    env:
+      # These runs report with the project's CI key, which has its own low rate limit, and are tagged so they can be filtered out.
+      POSTMAN_PLUGIN_TELEMETRY_URL: https://o1224273.ingest.us.sentry.io/api/4512245392867328/store/?sentry_key=ecb864881df3ebaba9870d466949a5b2
+      POSTMAN_PLUGIN_ENVIRONMENT: ci
+      POSTMAN_PLUGIN_INSTALL_SOURCE: installer-smoke
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+
+      # npm installs each agent as name.ps1 and name.cmd on Windows, which is what the script has to cope with.
+      - name: Install the agent CLIs
+        run: npm install -g @anthropic-ai/claude-code @openai/codex
+
+      - name: Install, then run again
+        if: runner.os != 'Windows'
+        run: |
+          sh install/install.sh --agent claude-code --agent codex | tee first.txt
+          grep -x 'result claude-code installed' first.txt
+          grep -x 'result codex installed' first.txt
+          sh install/install.sh --agent claude-code --agent codex | tee second.txt
+          grep -x 'result claude-code already-installed' second.txt
+          grep -x 'result codex already-installed' second.txt
+          claude plugin list --json | grep -F 'postman@claude-plugins-official'
+          codex plugin list --json | grep -F 'postman@postman'
+
+      - name: Install, then run again
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $first = & powershell -NoProfile -ExecutionPolicy Bypass -File install/install.ps1 -Agent claude-code,codex | Out-String
+          $first
+          if ($first -notmatch 'result claude-code installed' -or $first -notmatch 'result codex installed') { exit 1 }
+          $second = & powershell -NoProfile -ExecutionPolicy Bypass -File install/install.ps1 -Agent claude-code,codex | Out-String
+          $second
+          if ($second -notmatch 'result claude-code already-installed' -or $second -notmatch 'result codex already-installed') { exit 1 }
+          if (-not ((claude plugin list --json | Out-String) -match 'postman@claude-plugins-official')) { exit 1 }
+          if (-not ((codex plugin list --json | Out-String) -match 'postman@postman')) { exit 1 }
+
   smoke:
     name: Installer against real CLIs / ${{ matrix.label }}
     runs-on: ${{ matrix.os }}

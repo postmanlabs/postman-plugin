@@ -2,7 +2,7 @@
 # `skills` checks what Claude Code loads from skills/ and that every
 # `postman:<name>` the repo ships names one of them, `manifest` checks the
 # index `postman init` fetches, `installer` unit-tests `npx @postman/postman-plugin`
-# (installer-smoke.yml runs it against the real agent CLIs), `schema` checks each
+# (installer-smoke.yml runs it against the real agent CLIs), `install-script` tests install/install.sh against stub agents, `schema` checks each
 # vendor plugin manifest against that vendor's own published schema. One job per
 # route installs this checkout into a pinned agent (Cursor: the latest) and checks what it sends
 # its model and the MCP server: `claude-code`, `codex`, `cursor`, `factory`, `kimi`,
@@ -210,6 +210,48 @@ jobs:
         run: |
           test -s unit-tests.tap
           if grep -E '# SKIP' unit-tests.tap | grep -v -E "$ALLOWED_SKIP"; then exit 1; fi
+
+  # install/install.sh needs no Node to run; Node only runs its stub-agent tests. Linux and macOS,
+  # because the script is POSIX sh.
+  install-script:
+    name: Install script / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+
+      - name: Syntax check
+        run: sh -n install/install.sh
+
+      - name: Stub-agent tests
+        run: node --test install/test/*.test.js
+
+  # install.ps1 on both PowerShells a Windows machine can have, against stub agents and a real Git.
+  install-script-windows:
+    name: Install script / Windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Stub-agent tests, Windows PowerShell 5.1
+        shell: pwsh
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File install/test/install-ps1.test.ps1
+
+      - name: Stub-agent tests, PowerShell 7
+        if: ${{ !cancelled() }}
+        shell: pwsh
+        run: pwsh -NoProfile -ExecutionPolicy Bypass -File install/test/install-ps1.test.ps1
 
   # Pi installs the installer's npm tarball as a Pi package. The harness packs it,
   # installs it into a pinned Pi, and checks what Pi sends the model.

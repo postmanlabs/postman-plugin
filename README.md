@@ -28,6 +28,38 @@ One command configures **Antigravity, Claude Code, Codex, GitHub Copilot CLI, Cu
 Factory Droid, Kimi Code, OpenCode and Pi**. Run it again to update, `status` to see what's installed,
 and `remove` to uninstall; `--agent <id>` limits any of them to one agent.
 
+### Without Node
+
+`install/install.sh` (macOS and Linux) and `install/install.ps1` (Windows)
+install into Claude Code, Codex and Cursor with each agent's own CLI. They
+need no Node, leave an installed plugin alone, and print a `result <agent>
+<outcome>` line per agent:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/postmanlabs/postman-plugin/main/install/install.sh | sh
+```
+
+On Windows, in PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/postmanlabs/postman-plugin/main/install/install.ps1 | iex
+```
+
+`--agent claude-code`, `--agent codex` or `--agent cursor` limits the run. On
+Windows, set `$env:POSTMAN_PLUGIN_AGENT = 'claude-code,codex'` before the command,
+or run the downloaded file with `-Agent claude-code,codex`. The
+exit code is 0 when done, 1 when an agent failed, 2 for bad usage, 3 when none
+of the three is installed and 4 when the script itself broke. Factory Droid, Kimi Code, OpenCode and Pi still
+install with the commands below or `npx`.
+
+The scripts report whether the install worked, so failures can be fixed. An event
+holds the agent name, the result, a short failure code and a coarse cause, the
+agent's and the operating system's version numbers, the CPU architecture, the
+language code of the machine (for example `en`), the commit of this repository
+that a Cursor install cloned, and a random id for that one run. It holds no user
+name, host name, path, IP address, agent output or identifier that survives the
+run. Set `DO_NOT_TRACK=1` (or `POSTMAN_PLUGIN_TELEMETRY=0`) to turn it off.
+
 You can also use the following commands to install individually:
 
 ### Antigravity
