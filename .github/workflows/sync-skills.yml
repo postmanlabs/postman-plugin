@@ -1,0 +1,76 @@
+name: Sync skills repository
+
+on:
+  pull_request:
+    branches: ['main']
+    paths:
+      - 'skills/**'
+    types: [closed]
+
+# A second skills PR can merge while the first sync is still running. Serialize
+# runs so both updates land on the same destination branch in merge order.
+concurrency:
+  group: sync-postman-skills
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    name: Open skills sync PR
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the merged plugin revision
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          path: source
+          persist-credentials: false
+
+      # GITHUB_TOKEN is scoped to this repository. SKILLS_REPO_TOKEN must be a
+      # fine-grained token with Contents and Pull requests write access to
+      # postmanlabs/skills.
+      - name: Check out the skills repository
+        uses: actions/checkout@v4
+        with:
+          repository: postmanlabs/skills
+          ref: main
+          path: target
+          token: ${{ secrets.SKILLS_REPO_TOKEN }}
+
+      - name: Mirror skills and rebuild the published manifest
+        run: |
+          rsync --archive --delete source/skills/ target/plugins/postman/skills/
+          node target/scripts/build-manifest.js
+
+      # Keep one rolling PR open. If another source PR merges before this PR is
+      # reviewed, the action updates the branch so the destination always shows
+      # the complete current skills tree instead of conflicting partial syncs.
+      - name: Create or update the sync pull request
+        id: sync-pr
+        uses: postmanlabs/create-pull-request@v8
+        with:
+          token: ${{ secrets.SKILLS_REPO_TOKEN }}
+          path: target
+          base: main
+          branch: automation/sync-postman-plugin-skills
+          delete-branch: true
+          commit-message: 'chore: sync skills from postman-plugin'
+          title: 'chore: sync skills from postman-plugin'
+          body: |
+            Syncs `plugins/postman/skills/` with the skills merged in
+            [postmanlabs/postman-plugin#${{ github.event.pull_request.number }}](${{ github.event.pull_request.html_url }}).
+
+            Source merge commit: `${{ github.event.pull_request.merge_commit_sha }}`
+
+            This pull request is maintained automatically by the
+            `Sync skills repository` workflow in `postmanlabs/postman-plugin`.
+
+      - name: Report the destination pull request
+        if: steps.sync-pr.outputs.pull-request-url != ''
+        env:
+          PR_OPERATION: ${{ steps.sync-pr.outputs.pull-request-operation }}
+          PR_URL: ${{ steps.sync-pr.outputs.pull-request-url }}
+        run: echo "::notice::Skills sync pull request ${PR_URL} was ${PR_OPERATION}."
