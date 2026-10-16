@@ -1,6 +1,6 @@
 ---
 name: webhook-testing
-description: Gives anything that sends webhooks — Stripe, GitHub, Slack, a payment processor, or your own API — a stable public URL that records every request and forwards it to a handler running locally, so you can see exactly what was sent, replay a delivery after a fix instead of re-triggering the sender, and assert on every delivery. Use when the user asks to "test my webhook handler," "get Stripe/GitHub webhooks to localhost," "forward this webhook to my local server," "see what the webhook actually sent," "replay that event," "verify the webhook signature," or "check the webhooks our API sends," whether or not they mention Postman.
+description: Capture, forward to localhost, replay, and validate webhook deliveries using a reusable public URL. Keep sender configuration across debugging sessions and record arrivals even while local forwarding is stopped, helping distinguish delivery failures from local connectivity issues. Use for implementing or debugging incoming handlers and testing webhooks an API sends, whether or not Postman is mentioned. Example requests include "get payment events to localhost," "inspect a webhook delivery," and "replay an event after a fix"; these illustrate intent, not an exhaustive list or exact phrases to match.
 ---
 
 # Webhook Testing
@@ -11,10 +11,10 @@ with the raw headers and body as they were sent, and forwards each one to a
 port on this machine. You don't need a separate tunnel. Two properties shape
 how to use it:
 
-- **The URL is stable.** It survives new sessions, pause and start, so the
-  sender is registered once. Reuse a webhook when the user names one or says
-  the sender already posts to one. Use `list` to resolve that reference; ask
-  only if the available context still leaves multiple plausible choices.
+- **Reuse the URL across debugging sessions.** It survives new sessions, pause
+  and start, so the sender is registered once. Reuse a webhook when the user
+  names one or says the sender already posts to one. Use `list` to resolve that
+  reference; ask only if the available context still leaves multiple plausible choices.
   Create a new one when a new endpoint is needed. Each new webhook is another
   URL to register and a second event history.
 - **Every request is recorded,** including requests that arrive while nothing

@@ -29,10 +29,11 @@ guarantee; a successful HTTP exchange alone does not establish correctness.
    existing guarantees and add checks for the changed behavior; put reusable
    `pm.test` assertions in the collection so later runs and teammates inherit
    them. Inline `--script-post-request` assertions suit a one-off check.
-4. Choose a real or mocked target according to the claim. `--use-mock`/`--mock`
-   lets a collection run exercise request and assertion logic without a live
-   backend (see **api-mocking**). Passing against that mock does not verify
-   the service that the mock stands in for.
+4. Choose a real or mocked target according to the claim. `--use-mock` lets a
+   collection run exercise request and assertion logic without a live
+   backend; `--mock` alone only starts one. `--use-mock` replaces the
+   variable's whole value, base path included (see **api-mocking**). Passing
+   against that mock does not verify the service the mock stands in for.
 5. Reuse environment resolution with `-e` and **variables**. Use a CSV/JSON
    file through `-d` for simple iteration; use **datasets** when the inputs
    need queries, joins, or reusable views. Export reports such as

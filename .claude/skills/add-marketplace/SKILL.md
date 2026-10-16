@@ -308,8 +308,8 @@ covers what each of these checks and — more usefully — what none of them do.
   route's strings come out of your diff untouched, which Step 7 checks.
 - **Do not run `node scripts/build-manifest.js` expecting a diff** *from the
   route itself*. `manifest.json` indexes the skill *files* and takes `plugin`
-  from `.claude-plugin/plugin.json`'s name, and Kimi's copy of the mandate
-  follows `hooks/session-start-context.md`; adding a route changes none of
+  from `.claude-plugin/plugin.json`'s name, and the Kimi and Antigravity copies
+  of the mandate follow `hooks/session-start-context.md`; adding a route changes none of
   them. So if `--check` fails and you touched neither `skills/` nor that file,
   something else drifted — find out what.
 

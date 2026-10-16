@@ -8,12 +8,14 @@
  * what they should hash to. This script derives that index from the files
  * themselves so the two can never disagree.
  *
- * It also writes `.kimi-plugin/session-start-context.md`, the session-start
- * mandate as Kimi reads it: Kimi shows the model no hook output, and names
+ * It also writes the session-start mandate as the routes that never run
+ * `hooks/` read it: `.kimi-plugin/session-start-context.md` for Kimi, which
+ * shows the model no hook output, and `rules/GEMINI.md` for Antigravity, which
+ * has no session-start hook and loads that file as an always-on rule. Both name
  * skills without the `postman:` prefix the shared mandate gives them.
  *
  * Run `node scripts/build-manifest.js` after changing any skill or the mandate.
- * CI re-runs it with `--check` and fails if either file is stale — a wrong sha256
+ * CI re-runs it with `--check` and fails if any of these files is stale — a wrong sha256
  * makes the CLI reject a legitimate skill, which is a confusing way to find out.
  */
 'use strict';
@@ -28,6 +30,7 @@ const ROOT = path.join(__dirname, '..'),
     MANIFEST = path.join(ROOT, 'manifest.json'),
     MANDATE = path.join(ROOT, 'hooks', 'session-start-context.md'),
     KIMI_MANDATE = path.join(ROOT, '.kimi-plugin', 'session-start-context.md'),
+    ANTIGRAVITY_MANDATE = path.join(ROOT, 'rules', 'GEMINI.md'),
     SCHEMA_VERSION = 1,
 
     // `postman init` writes AGENTS.md naming the manifest's first skill as the entry point.
@@ -163,13 +166,14 @@ function build () {
 /**
  * @returns {string} The shared mandate with `postman:<skill>` rewritten to `<skill>`.
  */
-function kimiMandate () {
+function bareMandate () {
     return fs.readFileSync(MANDATE, 'utf8').replace(/`postman:([a-z0-9-]+)`/g, '`$1`');
 }
 
 const outputs = [
     [MANIFEST, JSON.stringify(build(), null, 2) + '\n'],
-    [KIMI_MANDATE, kimiMandate()]
+    [KIMI_MANDATE, bareMandate()],
+    [ANTIGRAVITY_MANDATE, bareMandate()]
 ];
 
 if (process.argv.includes('--check')) {
@@ -182,10 +186,11 @@ if (process.argv.includes('--check')) {
         process.exit(1);
     }
 
-    console.log(`${outputs.map(([file]) => path.relative(ROOT, file)).join(' and ')} are up to date.`);
+    console.log(`${outputs.map(([file]) => path.relative(ROOT, file)).join(', ')} are up to date.`);
 }
 else {
     for (const [file, content] of outputs) {
+        fs.mkdirSync(path.dirname(file), { recursive: true });
         fs.writeFileSync(file, content);
         console.log(`Wrote ${path.relative(ROOT, file)}`);
     }

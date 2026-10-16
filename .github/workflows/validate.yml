@@ -6,8 +6,9 @@
 # vendor plugin manifest against that vendor's own published schema. One job per
 # route installs this checkout into a pinned agent (Cursor: the latest) and checks what it sends
 # its model and the MCP server: `claude-code`, `codex`, `cursor`, `factory`, `kimi`,
-# `opencode` and `pi`. Every job but `skills`, `manifest`, `schema` and `cursor` runs on Linux,
-# and on Windows too unless a pull request changes only skills or docs (see `os`).
+# `opencode` and `pi`; `antigravity` checks only what agy registers (see that job). Every job but
+# `skills`, `manifest`, `schema`, `cursor` and `antigravity` runs on Linux, and on Windows too
+# unless a pull request changes only skills or docs (see `os`).
 name: Validate
 
 on:
@@ -59,6 +60,7 @@ jobs:
   skills:
     name: Skills
     runs-on: ubuntu-latest
+    timeout-minutes: 3
     steps:
       - uses: actions/checkout@v4
 
@@ -378,18 +380,12 @@ jobs:
       - name: Kimi Code loads the skills, the mandate and the MCP server from the plugin
         run: node scripts/kimi-harness.js
 
-  # The Cursor CLI talks only to Cursor's backend, so this harness runs on Cursor's model with a
-  # Cursor API key, which a fork's pull request doesn't get. Cursor's installer takes no version.
-  # Linux only: the Cursor CLI on Windows runs no sessionStart hook headless, so the mandate can't
-  # reach its model there (https://github.com/postmanlabs/postman-plugin/issues/83). Put the `os`
-  # matrix and the Windows install step below back once it does.
-  cursor:
-    name: Cursor plugin / Linux
+  # Antigravity's installer takes no version and agy updates itself, so this runs the latest. The
+  # harness checks what agy registers from this checkout, not what reaches its model: signed out,
+  # agy sends a stand-in model no skills or rules at all. Linux only until it's measured on Windows.
+  antigravity:
+    name: Antigravity plugin
     runs-on: ubuntu-latest
-    if: github.event.pull_request.head.repo.fork != true
-    defaults:
-      run:
-        shell: bash
     steps:
       - uses: actions/checkout@v7
         with:
@@ -399,34 +395,65 @@ jobs:
         with:
           node-version: lts/*
 
-      - name: Install the Cursor CLI
+      - name: Install Antigravity CLI
         run: |
-          # The vendor's download host sometimes times out; a second try usually gets through.
-          for attempt in 1 2 3; do
-            curl -fsSL --retry 3 https://cursor.com/install | bash && break
-            [ "$attempt" -lt 3 ] || exit 1
-            sleep 15
-          done
+          curl -fsSL --retry 3 https://antigravity.google/cli/install.sh | bash -s -- --dir "$HOME/.local/bin"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
-      # Windows, once https://github.com/postmanlabs/postman-plugin/issues/83 is fixed:
-      # - name: Install the Cursor CLI
-      #   if: runner.os == 'Windows'
-      #   shell: pwsh
-      #   run: |
-      #     irm 'https://cursor.com/install?win32=true' | iex
-      #     "$env:LOCALAPPDATA\cursor-agent" >> $env:GITHUB_PATH
+      - name: Antigravity registers the skills, the mandate rule and the MCP server from the plugin
+        run: node scripts/antigravity-harness.js
 
-      - name: Cursor delivers the mandate, loads the skill it names and connects to the MCP server
-        run: node scripts/cursor-harness.js
-        env:
-          CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+  # The Cursor CLI talks only to Cursor's backend, so this harness runs on Cursor's model with a
+  # Cursor API key, which a fork's pull request doesn't get. Cursor's installer takes no version.
+  # Linux only: the Cursor CLI on Windows runs no sessionStart hook headless, so the mandate can't
+  # reach its model there (https://github.com/postmanlabs/postman-plugin/issues/83). Put the `os`
+  # matrix and the Windows install step below back once it does.
+  # Disabled for now: this job needs a CURSOR_API_KEY. Uncomment it to bring the Cursor harness back.
+  # cursor:
+  #   name: Cursor plugin / Linux
+  #   runs-on: ubuntu-latest
+  #   if: github.event.pull_request.head.repo.fork != true
+  #   defaults:
+  #     run:
+  #       shell: bash
+  #   steps:
+  #     - uses: actions/checkout@v7
+  #       with:
+  #         persist-credentials: false
+
+  #     - uses: actions/setup-node@v7
+  #       with:
+  #         node-version: lts/*
+
+  #     - name: Install the Cursor CLI
+  #       run: |
+  #         # The vendor's download host sometimes times out; a second try usually gets through.
+  #         for attempt in 1 2 3; do
+  #           curl -fsSL --retry 3 https://cursor.com/install | bash && break
+  #           [ "$attempt" -lt 3 ] || exit 1
+  #           sleep 15
+  #         done
+  #         echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+  #     # Windows, once https://github.com/postmanlabs/postman-plugin/issues/83 is fixed:
+  #     # - name: Install the Cursor CLI
+  #     #   if: runner.os == 'Windows'
+  #     #   shell: pwsh
+  #     #   run: |
+  #     #     irm 'https://cursor.com/install?win32=true' | iex
+  #     #     "$env:LOCALAPPDATA\cursor-agent" >> $env:GITHUB_PATH
+
+  #     - name: Cursor delivers the mandate, loads the skill it names and connects to the MCP server
+  #       run: node scripts/cursor-harness.js
+  #       env:
+  #         CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
 
   # One check per official schema. Schemas are fetched from the vendor's source
   # on every run, so a vendor tightening its schema fails CI here rather than
   # at marketplace review. Files with no published schema (.kimi-plugin/plugin.json,
-  # .codex-plugin/plugin.json, .factory-plugin/*.json, the other mcp.*.json,
-  # mcp.json, manifest.json) are covered by the `manifest` job above. Codex
+  # .codex-plugin/plugin.json, .factory-plugin/*.json, .antigravity-plugin/plugin.json,
+  # the other mcp.*.json, mcp.json, mcp_config.json, manifest.json) are covered by the
+  # `manifest` job above, and Antigravity's by `agy plugin validate` in `antigravity`. Codex
   # documents its manifest in prose only and publishes no schema for it; the
   # agent-plugins.org schema is not a substitute, since it describes the
   # root-level `plugin.json` Agent Plugins format, which Codex selects by path

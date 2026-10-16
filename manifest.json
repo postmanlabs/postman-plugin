@@ -9,8 +9,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-engineer/SKILL.md",
-          "bytes": 5050,
-          "sha256": "75ed7762347903bbfa7e4591a6219a0ae830761c5f2735fa7dd5e585656555f0"
+          "bytes": 5417,
+          "sha256": "5d8b2dd5225cb131c45b279d7ad5d91911894169eccea6a4b0b81a913bcd2260"
         }
       ]
     },
@@ -68,13 +68,13 @@
     {
       "name": "api-mocking",
       "plugin": "postman",
-      "description": "Use when creating a stand-in backend from a collection or OpenAPI spec, testing failure scenarios, or sharing a Code Mock through a workspace and deployed URL. Keeps mock behavior reusable in the repository and distinguishes example replay from stateful behavior. Use for requests such as \"mock this backend\".",
+      "description": "Finds, builds, runs and publishes a stand-in for one API — the owning team's published mock when there is one, otherwise one built from its spec or collection that behaves like the real API, stateful when callers write then read. Use when something needs an API that isn't built or reachable yet (a frontend, client or demo), when other teams should build against your API before it ships, or when asked to mock an API or fake a backend. To run and test your own code against the services it calls, use api-simulation. Covers `postman mock` and `postman dependency add mock`.",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/api-mocking/SKILL.md",
-          "bytes": 4663,
-          "sha256": "362b01f46a8524e26e1c23e5f7298d44ecd3b30561b75c1e832d3d858e7093c4"
+          "bytes": 7262,
+          "sha256": "39a04d60e23863eafe7893a8b6bd380d32263d22ac0ca7979074ba91fc222409"
         }
       ]
     },
@@ -94,19 +94,19 @@
     {
       "name": "api-simulation",
       "plugin": "postman",
-      "description": "Use when developing or testing a real service that calls other HTTP APIs. Composes reusable dependency mocks on one local port, verifies which upstream calls the service made, and exercises dependency failures without requiring every service to run. Use for requests such as \"run this service with mocked dependencies\".",
+      "description": "Runs your code for real against stand-ins for the HTTP services it calls, served together as one environment on one local port or one deployed URL, whether that code is a service you're changing, a frontend, a test suite or a demo. Use when you add or change code that calls other services and need to run it, test it, prove a fix or reproduce an upstream failure (timeouts, 5xx, 409, 429) end to end, locally or in CI, without the real services because they're unreachable, need credentials, cost money, have side effects or don't exist yet. Also answers what happens to a request, or to the data it writes, when a service it calls goes down, is slow or returns errors (\"what happens to a booking if the email service is down?\"), by running each failure instead of reading the code. Applies even when nobody says mock or simulation. To give a frontend or another team a stand-in for an API, use api-mocking. Covers `postman simulation`.",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/api-simulation/SKILL.md",
-          "bytes": 5016,
-          "sha256": "0b6dc3759d1b6ba18d5856013eb183aaae92ef15d7f2976eaaef6e7cbf308fad"
+          "bytes": 7748,
+          "sha256": "f1c3ecedaf1a75caaa0864e1f2bd217ecbf75b223912fd9de4e02ca4965b349b"
         },
         {
           "target": "reference/sim_yaml_schema.md",
           "source": "skills/api-simulation/reference/sim_yaml_schema.md",
-          "bytes": 5947,
-          "sha256": "f4b3c6961b8b1ef1178e4b959f74f4f63d8461492815cda0cc7adaf984f738c1"
+          "bytes": 2316,
+          "sha256": "01bb558a414c967f344e2f62bf967205833cfd955abcdbfdb555cf651b218934"
         }
       ]
     },
@@ -118,8 +118,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-testing/SKILL.md",
-          "bytes": 3363,
-          "sha256": "66b2d915fa60833f597c31aa19899afb2acc13cf1cc3e3e1a3fe9cf0f4347c45"
+          "bytes": 3454,
+          "sha256": "5875263235d39428949f5d2d36ca9ddb0f01b59fb82829e52edaf8bde77138be"
         }
       ]
     },
@@ -139,13 +139,13 @@
     {
       "name": "bootstrap",
       "plugin": "postman",
-      "description": "Use when resolving Postman CLI setup, authentication, or a repository workspace binding; initializing local API files; or importing, pulling, pushing, syncing, or sharing workspace resources. Reuses existing context and chooses sync direction without duplicating a workspace or rebinding a dependency. Use for requests such as \"set up Postman for this repo\".",
+      "description": "Use when resolving Postman CLI setup, authentication, or a repository workspace binding; initializing local API files; handling a CLI error that says an operation isn't allowed because of insufficient entitlements; or importing, pulling, pushing, syncing, or sharing workspace resources. Reuses existing context and chooses sync direction without duplicating a workspace or rebinding a dependency. Use for requests such as \"set up Postman for this repo\".",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/bootstrap/SKILL.md",
-          "bytes": 6073,
-          "sha256": "aad950c99302cc4360a503ae94243f17db06c3c9079b4d62d93c8ae8bbcf327d"
+          "bytes": 7693,
+          "sha256": "6b3652f38a788f7a2a3dca30fb134b8aabb59f853bf8ee0f07a3fe9fd45b0f27"
         },
         {
           "target": "reference/cli_installation.md",
@@ -333,13 +333,13 @@
     {
       "name": "webhook-testing",
       "plugin": "postman",
-      "description": "Gives anything that sends webhooks — Stripe, GitHub, Slack, a payment processor, or your own API — a stable public URL that records every request and forwards it to a handler running locally, so you can see exactly what was sent, replay a delivery after a fix instead of re-triggering the sender, and assert on every delivery. Use when the user asks to \"test my webhook handler,\" \"get Stripe/GitHub webhooks to localhost,\" \"forward this webhook to my local server,\" \"see what the webhook actually sent,\" \"replay that event,\" \"verify the webhook signature,\" or \"check the webhooks our API sends,\" whether or not they mention Postman.",
+      "description": "Capture, forward to localhost, replay, and validate webhook deliveries using a reusable public URL. Keep sender configuration across debugging sessions and record arrivals even while local forwarding is stopped, helping distinguish delivery failures from local connectivity issues. Use for implementing or debugging incoming handlers and testing webhooks an API sends, whether or not Postman is mentioned. Example requests include \"get payment events to localhost,\" \"inspect a webhook delivery,\" and \"replay an event after a fix\"; these illustrate intent, not an exhaustive list or exact phrases to match.",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/webhook-testing/SKILL.md",
-          "bytes": 6219,
-          "sha256": "29b77772909cae14ca852b080fa5e964fa6ec010650fa68f9487ef7ed76da53d"
+          "bytes": 6210,
+          "sha256": "0f7b600d8c2a9954b1ef35707ccfa407c366d73dd2b8fbe5bd4bed4c4b15ba94"
         },
         {
           "target": "reference/forwarding.md",

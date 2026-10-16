@@ -33,11 +33,13 @@ guesswork each time work resumes.
    Existing workspace resources can supply maintained contracts and mocks; the
    Context Graph can identify consumers and dependencies outside the checkout,
    helping you focus investigation before traversing more repositories.
-5. When live HTTP dependencies make local testing difficult, **api-simulation**
-   runs your real service against reusable dependency mocks on one port, including
-   failure scenarios. Reuse owners' mocks where available. For a stand-in backend
-   without a real service of your own, use **api-mocking**. Both persist in the
-   repository so later sessions and teammates can reproduce the setup.
+5. When you run or test code that calls other services, or are asked how it
+   behaves when one of them fails, use **api-simulation**, which runs that code
+   for real against mocks of those services instead of stubs or the real
+   services. Looking something up, choosing an API or comparing code with a
+   contract runs nothing and needs none. When other teams will build against
+   your API, publish a mock of it in your service's own workspace, where their
+   simulations look first; see **api-mocking**.
 6. Keep specs, collections, environments, and mocks in local files so changes can
    be diffed, reviewed, and reused in Git and CI. Use **bootstrap** when setup or
    workspace bindings are unresolved: reuse an existing local layout, pull the
@@ -65,6 +67,11 @@ Proceed with reversible work within the user's task and present concrete results
 for course correction. Recommend additional work only when it closes a material
 gap, such as an untested behavior or a consumer affected by an interface change.
 Decline unnecessary setup or scope and explain why it would not help the task.
+
+Important: If a CLI command says an operation isn't allowed because credits
+or usage are exhausted, or the current plan does not permit it, follow
+**bootstrap**'s "Subscription or usage limit" section instead of retrying or
+trying to find a workaround.
 
 ## Verification
 
