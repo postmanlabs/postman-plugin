@@ -13,7 +13,7 @@ plugin route below — each route's manifest or package points back at the same
 | --- | --- | --- | --- |
 | Claude Code plugin | `/plugin marketplace add postmanlabs/postman-plugin` clones this repo | `mcp.claude-code.json` | `postman-claude-code-plugin` |
 | Cursor plugin | `.cursor-plugin/plugin.json` points at this repo's `skills/` dir | `mcp.cursor.json` | `postman-cursor-plugin` |
-| GitHub Copilot CLI plugin | `.github/plugin/plugin.json` points at the same `skills/` dir and `hooks/hooks.json` | `mcp.copilot.json` | `postman-copilot-plugin` |
+| GitHub Copilot CLI plugin | `.github/plugin/plugin.json` points at the same `skills/` dir and its own `hooks/copilot-hooks.json`, which runs the same scripts | `mcp.copilot.json` | `postman-copilot-plugin` |
 | Kimi Code plugin | `.kimi-plugin/plugin.json` points at the same `skills/` dir | `mcpServers` in `.kimi-plugin/plugin.json` | `postman-kimi-plugin` |
 | Antigravity plugin | `agy plugin install https://github.com/postmanlabs/postman-plugin` clones this repo; `.antigravity-plugin/plugin.json` points at the same `skills/` dir | `mcp_config.json` | `postman-antigravity-plugin` |
 | Codex plugin | `.codex-plugin/plugin.json` points at the same `skills/` dir | `mcp.codex.json` | `postman-codex-plugin` |

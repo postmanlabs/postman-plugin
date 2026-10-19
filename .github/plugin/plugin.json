@@ -21,6 +21,6 @@
     "mcp"
   ],
   "skills": "skills",
-  "hooks": "hooks/hooks.json",
+  "hooks": "hooks/copilot-hooks.json",
   "mcpServers": "./mcp.copilot.json"
 }

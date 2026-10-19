@@ -4,6 +4,7 @@
 // offline against a local stand-in for both a BYOK OpenAI-compatible model and Postman's MCP server.
 // It then checks what Copilot sent each of them. No GitHub account is used.
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import path from 'node:path';
 import {
     ENTRY_SKILL, assertMandate, assertMcpHeaders, assertSkillsListed, chatCompletion, copyCheckout, mandatedSkill,
@@ -19,6 +20,17 @@ const copilot = process.env.COPILOT_BIN || 'copilot',
     env = Object.fromEntries(Object.entries(process.env).filter(([name]) => !/^(CLAUDE|ANTHROPIC_|COPILOT_|GH_TOKEN$|GITHUB_TOKEN$)/.test(name)));
 
 const isConversation = (body) => body.tools?.some((tool) => tool.function?.name === 'skill');
+
+/** The session's hook events, which say whether the hook ran and failed when its output never reached the model. */
+function hookEvents () {
+    const sessions = path.join(home, '.copilot', 'session-state');
+
+    return (fs.existsSync(sessions) ? fs.readdirSync(sessions) : [])
+        .map((id) => path.join(sessions, id, 'events.jsonl'))
+        .filter((file) => fs.existsSync(file))
+        .flatMap((file) => fs.readFileSync(file, 'utf8').split(/\r?\n/).filter((line) => line.includes('"type":"hook.')))
+        .join('\n');
+}
 
 /** The session's first turn loads the entry skill by the name the mandate gives it, its second says "ok". */
 function answer (request, body) {
@@ -67,7 +79,13 @@ try {
         skillList = turns[0].body.tools.find((tool) => tool.function.name === 'skill').function.description + first;
 
     assertSkillsListed('Copilot CLI', skillList, (skill) => new RegExp(`<name>${skill}</name>`));
-    assertMandate('Copilot CLI', first, { namespaced: false });
+    try {
+        assertMandate('Copilot CLI', first, { namespaced: false });
+    }
+    catch (error) {
+        error.message += `\nhook events:\n${hookEvents() || 'none'}`;
+        throw error;
+    }
     assert.ok(second.includes(skillExcerpt(ENTRY_SKILL)), `the mandated skill did not load:\n${second.slice(-800)}`);
     assertMcpHeaders('Copilot CLI', standIn.mcpRequests, headers);
 
