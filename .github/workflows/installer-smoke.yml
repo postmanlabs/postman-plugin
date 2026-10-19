@@ -52,7 +52,7 @@ jobs:
             label: Windows
     env:
       # Kimi Code has no uninstall command, so it is removed on its own below.
-      REMOVABLE: claude-code,codex,cursor,factory,opencode,pi
+      REMOVABLE: claude-code,codex,copilot,cursor,factory,opencode,pi
     defaults:
       run:
         shell: bash
@@ -71,7 +71,7 @@ jobs:
         run: npm ci && npm run build
 
       - name: Install the agent CLIs
-        run: npm install -g @anthropic-ai/claude-code @openai/codex droid @earendil-works/pi-coding-agent opencode-ai
+        run: npm install -g @anthropic-ai/claude-code @openai/codex @github/copilot droid @earendil-works/pi-coding-agent opencode-ai
 
       # OpenCode 2 is its own CLI, installed apart so both majors are tested: `opencode-ai` above is OpenCode 1.
       - name: Install OpenCode 2 beside OpenCode 1
@@ -156,6 +156,10 @@ jobs:
       - name: The latest Kimi Code loads this checkout
         if: ${{ !cancelled() }}
         run: node ../scripts/kimi-harness.js
+
+      - name: The latest Copilot CLI loads this checkout
+        if: ${{ !cancelled() }}
+        run: node ../scripts/copilot-harness.js
 
       # Installed only now: before the installer ran, Cursor had to be found by its home directory alone.
       # Linux only: the Cursor CLI on Windows runs no sessionStart hook headless

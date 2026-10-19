@@ -340,6 +340,7 @@ against the latest one nightly.
 ```
 CLAUDE_BIN=<path to claude> node scripts/claude-code-harness.js
 CODEX_BIN=<path to codex> node scripts/codex-harness.js
+COPILOT_BIN=<path to copilot> node scripts/copilot-harness.js
 KIMI_BIN=<path to kimi> node scripts/kimi-harness.js
 AGY_BIN=<path to agy> node scripts/antigravity-harness.js
 CURSOR_API_KEY=<key> CURSOR_BIN=<path to cursor-agent> node scripts/cursor-harness.js
@@ -351,7 +352,9 @@ DROID_BIN=<path to droid> node scripts/factory-harness.js
 Each `*_BIN` defaults to the agent's command on `PATH`. Codex skips a plugin's
 hook until the user trusts it, so its harness runs twice: untrusted, which must
 carry the skills and no mandate, and with `--dangerously-bypass-hook-trust`,
-which must carry both. Cursor's CLI has no stand-in model, so its harness asks
+which must carry both. Copilot CLI's harness runs it with `COPILOT_OFFLINE=true`
+and a BYOK provider, `COPILOT_PROVIDER_BASE_URL`, pointed at the stand-in, so it
+needs no GitHub account. Cursor's CLI has no stand-in model, so its harness asks
 Cursor's model to quote the mandate and the skill it names, and needs a
 `CURSOR_API_KEY`; CI's Cursor steps are commented out for now, so run it
 locally. When they return, CI reads the key from the repository secret of that name. It

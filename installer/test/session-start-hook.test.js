@@ -12,7 +12,7 @@ const hooksDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'
     windows = process.platform === 'win32',
     mandate = fs.readFileSync(path.join(hooksDir, 'session-start-context.md'), 'utf8'),
     bareNames = (text) => text.replace(/`postman:([a-z0-9-]*)`/g, '`$1`'),
-    agentEnv = Object.fromEntries(Object.entries(process.env).filter(([name]) => !/^(CLAUDE|CURSOR|DROID)_PLUGIN_ROOT$/i.test(name)));
+    agentEnv = Object.fromEntries(Object.entries(process.env).filter(([name]) => !/^(CLAUDE|CURSOR|COPILOT|DROID)_PLUGIN_ROOT$/i.test(name)));
 
 /** `droidRoot` is what `"${DROID_PLUGIN_ROOT}"` becomes: Droid's root on Droid, empty everywhere else. */
 function runHook (dir, droidRoot, env = {}) {
@@ -27,8 +27,8 @@ function runHook (dir, droidRoot, env = {}) {
     return result.stdout;
 }
 
-/** Parsed the way Cursor parses a hook's stdout; anything else is its `invalid_json`. */
-function cursorOutput (stdout) {
+/** Parsed the way Cursor and Copilot CLI parse a hook's stdout; Cursor drops anything else as `invalid_json`. */
+function jsonOutput (stdout) {
     return JSON.parse(stdout.trim());
 }
 
@@ -41,11 +41,18 @@ test('Droid gets the mandate with bare skill names', () => {
 });
 
 test('Cursor gets JSON whose additional_context is the mandate with bare skill names', () => {
-    const output = cursorOutput(runHook(hooksDir, '', { CURSOR_PLUGIN_ROOT: path.dirname(hooksDir) }));
+    const output = jsonOutput(runHook(hooksDir, '', { CURSOR_PLUGIN_ROOT: path.dirname(hooksDir) }));
 
     assert.deepEqual(output, { additional_context: bareNames(mandate) });
     assert.match(output.additional_context, /^<EXTREMELY_IMPORTANT>\s*You have the Postman plugin/);
     assert.match(output.additional_context, /load the `api-engineer` skill/);
+});
+
+test('Copilot CLI gets JSON whose additionalContext is the mandate with bare skill names', () => {
+    const output = jsonOutput(runHook(hooksDir, '', { COPILOT_PLUGIN_ROOT: path.dirname(hooksDir), CLAUDE_PLUGIN_ROOT: path.dirname(hooksDir) }));
+
+    assert.deepEqual(output, { additionalContext: bareNames(mandate) });
+    assert.match(output.additionalContext, /load the `api-engineer` skill/);
 });
 
 test('Cursor JSON survives quotes, backslashes, tabs, CRLF and non-ASCII in the mandate', () => {
@@ -57,5 +64,6 @@ test('Cursor JSON survives quotes, backslashes, tabs, CRLF and non-ASCII in the 
     }
     fs.writeFileSync(path.join(dir, 'session-start-context.md'), fixture);
 
-    assert.deepEqual(cursorOutput(runHook(dir, '', { CURSOR_PLUGIN_ROOT: dir })), { additional_context: bareNames(fixture) });
+    assert.deepEqual(jsonOutput(runHook(dir, '', { CURSOR_PLUGIN_ROOT: dir })), { additional_context: bareNames(fixture) });
+    assert.deepEqual(jsonOutput(runHook(dir, '', { COPILOT_PLUGIN_ROOT: dir })), { additionalContext: bareNames(fixture) });
 });

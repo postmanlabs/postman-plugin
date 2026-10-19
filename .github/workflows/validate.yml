@@ -5,7 +5,7 @@
 # (installer-smoke.yml runs it against the real agent CLIs), `schema` checks each
 # vendor plugin manifest against that vendor's own published schema. One job per
 # route installs this checkout into a pinned agent (Cursor: the latest) and checks what it sends
-# its model and the MCP server: `claude-code`, `codex`, `cursor`, `factory`, `kimi`,
+# its model and the MCP server: `claude-code`, `codex`, `copilot`, `cursor`, `factory`, `kimi`,
 # `opencode` and `pi`; `antigravity` checks only what agy registers (see that job). Every job but
 # `skills`, `manifest`, `schema`, `cursor` and `antigravity` runs on Linux, and on Windows too
 # unless a pull request changes only skills or docs (see `os`).
@@ -335,6 +335,36 @@ jobs:
         env:
           CODEX_BIN: ${{ runner.temp }}/codex/node_modules/.bin/codex${{ runner.os == 'Windows' && '.cmd' || '' }}
 
+  # Copilot CLI installs this checkout as the `postman` marketplace, as the installer does. The harness
+  # runs it offline against a stand-in BYOK model and MCP server: the skills, the hook's mandate and the skill it names.
+  copilot:
+    name: GitHub Copilot CLI plugin / ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    needs: os
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.os.outputs.matrix) }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+
+      # Pinned so a Copilot CLI release can't fail a PR on its own; installer-smoke.yml runs the latest nightly.
+      - name: Install Copilot CLI
+        run: npm install --no-save --prefix "$RUNNER_TEMP/copilot" @github/copilot@1.0.98
+
+      - name: Copilot CLI loads the skills, the mandate and the MCP server from the marketplace
+        run: node scripts/copilot-harness.js
+        env:
+          COPILOT_BIN: ${{ runner.temp }}/copilot/node_modules/.bin/copilot${{ runner.os == 'Windows' && '.cmd' || '' }}
+
   # Kimi Code gets this checkout from the `plugins` CLI, as the installer gives it the repo. The harness
   # checks what Kimi sends a stand-in model and MCP server: the skills, the mandate and the skill it names.
   kimi:
@@ -452,8 +482,9 @@ jobs:
   # on every run, so a vendor tightening its schema fails CI here rather than
   # at marketplace review. Files with no published schema (.kimi-plugin/plugin.json,
   # .codex-plugin/plugin.json, .factory-plugin/*.json, .antigravity-plugin/plugin.json,
-  # the other mcp.*.json, mcp.json, mcp_config.json, manifest.json) are covered by the
-  # `manifest` job above, and Antigravity's by `agy plugin validate` in `antigravity`. Codex
+  # .github/plugin/plugin.json, the other mcp.*.json, mcp.json, mcp_config.json, manifest.json)
+  # are covered by the `manifest` job above, Antigravity's by `agy plugin validate` in
+  # `antigravity`, and Copilot CLI's by its install in `copilot`. Codex
   # documents its manifest in prose only and publishes no schema for it; the
   # agent-plugins.org schema is not a substitute, since it describes the
   # root-level `plugin.json` Agent Plugins format, which Codex selects by path

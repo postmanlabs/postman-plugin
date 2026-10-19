@@ -18,7 +18,7 @@ install path. Every vendor names that differently, and only some substitute
 | --- | --- | --- |
 | Claude Code | `CLAUDE_PLUGIN_ROOT` | yes |
 | Cursor | `CURSOR_PLUGIN_ROOT`, plus `CLAUDE_PLUGIN_ROOT` as an explicit alias | yes — in `command`, `args`, `env` values and `cwd`. Not `${PLUGIN_ROOT}` |
-| Copilot / VS Code | `CLAUDE_PLUGIN_ROOT`, also injected into the hook's environment | yes |
+| Copilot CLI / VS Code | `COPILOT_PLUGIN_ROOT`, plus `CLAUDE_PLUGIN_ROOT` and `PLUGIN_ROOT`, all also in the hook's environment (Copilot CLI 1.0.98) | yes |
 | Codex | `PLUGIN_ROOT` and `PLUGIN_DATA`, plus `CLAUDE_PLUGIN_ROOT`/`CLAUDE_PLUGIN_DATA` for compatibility | yes — those four only, and it exports them too. Any other `${...}`, like `${DROID_PLUGIN_ROOT}`, reaches the shell as written |
 | Factory Droid | `DROID_PLUGIN_ROOT`, plus `CLAUDE_PLUGIN_ROOT` for compatibility | yes — `${DROID_PLUGIN_ROOT}`, `$DROID_PLUGIN_ROOT`, `${CLAUDE_PLUGIN_ROOT}` and `$CLAUDE_PLUGIN_ROOT` |
 | Kimi Code | `KIMI_PLUGIN_ROOT`, and cwd is set to the plugin root | not documented |
@@ -51,6 +51,10 @@ route re-creates the problem the shared `skills/` directory exists to avoid.
   whose stdout isn't JSON as `invalid_json`, so with it set the scripts print
   `{"additional_context": "<mandate>"}`. A third argument can't be the signal:
   `${CURSOR_PLUGIN_ROOT}` would reach Droid's cmd.exe unexpanded.
+- **Copilot CLI is told apart the same way, under another key.** It sets
+  `COPILOT_PLUGIN_ROOT`, runs the hook and reports it successful, but injects
+  only the `additionalContext` of a JSON stdout. Plain markdown is dropped with
+  no error, so with it set the scripts print `{"additionalContext": "<mandate>"}`.
 - **`hooks/session-start` must stay executable and LF.** The shell runs it by
   path, so it needs its mode bit, and `.gitattributes` pins it to LF so a
   Windows checkout with `core.autocrlf` doesn't hand bash a `\r` on every line.
@@ -58,12 +62,12 @@ route re-creates the problem the shared `skills/` directory exists to avoid.
 ## The context itself must stay agent-neutral
 
 `hooks/session-start-context.md` is one file read by every route that has a
-context mechanism — Claude Code, Cursor and Factory Droid through
+context mechanism — Claude Code, Cursor, Copilot CLI and Factory Droid through
 `hooks/hooks.json`, Codex through its fallback to that same file, OpenCode and
 Pi through their own code, and Kimi and Antigravity through copies `scripts/build-manifest.js`
-generate. Cursor, Droid, OpenCode, Pi, Kimi and Antigravity name skills without the
+generate. Cursor, Copilot CLI, Droid, OpenCode, Pi, Kimi and Antigravity name skills without the
 `postman:` prefix, so each gets `` `postman:<skill>` `` rewritten to the bare
-name: the two plugins in code, the hook scripts for Droid and Cursor, and the
+name: the two plugins in code, the hook scripts for Droid, Cursor and Copilot CLI, and the
 build script for the Kimi and Antigravity copies. Droid's Skill tool answers
 `Skill "postman:api-engineer" not found` otherwise; Cursor sends a plugin skill
 to its backend by path, and invokes it as `/<skill>`. So the file must not name

@@ -39,6 +39,11 @@ const AGENTS = {
         found: () => JSON.parse(output('codex', ['plugin', 'list', '--json'])).installed
             .map(({ pluginId }) => pluginId).filter((id) => id.startsWith('postman@'))
     },
+    copilot: {
+        expected: ['postman@postman'],
+        found: () => JSON.parse(output('copilot', ['plugin', 'list', '--json']))
+            .filter(({ name }) => name === 'postman').map(({ name, marketplace }) => `${name}@${marketplace}`)
+    },
     cursor: {
         expected: [path.join(home, '.cursor', 'plugins', 'local', 'postman', '.cursor-plugin', 'plugin.json')],
         found: () => present(path.join(home, '.cursor', 'plugins', 'local', 'postman', '.cursor-plugin', 'plugin.json'))
