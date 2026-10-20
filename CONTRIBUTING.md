@@ -370,8 +370,9 @@ registers from this checkout (every skill, `rules/GEMINI.md`, the `postman` MCP
 server) and the installed copies of the rule and MCP config. agy reaches a
 stand-in model through `AGY_LLM_GATEWAY_URL` with any `GEMINI_API_KEY`, but
 signed out it sends that model no skills and no rules, not even project ones, so
-checking what reaches the model needs a signed-in account. CI runs it on Linux,
-against the latest agy, since its installer takes no version.
+checking what reaches the model needs a signed-in account. Its installers take
+no version, so both workflows run it against the latest agy: CI's `antigravity`
+job on Linux, the `Installer smoke` workflow on Linux and Windows.
 
 ## The installer
 

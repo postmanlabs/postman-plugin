@@ -52,7 +52,7 @@ jobs:
             label: Windows
     env:
       # Kimi Code has no uninstall command, so it is removed on its own below.
-      REMOVABLE: claude-code,codex,copilot,cursor,factory,opencode,pi
+      REMOVABLE: antigravity,claude-code,codex,copilot,cursor,factory,opencode,pi
     defaults:
       run:
         shell: bash
@@ -95,6 +95,20 @@ jobs:
           irm https://code.kimi.com/kimi-code/install.ps1 | iex
           "$HOME\.kimi-code\bin" >> $env:GITHUB_PATH
 
+      # Antigravity's installers take no version; agy updates itself.
+      - name: Install the Antigravity CLI
+        if: runner.os != 'Windows'
+        run: |
+          curl -fsSL --retry 3 https://antigravity.google/cli/install.sh | bash -s -- --dir "$HOME/.local/bin"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Install the Antigravity CLI
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          irm https://antigravity.google/cli/install.ps1 | iex
+          "$env:LOCALAPPDATA\agy\bin" >> $env:GITHUB_PATH
+
       # Cursor isn't installed; the installer finds it by the home directory its app or CLI creates on first run.
       - name: Give Cursor a home directory
         run: |
@@ -102,6 +116,9 @@ jobs:
 
       - name: Kimi Code runs
         run: kimi --version
+
+      - name: Antigravity runs
+        run: agy --version
 
       # Every run but the nightly one has the installer install this commit, as a one-commit copy of the checkout, so a
       # fork's pull request is tested too. The nightly run installs `main` from GitHub, as users do.
@@ -160,6 +177,11 @@ jobs:
       - name: The latest Copilot CLI loads this checkout
         if: ${{ !cancelled() }}
         run: node ../scripts/copilot-harness.js
+
+      # Checks what agy registers, not what reaches its model; see the `antigravity` job in validate.yml.
+      - name: The latest Antigravity registers this checkout
+        if: ${{ !cancelled() }}
+        run: node ../scripts/antigravity-harness.js
 
       # Installed only now: before the installer ran, Cursor had to be found by its home directory alone.
       # Linux only: the Cursor CLI on Windows runs no sessionStart hook headless
