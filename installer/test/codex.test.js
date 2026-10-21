@@ -37,8 +37,12 @@ test('detects Codex by its CLI on PATH', async () => {
 });
 
 test('fresh install adds this repo at codex-release as the postman marketplace, records its revision, then adds the plugin', async () => {
-    const system = codexSystem({ marketplaces: [] }),
-        outcome = await codex.install(system);
+    const system = codexSystem({ marketplaces: [] });
+
+    assert.deepEqual(system.files, {});
+    assert.equal(system.dirs.size, 0);
+
+    const outcome = await codex.install(system);
 
     assert.equal(outcome.message, 'installed postman@postman');
     assert.deepEqual(system.commands, [

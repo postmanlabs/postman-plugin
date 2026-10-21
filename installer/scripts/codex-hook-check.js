@@ -108,7 +108,18 @@ export async function checkCodexHookApproval () {
                 return data.flatMap(({ hooks }) => hooks).find(({ key }) => key === POSTMAN_HOOK_KEY);
             });
 
-        assert.ok(!fs.existsSync(codexHome));
+        if (process.platform === 'win32') {
+            // Codex uses the native Windows profile rather than HOME/USERPROFILE.
+            // Explicit CODEX_HOME requires an existing directory, so only Windows
+            // needs an empty one. Linux and the fresh unit case start without it.
+            fs.mkdirSync(codexHome);
+            env.CODEX_HOME = codexHome;
+        }
+        else {
+            assert.ok(!fs.existsSync(codexHome));
+        }
+
+        assert.ok(!fs.existsSync(path.join(codexHome, 'config.toml')));
         await runInstall();
         assert.match(logs.join('\n'), /Approved Postman's Codex session-start hook/);
         assert.doesNotMatch(logs.join('\n'), /Approve Postman's|<EXTREMELY_IMPORTANT>|session-start-context\.md|hooks[\\/]session-start/);
