@@ -8,6 +8,7 @@ import { POSTMAN_HOOK_KEY } from '../dist/hosts/codex-hooks.js';
 import { BRANCH, REPO } from '../dist/source.js';
 import { run as install } from '../dist/run.js';
 import { createSystem } from '../dist/system.js';
+import { JsonRpcError } from '../dist/json-rpc.js';
 import { assertMandate, runAgent, startStandIn, workspace } from '../../scripts/lib/harness.js';
 import { checkCodexTui } from './codex-tui-check.js';
 
@@ -43,6 +44,26 @@ export function snapshot (root, { includeMetadata = true } = {}) {
     walk(root);
 
     return files;
+}
+
+// Setup only: older Windows Codex can fail an atomic config rename temporarily.
+// Actual installer approval writes are never retried or hidden by this helper.
+export async function writeTestConfig (rpc, edits, label, platform = process.platform, pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms))) {
+    for (let attempt = 0; ; attempt++) {
+        try {
+            await rpc.request('config/batchWrite', { edits, reloadUserConfig: true });
+
+            return;
+        }
+        catch (error) {
+            if (platform !== 'win32' || !(error instanceof JsonRpcError) || error.reply.code !== -32603 ||
+                !/failed to persist config/.test(error.message) || attempt >= 2) {
+                throw new Error(`Could not ${label} in the throwaway Codex profile`, { cause: error });
+            }
+
+            await pause(250 * (attempt + 1));
+        }
+    }
 }
 
 export async function checkCodexHookApproval () {
@@ -200,10 +221,7 @@ export async function checkCodexHookApproval () {
             await system.withJsonRpc('codex', ['app-server'], async (rpc) => {
                 await rpc.request('initialize', { clientInfo: { name: 'postman-installer-smoke', version: '1' } });
                 rpc.notify('initialized');
-                await rpc.request('config/batchWrite', {
-                    edits: [{ keyPath: 'projects', value: { [box.project]: { trust_level: 'trusted' } }, mergeStrategy: 'upsert' }],
-                    reloadUserConfig: true
-                });
+                await writeTestConfig(rpc, [{ keyPath: 'projects', value: { [box.project]: { trust_level: 'trusted' } }, mergeStrategy: 'upsert' }], 'trust the test project');
             });
             await tui(false);
         }
@@ -213,10 +231,7 @@ export async function checkCodexHookApproval () {
         await system.withJsonRpc('codex', ['app-server'], async (rpc) => {
             await rpc.request('initialize', { clientInfo: { name: 'postman-installer-smoke', version: '1' } });
             rpc.notify('initialized');
-            await rpc.request('config/batchWrite', {
-                edits: [{ keyPath: 'hooks.state', value: { [POSTMAN_HOOK_KEY]: { trusted_hash: `sha256:${'0'.repeat(64)}` } }, mergeStrategy: 'upsert' }],
-                reloadUserConfig: true
-            });
+            await writeTestConfig(rpc, [{ keyPath: 'hooks.state', value: { [POSTMAN_HOOK_KEY]: { trusted_hash: `sha256:${'0'.repeat(64)}` } }, mergeStrategy: 'upsert' }], 'make hook trust stale for the negative control');
         });
         assert.equal((await list()).trustStatus, 'modified');
 
@@ -246,10 +261,7 @@ export async function checkCodexHookApproval () {
                 await system.withJsonRpc('codex', ['app-server'], async (rpc) => {
                     await rpc.request('initialize', { clientInfo: { name: 'postman-installer-smoke', version: '1' } });
                     rpc.notify('initialized');
-                    await rpc.request('config/batchWrite', {
-                        edits: [{ keyPath: 'marketplaces.postman.ref', value: ref, mergeStrategy: 'upsert' }],
-                        reloadUserConfig: true
-                    });
+                    await writeTestConfig(rpc, [{ keyPath: 'marketplaces.postman.ref', value: ref, mergeStrategy: 'upsert' }], 'seed the legacy marketplace ref');
                 });
             }
             else {

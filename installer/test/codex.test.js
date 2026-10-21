@@ -7,7 +7,8 @@ import { POSTMAN_HOOK_KEY } from '../dist/hosts/codex-hooks.js';
 import { run } from '../dist/run.js';
 import { createSystem } from '../dist/system.js';
 import { checkCodexTui } from '../scripts/codex-tui-check.js';
-import { codexEnvironment } from '../scripts/codex-hook-check.js';
+import { codexEnvironment, writeTestConfig } from '../scripts/codex-hook-check.js';
+import { JsonRpcError } from '../dist/json-rpc.js';
 
 const MARKETPLACES = 'codex plugin marketplace list --json',
     REACH = 'git ls-remote --exit-code https://github.com/postmanlabs/postman-plugin.git refs/heads/main',
@@ -433,6 +434,29 @@ test('isolated Codex smoke retains Windows Path and strips profile and credentia
     assert.deepEqual(codexEnvironment({ PATH: '/bin', Path: 'separate-posix-key', CODEX_HOME: '/old-profile' }, 'linux'), {
         PATH: '/bin', Path: 'separate-posix-key'
     });
+});
+
+test('smoke setup retries only a temporary Windows config persistence error, with a fixed limit', async () => {
+    const persist = new JsonRpcError({ code: -32603, message: 'failed to persist config.toml' });
+    let calls = 0;
+    const rpc = { async request () { if (++calls === 1) { throw persist; } } };
+
+    await writeTestConfig(rpc, [], 'seed the legacy ref', 'win32', async () => {});
+    assert.equal(calls, 2);
+
+    for (const [platform, error, expected] of [
+        ['linux', persist, 1],
+        ['win32', new JsonRpcError({ code: -32601, message: 'Method not found' }), 1],
+        ['win32', new JsonRpcError({ code: -32603, message: 'invalid config' }), 1],
+        ['win32', persist, 3]
+    ]) {
+        calls = 0;
+        const failing = { async request () { calls++; throw error; } };
+
+        await assert.rejects(writeTestConfig(failing, [], 'seed the legacy ref', platform, async () => {}),
+            (failure) => /Could not seed the legacy ref/.test(failure.message) && failure.cause === error);
+        assert.equal(calls, expected);
+    }
 });
 
 test('the TUI check detects hook review and requires a ready session', { skip: process.platform !== 'linux' && 'Linux terminal check', timeout: 10000 }, async () => {
