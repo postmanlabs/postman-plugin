@@ -7,7 +7,8 @@
 # vendor plugin manifest against that vendor's own published schema. One job per
 # route installs this checkout into a pinned agent (Cursor: the latest) and checks what it sends
 # its model and the MCP server: `claude-code`, `codex`, `copilot`, `cursor`, `factory`, `kimi`,
-# `opencode` and `pi`; `antigravity` checks only what agy registers (see that job). Every job but
+# `opencode` and `pi`; `antigravity` checks only what agy registers (see that job). Kiro has
+# no job of its own: its power is imported through the IDE, so `schema` and `manifest` are what check it. Every job but
 # `skills`, `manifest`, `postman-cli`, `schema`, `cursor` and `antigravity` runs on Linux, and on Windows too
 # unless a pull request changes only skills or docs (see `os`).
 name: Validate
@@ -514,9 +515,9 @@ jobs:
   # are covered by the `manifest` job above, Antigravity's by `agy plugin validate` in
   # `antigravity`, and Copilot CLI's by its install in `copilot`. Codex
   # documents its manifest in prose only and publishes no schema for it; the
-  # agent-plugins.org schema is not a substitute, since it describes the
+  # agent-plugins.org schema is not a substitute for Codex's, since it describes the
   # root-level `plugin.json` Agent Plugins format, which Codex selects by path
-  # and which .codex-plugin/plugin.json is deliberately not.
+  # and which .codex-plugin/plugin.json is deliberately not. Kiro does read that format.
   schema:
     name: Schema / ${{ matrix.name }}
     runs-on: ubuntu-latest
@@ -544,6 +545,17 @@ jobs:
             file: mcp.opencode.json
             schema: https://opencode.ai/config.json
             ref: https://models.dev/model-schema.json
+            spec: draft2020
+          # Kiro's power is a plain Agent Plugins package, so the spec's own schemas apply.
+          # Both set additionalProperties: false, and the MCP one takes `streamable-http`,
+          # not the `http` every other route here spells.
+          - name: Kiro plugin
+            file: kiro/plugin.json
+            schema: https://agent-plugins.org/schemas/1.0.0/plugin.schema.json
+            spec: draft2020
+          - name: Kiro MCP config
+            file: kiro/mcp.json
+            schema: https://agent-plugins.org/schemas/1.0.0/mcp.schema.json
             spec: draft2020
     steps:
       - uses: actions/checkout@v4

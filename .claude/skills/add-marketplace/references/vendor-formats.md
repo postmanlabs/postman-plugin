@@ -68,3 +68,13 @@ reports the registered URL with any placeholder still in the path, Cursor has no
 such plugin variable in a URL, and the Agent Plugins spec is explicit that only
 `${PLUGIN_ROOT}`/`${PLUGIN_DATA}` expand and never in a URL. If the mode ever
 needs to be configurable, resolve it at build time or behind a stdio wrapper.
+
+**Kiro reads the Agent Plugins format, and this repo can't have its root file.**
+Its power is a `plugin.json` at the power's root with `skills/` and `mcp.json` in
+fixed places; the manifest cannot point elsewhere and the schema is
+`additionalProperties: false`. So the route is the `kiro/` subfolder, imported
+from a `/tree/main/kiro` URL, with a generated copy of `skills/` (a symlink out
+of the plugin root is rejected). Its MCP type is `streamable-http`, there is no
+hooks component, and the IDE is the only install path. The format and the
+`/tree/` import URL were read from Kiro's docs and third-party powers, not run
+in the IDE.

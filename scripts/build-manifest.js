@@ -15,6 +15,9 @@
  * keeps the `postman:` names and says to drop the prefix where Kimi lists skills
  * bare; Antigravity's names skills bare.
  *
+ * Kiro's power must hold its skills inside its own root and a symlink out of it
+ * is rejected, so `kiro/skills/` is a byte-for-byte copy of `skills/`.
+ *
  * Run `node scripts/build-manifest.js` after changing any skill or the mandate.
  * CI re-runs it with `--check` and fails if any of these files is stale — a wrong sha256
  * makes the CLI reject a legitimate skill, which is a confusing way to find out.
@@ -32,6 +35,7 @@ const ROOT = path.join(__dirname, '..'),
     MANDATE = path.join(ROOT, 'hooks', 'session-start-context.md'),
     KIMI_MANDATE = path.join(ROOT, '.kimi-plugin', 'session-start-context.md'),
     ANTIGRAVITY_MANDATE = path.join(ROOT, 'rules', 'GEMINI.md'),
+    KIRO_SKILLS_DIR = path.join(ROOT, 'kiro', 'skills'),
     SCHEMA_VERSION = 1,
 
     // `postman init` writes AGENTS.md naming the manifest's first skill as the entry point.
@@ -188,28 +192,57 @@ function kimiMandate () {
     return mandate.replace(close, `${eol}If your skill listing names these skills without the \`postman:\` prefix, drop the prefix when you load one.${eol}${close}`);
 }
 
+/**
+ * @returns {string[]} Every shipped skill file as a POSIX path relative to `skills/`: no dot-directory.
+ */
+function shippedSkillFiles () {
+    return fs.readdirSync(SKILLS_DIR, { withFileTypes: true })
+        .filter((entry) => entry.isDirectory() && !entry.name.startsWith('.'))
+        .flatMap((entry) => walk(path.join(SKILLS_DIR, entry.name), entry.name));
+}
+
 const outputs = [
     [MANIFEST, JSON.stringify(build(), null, 2) + '\n'],
     [KIMI_MANDATE, kimiMandate()],
-    [ANTIGRAVITY_MANDATE, bareMandate()]
+    [ANTIGRAVITY_MANDATE, bareMandate()],
+    ...shippedSkillFiles().map((rel) => [path.join(KIRO_SKILLS_DIR, rel), fs.readFileSync(path.join(SKILLS_DIR, rel))])
 ];
 
+const kiroOrphans = () => fs.existsSync(KIRO_SKILLS_DIR) ?
+    walk(KIRO_SKILLS_DIR).filter((rel) => !shippedSkillFiles().includes(rel)) :
+    [];
+
+/**
+ * @param {string} file - Absolute path.
+ * @param {string|Buffer} content - What the file should hold.
+ * @returns {boolean} Whether the file is missing or differs.
+ */
+function isStale (file, content) {
+    return !fs.existsSync(file) || !fs.readFileSync(file).equals(Buffer.from(content));
+}
+
 if (process.argv.includes('--check')) {
-    const stale = outputs
-        .filter(([file, content]) => !fs.existsSync(file) || fs.readFileSync(file, 'utf8') !== content)
-        .map(([file]) => path.relative(ROOT, file));
+    const stale = [
+        ...outputs.filter(([file, content]) => isStale(file, content)).map(([file]) => path.relative(ROOT, file)),
+        ...kiroOrphans().map((rel) => path.join('kiro', 'skills', rel))
+    ];
 
     if (stale.length) {
         console.error(`Stale: ${stale.join(', ')}. Run \`node scripts/build-manifest.js\` and commit the result.`);
         process.exit(1);
     }
 
-    console.log(`${outputs.map(([file]) => path.relative(ROOT, file)).join(', ')} are up to date.`);
+    console.log(`manifest.json, the generated mandates and kiro/skills/ (${shippedSkillFiles().length} files) are up to date.`);
 }
 else {
+    for (const rel of kiroOrphans()) {
+        fs.rmSync(path.join(KIRO_SKILLS_DIR, rel));
+    }
+
     for (const [file, content] of outputs) {
         fs.mkdirSync(path.dirname(file), { recursive: true });
         fs.writeFileSync(file, content);
-        console.log(`Wrote ${path.relative(ROOT, file)}`);
     }
+
+    console.log(`Wrote manifest.json, the generated mandates and kiro/skills/ (${shippedSkillFiles().length} files)`);
 }

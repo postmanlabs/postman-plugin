@@ -25,7 +25,8 @@ npx @postman/postman-plugin
 ```
 
 One command configures **Antigravity, Claude Code, Codex, GitHub Copilot CLI, Cursor,
-Factory Droid, Kimi Code, OpenCode and Pi**. Run it again to update, `status` to see what's installed,
+Factory Droid, Kimi Code, OpenCode and Pi**, and prints the steps for **Kiro**, which imports
+a power only from its IDE. Run it again to update, `status` to see what's installed,
 and `remove` to uninstall; `--agent <id>` limits any of them to one agent.
 
 You can also use the following commands to install individually:
@@ -102,6 +103,20 @@ Inside a Kimi Code session:
 Then run `/new` to start a session with the plugin. Run the same command again,
 then `/new`, to update; `/plugins remove postman` removes it. Sign in to
 Postman's MCP server with `/mcp-config login plugin-postman:postman`.
+
+### Kiro
+
+In the Kiro IDE, open the Powers panel, choose **Add Custom Power → Import power
+from GitHub**, and enter:
+
+```text
+https://github.com/postmanlabs/postman-plugin/tree/main/kiro
+```
+
+Kiro has no command-line install. Update from the Powers panel with **Check for
+updates**. Kiro activates a power by its keywords, so a session that never
+mentions an API task may not load Postman; this route has no always-on
+session-start mandate.
 
 ### OpenCode
 
