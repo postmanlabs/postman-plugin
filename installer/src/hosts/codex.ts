@@ -26,13 +26,35 @@ async function listPlugins (system: System): Promise<InstalledPlugin[]> {
 
 const configFile = (system: System) => path.join(system.env.CODEX_HOME || path.join(system.home, '.codex'), 'config.toml');
 
+/** Indexes of the lines matching `header`, skipping lines inside a `"""` or `'''` multi-line string. */
+function headerLines (lines: string[], header: RegExp): number[] {
+    const found: number[] = [];
+    let open: string | null = null;
+
+    lines.forEach((line, index) => {
+        if (open === null && header.test(line)) {
+            found.push(index);
+        }
+
+        for (const delimiter of ['"""', "'''"]) {
+            if ((open === null || open === delimiter) && line.split(delimiter).length % 2 === 0) {
+                open = open === null ? delimiter : null;
+            }
+        }
+    });
+
+    return found;
+}
+
 /** Reads `ref` from the `[marketplaces.<name>]` table Codex writes; `marketplace list --json` doesn't report it. Fails closed on any other TOML form. */
 export function marketplaceRef (toml: string, name: string): Ref {
     const header = new RegExp(`^\\s*\\[\\s*marketplaces\\s*\\.\\s*(["']?)${name}\\1\\s*\\]\\s*(#.*)?$`),
         lines = toml.split(/\r?\n/),
-        start = lines.findIndex((line) => header.test(line));
+        headers = headerLines(lines, header),
+        [start] = headers;
 
-    if (start === -1) {
+    // A second match means one sits in text this line reader can't tell from a table.
+    if (headers.length !== 1) {
         return undefined;
     }
 

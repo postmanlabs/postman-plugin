@@ -117,7 +117,7 @@ test('a migration that cannot restore either says how to finish it by hand', asy
 });
 
 test('refuses a marketplace pinned to another ref, leaving it as it is', async () => {
-    const system = codexSystem({ files: { [CONFIG]: config('my-branch') } }),
+    const system = codexSystem({ files: { [CONFIG]: `developer_instructions = """\n${config()}"""\n${config('my-branch')}` } }),
         outcome = await codex.install(system);
 
     assert.equal(outcome.outcome, 'blocked');
@@ -130,7 +130,8 @@ test('refuses to re-register a marketplace whose ref it cannot read, leaving it 
         {},
         { [CONFIG]: '[marketplaces.other]\nsource = "x"\n' },
         { [CONFIG]: '[marketplaces.postman]\n"ref" = "my-branch"\n' },
-        { [CONFIG]: '[marketplaces.postman]\nref = """my-branch"""\n' }
+        { [CONFIG]: '[marketplaces.postman]\nref = """my-branch"""\n' },
+        { [CONFIG]: `x = '''\n${config()}'''\n` }
     ]) {
         const system = codexSystem({ files }),
             outcome = await codex.install(system);
@@ -156,6 +157,12 @@ test('marketplaceRef reads only the named marketplace table', () => {
     assert.equal(marketplaceRef('[marketplaces.postman]\nsource = "x"\n[marketplaces.other]\nref = "c"\n', 'postman'), null);
     assert.equal(marketplaceRef('[marketplaces.postmanx]\nref = "d"\n', 'postman'), undefined);
     assert.equal(marketplaceRef('', 'postman'), undefined);
+
+    const example = 'developer_instructions = """\nRegister it like this:\n[marketplaces.postman]\nsource = "x"\n"""\n';
+
+    assert.equal(marketplaceRef(`${example}${config('my-branch')}`, 'postman'), 'my-branch');
+    assert.equal(marketplaceRef(example, 'postman'), undefined);
+    assert.equal(marketplaceRef(`${config()}${config('my-branch')}`, 'postman'), undefined);
     for (const line of ['"ref" = "a"', "'ref' = 'a'", 'ref = """a"""', "ref = '''a'''", 'ref = "a\\"b"', 'ref.x = "a"']) {
         assert.equal(marketplaceRef(`[marketplaces.postman]\n${line}\n`, 'postman'), undefined, line);
     }
