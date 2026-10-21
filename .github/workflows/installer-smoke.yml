@@ -65,7 +65,7 @@ jobs:
         run: npm ci && npm test
       - name: Install the tested Codex version
         run: npm install --prefix "$RUNNER_TEMP/codex" @openai/codex@${{ matrix.version }}
-      - name: Approval persists, the mandate reaches the model, and Linux TUI hook review disappears
+      - name: Install from main, migrate legacy refs, and verify approval, mandate delivery and Linux TUI
         run: node scripts/smoke-check.js codex-hooks
         env:
           CODEX_BIN: ${{ runner.temp }}/codex/node_modules/.bin/codex${{ runner.os == 'Windows' && '.cmd' || '' }}

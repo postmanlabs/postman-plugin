@@ -3,8 +3,9 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { codex } from '../dist/hosts/codex.js';
+import { codex, registeredRef } from '../dist/hosts/codex.js';
 import { POSTMAN_HOOK_KEY } from '../dist/hosts/codex-hooks.js';
+import { BRANCH, REPO } from '../dist/source.js';
 import { run as install } from '../dist/run.js';
 import { createSystem } from '../dist/system.js';
 import { assertMandate, runAgent, startStandIn, workspace } from '../../scripts/lib/harness.js';
@@ -19,11 +20,15 @@ export function codexEnvironment (source = process.env, platform = process.platf
         .filter(([key]) => !/^(CODEX_|OPENAI_)/.test(key)));
 }
 
-export function snapshot (root) {
+export function snapshot (root, { includeMetadata = true } = {}) {
     const files = {};
 
     function walk (dir) {
         for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+            if (!includeMetadata && ['.git', '.codex-marketplace-install.json'].includes(entry.name)) {
+                continue;
+            }
+
             const file = path.join(dir, entry.name);
 
             if (entry.isDirectory()) {
@@ -126,9 +131,11 @@ export async function checkCodexHookApproval () {
 
         const installedPath = cachePath,
             before = snapshot(installedPath),
+            contentBefore = snapshot(installedPath, { includeMetadata: false }),
             trusted = await list();
 
         assert.equal(trusted?.trustStatus, 'trusted');
+        assert.equal(await registeredRef(system), BRANCH, 'a fresh install must track main');
         assert.deepEqual(snapshot(installedPath), before, 'app-server startup changed the cached plugin');
 
         await runInstall({ isTTY: true });
@@ -231,9 +238,40 @@ export async function checkCodexHookApproval () {
         assert.deepEqual(snapshot(installedPath), before);
         assert.deepEqual(rpcChanges, [], 'app-server changed cached files');
 
+        // Only after the fresh-user case: exercise both historical registrations.
+        // Removing a marketplace also uninstalls the plugin, so install it again
+        // before testing the real update/migration path.
+        for (const ref of ['codex-release', null]) {
+            for (const args of [
+                ['plugin', 'marketplace', 'remove', 'postman', '--json'],
+                ['plugin', 'marketplace', 'add', REPO, ...(ref ? ['--ref', ref] : []), '--json'],
+                ['plugin', 'marketplace', 'upgrade', 'postman', '--json'],
+                ['plugin', 'add', 'postman@postman', '--json']
+            ]) {
+                const result = await system.run('codex', args);
+
+                assert.equal(result.code, 0, result.stdout + result.stderr);
+            }
+
+            assert.equal(await registeredRef(system), ref);
+            await runInstall();
+            assert.equal(await registeredRef(system), ref === null ? null : BRANCH);
+            assert.equal((await list()).trustStatus, 'trusted');
+            assert.equal(logs.some((line) => line.includes('marketplace remove')), ref !== null,
+                'only the legacy release branch needs re-registration');
+            // Re-cloning creates new Git metadata and installation timestamps;
+            // compare payloads here, while RPC snapshots above include all files.
+            assert.deepEqual(snapshot(cachePath, { includeMetadata: false }), contentBefore, 'migration must deliver the same main content');
+
+            if (process.platform === 'linux') {
+                await tui(false);
+            }
+        }
+        assert.deepEqual(rpcChanges, [], 'migration app-server startup changed cached files');
+
         const versionText = (await system.probe('codex', ['--version'])).stdout.trim();
 
-        console.log(`${versionText}: fresh and modified hooks automatically trusted; trusted reruns skip approval; dry run writes nothing; mandate and ${manifest.skills.length} skills reach the model without bypass; ${Object.keys(before).length} cached files unchanged; ${process.platform === 'linux' ? 'TUI warning appears for modified trust and disappears after installation' : 'TUI check is Linux-only (trust state checked)'}`);
+        console.log(`${versionText}: installs from main; migrates codex-release and preserves unpinned main registrations; fresh and modified hooks automatically trusted; trusted reruns skip approval; dry run writes nothing; mandate and ${manifest.skills.length} skills reach the model without bypass; ${Object.keys(before).length} cached files unchanged by app-server; ${process.platform === 'linux' ? 'TUI warning appears for modified trust and disappears after installation and migration' : 'TUI check is Linux-only (trust state checked)'}`);
     }
     finally {
         standIn?.server.close();

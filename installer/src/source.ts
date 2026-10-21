@@ -4,12 +4,6 @@ export const GIT_URL = `https://github.com/${REPO}.git`;
 /** The branch every clone this installer makes tracks. */
 export const BRANCH = 'main';
 
-/**
- * Codex's marketplace ref. Codex asks again to approve a plugin's hook whenever the plugin's files change, so Codex
- * tracks this branch, which only .github/workflows/codex-release.yml moves, once per Codex route release.
- */
-export const CODEX_REF = 'codex-release';
-
 /** Unpinned, so `pi update` moves it with each `latest` release; test/pi-package.test.js checks the name. */
 export const PI_SOURCE = 'npm:@postman/postman-plugin';
 

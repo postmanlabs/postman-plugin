@@ -10,7 +10,7 @@ import { checkCodexTui } from '../scripts/codex-tui-check.js';
 import { codexEnvironment } from '../scripts/codex-hook-check.js';
 
 const MARKETPLACES = 'codex plugin marketplace list --json',
-    REACH = 'git ls-remote --exit-code https://github.com/postmanlabs/postman-plugin.git refs/heads/codex-release',
+    REACH = 'git ls-remote --exit-code https://github.com/postmanlabs/postman-plugin.git refs/heads/main',
     PLUGINS = 'codex plugin list --json',
     ours = { name: 'postman', marketplaceSource: { sourceType: 'git', source: 'https://github.com/postmanlabs/postman-plugin.git' } },
     APP_SERVER = 'codex app-server',
@@ -19,14 +19,14 @@ const MARKETPLACES = 'codex plugin marketplace list --json',
     // What `config/read` answers for the marketplace `codex plugin marketplace add` registered, with `ref` null without `--ref`.
     readReplies = (ref) => [INITIALIZED, { result: { config: { marketplaces: { postman: { source_type: 'git', source: 'https://github.com/postmanlabs/postman-plugin.git', ref } } } } }];
 
-function codexSystem ({ marketplaces = [ours], plugins = [], ref = 'codex-release' } = {}) {
+function codexSystem ({ marketplaces = [ours], plugins = [], ref = 'main' } = {}) {
     return fakeSystem({
         bins: ['codex'],
         rpcs: { [APP_SERVER]: readReplies(ref) },
         probes: {
             [MARKETPLACES]: JSON.stringify({ marketplaces }),
             [PLUGINS]: JSON.stringify({ installed: plugins, available: [] }),
-            [REACH]: 'abc123\trefs/heads/codex-release\n'
+            [REACH]: 'abc123\trefs/heads/main\n'
         }
     });
 }
@@ -36,7 +36,7 @@ test('detects Codex by its CLI on PATH', async () => {
     assert.equal(await codex.detect(fakeSystem()), false);
 });
 
-test('fresh install adds this repo at codex-release as the postman marketplace, records its revision, then adds the plugin', async () => {
+test('fresh install adds this repo at main as the postman marketplace, records its revision, then adds the plugin', async () => {
     const system = codexSystem({ marketplaces: [] });
 
     assert.deepEqual(system.files, {});
@@ -46,62 +46,62 @@ test('fresh install adds this repo at codex-release as the postman marketplace, 
 
     assert.equal(outcome.message, 'installed postman@postman');
     assert.deepEqual(system.commands, [
-        'codex plugin marketplace add postmanlabs/postman-plugin --ref codex-release --json',
+        'codex plugin marketplace add postmanlabs/postman-plugin --ref main --json',
         'codex plugin marketplace upgrade postman --json',
         'codex plugin add postman@postman --json'
     ]);
 });
 
-test('re-adds a marketplace that tracks main at codex-release, and still reports an update', async () => {
-    const system = codexSystem({ plugins: [installed('postman@postman')], ref: null }),
+test('migrates a marketplace that tracks codex-release to main, and still reports an update', async () => {
+    const system = codexSystem({ plugins: [installed('postman@postman')], ref: 'codex-release' }),
         status = await codex.status(system),
         outcome = await codex.install(system);
 
-    assert.match(status.notes.join('\n'), /tracks main and will be re-added at codex-release/);
+    assert.match(status.notes.join('\n'), /tracks codex-release and will be re-added at main/);
     assert.equal(outcome.message, 'updated postman@postman');
     assert.deepEqual(system.commands, [
         'codex plugin marketplace remove postman --json',
-        'codex plugin marketplace add postmanlabs/postman-plugin --ref codex-release --json',
+        'codex plugin marketplace add postmanlabs/postman-plugin --ref main --json',
         'codex plugin marketplace upgrade postman --json',
         'codex plugin add postman@postman --json'
     ]);
 });
 
-const UNPINNED = { plugins: [installed('postman@postman')], ref: null },
+const LEGACY = { plugins: [installed('postman@postman')], ref: 'codex-release' },
     RESTORE = [
         'codex plugin marketplace remove postman --json',
-        'codex plugin marketplace add postmanlabs/postman-plugin --json',
+        'codex plugin marketplace add postmanlabs/postman-plugin --ref codex-release --json',
         'codex plugin add postman@postman --json'
     ];
 
-test('leaves a marketplace that tracks main alone when codex-release is out of reach', async () => {
-    const system = codexSystem(UNPINNED);
+test('leaves a legacy marketplace alone when main is out of reach', async () => {
+    const system = codexSystem(LEGACY);
 
     system.probes[REACH] = { code: 128, stderr: 'unable to access' };
 
     const outcome = await codex.install(system);
 
     assert.equal(outcome.outcome, 'failed');
-    assert.match(outcome.message, /can't reach codex-release in postmanlabs\/postman-plugin, so marketplace postman was left tracking main/);
+    assert.match(outcome.message, /can't reach main in postmanlabs\/postman-plugin, so marketplace postman was left tracking codex-release/);
     assert.deepEqual(system.commands, []);
 });
 
-test('a migration that fails after the remove restores the marketplace tracking main and the plugin', async () => {
-    for (const failing of ['codex plugin marketplace add postmanlabs/postman-plugin --ref codex-release --json', 'codex plugin marketplace upgrade postman --json']) {
-        const system = codexSystem(UNPINNED);
+test('a migration that fails after the remove restores the marketplace tracking codex-release and the plugin', async () => {
+    for (const failing of ['codex plugin marketplace add postmanlabs/postman-plugin --ref main --json', 'codex plugin marketplace upgrade postman --json']) {
+        const system = codexSystem(LEGACY);
 
         system.runs[failing] = { code: 1, stderr: 'network down' };
 
         const outcome = await codex.install(system);
 
         assert.equal(outcome.outcome, 'failed');
-        assert.match(outcome.message, /network down\nrestored marketplace postman tracking main and postman@postman$/);
+        assert.match(outcome.message, /network down\nrestored marketplace postman tracking codex-release and postman@postman$/);
         assert.deepEqual(system.commands.slice(system.commands.indexOf(failing) + 1), RESTORE, failing);
     }
 });
 
-test('a migration whose plugin add fails restores the plugin from the marketplace tracking main', async () => {
-    const system = codexSystem(UNPINNED);
+test('a migration whose plugin add fails restores the plugin from the marketplace tracking codex-release', async () => {
+    const system = codexSystem(LEGACY);
     let adds = 0;
 
     system.runs['codex plugin add postman@postman --json'] = () => (++adds === 1 ? { code: 1, stderr: 'network down' } : '');
@@ -109,24 +109,24 @@ test('a migration whose plugin add fails restores the plugin from the marketplac
     const outcome = await codex.install(system);
 
     assert.equal(outcome.outcome, 'failed');
-    assert.match(outcome.message, /restored marketplace postman tracking main and postman@postman$/);
+    assert.match(outcome.message, /restored marketplace postman tracking codex-release and postman@postman$/);
     assert.deepEqual(system.commands.slice(-3), RESTORE);
 });
 
 test('a migration that cannot restore either says how to finish it by hand', async () => {
-    const system = codexSystem(UNPINNED);
+    const system = codexSystem(LEGACY);
 
     system.runs['codex plugin marketplace upgrade postman --json'] = { code: 1, stderr: 'network down' };
-    system.runs['codex plugin marketplace add postmanlabs/postman-plugin --json'] = { code: 1, stderr: 'network down' };
+    system.runs['codex plugin marketplace add postmanlabs/postman-plugin --ref codex-release --json'] = { code: 1, stderr: 'network down' };
 
     const outcome = await codex.install(system);
 
     assert.equal(outcome.outcome, 'failed');
-    assert.match(outcome.message, /could not restore it either; run `codex plugin marketplace remove postman`, `codex plugin marketplace add postmanlabs\/postman-plugin --ref codex-release`, `codex plugin marketplace upgrade postman` and `codex plugin add postman@postman`/);
+    assert.match(outcome.message, /could not restore it either; run `codex plugin marketplace remove postman`, `codex plugin marketplace add postmanlabs\/postman-plugin --ref main`, `codex plugin marketplace upgrade postman` and `codex plugin add postman@postman`/);
 });
 
 test('a restore that re-adds the marketplace but not the plugin says to remove that marketplace first', async () => {
-    const system = codexSystem(UNPINNED);
+    const system = codexSystem(LEGACY);
 
     system.runs['codex plugin marketplace upgrade postman --json'] = { code: 1, stderr: 'network down' };
     system.runs['codex plugin add postman@postman --json'] = { code: 1, stderr: 'network down' };
@@ -134,8 +134,8 @@ test('a restore that re-adds the marketplace but not the plugin says to remove t
     const outcome = await codex.install(system);
 
     assert.equal(outcome.outcome, 'failed');
-    assert.ok(system.commands.includes('codex plugin marketplace add postmanlabs/postman-plugin --json'), 'the restore re-added the unpinned marketplace');
-    assert.match(outcome.message, /could not restore it either; run `codex plugin marketplace remove postman`, `codex plugin marketplace add postmanlabs\/postman-plugin --ref codex-release`/);
+    assert.ok(system.commands.includes('codex plugin marketplace add postmanlabs/postman-plugin --ref codex-release --json'), 'the restore re-added the legacy marketplace');
+    assert.match(outcome.message, /could not restore it either; run `codex plugin marketplace remove postman`, `codex plugin marketplace add postmanlabs\/postman-plugin --ref main`/);
 });
 
 test('refuses a marketplace pinned to another ref, leaving it as it is', async () => {
@@ -143,11 +143,11 @@ test('refuses a marketplace pinned to another ref, leaving it as it is', async (
         outcome = await codex.install(system);
 
     assert.equal(outcome.outcome, 'blocked');
-    assert.match(outcome.message, /tracks my-branch, not codex-release; run `codex plugin marketplace remove postman`/);
+    assert.match(outcome.message, /tracks my-branch, not main; run `codex plugin marketplace remove postman`/);
     assert.deepEqual(system.commands, []);
 });
 
-test('refuses to re-register a marketplace whose ref Codex does not report, leaving it as it is', async () => {
+test('an unavailable config/read API preserves the registration and never fails an update', async () => {
     for (const replies of [
         null,
         [INITIALIZED, { error: { code: -32601, message: 'method not found' } }],
@@ -161,9 +161,12 @@ test('refuses to re-register a marketplace whose ref Codex does not report, leav
 
         const outcome = await codex.install(system);
 
-        assert.equal(outcome.outcome, 'blocked', JSON.stringify(replies));
-        assert.match(outcome.message, /Codex's `config\/read` doesn't report which ref marketplace postman tracks/);
-        assert.deepEqual(system.commands, []);
+        assert.equal(outcome.outcome, 'done', JSON.stringify(replies));
+        assert.match(system.lines.join('\n'), /keeping its registration and skipping ref migration/);
+        assert.deepEqual(system.commands, [
+            'codex plugin marketplace upgrade postman --json',
+            'codex plugin add postman@postman --json'
+        ]);
     }
 });
 
@@ -174,7 +177,7 @@ test('asks Codex for the ref with config/read over its app server', async () => 
     system.rpcs[APP_SERVER] = (fake, calls) => {
         sent = calls;
 
-        return readReplies('codex-release');
+        return readReplies('main');
     };
 
     assert.equal((await codex.install(system)).outcome, 'done');
@@ -184,6 +187,7 @@ test('asks Codex for the ref with config/read over its app server', async () => 
 test('registeredRef reports a string ref, null for none, and undefined for anything else', async () => {
     const ref = (replies) => registeredRef(fakeSystem({ rpcs: { [APP_SERVER]: replies } }));
 
+    assert.equal(await ref(readReplies('main')), 'main');
     assert.equal(await ref(readReplies('codex-release')), 'codex-release');
     assert.equal(await ref(readReplies(null)), null);
     assert.equal(await ref([INITIALIZED, { result: { config: { marketplaces: { postman: {} } } } }]), null);
@@ -196,6 +200,17 @@ test('re-run upgrades the marketplace and re-adds, which is how Codex updates', 
         outcome = await codex.install(system);
 
     assert.equal(outcome.message, 'updated postman@postman');
+    assert.deepEqual(system.commands, [
+        'codex plugin marketplace upgrade postman --json',
+        'codex plugin add postman@postman --json'
+    ]);
+});
+
+test('an existing unpinned marketplace keeps tracking main without re-registration', async () => {
+    const system = codexSystem({ plugins: [installed('postman@postman')], ref: null });
+
+    assert.deepEqual((await codex.status(system)).notes, []);
+    assert.equal((await codex.install(system)).message, 'updated postman@postman');
     assert.deepEqual(system.commands, [
         'codex plugin marketplace upgrade postman --json',
         'codex plugin add postman@postman --json'

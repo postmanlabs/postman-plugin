@@ -33,7 +33,8 @@ instructions for using Postman's API skills. There is no separate hook prompt
 or dump of its instructions. Already trusted hooks are left alone. If Codex's
 hook API is unavailable, installation continues with a note to approve the hook
 inside Codex. Run the installer and Codex with the same `HOME` and `CODEX_HOME`;
-hook approval applies to that profile.
+hook approval applies to that profile. If Codex later refreshes the plugin from
+`main` and its contents change, run the installer again to approve the update.
 
 You can also use the following commands to install individually:
 
@@ -65,15 +66,14 @@ does nothing where the marketplace is already registered.
 [View Postman on ChatGPT Plugins](https://chatgpt.com/plugins/postman?open_in_app)
 
 ```bash
-codex plugin marketplace add postmanlabs/postman-plugin --ref codex-release
+codex plugin marketplace add postmanlabs/postman-plugin --ref main
 codex plugin marketplace upgrade postman
 codex plugin add postman@postman
 ```
 
-`codex-release` moves only when Postman releases the Codex plugin, so Codex
-asks you to approve its session-start hook once per release. If you added the
-marketplace without `--ref`, run `codex plugin marketplace remove postman`
-first.
+These commands track `main`; review the session-start hook in Codex after a
+manual install. The npx installer also approves the hook after each install or
+update, and moves an existing `codex-release` registration to `main`.
 
 ### Cursor
 

@@ -8,7 +8,7 @@ import path from 'node:path';
 import { spawnCliSync } from '../../scripts/lib/cli.js';
 import { registeredRef } from '../dist/hosts/codex.js';
 import { parseJsonc } from '../dist/hosts/opencode-config.js';
-import { CODEX_REF, OPENCODE_SHIM, OPENCODE_SPEC } from '../dist/source.js';
+import { BRANCH, OPENCODE_SHIM, OPENCODE_SPEC } from '../dist/source.js';
 import { checkCodexHookApproval } from './codex-hook-check.js';
 import { createSystem } from '../dist/system.js';
 
@@ -42,8 +42,8 @@ const AGENTS = {
         found: () => JSON.parse(output('codex', ['plugin', 'list', '--json'])).installed
             .map(({ pluginId }) => pluginId).filter((id) => id.startsWith('postman@')),
         // Checked after an install only: a remove leaves the marketplace registered.
-        alsoInstalled: async () => assert.equal(await registeredRef(createSystem({ log: () => {} })), CODEX_REF,
-            `Codex's config/read doesn't report the postman marketplace at ${CODEX_REF}`)
+        alsoInstalled: async () => assert.ok([BRANCH, null].includes(await registeredRef(createSystem({ log: () => {} }))),
+            `Codex's config/read doesn't report the postman marketplace tracking ${BRANCH}`)
     },
     copilot: {
         expected: ['postman@postman'],

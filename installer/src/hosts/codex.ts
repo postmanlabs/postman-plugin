@@ -1,4 +1,4 @@
-import { CODEX_REF, GIT_URL, REPO, isSameRepo, redact } from '../source.js';
+import { BRANCH, GIT_URL, REPO, isSameRepo, redact } from '../source.js';
 import type { System } from '../system.js';
 import { StepFailed, blocked, failed, guard, mustProbeJson, mustRun, parseJson } from './shared.js';
 import { type Host, result } from './types.js';
@@ -8,6 +8,7 @@ import { approvePostmanHook } from './codex-hooks.js';
 // `npx plugins add` installs a second copy under its own `plugins-cli` marketplace.
 const MARKETPLACE = 'postman',
     PLUGIN_ID = `postman@${MARKETPLACE}`,
+    LEGACY_REF = 'codex-release',
     SHADOW_IDS = ['postman@plugins-cli'],
     NEXT = 'Restart Codex for the change to take effect.';
 
@@ -42,20 +43,20 @@ export async function registeredRef (system: System): Promise<Ref> {
 }
 
 async function addMarketplace (system: System): Promise<void> {
-    await mustRun(system, 'codex', ['plugin', 'marketplace', 'add', REPO, '--ref', CODEX_REF, '--json']);
+    await mustRun(system, 'codex', ['plugin', 'marketplace', 'add', REPO, '--ref', BRANCH, '--json']);
     // `add` records no revision, so without this Codex's next startup refetches the plugin and asks for approval again.
     await mustRun(system, 'codex', ['plugin', 'marketplace', 'upgrade', MARKETPLACE, '--json']);
 }
 
-/** Adds or upgrades the marketplace, except one registered with no ref, which it leaves for `migrate`. */
-async function refreshMarketplace (system: System): Promise<'pinned' | 'unpinned' | 'deferred'> {
+/** Adds or upgrades the marketplace, leaving the old release branch for `migrate`. */
+async function refreshMarketplace (system: System): Promise<'ready' | 'legacy' | 'deferred'> {
     const listing = await mustProbeJson<{ marketplaces?: Marketplace[] }>(system, 'codex', ['plugin', 'marketplace', 'list', '--json']),
         existing = listing.marketplaces?.find((marketplace) => marketplace.name === MARKETPLACE);
 
     if (!existing) {
         await addMarketplace(system);
 
-        return 'pinned';
+        return 'ready';
     }
 
     // A local marketplace can carry any path text, so only a git source counts as this repo.
@@ -68,36 +69,36 @@ async function refreshMarketplace (system: System): Promise<'pinned' | 'unpinned
     }
 
     if (system.dryRun) {
-        system.log(`  note: Would ask Codex for marketplace ${MARKETPLACE}'s ref: upgrade it at ${CODEX_REF}, re-register it there if unpinned, or stop for any other or unreadable ref. App-server is deferred because its startup can refresh plugins.`);
+        system.log(`  note: Would ask Codex for marketplace ${MARKETPLACE}'s ref: upgrade it on ${BRANCH}, migrate ${LEGACY_REF} to ${BRANCH}, preserve an unreadable ref, or stop for a custom ref. App-server is deferred because its startup can refresh plugins.`);
 
         return 'deferred';
     }
 
     const ref = await registeredRef(system);
 
-    if (ref === CODEX_REF) {
+    if (ref === undefined) {
+        system.log(`  note: Could not read marketplace ${MARKETPLACE}'s ref through codex app-server; keeping its registration and skipping ref migration.`);
+    }
+
+    if (ref === BRANCH || ref === null || ref === undefined) {
         await mustRun(system, 'codex', ['plugin', 'marketplace', 'upgrade', MARKETPLACE, '--json']);
 
-        return 'pinned';
+        return 'ready';
     }
 
-    if (ref === undefined) {
-        blocked(`Codex's \`config/read\` doesn't report which ref marketplace ${MARKETPLACE} tracks; to move it to ${CODEX_REF}, run \`codex plugin marketplace remove ${MARKETPLACE}\` and re-run`);
+    if (ref !== LEGACY_REF) {
+        blocked(`marketplace ${MARKETPLACE} tracks ${ref}, not ${BRANCH}; run \`codex plugin marketplace remove ${MARKETPLACE}\` and re-run`);
     }
 
-    if (ref !== null) {
-        blocked(`marketplace ${MARKETPLACE} tracks ${ref}, not ${CODEX_REF}; run \`codex plugin marketplace remove ${MARKETPLACE}\` and re-run`);
-    }
-
-    return 'unpinned';
+    return 'legacy';
 }
 
-/** Re-registers the previous, unpinned marketplace and its plugin; true when every step exits 0. */
-async function restoreUnpinned (system: System, wasInstalled: boolean): Promise<boolean> {
+/** Re-registers the previous marketplace and its plugin; true when every step exits 0. */
+async function restoreLegacy (system: System, wasInstalled: boolean): Promise<boolean> {
     // Exits non-zero when the failed step left nothing registered, which is the state wanted here.
     await system.run('codex', ['plugin', 'marketplace', 'remove', MARKETPLACE, '--json']);
 
-    const steps = [['plugin', 'marketplace', 'add', REPO, '--json'], ...(wasInstalled ? [['plugin', 'add', PLUGIN_ID, '--json']] : [])];
+    const steps = [['plugin', 'marketplace', 'add', REPO, '--ref', LEGACY_REF, '--json'], ...(wasInstalled ? [['plugin', 'add', PLUGIN_ID, '--json']] : [])];
 
     for (const args of steps) {
         if ((await system.run('codex', args)).code !== 0) {
@@ -109,14 +110,14 @@ async function restoreUnpinned (system: System, wasInstalled: boolean): Promise<
 }
 
 /**
- * Moves a marketplace registered with no ref, which tracks main, to CODEX_REF, then adds the plugin. `remove`
+ * Moves a marketplace registered at the old release branch to main, then adds the plugin. `remove`
  * uninstalls Postman too, so a failure after it puts the previous registration back.
  */
 async function migrate (system: System, wasInstalled: boolean): Promise<void> {
-    const reach = await system.probe('git', ['ls-remote', '--exit-code', GIT_URL, `refs/heads/${CODEX_REF}`]);
+    const reach = await system.probe('git', ['ls-remote', '--exit-code', GIT_URL, `refs/heads/${BRANCH}`]);
 
     if (reach.code !== 0) {
-        failed(`can't reach ${CODEX_REF} in ${REPO}, so marketplace ${MARKETPLACE} was left tracking main`);
+        failed(`can't reach ${BRANCH} in ${REPO}, so marketplace ${MARKETPLACE} was left tracking ${LEGACY_REF}`);
     }
 
     await mustRun(system, 'codex', ['plugin', 'marketplace', 'remove', MARKETPLACE, '--json']);
@@ -130,11 +131,11 @@ async function migrate (system: System, wasInstalled: boolean): Promise<void> {
             throw error;
         }
 
-        const restored = await restoreUnpinned(system, wasInstalled);
+        const restored = await restoreLegacy(system, wasInstalled);
 
         failed(`${error.outcome.message}\n${restored ?
-            `restored marketplace ${MARKETPLACE} tracking main${wasInstalled ? ` and ${PLUGIN_ID}` : ''}` :
-            `could not restore it either; run \`codex plugin marketplace remove ${MARKETPLACE}\`, \`codex plugin marketplace add ${REPO} --ref ${CODEX_REF}\`, \`codex plugin marketplace upgrade ${MARKETPLACE}\` and \`codex plugin add ${PLUGIN_ID}\``}`);
+            `restored marketplace ${MARKETPLACE} tracking ${LEGACY_REF}${wasInstalled ? ` and ${PLUGIN_ID}` : ''}` :
+            `could not restore it either; run \`codex plugin marketplace remove ${MARKETPLACE}\`, \`codex plugin marketplace add ${REPO} --ref ${BRANCH}\`, \`codex plugin marketplace upgrade ${MARKETPLACE}\` and \`codex plugin add ${PLUGIN_ID}\``}`);
     }
 }
 
@@ -168,8 +169,8 @@ export const codex: Host = {
         const installed = plugins.find((plugin) => plugin.pluginId === PLUGIN_ID && plugin.installed !== false),
             notes = SHADOW_IDS.filter((id) => isInstalled(plugins, id)).map((id) => `${id} duplicates it and will be removed`);
 
-        if (installed && await registeredRef(system) === null) {
-            notes.push(`marketplace ${MARKETPLACE} tracks main and will be re-added at ${CODEX_REF}; the installer then approves its session-start hook`);
+        if (installed && await registeredRef(system) === LEGACY_REF) {
+            notes.push(`marketplace ${MARKETPLACE} tracks ${LEGACY_REF} and will be re-added at ${BRANCH}; the installer then approves its session-start hook`);
         }
 
         return installed ?
@@ -185,7 +186,7 @@ export const codex: Host = {
 
             // `add` is idempotent and is also how Codex updates an installed plugin. It runs
             // before the duplicate is removed, so a failed add still leaves a working copy.
-            if (await refreshMarketplace(system) === 'unpinned') {
+            if (await refreshMarketplace(system) === 'legacy') {
                 await migrate(system, wasInstalled);
             }
             else {
