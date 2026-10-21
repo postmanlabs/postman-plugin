@@ -40,7 +40,8 @@ jobs:
             git show "$1:.codex-plugin/plugin.json" 2>/dev/null |
               node -e 'let s = ""; process.stdin.on("data", (d) => s += d).on("end", () => { try { process.stdout.write(JSON.parse(s).version ?? "") } catch {} })'
           }
-          for sha in $(git log --format=%H origin/main -- .codex-plugin/plugin.json); do
+          # First-parent, so a merge commit counts as the release, not the PR commit it merged.
+          for sha in $(git log --first-parent --format=%H origin/main -- .codex-plugin/plugin.json); do
             now=$(version "$sha")
             if [ -n "$now" ] && [ "$now" != "$(version "$sha^")" ]; then
               echo "Codex $now was released in $sha"

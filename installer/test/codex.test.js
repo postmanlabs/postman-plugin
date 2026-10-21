@@ -65,13 +65,18 @@ test('refuses a marketplace pinned to another ref, leaving it as it is', async (
     assert.deepEqual(system.commands, []);
 });
 
-test('refuses to re-register a marketplace its user config does not declare', async () => {
-    for (const files of [{}, { [CONFIG]: '[marketplaces.other]\nsource = "x"\n' }]) {
+test('refuses to re-register a marketplace whose ref it cannot read, leaving it as it is', async () => {
+    for (const files of [
+        {},
+        { [CONFIG]: '[marketplaces.other]\nsource = "x"\n' },
+        { [CONFIG]: '[marketplaces.postman]\n"ref" = "my-branch"\n' },
+        { [CONFIG]: '[marketplaces.postman]\nref = """my-branch"""\n' }
+    ]) {
         const system = codexSystem({ files }),
             outcome = await codex.install(system);
 
         assert.equal(outcome.outcome, 'blocked');
-        assert.ok(outcome.message.includes(`registered outside ${CONFIG}`), outcome.message);
+        assert.ok(outcome.message.includes(`can't read which ref marketplace postman tracks from ${CONFIG}`), outcome.message);
         assert.deepEqual(system.commands, []);
     }
 });
@@ -91,6 +96,9 @@ test('marketplaceRef reads only the named marketplace table', () => {
     assert.equal(marketplaceRef('[marketplaces.postman]\nsource = "x"\n[marketplaces.other]\nref = "c"\n', 'postman'), null);
     assert.equal(marketplaceRef('[marketplaces.postmanx]\nref = "d"\n', 'postman'), undefined);
     assert.equal(marketplaceRef('', 'postman'), undefined);
+    for (const line of ['"ref" = "a"', "'ref' = 'a'", 'ref = """a"""', "ref = '''a'''", 'ref = "a\\"b"', 'ref.x = "a"']) {
+        assert.equal(marketplaceRef(`[marketplaces.postman]\n${line}\n`, 'postman'), undefined, line);
+    }
 });
 
 test('re-run upgrades the marketplace and re-adds, which is how Codex updates', async () => {

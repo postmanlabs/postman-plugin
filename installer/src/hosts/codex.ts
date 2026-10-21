@@ -12,7 +12,7 @@ const MARKETPLACE = 'postman',
     NEXT = 'Restart Codex for the change to take effect.';
 
 type Marketplace = { name: string; marketplaceSource?: { sourceType?: string; source?: string } };
-/** A marketplace's ref as Codex's user config records it: `null` when it has none, `undefined` when it has no table there. */
+/** A marketplace's ref in Codex's user config: `null` when it has none, `undefined` when it has no table there or its ref can't be read. */
 type Ref = string | null | undefined;
 type InstalledPlugin = { pluginId: string; installed?: boolean; version?: string };
 
@@ -26,7 +26,7 @@ async function listPlugins (system: System): Promise<InstalledPlugin[]> {
 
 const configFile = (system: System) => path.join(system.env.CODEX_HOME || path.join(system.home, '.codex'), 'config.toml');
 
-/** Reads `ref` from the `[marketplaces.<name>]` table Codex writes. `marketplace list --json` doesn't report it. */
+/** Reads `ref` from the `[marketplaces.<name>]` table Codex writes; `marketplace list --json` doesn't report it. Fails closed on any other TOML form. */
 export function marketplaceRef (toml: string, name: string): Ref {
     const header = new RegExp(`^\\s*\\[\\s*marketplaces\\s*\\.\\s*(["']?)${name}\\1\\s*\\]\\s*(#.*)?$`),
         lines = toml.split(/\r?\n/),
@@ -41,10 +41,15 @@ export function marketplaceRef (toml: string, name: string): Ref {
             break;
         }
 
-        const ref = line.match(/^\s*ref\s*=\s*(?:"([^"]*)"|'([^']*)')\s*(#.*)?$/);
+        const ref = line.match(/^\s*ref\s*=\s*(?:"([^"\\]*)"|'([^']*)')\s*(#.*)?$/);
 
         if (ref) {
             return ref[1] ?? ref[2];
+        }
+
+        // A quoted key, a multi-line string or an escape: some ref is set, so `null` would replace it.
+        if (/^\s*(?:ref|"ref"|'ref')\s*[=.]/.test(line)) {
+            return undefined;
         }
     }
 
@@ -87,7 +92,7 @@ async function refreshMarketplace (system: System): Promise<void> {
     }
 
     if (ref === undefined) {
-        blocked(`marketplace ${MARKETPLACE} is registered outside ${file}, so its ref can't be checked; register it there and re-run`);
+        blocked(`can't read which ref marketplace ${MARKETPLACE} tracks from ${file}; to move it to ${CODEX_REF}, run \`codex plugin marketplace remove ${MARKETPLACE}\` and re-run`);
     }
 
     if (ref !== null) {
