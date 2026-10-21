@@ -264,12 +264,6 @@
           "source": "skills/performance-testing/references/jmeter-import/script-translation.md",
           "bytes": 5709,
           "sha256": "0d3e4a91aabb136808c01d94fe8919d28286a3683d4a0b16ec5f2e1c413c81fc"
-        },
-        {
-          "target": "references/jmeter-import/scripts/check_fixture.py",
-          "source": "skills/performance-testing/references/jmeter-import/scripts/check_fixture.py",
-          "bytes": 77,
-          "sha256": "be35901b143295f032f0e4e7c8574711df8a29f07eb7fa42e9af8f3d30328352"
         }
       ]
     },
