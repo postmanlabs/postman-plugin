@@ -82,5 +82,6 @@ test('the Kimi manifest hands Kimi the mandate, naming skills as 2.3.0 lists the
     const kimiMandate = fs.readFileSync(path.join(repoRoot, systemPromptPath), 'utf8');
 
     assert.ok(kimiMandate.startsWith(mandate), `${systemPromptPath} is not the shared mandate with its \`postman:\` names`);
-    assert.match(kimiMandate.slice(mandate.length), /^\nIf your skill listing names these skills without the `postman:` prefix, drop the prefix when you load one\.\n<\/EXTREMELY_IMPORTANT>\n$/);
+    // A Windows checkout with core.autocrlf gives both files CRLF.
+    assert.match(kimiMandate.slice(mandate.length), /^\r?\nIf your skill listing names these skills without the `postman:` prefix, drop the prefix when you load one\.\r?\n<\/EXTREMELY_IMPORTANT>\r?\n$/);
 });
