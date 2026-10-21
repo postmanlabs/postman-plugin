@@ -55,6 +55,26 @@ test('a command that reads stdin gets EOF instead of waiting for input', { timeo
     assert.equal(stdout, 'eof');
 });
 
+// A JSON-RPC server that answers each request with its method, after a delay, and exits at end of input.
+const ECHO_SERVER = "require('readline').createInterface({ input: process.stdin }).on('line', (line) => { const m = JSON.parse(line); " +
+    "if (m.id) setTimeout(() => process.stdout.write('{\"note\":1}\\n' + JSON.stringify(m.method === 'fail' ? { id: m.id, error: { message: 'no' } } : { id: m.id, result: m.method }) + '\\n'), 50); }).on('close', () => process.exit(0));";
+
+test('rpc sends each call in turn and returns the requests\' replies, keeping stdin open for the last one', { timeout: 10000 }, async () => {
+    const replies = await system.rpc(process.execPath, ['-e', ECHO_SERVER], [
+        { method: 'initialize' },
+        { method: 'initialized', notify: true },
+        { method: 'fail' },
+        { method: 'config/read', params: {} }
+    ]);
+
+    assert.deepEqual(replies, [{ result: 'initialize' }, { error: { message: 'no' } }, { result: 'config/read' }]);
+});
+
+test('rpc is null when the server exits or never starts', { timeout: 10000 }, async () => {
+    assert.equal(await system.rpc(process.execPath, ['-e', 'process.exit(1)'], [{ method: 'initialize' }]), null);
+    assert.equal(await system.rpc(path.join(os.tmpdir(), 'no-such-command-for-rpc'), [], [{ method: 'initialize' }]), null);
+});
+
 test('readFile is null only for a file that does not exist', async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'postman-plugin-system-'));
 

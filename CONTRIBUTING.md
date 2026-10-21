@@ -396,7 +396,7 @@ wherever one exists:
 | Agent | What it runs |
 | --- | --- |
 | Claude Code | `claude plugin` against Anthropic's `claude-plugins-official` catalog, then uninstalls a user-scope `postman@postman` so skills don't load twice; a failed install leaves that copy in place |
-| Codex | `codex plugin` against this repo as the `postman` marketplace at the `codex-release` branch (see [Codex marketplace discovery](#codex-marketplace-discovery)). It reads the ref from `$CODEX_HOME/config.toml`, since `marketplace list --json` doesn't report it. It removes and re-adds a marketplace registered with no ref, which tracks `main`, and refuses one at any other ref or a ref it can't read |
+| Codex | `codex plugin` against this repo as the `postman` marketplace at the `codex-release` branch (see [Codex marketplace discovery](#codex-marketplace-discovery)). It asks Codex for the ref with `config/read` over `codex app-server`, since `marketplace list --json` doesn't report it. It removes and re-adds a marketplace registered with no ref, which tracks `main`, and refuses one at any other ref or a ref it can't read |
 | GitHub Copilot CLI | `copilot plugin` against this repo as the `postman` marketplace (Copilot reads `.claude-plugin/marketplace.json`), replacing a direct install, which Copilot is deprecating |
 | Cursor | a clone at `~/.cursor/plugins/local/postman`. A fresh install is skipped when the Cursor Marketplace copy is present, but an existing clone is kept and updated: Cursor keeps a disabled Marketplace copy on disk too, so the installer can't tell whether that copy is enabled |
 | Factory Droid | `droid plugin` against this repo as the `postman-plugin` marketplace |
