@@ -73,7 +73,7 @@ codex plugin add postman@postman
 
 These commands track `main`; review the session-start hook in Codex after a
 manual install. The npx installer also approves the hook after each install or
-update, and moves an existing `codex-release` registration to `main`.
+update.
 
 ### Cursor
 
