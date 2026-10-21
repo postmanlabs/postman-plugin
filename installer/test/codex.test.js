@@ -112,7 +112,20 @@ test('a migration that cannot restore either says how to finish it by hand', asy
     const outcome = await codex.install(system);
 
     assert.equal(outcome.outcome, 'failed');
-    assert.match(outcome.message, /could not restore it either; run `codex plugin marketplace add postmanlabs\/postman-plugin --ref codex-release`, `codex plugin marketplace upgrade postman` and `codex plugin add postman@postman`/);
+    assert.match(outcome.message, /could not restore it either; run `codex plugin marketplace remove postman`, `codex plugin marketplace add postmanlabs\/postman-plugin --ref codex-release`, `codex plugin marketplace upgrade postman` and `codex plugin add postman@postman`/);
+});
+
+test('a restore that re-adds the marketplace but not the plugin says to remove that marketplace first', async () => {
+    const system = codexSystem(UNPINNED);
+
+    system.runs['codex plugin marketplace upgrade postman --json'] = { code: 1, stderr: 'network down' };
+    system.runs['codex plugin add postman@postman --json'] = { code: 1, stderr: 'network down' };
+
+    const outcome = await codex.install(system);
+
+    assert.equal(outcome.outcome, 'failed');
+    assert.ok(system.commands.includes('codex plugin marketplace add postmanlabs/postman-plugin --json'), 'the restore re-added the unpinned marketplace');
+    assert.match(outcome.message, /could not restore it either; run `codex plugin marketplace remove postman`, `codex plugin marketplace add postmanlabs\/postman-plugin --ref codex-release`/);
 });
 
 test('refuses a marketplace pinned to another ref, leaving it as it is', async () => {

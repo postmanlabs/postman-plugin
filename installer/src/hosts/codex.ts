@@ -127,7 +127,7 @@ async function migrate (system: System, wasInstalled: boolean): Promise<void> {
 
         failed(`${error.outcome.message}\n${restored ?
             `restored marketplace ${MARKETPLACE} tracking main${wasInstalled ? ` and ${PLUGIN_ID}` : ''}` :
-            `could not restore it either; run \`codex plugin marketplace add ${REPO} --ref ${CODEX_REF}\`, \`codex plugin marketplace upgrade ${MARKETPLACE}\` and \`codex plugin add ${PLUGIN_ID}\``}`);
+            `could not restore it either; run \`codex plugin marketplace remove ${MARKETPLACE}\`, \`codex plugin marketplace add ${REPO} --ref ${CODEX_REF}\`, \`codex plugin marketplace upgrade ${MARKETPLACE}\` and \`codex plugin add ${PLUGIN_ID}\``}`);
     }
 }
 
