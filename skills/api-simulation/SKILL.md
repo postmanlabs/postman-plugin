@@ -51,9 +51,10 @@ Without `--port`, a busy 3000 silently becomes a random port and every base
 URL points at nothing. It's up when `sim.ndjson` has a `listening` event; a
 start-up error is in `sim.err`. It listens on 127.0.0.1 only, so a caller in
 a container or VM can't reach it. Stop it with
-`pkill -INT -f "simulation run <file>"`; `kill $!` leaves it running,
-because the `postman` launcher ignores the signal. Nothing reloads: restart
-it after a mock edit.
+`pkill -INT -f "simulation run .*<file>.sim.yaml"` — `-f` matches the whole
+command line, so a pattern built from the bare filename misses a run launched
+by path; `kill $!` leaves it running, because the `postman` launcher ignores
+the signal. Nothing reloads: restart it after a mock edit.
 
 Point the caller at it without changing what the code does once deployed.
 Under path routing, swap only the host and keep the path:
