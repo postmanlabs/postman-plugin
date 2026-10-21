@@ -11,8 +11,9 @@
  * It also writes the session-start mandate as the routes that never run
  * `hooks/` read it: `.kimi-plugin/session-start-context.md` for Kimi, which
  * shows the model no hook output, and `rules/GEMINI.md` for Antigravity, which
- * has no session-start hook and loads that file as an always-on rule. Both name
- * skills without the `postman:` prefix the shared mandate gives them.
+ * has no session-start hook and loads that file as an always-on rule. Kimi's
+ * keeps the `postman:` names and says to drop the prefix where Kimi lists skills
+ * bare; Antigravity's names skills bare.
  *
  * Run `node scripts/build-manifest.js` after changing any skill or the mandate.
  * CI re-runs it with `--check` and fails if any of these files is stale — a wrong sha256
@@ -170,9 +171,26 @@ function bareMandate () {
     return fs.readFileSync(MANDATE, 'utf8').replace(/`postman:([a-z0-9-]+)`/g, '`$1`');
 }
 
+/**
+ * @returns {string} The shared mandate, for Kimi Code 2.3.0 on, which lists plugin skills as `postman:<skill>`, and for
+ * the releases before it, which list them bare.
+ */
+function kimiMandate () {
+    const mandate = fs.readFileSync(MANDATE, 'utf8'),
+        // A Windows checkout with core.autocrlf gives the mandate CRLF, and `--check` compares bytes.
+        eol = mandate.includes('\r\n') ? '\r\n' : '\n',
+        close = '</EXTREMELY_IMPORTANT>';
+
+    if (!mandate.includes(close)) {
+        throw new Error(`${path.relative(ROOT, MANDATE)}: no ${close} to put Kimi's naming note before`);
+    }
+
+    return mandate.replace(close, `${eol}If your skill listing names these skills without the \`postman:\` prefix, drop the prefix when you load one.${eol}${close}`);
+}
+
 const outputs = [
     [MANIFEST, JSON.stringify(build(), null, 2) + '\n'],
-    [KIMI_MANDATE, bareMandate()],
+    [KIMI_MANDATE, kimiMandate()],
     [ANTIGRAVITY_MANDATE, bareMandate()]
 ];
 
