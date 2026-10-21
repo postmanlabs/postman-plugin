@@ -1,7 +1,7 @@
 import path from 'node:path';
-import { CODEX_REF, REPO, isSameRepo, redact } from '../source.js';
+import { CODEX_REF, GIT_URL, REPO, isSameRepo, redact } from '../source.js';
 import type { System } from '../system.js';
-import { blocked, failed, guard, mustProbeJson, mustRun, parseJson } from './shared.js';
+import { StepFailed, blocked, failed, guard, mustProbeJson, mustRun, parseJson } from './shared.js';
 import { type Host, result } from './types.js';
 
 // Codex names the marketplace after `.claude-plugin/marketplace.json`'s `name`.
@@ -62,14 +62,15 @@ async function addMarketplace (system: System): Promise<void> {
     await mustRun(system, 'codex', ['plugin', 'marketplace', 'upgrade', MARKETPLACE, '--json']);
 }
 
-async function refreshMarketplace (system: System): Promise<void> {
+/** Adds or upgrades the marketplace, except one registered with no ref, which it leaves for `migrate`. */
+async function refreshMarketplace (system: System): Promise<'pinned' | 'unpinned'> {
     const listing = await mustProbeJson<{ marketplaces?: Marketplace[] }>(system, 'codex', ['plugin', 'marketplace', 'list', '--json']),
         existing = listing.marketplaces?.find((marketplace) => marketplace.name === MARKETPLACE);
 
     if (!existing) {
         await addMarketplace(system);
 
-        return;
+        return 'pinned';
     }
 
     // A local marketplace can carry any path text, so only a git source counts as this repo.
@@ -88,7 +89,7 @@ async function refreshMarketplace (system: System): Promise<void> {
     if (ref === CODEX_REF) {
         await mustRun(system, 'codex', ['plugin', 'marketplace', 'upgrade', MARKETPLACE, '--json']);
 
-        return;
+        return 'pinned';
     }
 
     if (ref === undefined) {
@@ -99,9 +100,53 @@ async function refreshMarketplace (system: System): Promise<void> {
         blocked(`marketplace ${MARKETPLACE} tracks ${ref}, not ${CODEX_REF}; run \`codex plugin marketplace remove ${MARKETPLACE}\` and re-run`);
     }
 
-    // Registered before the ref: it tracks main, whose every commit makes Codex ask to approve the hook again.
+    return 'unpinned';
+}
+
+/** Re-registers the previous, unpinned marketplace and its plugin; true when every step exits 0. */
+async function restoreUnpinned (system: System, wasInstalled: boolean): Promise<boolean> {
+    // Exits non-zero when the failed step left nothing registered, which is the state wanted here.
+    await system.run('codex', ['plugin', 'marketplace', 'remove', MARKETPLACE, '--json']);
+
+    const steps = [['plugin', 'marketplace', 'add', REPO, '--json'], ...(wasInstalled ? [['plugin', 'add', PLUGIN_ID, '--json']] : [])];
+
+    for (const args of steps) {
+        if ((await system.run('codex', args)).code !== 0) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/**
+ * Moves a marketplace registered with no ref, which tracks main, to CODEX_REF, then adds the plugin. `remove`
+ * uninstalls Postman too, so a failure after it puts the previous registration back.
+ */
+async function migrate (system: System, wasInstalled: boolean): Promise<void> {
+    const reach = await system.probe('git', ['ls-remote', '--exit-code', GIT_URL, `refs/heads/${CODEX_REF}`]);
+
+    if (reach.code !== 0) {
+        failed(`can't reach ${CODEX_REF} in ${REPO}, so marketplace ${MARKETPLACE} was left tracking main`);
+    }
+
     await mustRun(system, 'codex', ['plugin', 'marketplace', 'remove', MARKETPLACE, '--json']);
-    await addMarketplace(system);
+
+    try {
+        await addMarketplace(system);
+        await mustRun(system, 'codex', ['plugin', 'add', PLUGIN_ID, '--json']);
+    }
+    catch (error) {
+        if (!(error instanceof StepFailed)) {
+            throw error;
+        }
+
+        const restored = await restoreUnpinned(system, wasInstalled);
+
+        failed(`${error.outcome.message}\n${restored ?
+            `restored marketplace ${MARKETPLACE} tracking main${wasInstalled ? ` and ${PLUGIN_ID}` : ''}` :
+            `could not restore it either; run \`codex plugin marketplace add ${REPO} --ref ${CODEX_REF}\` and \`codex plugin add ${PLUGIN_ID}\``}`);
+    }
 }
 
 async function removeInstalled (system: System, plugins: InstalledPlugin[], ids: string[]): Promise<string[]> {
@@ -150,11 +195,14 @@ export const codex: Host = {
             const plugins = await listPlugins(system),
                 wasInstalled = isInstalled(plugins, PLUGIN_ID);
 
-            await refreshMarketplace(system);
-
             // `add` is idempotent and is also how Codex updates an installed plugin. It runs
             // before the duplicate is removed, so a failed add still leaves a working copy.
-            await mustRun(system, 'codex', ['plugin', 'add', PLUGIN_ID, '--json']);
+            if (await refreshMarketplace(system) === 'unpinned') {
+                await migrate(system, wasInstalled);
+            }
+            else {
+                await mustRun(system, 'codex', ['plugin', 'add', PLUGIN_ID, '--json']);
+            }
             await removeInstalled(system, plugins, SHADOW_IDS);
 
             return result('done', `${wasInstalled ? 'updated' : 'installed'} ${PLUGIN_ID}`, NEXT);

@@ -5,6 +5,7 @@ import { codex, marketplaceRef } from '../dist/hosts/codex.js';
 import { fakeSystem } from './fake-system.js';
 
 const MARKETPLACES = 'codex plugin marketplace list --json',
+    REACH = 'git ls-remote --exit-code https://github.com/postmanlabs/postman-plugin.git refs/heads/codex-release',
     PLUGINS = 'codex plugin list --json',
     ours = { name: 'postman', marketplaceSource: { sourceType: 'git', source: 'https://github.com/postmanlabs/postman-plugin.git' } },
     CONFIG = path.join('/home/user', '.codex', 'config.toml'),
@@ -19,7 +20,8 @@ function codexSystem ({ marketplaces = [ours], plugins = [], files = { [CONFIG]:
         env,
         probes: {
             [MARKETPLACES]: JSON.stringify({ marketplaces }),
-            [PLUGINS]: JSON.stringify({ installed: plugins, available: [] })
+            [PLUGINS]: JSON.stringify({ installed: plugins, available: [] }),
+            [REACH]: 'abc123\trefs/heads/codex-release\n'
         }
     });
 }
@@ -54,6 +56,64 @@ test('re-adds a marketplace that tracks main at codex-release, and still reports
         'codex plugin marketplace upgrade postman --json',
         'codex plugin add postman@postman --json'
     ]);
+});
+
+const UNPINNED = { plugins: [installed('postman@postman')], files: { [CONFIG]: config() } },
+    RESTORE = [
+        'codex plugin marketplace remove postman --json',
+        'codex plugin marketplace add postmanlabs/postman-plugin --json',
+        'codex plugin add postman@postman --json'
+    ];
+
+test('leaves a marketplace that tracks main alone when codex-release is out of reach', async () => {
+    const system = codexSystem(UNPINNED);
+
+    system.probes[REACH] = { code: 128, stderr: 'unable to access' };
+
+    const outcome = await codex.install(system);
+
+    assert.equal(outcome.outcome, 'failed');
+    assert.match(outcome.message, /can't reach codex-release in postmanlabs\/postman-plugin, so marketplace postman was left tracking main/);
+    assert.deepEqual(system.commands, []);
+});
+
+test('a migration that fails after the remove restores the marketplace tracking main and the plugin', async () => {
+    for (const failing of ['codex plugin marketplace add postmanlabs/postman-plugin --ref codex-release --json', 'codex plugin marketplace upgrade postman --json']) {
+        const system = codexSystem(UNPINNED);
+
+        system.runs[failing] = { code: 1, stderr: 'network down' };
+
+        const outcome = await codex.install(system);
+
+        assert.equal(outcome.outcome, 'failed');
+        assert.match(outcome.message, /network down\nrestored marketplace postman tracking main and postman@postman$/);
+        assert.deepEqual(system.commands.slice(system.commands.indexOf(failing) + 1), RESTORE, failing);
+    }
+});
+
+test('a migration whose plugin add fails restores the plugin from the marketplace tracking main', async () => {
+    const system = codexSystem(UNPINNED);
+    let adds = 0;
+
+    system.runs['codex plugin add postman@postman --json'] = () => (++adds === 1 ? { code: 1, stderr: 'network down' } : '');
+
+    const outcome = await codex.install(system);
+
+    assert.equal(outcome.outcome, 'failed');
+    assert.match(outcome.message, /restored marketplace postman tracking main and postman@postman$/);
+    assert.deepEqual(system.commands.slice(-3), RESTORE);
+});
+
+test('a migration that cannot restore either says how to finish it by hand', async () => {
+    const system = codexSystem(UNPINNED);
+
+    system.runs['codex plugin marketplace upgrade postman --json'] = { code: 1, stderr: 'network down' };
+    system.runs['codex plugin marketplace add postmanlabs/postman-plugin --json'] = { code: 1, stderr: 'network down' };
+
+    const outcome = await codex.install(system);
+
+    assert.equal(outcome.outcome, 'failed');
+    assert.match(outcome.message, /could not restore it either; run `codex plugin marketplace add postmanlabs\/postman-plugin --ref codex-release` and `codex plugin add postman@postman`/);
 });
 
 test('refuses a marketplace pinned to another ref, leaving it as it is', async () => {
