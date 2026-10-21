@@ -3,6 +3,10 @@ import path from 'node:path';
 import test from 'node:test';
 import { codex, marketplaceRef } from '../dist/hosts/codex.js';
 import { fakeSystem } from './fake-system.js';
+import { HOOK_PROMPT, POSTMAN_HOOK_KEY } from '../dist/hosts/codex-hooks.js';
+import { acceptsAnswer } from '../dist/prompt.js';
+import { run } from '../dist/run.js';
+import { createSystem } from '../dist/system.js';
 
 const MARKETPLACES = 'codex plugin marketplace list --json',
     REACH = 'git ls-remote --exit-code https://github.com/postmanlabs/postman-plugin.git refs/heads/codex-release',
@@ -265,4 +269,163 @@ test('remove skips when nothing is installed', async () => {
 
     assert.equal((await codex.remove(system)).outcome, 'skipped');
     assert.deepEqual(system.commands, []);
+});
+
+function hookSystem ({ status = 'untrusted', hash = 'declaration/content', ...options } = {}) {
+    const system = codexSystem(),
+        hook = { key: POSTMAN_HOOK_KEY, trustStatus: status, currentHash: hash, sourcePath: path.resolve('/plugin/hooks/codex-hooks.json'), command: '/plugin/hooks/session-start' };
+
+    Object.assign(system, options);
+    system.files[path.resolve('/plugin/hooks/session-start-context.md')] = 'The installed Postman mandate.';
+    Object.assign(system.rpcs, {
+        initialize: {},
+        'hooks/list': () => ({ data: [{ hooks: [hook, { key: 'other:hook', trustStatus: 'untrusted' }] }] }),
+        'config/batchWrite': () => { hook.trustStatus = 'trusted'; return {}; }
+    });
+
+    return { system, hook };
+}
+
+test('a separate explicit yes approves only Postman, using the full hash on both protocol versions', async () => {
+    for (const hash of ['declaration', 'declaration/content']) {
+        const { system } = hookSystem({ status: hash.includes('/') ? 'modified' : 'untrusted', hash }),
+            questions = [];
+
+        assert.equal((await codex.install(system, { confirmHook: async (question) => {
+            questions.push(question);
+            assert.ok(system.lines.includes('The installed Postman mandate.'));
+
+            return true;
+        } })).outcome, 'done');
+        assert.deepEqual(questions, [HOOK_PROMPT]);
+        assert.deepEqual(system.rpcCalls.map(({ method }) => method), ['initialize', 'initialized', 'hooks/list', 'hooks/list', 'config/batchWrite', 'hooks/list']);
+        assert.deepEqual(system.rpcCalls.find(({ method }) => method === 'config/batchWrite').params, {
+            edits: [{ keyPath: 'hooks.state', value: { [POSTMAN_HOOK_KEY]: { trusted_hash: hash } }, mergeStrategy: 'upsert' }],
+            reloadUserConfig: true
+        });
+    }
+});
+
+test('hook consent rejects blank, no, and arbitrary text; accepts only y or yes', () => {
+    for (const answer of ['', ' ', 'n', 'no', 'okay', 'yes please', 'yup', 'true']) {
+        assert.equal(acceptsAnswer(answer, false), false, JSON.stringify(answer));
+    }
+
+    for (const answer of ['y', 'yes', 'YES', ' Y ']) {
+        assert.equal(acceptsAnswer(answer, false), true);
+    }
+
+    assert.equal(acceptsAnswer('', true), true, 'install confirmation retains its existing default');
+});
+
+test('declining leaves the hook untrusted and the install successful', async () => {
+    const { system, hook } = hookSystem();
+
+    assert.equal((await codex.install(system, { confirmHook: async () => false })).outcome, 'done');
+    assert.equal(hook.trustStatus, 'untrusted');
+    assert.ok(!system.rpcCalls.some(({ method }) => method === 'config/batchWrite'));
+});
+
+test('--yes does not imply hook approval; unattended installs explain the separate flag', async () => {
+    const { system, hook } = hookSystem();
+
+    // run's post-install verification must see the newly installed plugin.
+    system.runs['codex plugin add postman@postman --json'] = (fake) => {
+        fake.probes[PLUGINS] = JSON.stringify({ installed: [installed('postman@postman')] });
+
+        return '';
+    };
+    assert.equal(await run(system, [codex], {
+        command: 'install', agents: ['codex'], yes: true, isTTY: false,
+        confirm: async () => { throw new Error('must not ask'); },
+        confirmHook: async () => { throw new Error('must not ask without a terminal'); }
+    }), 0);
+    assert.equal(hook.trustStatus, 'untrusted');
+    assert.match(system.lines.join('\n'), /--yes does not approve hooks/);
+});
+
+test('the explicit hook flag works unattended; trusted reruns ask nothing and write nothing', async () => {
+    const { system } = hookSystem();
+
+    await codex.install(system, { approveCodexHook: true, confirmHook: async () => { throw new Error('must not ask'); } });
+    system.rpcCalls.length = 0;
+    await codex.install(system, { confirmHook: async () => { throw new Error('must not ask when trusted'); } });
+    assert.deepEqual(system.rpcCalls.map(({ method }) => method), ['initialize', 'initialized', 'hooks/list']);
+    assert.match(system.lines.join('\n'), /already trusted/);
+});
+
+test('missing APIs, failed writes and malformed hook listings never fail the install', async () => {
+    for (const [method, reply] of [
+        ['initialize', new Error('app-server missing')],
+        ['hooks/list', new Error('Method not found')],
+        ['hooks/list', {}],
+        ['hooks/list', { data: [{ hooks: [], errors: ['cannot load hooks'] }] }],
+        ['hooks/list', { data: [{ hooks: [] }] }],
+        ['config/batchWrite', new Error('write denied')]
+    ]) {
+        const { system } = hookSystem();
+
+        system.rpcs[method] = reply;
+        assert.equal((await codex.install(system, { approveCodexHook: true })).outcome, 'done');
+        assert.match(system.lines.join('\n'), /approval (skipped|could not be confirmed)/);
+    }
+});
+
+test('a different hook, unknown status, missing hash or unreadable mandate never gets approved', async () => {
+    for (const patch of [{ key: 'postman@evil:hooks/codex-hooks.json:session_start:0:0' }, { trustStatus: 'future-status' }, { currentHash: '' }, { sourcePath: '/missing/hooks.json' }]) {
+        const { system, hook } = hookSystem();
+
+        Object.assign(hook, patch);
+        await codex.install(system, { approveCodexHook: true });
+        assert.ok(!system.rpcCalls.some(({ method }) => method === 'config/batchWrite'));
+    }
+});
+
+test('a hash that changes during review needs another review', async () => {
+    const { system, hook } = hookSystem();
+
+    await codex.install(system, { confirmHook: async () => { hook.currentHash = 'new-content'; return true; } });
+    assert.ok(!system.rpcCalls.some(({ method }) => method === 'config/batchWrite'));
+    assert.match(system.lines.join('\n'), /changed during review/);
+});
+
+test('a dry run prints the conditional config write without starting app-server or asking', async () => {
+    const { system } = hookSystem({ dryRun: true });
+
+    await codex.install(system, { approveCodexHook: true, confirmHook: async () => { throw new Error('must not ask'); } });
+    assert.deepEqual(system.rpcSessions, []);
+    assert.match(system.lines.join('\n'), /config\/batchWrite .*trusted_hash/);
+});
+
+test('the RPC transport handles notifications, remote errors, EOF, bad JSON and timeouts', { timeout: 10000 }, async () => {
+    const system = createSystem({ log: () => {} }),
+        reply = `let text = ''; process.stdin.setEncoding('utf8'); process.stdin.on('data', chunk => {
+            text += chunk; let end;
+            while ((end = text.indexOf('\\n')) >= 0) {
+                const message = JSON.parse(text.slice(0, end)); text = text.slice(end + 1);
+                process.stdout.write(JSON.stringify({method:'notification'})+'\\n');
+                process.stdout.write(JSON.stringify({id:message.id, result:{ok:true}})+'\\n');
+            }
+        });`;
+
+    const value = await system.withJsonRpc(process.execPath, ['-e', reply], (rpc) => rpc.request('test', {}));
+
+    assert.deepEqual(value, { ok: true });
+
+    for (const [script, expected, timeout] of [
+        [`process.stdin.on('data',()=>process.stdout.write(JSON.stringify({id:1,error:{code:-32601,message:'Method not found'}})+'\\n'));`, /RPC error -32601: Method not found/, 3000],
+        ['process.exit(0)', /closed/, 3000],
+        [`process.stdin.on('data',()=>process.stdout.write('invalid\\n'));`, /invalid JSON/, 3000],
+        ['process.stdin.resume()', /timed out/, 500],
+        [`process.on('SIGTERM',()=>{}); process.stdin.resume();`, /timed out/, 500]
+    ]) {
+        await assert.rejects(system.withJsonRpc(process.execPath, ['-e', script], (rpc) => rpc.request('test', {}), timeout), expected);
+    }
+
+    await assert.rejects(system.withJsonRpc('/nonexistent/codex', [], (rpc) => rpc.request('test', {})));
+
+    let called = false;
+
+    await createSystem({ dryRun: true, log: () => {} }).withJsonRpc('/nonexistent/codex', [], async () => { called = true; });
+    assert.equal(called, false);
 });

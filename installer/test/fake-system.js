@@ -15,13 +15,15 @@ export function fakeSystem ({
     files = {},
     dirs = [],
     probes = {},
-    runs = {}
+    runs = {},
+    rpcs = {}
 } = {}) {
     const system = {
         home,
         platform,
         env,
         dryRun,
+        cwd: '/project',
         bins: new Set(bins),
         files: { ...files },
         dirs: new Set(dirs),
@@ -30,6 +32,9 @@ export function fakeSystem ({
         commands: [],
         runEnv: {},
         lines: [],
+        rpcs: { ...rpcs },
+        rpcCalls: [],
+        rpcSessions: [],
 
         async which (command) {
             return system.bins.has(command) ? `/usr/bin/${command}` : null;
@@ -75,6 +80,32 @@ export function fakeSystem ({
             system.runEnv[line] = options.env;
 
             return dryRun ? { code: 0, stdout: '', stderr: '' } : respond(system.runs, line, { code: 0, stdout: '', stderr: '' });
+        },
+
+        async withJsonRpc (command, args, use) {
+            system.rpcSessions.push([command, ...args].join(' '));
+
+            if (!dryRun) {
+                return use({
+                    async request (method, params) {
+                        system.rpcCalls.push({ method, params });
+                        let reply = system.rpcs[method];
+
+                        if (typeof reply === 'function') {
+                            reply = await reply(params, system);
+                        }
+
+                        if (reply instanceof Error || reply === undefined) {
+                            throw reply ?? new Error(`no RPC stubbed for ${method}`);
+                        }
+
+                        return structuredClone(reply);
+                    },
+                    notify (method) {
+                        system.rpcCalls.push({ method });
+                    }
+                });
+            }
         },
 
         async writeFile (file, content) {

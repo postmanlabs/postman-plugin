@@ -8,6 +8,12 @@ export type Status = { installed: boolean | null; detail: string; notes: string[
 export type Outcome = 'done' | 'skipped' | 'manual' | 'blocked' | 'failed';
 export type Result = { outcome: Outcome; message: string; next?: string };
 
+export type InstallOptions = {
+    approveCodexHook?: boolean;
+    /** Separate, default-no consent; absent when there is no interactive terminal. */
+    confirmHook?: (question: string) => Promise<boolean>;
+};
+
 export interface Host {
     id: HostId;
     name: string;
@@ -16,7 +22,7 @@ export interface Host {
     detect (system: System): Promise<boolean>;
     status (system: System): Promise<Status>;
     /** Installs, or updates when already installed, and only then removes any copy that would load the same skills twice. */
-    install (system: System): Promise<Result>;
+    install (system: System, options?: InstallOptions): Promise<Result>;
     remove (system: System): Promise<Result>;
 }
 

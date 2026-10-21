@@ -3,6 +3,7 @@ import { CODEX_REF, GIT_URL, REPO, isSameRepo, redact } from '../source.js';
 import type { System } from '../system.js';
 import { StepFailed, blocked, failed, guard, mustProbeJson, mustRun, parseJson } from './shared.js';
 import { type Host, result } from './types.js';
+import { approvePostmanHook } from './codex-hooks.js';
 
 // Codex names the marketplace after `.claude-plugin/marketplace.json`'s `name`.
 // `npx plugins add` installs a second copy under its own `plugins-cli` marketplace.
@@ -211,7 +212,7 @@ export const codex: Host = {
             { installed: false, detail: 'not installed', notes };
     },
 
-    install (system) {
+    install (system, options) {
         return guard(async () => {
             // Listed first: re-registering the marketplace uninstalls its plugins.
             const plugins = await listPlugins(system),
@@ -226,6 +227,7 @@ export const codex: Host = {
                 await mustRun(system, 'codex', ['plugin', 'add', PLUGIN_ID, '--json']);
             }
             await removeInstalled(system, plugins, SHADOW_IDS);
+            await approvePostmanHook(system, options);
 
             return result('done', `${wasInstalled ? 'updated' : 'installed'} ${PLUGIN_ID}`, NEXT);
         });

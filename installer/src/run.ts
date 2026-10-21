@@ -1,4 +1,4 @@
-import type { Host, HostId, Outcome, Result, Status } from './hosts/types.js';
+import type { Host, HostId, InstallOptions, Outcome, Result, Status } from './hosts/types.js';
 import type { System } from './system.js';
 
 export type Command = 'install' | 'status' | 'remove';
@@ -10,6 +10,8 @@ export type RunOptions = {
     yes: boolean;
     isTTY: boolean;
     confirm: (question: string) => Promise<boolean>;
+    approveCodexHook?: boolean;
+    confirmHook?: (question: string) => Promise<boolean>;
 };
 
 type Target = { host: Host; status: Status };
@@ -58,9 +60,9 @@ async function readStatus (system: System, host: Host): Promise<Status> {
     }
 }
 
-async function execute (system: System, command: 'install' | 'remove', host: Host): Promise<Result> {
+async function execute (system: System, command: 'install' | 'remove', host: Host, options: InstallOptions): Promise<Result> {
     try {
-        const outcome = await host[command](system);
+        const outcome = await host[command](system, options);
 
         if (outcome.outcome !== 'done' || system.dryRun) {
             return outcome;
@@ -160,7 +162,10 @@ export async function run (system: System, hosts: readonly Host[], options: RunO
     for (const { host } of targets) {
         system.log(`\n${host.name}`);
 
-        const report = { host, result: await execute(system, command, host) };
+        const report = { host, result: await execute(system, command, host, {
+            approveCodexHook: options.approveCodexHook,
+            confirmHook: options.isTTY ? options.confirmHook : undefined
+        }) };
 
         printResult(system, report);
         reports.push(report);

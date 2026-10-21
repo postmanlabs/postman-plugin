@@ -9,6 +9,7 @@ import { spawnCliSync } from '../../scripts/lib/cli.js';
 import { marketplaceRef } from '../dist/hosts/codex.js';
 import { parseJsonc } from '../dist/hosts/opencode-config.js';
 import { CODEX_REF, OPENCODE_SHIM, OPENCODE_SPEC } from '../dist/source.js';
+import { checkCodexHookConsent } from './codex-hook-check.js';
 
 const [mode, ...agents] = process.argv.slice(2),
     home = os.homedir(),
@@ -88,7 +89,12 @@ const AGENTS = {
     }
 };
 
-assert.ok(['installed', 'removed'].includes(mode) && agents.length > 0, 'usage: smoke-check.js installed|removed <agent>...');
+if (mode === 'codex-hooks') {
+    await checkCodexHookConsent();
+    process.exit(0);
+}
+
+assert.ok(['installed', 'removed'].includes(mode) && agents.length > 0, 'usage: smoke-check.js installed|removed <agent>... | codex-hooks');
 
 for (const agent of agents) {
     assert.ok(AGENTS[agent], `no check for the agent ${agent}`);

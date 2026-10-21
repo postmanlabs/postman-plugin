@@ -429,6 +429,39 @@ latest release of every agent it supports, on Linux and Windows, on every
 installer change, nightly, and before every release, so a change to an agent's
 commands or output fails CI even when nothing here changed.
 
+Codex installation has a separate, default-no hook consent step. It shows the
+installed `hooks/session-start-context.md` and the command Codex will run, then
+asks `Approve Postman's Codex session-start hook for this installed version? [y/N]`.
+Only `y` or `yes` approves; `--yes` covers install/remove only. Without a terminal,
+approval is skipped with a note unless `--approve-codex-hook` explicitly opts in.
+It asks once per invocation when the hook is untrusted or modified, and never
+when already trusted. A decline is not saved as a permanent opt-out: a later
+interactive install can offer the current hook again.
+
+The adapter feature-detects `hooks/list` through `codex app-server` rather than
+assuming a version. It writes only
+`postman@postman:hooks/codex-hooks.json:session_start:0:0` through
+`config/batchWrite` at `hooks.state`, using `upsert`, `trusted_hash: currentHash`
+and `reloadUserConfig: true`, as Codex's TUI does in `codex-rs/tui/src/hooks_rpc.rs`.
+Codex handles the declaration/content hash split. A changed hash during review
+requires another review. The optional step's RPC errors and timeouts produce a
+note and leave installation successful. `System.withJsonRpc` owns process
+cleanup and per-request deadlines, allowing unlimited time for the human prompt.
+A dry run prints the conditional config write without starting app-server,
+whose startup can refresh marketplaces.
+
+From `installer/`, `CODEX_BIN=<path to codex> node scripts/smoke-check.js codex-hooks`
+starts from a throwaway home without a Codex config directory. It runs the real
+installer, checks `--yes`, decline, explicit consent, trusted reruns and the
+explicit CLI flag, and sends a session to a local stand-in model with no hook
+trust bypass. It checks every installed skill and the mandate in the model
+request, and compares every cached file (including git/install metadata) before
+and after approval, reruns and a later session. The installed MCP configuration
+is left intact; the existing route harness separately captures the MCP headers
+with its stand-in server. Installer smoke runs this on both 0.159.0 and
+0.164.0-alpha.8, and on the latest release, on Linux and Windows. These are tested
+versions, not a measured minimum.
+
 To release it, run `/release-installer rc`, `/release-installer latest` or
 `/release-installer <version>` in Claude Code. The skill in
 `.claude/skills/release-installer/` walks these steps, and resumes a release
