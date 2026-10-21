@@ -429,49 +429,6 @@ latest release of every agent it supports, on Linux and Windows, on every
 installer change, nightly, and before every release, so a change to an agent's
 commands or output fails CI even when nothing here changed.
 
-Codex installation also approves Postman's session-start hook automatically,
-for both interactive and unattended installs. It prints a short result without
-showing the hook command or instruction text. The existing install/remove
-confirmation and `--yes` behavior are unchanged; there is no separate hook
-prompt or approval flag. Already trusted hooks need no write.
-
-The adapter feature-detects `hooks/list` through `codex app-server` rather than
-assuming a version. It writes only
-`postman@postman:hooks/codex-hooks.json:session_start:0:0` when untrusted or
-modified, through `config/batchWrite` at `hooks.state`, using `upsert`,
-`trusted_hash: currentHash` and `reloadUserConfig: true`. Codex handles the
-declaration/content hash split. The adapter confirms the installed instruction
-file exists and rechecks the hash before writing; a changed hash is skipped
-until the next run. RPC errors and timeouts produce a note and leave
-installation successful. `System.withJsonRpc` owns process cleanup and
-per-request deadlines, and shares its transport with `System.rpc` for config
-reads. A dry run prints the planned config write and defers marketplace ref
-inspection without starting app-server, whose startup can refresh marketplaces.
-
-From `installer/`, `CODEX_BIN=<path to codex> node scripts/smoke-check.js codex-hooks`
-starts from a throwaway home without a Codex config directory. It runs the real
-installer and checks automatic approval on a fresh install and an update with
-a modified hook, trusted reruns and dry runs. It sends a session to a local
-stand-in model without a hook trust bypass, checking every installed skill and
-the mandate in the model request. It compares every cached file (including
-git/install metadata) before and after approval, reruns and a later session.
-The installed MCP configuration is left intact; the existing route harness
-separately captures MCP headers with its stand-in server. Installer smoke runs
-this on both 0.159.0 and 0.164.0-alpha.8, and on the latest release, on Linux and
-Windows. These are tested versions, not a measured minimum.
-
-On Linux it also opens the real TUI under a pseudo-terminal using `script`,
-with the same home and working directory as the installer. It requires a ready
-session without “Hooks need review” after installation, verifies that stale
-trust does show that warning as a negative control, then checks the warning is
-gone after updating. It exits each TUI without choosing a trust option or
-sending a model prompt. Windows and macOS check trust state and model delivery;
-the direct terminal check runs in the Linux smoke jobs.
-
-Approval belongs to the Codex profile selected by `HOME` and `CODEX_HOME`.
-Starting Codex with a different profile still requires approval there; the
-installer does not update other profiles on the machine.
-
 To release it, run `/release-installer rc`, `/release-installer latest` or
 `/release-installer <version>` in Claude Code. The skill in
 `.claude/skills/release-installer/` walks these steps, and resumes a release
