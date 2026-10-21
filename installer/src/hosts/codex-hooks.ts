@@ -1,12 +1,10 @@
 import path from 'node:path';
 import type { JsonRpc } from '../json-rpc.js';
 import type { System } from '../system.js';
-import type { InstallOptions } from './types.js';
 
 export const POSTMAN_HOOK_KEY = 'postman@postman:hooks/codex-hooks.json:session_start:0:0';
-export const HOOK_PROMPT = 'Approve Postman\'s Codex session-start hook for this installed version? [y/N] ';
 
-type Hook = { key: string; trustStatus: string; currentHash: string; sourcePath: string; command: string };
+type Hook = { key: string; trustStatus: string; currentHash: string; sourcePath: string };
 
 async function postmanHook (rpc: JsonRpc, cwd: string): Promise<Hook | undefined> {
     const result = await rpc.request<{ data: { hooks: Hook[]; errors?: unknown[] }[] }>('hooks/list', { cwds: [cwd] });
@@ -29,13 +27,13 @@ const trustEdit = (hash: string) => ({
     reloadUserConfig: true
 });
 
-/** Optional install step. Only an explicit, separate consent can reach the config writer. */
-export async function approvePostmanHook (system: System, options: InstallOptions = {}): Promise<void> {
+/** Approves only Postman's current hook after installation; unsupported APIs never fail the install. */
+export async function approvePostmanHook (system: System): Promise<void> {
     const note = (message: string) => system.log(`  note: ${message}`);
     let writeAttempted = false;
 
     if (system.dryRun) {
-        note('Would inspect Postman\'s session-start hook after installation; with explicit hook approval, write through codex app-server:');
+        note('Would inspect and approve Postman\'s current session-start hook after installation through codex app-server:');
         system.log(`  config/batchWrite ${JSON.stringify(trustEdit('<currentHash from hooks/list>'))}`);
 
         return;
@@ -65,13 +63,7 @@ export async function approvePostmanHook (system: System, options: InstallOption
                 throw new Error('Postman\'s hook has an unsupported trust status or hash');
             }
 
-            if (!options.approveCodexHook && !options.confirmHook) {
-                note('Hook approval skipped: no interactive terminal. --yes does not approve hooks. Review it in Codex, or re-run with --yes --approve-codex-hook.');
-
-                return;
-            }
-
-            // Display the installed mandate, not a bundled copy that may differ from this plugin.
+            // Confirm the installed instructions are present before approving their hook.
             const mandateFile = path.resolve(path.dirname(hook.sourcePath), 'session-start-context.md'),
                 mandate = await system.readFile(mandateFile);
 
@@ -79,23 +71,12 @@ export async function approvePostmanHook (system: System, options: InstallOption
                 throw new Error('could not read the installed hooks/session-start-context.md');
             }
 
-            system.log(`  Postman's Codex session-start hook (${hook.trustStatus}) runs: ${hook.command}`);
-            system.log(`  It prints ${mandateFile} into Codex's session, directing API work to Postman's skills:`);
-            system.log(mandate.trim());
-            system.log('  Approval saves trust in your Codex user configuration and allows this command to run at session start.');
-
-            if (!options.approveCodexHook && !(await options.confirmHook!(HOOK_PROMPT))) {
-                note('Hook approval declined; Postman remains installed and the hook is not approved.');
-
-                return;
-            }
-
-            // The app-server can refresh marketplaces, and the user can take time reviewing.
-            // A changed hash needs a new review, never an automatic approval of the newer hash.
+            // Startup can refresh marketplaces. A changed hash needs another check,
+            // rather than approving a different version from the one inspected above.
             const current = await postmanHook(rpc, system.cwd);
 
             if (!current || current.currentHash !== hook.currentHash || !['untrusted', 'modified'].includes(current.trustStatus)) {
-                note('Postman\'s hook changed during review; approval skipped. Re-run to review it again.');
+                note('Postman\'s hook changed while checking it; approval skipped. Re-run to approve the current version.');
 
                 return;
             }
@@ -106,7 +87,7 @@ export async function approvePostmanHook (system: System, options: InstallOption
             const after = await postmanHook(rpc, system.cwd);
 
             note(after?.trustStatus === 'trusted' && after.currentHash === hook.currentHash ?
-                'Approved Postman\'s Codex session-start hook through Codex\'s config API.' :
+                'Approved Postman\'s Codex session-start hook.' :
                 'Codex accepted the approval write, but the hook is not confirmed trusted. Review it in Codex.');
         });
     }

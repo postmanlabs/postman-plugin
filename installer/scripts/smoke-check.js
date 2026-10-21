@@ -9,7 +9,7 @@ import { spawnCliSync } from '../../scripts/lib/cli.js';
 import { marketplaceRef } from '../dist/hosts/codex.js';
 import { parseJsonc } from '../dist/hosts/opencode-config.js';
 import { CODEX_REF, OPENCODE_SHIM, OPENCODE_SPEC } from '../dist/source.js';
-import { checkCodexHookConsent } from './codex-hook-check.js';
+import { checkCodexHookApproval } from './codex-hook-check.js';
 
 const [mode, ...agents] = process.argv.slice(2),
     home = os.homedir(),
@@ -90,7 +90,7 @@ const AGENTS = {
 };
 
 if (mode === 'codex-hooks') {
-    await checkCodexHookConsent();
+    await checkCodexHookApproval();
     process.exit(0);
 }
 

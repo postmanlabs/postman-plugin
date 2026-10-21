@@ -204,7 +204,7 @@ export const codex: Host = {
             config = await system.readFile(configFile(system));
 
         if (installed && config !== null && marketplaceRef(config, MARKETPLACE) === null) {
-            notes.push(`marketplace ${MARKETPLACE} tracks main and will be re-added at ${CODEX_REF}; Codex then asks once to approve the hook`);
+            notes.push(`marketplace ${MARKETPLACE} tracks main and will be re-added at ${CODEX_REF}; the installer then approves its session-start hook`);
         }
 
         return installed ?
@@ -212,7 +212,7 @@ export const codex: Host = {
             { installed: false, detail: 'not installed', notes };
     },
 
-    install (system, options) {
+    install (system) {
         return guard(async () => {
             // Listed first: re-registering the marketplace uninstalls its plugins.
             const plugins = await listPlugins(system),
@@ -227,7 +227,7 @@ export const codex: Host = {
                 await mustRun(system, 'codex', ['plugin', 'add', PLUGIN_ID, '--json']);
             }
             await removeInstalled(system, plugins, SHADOW_IDS);
-            await approvePostmanHook(system, options);
+            await approvePostmanHook(system);
 
             return result('done', `${wasInstalled ? 'updated' : 'installed'} ${PLUGIN_ID}`, NEXT);
         });

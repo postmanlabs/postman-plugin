@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 import fs from 'node:fs';
-import { stdin } from 'node:process';
+import { stdin, stdout } from 'node:process';
+import { createInterface } from 'node:readline/promises';
 import { parseArgs } from 'node:util';
 import { HOSTS } from './hosts/index.js';
 import type { HostId } from './hosts/types.js';
 import { type Command, EXIT, run } from './run.js';
 import { createSystem } from './system.js';
-import { confirm } from './prompt.js';
 
 const COMMANDS: Record<string, Command> = { install: 'install', status: 'status', remove: 'remove', uninstall: 'remove' },
     HOST_IDS = HOSTS.map((host) => host.id),
@@ -21,8 +21,7 @@ Commands:
 
 Options:
   --agent <id>  Only these agents; repeat or comma-separate: ${HOST_IDS.join(', ')}
-  -y, --yes     Confirm install/remove (required when not in a terminal); never approves hooks
-  --approve-codex-hook  Explicitly approve Postman's current Codex session-start hook
+  -y, --yes     Don't ask for confirmation (required when not in a terminal)
   --dry-run     Print what would change without changing anything
   -h, --help    Show this help
   -v, --version Show the version
@@ -37,6 +36,17 @@ function version (): string {
     const manifest = new URL('../package.json', import.meta.url);
 
     return (JSON.parse(fs.readFileSync(manifest, 'utf8')) as { version: string }).version;
+}
+
+async function confirm (question: string): Promise<boolean> {
+    const readline = createInterface({ input: stdin, output: stdout });
+
+    try {
+        return !/^n/i.test((await readline.question(question)).trim());
+    }
+    finally {
+        readline.close();
+    }
 }
 
 function fail (message: string): number {
@@ -55,7 +65,6 @@ async function main (argv: string[]): Promise<number> {
             options: {
                 agent: { type: 'string', multiple: true },
                 yes: { type: 'boolean', short: 'y' },
-                'approve-codex-hook': { type: 'boolean' },
                 'dry-run': { type: 'boolean' },
                 help: { type: 'boolean', short: 'h' },
                 version: { type: 'boolean', short: 'v' }
@@ -102,9 +111,7 @@ async function main (argv: string[]): Promise<number> {
         agents: agents as HostId[],
         yes: Boolean(values.yes),
         isTTY: Boolean(stdin.isTTY),
-        confirm,
-        approveCodexHook: Boolean(values['approve-codex-hook']),
-        confirmHook: (question) => confirm(question, false)
+        confirm
     });
 }
 

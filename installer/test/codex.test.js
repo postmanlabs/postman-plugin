@@ -3,8 +3,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { codex, marketplaceRef } from '../dist/hosts/codex.js';
 import { fakeSystem } from './fake-system.js';
-import { HOOK_PROMPT, POSTMAN_HOOK_KEY } from '../dist/hosts/codex-hooks.js';
-import { acceptsAnswer } from '../dist/prompt.js';
+import { POSTMAN_HOOK_KEY } from '../dist/hosts/codex-hooks.js';
 import { run } from '../dist/run.js';
 import { createSystem } from '../dist/system.js';
 
@@ -286,18 +285,13 @@ function hookSystem ({ status = 'untrusted', hash = 'declaration/content', ...op
     return { system, hook };
 }
 
-test('a separate explicit yes approves only Postman, using the full hash on both protocol versions', async () => {
+test('automatically approves only Postman, using the full hash on both protocol versions', async () => {
     for (const hash of ['declaration', 'declaration/content']) {
-        const { system } = hookSystem({ status: hash.includes('/') ? 'modified' : 'untrusted', hash }),
-            questions = [];
+        const { system, hook } = hookSystem({ status: hash.includes('/') ? 'modified' : 'untrusted', hash });
 
-        assert.equal((await codex.install(system, { confirmHook: async (question) => {
-            questions.push(question);
-            assert.ok(system.lines.includes('The installed Postman mandate.'));
-
-            return true;
-        } })).outcome, 'done');
-        assert.deepEqual(questions, [HOOK_PROMPT]);
+        assert.equal((await codex.install(system)).outcome, 'done');
+        assert.equal(hook.trustStatus, 'trusted');
+        assert.doesNotMatch(system.lines.join('\n'), /Approve Postman's|The installed Postman mandate|hooks[\\/]session-start/);
         assert.deepEqual(system.rpcCalls.map(({ method }) => method), ['initialize', 'initialized', 'hooks/list', 'hooks/list', 'config/batchWrite', 'hooks/list']);
         assert.deepEqual(system.rpcCalls.find(({ method }) => method === 'config/batchWrite').params, {
             edits: [{ keyPath: 'hooks.state', value: { [POSTMAN_HOOK_KEY]: { trusted_hash: hash } }, mergeStrategy: 'upsert' }],
@@ -306,30 +300,9 @@ test('a separate explicit yes approves only Postman, using the full hash on both
     }
 });
 
-test('hook consent rejects blank, no, and arbitrary text; accepts only y or yes', () => {
-    for (const answer of ['', ' ', 'n', 'no', 'okay', 'yes please', 'yup', 'true']) {
-        assert.equal(acceptsAnswer(answer, false), false, JSON.stringify(answer));
-    }
-
-    for (const answer of ['y', 'yes', 'YES', ' Y ']) {
-        assert.equal(acceptsAnswer(answer, false), true);
-    }
-
-    assert.equal(acceptsAnswer('', true), true, 'install confirmation retains its existing default');
-});
-
-test('declining leaves the hook untrusted and the install successful', async () => {
+test('unattended installs approve the hook without any extra flag or prompt', async () => {
     const { system, hook } = hookSystem();
 
-    assert.equal((await codex.install(system, { confirmHook: async () => false })).outcome, 'done');
-    assert.equal(hook.trustStatus, 'untrusted');
-    assert.ok(!system.rpcCalls.some(({ method }) => method === 'config/batchWrite'));
-});
-
-test('--yes does not imply hook approval; unattended installs explain the separate flag', async () => {
-    const { system, hook } = hookSystem();
-
-    // run's post-install verification must see the newly installed plugin.
     system.runs['codex plugin add postman@postman --json'] = (fake) => {
         fake.probes[PLUGINS] = JSON.stringify({ installed: [installed('postman@postman')] });
 
@@ -337,19 +310,17 @@ test('--yes does not imply hook approval; unattended installs explain the separa
     };
     assert.equal(await run(system, [codex], {
         command: 'install', agents: ['codex'], yes: true, isTTY: false,
-        confirm: async () => { throw new Error('must not ask'); },
-        confirmHook: async () => { throw new Error('must not ask without a terminal'); }
+        confirm: async () => { throw new Error('must not ask'); }
     }), 0);
-    assert.equal(hook.trustStatus, 'untrusted');
-    assert.match(system.lines.join('\n'), /--yes does not approve hooks/);
+    assert.equal(hook.trustStatus, 'trusted');
 });
 
-test('the explicit hook flag works unattended; trusted reruns ask nothing and write nothing', async () => {
+test('trusted reruns write nothing', async () => {
     const { system } = hookSystem();
 
-    await codex.install(system, { approveCodexHook: true, confirmHook: async () => { throw new Error('must not ask'); } });
+    await codex.install(system);
     system.rpcCalls.length = 0;
-    await codex.install(system, { confirmHook: async () => { throw new Error('must not ask when trusted'); } });
+    await codex.install(system);
     assert.deepEqual(system.rpcCalls.map(({ method }) => method), ['initialize', 'initialized', 'hooks/list']);
     assert.match(system.lines.join('\n'), /already trusted/);
 });
@@ -366,7 +337,7 @@ test('missing APIs, failed writes and malformed hook listings never fail the ins
         const { system } = hookSystem();
 
         system.rpcs[method] = reply;
-        assert.equal((await codex.install(system, { approveCodexHook: true })).outcome, 'done');
+        assert.equal((await codex.install(system)).outcome, 'done');
         assert.match(system.lines.join('\n'), /approval (skipped|could not be confirmed)/);
     }
 });
@@ -376,23 +347,32 @@ test('a different hook, unknown status, missing hash or unreadable mandate never
         const { system, hook } = hookSystem();
 
         Object.assign(hook, patch);
-        await codex.install(system, { approveCodexHook: true });
+        await codex.install(system);
         assert.ok(!system.rpcCalls.some(({ method }) => method === 'config/batchWrite'));
     }
 });
 
-test('a hash that changes during review needs another review', async () => {
-    const { system, hook } = hookSystem();
+test('a hash that changes while being checked is not approved', async () => {
+    const { system, hook } = hookSystem(),
+        list = system.rpcs['hooks/list'];
+    let reads = 0;
 
-    await codex.install(system, { confirmHook: async () => { hook.currentHash = 'new-content'; return true; } });
+    system.rpcs['hooks/list'] = () => {
+        if (++reads === 2) {
+            hook.currentHash = 'new-content';
+        }
+
+        return list();
+    };
+    await codex.install(system);
     assert.ok(!system.rpcCalls.some(({ method }) => method === 'config/batchWrite'));
-    assert.match(system.lines.join('\n'), /changed during review/);
+    assert.match(system.lines.join('\n'), /changed while checking/);
 });
 
-test('a dry run prints the conditional config write without starting app-server or asking', async () => {
+test('a dry run prints the automatic config write without starting app-server', async () => {
     const { system } = hookSystem({ dryRun: true });
 
-    await codex.install(system, { approveCodexHook: true, confirmHook: async () => { throw new Error('must not ask'); } });
+    await codex.install(system);
     assert.deepEqual(system.rpcSessions, []);
     assert.match(system.lines.join('\n'), /config\/batchWrite .*trusted_hash/);
 });

@@ -38,8 +38,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  codex-hook-consent:
-    name: Codex hook consent / ${{ matrix.version }} / ${{ matrix.os }}
+  codex-hook-approval:
+    name: Codex hook approval / ${{ matrix.version }} / ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     strategy:
@@ -59,11 +59,11 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: lts/*
-      - name: Build and unit-test the installer, including hook consent and RPC failures
+      - name: Build and unit-test the installer, including automatic hook approval and RPC failures
         run: npm ci && npm test
       - name: Install the tested Codex version
         run: npm install --prefix "$RUNNER_TEMP/codex" @openai/codex@${{ matrix.version }}
-      - name: Consent persists and reaches the model without a hook trust bypass
+      - name: Automatic approval persists and the mandate reaches the model without a trust bypass
         run: node scripts/smoke-check.js codex-hooks
         env:
           CODEX_BIN: ${{ runner.temp }}/codex/node_modules/.bin/codex${{ runner.os == 'Windows' && '.cmd' || '' }}
@@ -183,7 +183,7 @@ jobs:
         if: ${{ !cancelled() }}
         run: node ../scripts/codex-harness.js
 
-      - name: The latest Codex records explicit hook consent through app-server
+      - name: The latest Codex automatically approves the Postman hook through app-server
         if: ${{ !cancelled() }}
         run: node scripts/smoke-check.js codex-hooks
 

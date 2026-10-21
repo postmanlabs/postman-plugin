@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { codex } from '../dist/hosts/codex.js';
-import { HOOK_PROMPT, POSTMAN_HOOK_KEY } from '../dist/hosts/codex-hooks.js';
+import { POSTMAN_HOOK_KEY } from '../dist/hosts/codex-hooks.js';
 import { run as install } from '../dist/run.js';
 import { createSystem } from '../dist/system.js';
 import { assertMandate, runAgent, startStandIn, workspace } from '../../scripts/lib/harness.js';
@@ -30,8 +30,8 @@ export function snapshot (root) {
     return files;
 }
 
-export async function checkCodexHookConsent () {
-    const box = workspace('codex-installer-consent'),
+export async function checkCodexHookApproval () {
+    const box = workspace('codex-installer-approval'),
         previousCwd = process.cwd(),
         codexBin = process.env.CODEX_BIN || 'codex',
         cli = path.resolve(import.meta.dirname, '../dist/cli.js'),
@@ -86,50 +86,24 @@ export async function checkCodexHookConsent () {
 
         assert.ok(!fs.existsSync(codexHome));
         await runInstall();
-        assert.match(logs.join('\n'), /--yes does not approve hooks/);
+        assert.match(logs.join('\n'), /Approved Postman's Codex session-start hook/);
+        assert.doesNotMatch(logs.join('\n'), /Approve Postman's|<EXTREMELY_IMPORTANT>|session-start-context\.md|hooks[\\/]session-start/);
 
         const plugins = JSON.parse((await system.probe('codex', ['plugin', 'list', '--json'])).stdout),
             version = plugins.installed.find(({ pluginId }) => pluginId === 'postman@postman').version,
             installedPath = path.join(codexHome, 'plugins', 'cache', 'postman', 'postman', version),
             before = snapshot(installedPath),
-            untrusted = await list();
+            trusted = await list();
 
-        assert.equal(untrusted?.trustStatus, 'untrusted');
+        assert.equal(trusted?.trustStatus, 'trusted');
         assert.deepEqual(snapshot(installedPath), before, 'app-server startup changed the cached plugin');
 
-        let prompts = 0;
-
-        await runInstall({ isTTY: true, confirmHook: async (question) => {
-            assert.equal(question, HOOK_PROMPT);
-            prompts++;
-
-            return false;
-        } });
-        assert.equal(prompts, 1);
-        assert.equal((await list()).trustStatus, 'untrusted', 'declining must not approve the hook');
-
-        prompts = 0;
-        await runInstall({ isTTY: true, confirmHook: async (question) => {
-            assert.equal(question, HOOK_PROMPT);
-            assert.ok(logs.some((line) => line.includes('<EXTREMELY_IMPORTANT>')), 'show the installed mandate before consent');
-            prompts++;
-
-            return true;
-        } });
-        assert.equal(prompts, 1);
-
-        const trusted = await list();
-
-        assert.equal(trusted.trustStatus, 'trusted', logs.join('\n'));
-        assert.equal(trusted.currentHash, untrusted.currentHash);
-        assert.deepEqual(snapshot(installedPath), before, 'installation/app-server changed cached contents before approval');
-
-        await runInstall({ isTTY: true, confirmHook: async () => { throw new Error('trusted rerun asked again'); } });
+        await runInstall({ isTTY: true });
         assert.match(logs.join('\n'), /already trusted/);
         assert.equal((await list()).trustStatus, 'trusted');
 
         const configBeforeDry = fs.readFileSync(path.join(codexHome, 'config.toml'), 'utf8'),
-            dry = await runAgent(process.execPath, [cli, 'install', '--dry-run', '--agent', 'codex', '--approve-codex-hook'], { env, cwd: box.project });
+            dry = await runAgent(process.execPath, [cli, 'install', '--dry-run', '--agent', 'codex'], { env, cwd: box.project });
 
         assert.equal(dry.code, 0, dry.stdout + dry.stderr);
         assert.match(dry.stdout, /config\/batchWrite .*trusted_hash/);
@@ -141,9 +115,9 @@ export async function checkCodexHookConsent () {
         // Use the real installed plugin unchanged. Only inference is redirected locally;
         // its MCP server still connects to Postman unauthenticated, just as for a new user.
         standIn = await startStandIn(() => ({ body: [
-            { type: 'response.created', response: { id: 'consent-check' } },
+            { type: 'response.created', response: { id: 'approval-check' } },
             { type: 'response.output_item.done', item: { type: 'message', role: 'assistant', id: 'answer', content: [{ type: 'output_text', text: 'ok' }] } },
-            { type: 'response.completed', response: { id: 'consent-check', usage: { input_tokens: 1, output_tokens: 1, total_tokens: 2 } } }
+            { type: 'response.completed', response: { id: 'approval-check', usage: { input_tokens: 1, output_tokens: 1, total_tokens: 2 } } }
         ].map((event) => `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`).join('') }));
         const result = await runAgent('codex', [
             'exec', '--skip-git-repo-check', '--ephemeral', '--sandbox', 'danger-full-access',
@@ -171,24 +145,29 @@ export async function checkCodexHookConsent () {
         assert.deepEqual(snapshot(installedPath), before, 'a later Codex session changed cached contents');
         assert.equal((await list()).trustStatus, 'trusted', 'approval must survive the later session');
 
-        // Also exercise CLI flag parsing, not just the adapter's consent callback. Remove
-        // only this throwaway home's approval, then approve it through the explicit flag.
+        // Make only this throwaway home's Postman approval stale, then exercise the
+        // real CLI update path without an extra flag or an interactive terminal.
         await system.withJsonRpc('codex', ['app-server'], async (rpc) => {
             await rpc.request('initialize', { clientInfo: { name: 'postman-installer-smoke', version: '1' } });
             rpc.notify('initialized');
-            await rpc.request('config/batchWrite', { edits: [{ keyPath: 'hooks.state', value: {}, mergeStrategy: 'replace' }], reloadUserConfig: true });
+            await rpc.request('config/batchWrite', {
+                edits: [{ keyPath: 'hooks.state', value: { [POSTMAN_HOOK_KEY]: { trusted_hash: `sha256:${'0'.repeat(64)}` } }, mergeStrategy: 'upsert' }],
+                reloadUserConfig: true
+            });
         });
-        assert.equal((await list()).trustStatus, 'untrusted');
-        const flagged = await runAgent(process.execPath, [cli, 'install', '--yes', '--agent', 'codex', '--approve-codex-hook'], { env, cwd: box.project });
+        assert.equal((await list()).trustStatus, 'modified');
+        const updated = await runAgent(process.execPath, [cli, 'install', '--yes', '--agent', 'codex'], { env, cwd: box.project });
 
-        assert.equal(flagged.code, 0, flagged.stdout + flagged.stderr);
+        assert.equal(updated.code, 0, updated.stdout + updated.stderr);
+        assert.match(updated.stdout, /Approved Postman's Codex session-start hook/);
+        assert.doesNotMatch(updated.stdout, /Approve Postman's|<EXTREMELY_IMPORTANT>|session-start-context\.md|hooks[\\/]session-start/);
         assert.equal((await list()).trustStatus, 'trusted');
         assert.deepEqual(snapshot(installedPath), before);
         assert.deepEqual(rpcChanges, [], 'app-server changed cached files');
 
         const versionText = (await system.probe('codex', ['--version'])).stdout.trim();
 
-        console.log(`${versionText}: --yes leaves untrusted; decline leaves untrusted; explicit yes/flag trust; trusted rerun asks nothing; dry run writes nothing; mandate and ${manifest.skills.length} skills reach the model without bypass; ${Object.keys(before).length} cached files unchanged`);
+        console.log(`${versionText}: fresh and modified hooks automatically trusted; trusted reruns skip approval; dry run writes nothing; mandate and ${manifest.skills.length} skills reach the model without bypass; ${Object.keys(before).length} cached files unchanged`);
     }
     finally {
         standIn?.server.close();
