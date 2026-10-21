@@ -1,0 +1,70 @@
+# Moves `codex-release`, the branch every Codex user's `postman` marketplace tracks, to the newest commit
+# on main that changed `.codex-plugin/plugin.json`'s version. Codex asks to approve a plugin's hook again
+# whenever the plugin's files change, so Codex users take main only once per Codex route release.
+name: Codex release branch
+
+on:
+  push:
+    branches: ['main']
+    paths: ['.codex-plugin/plugin.json']
+  # Re-runs the move, which is idempotent; it never moves the branch to anything but that release commit.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Later runs wait instead of racing: two pushes to the branch at once would leave it at either commit.
+concurrency:
+  group: codex-release
+  cancel-in-progress: false
+
+jobs:
+  move:
+    name: Fast-forward codex-release
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          # The whole history, to find the release commit and prove the branch only moves forward.
+          fetch-depth: 0
+
+      - name: Find the latest Codex release on main
+        id: release
+        run: |
+          set -euo pipefail
+          version () {
+            git show "$1:.codex-plugin/plugin.json" 2>/dev/null |
+              node -e 'let s = ""; process.stdin.on("data", (d) => s += d).on("end", () => { try { process.stdout.write(JSON.parse(s).version ?? "") } catch {} })'
+          }
+          for sha in $(git log --format=%H origin/main -- .codex-plugin/plugin.json); do
+            now=$(version "$sha")
+            if [ -n "$now" ] && [ "$now" != "$(version "$sha^")" ]; then
+              echo "Codex $now was released in $sha"
+              { echo "sha=$sha"; echo "version=$now"; } >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          done
+          echo "::error::no commit on main sets a version in .codex-plugin/plugin.json"
+          exit 1
+
+      - name: Fast-forward codex-release to it
+        env:
+          SHA: ${{ steps.release.outputs.sha }}
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          set -euo pipefail
+          current=$(git ls-remote origin refs/heads/codex-release | cut -f1)
+          if [ "$current" = "$SHA" ]; then
+            echo "codex-release is already at Codex $VERSION ($SHA)"
+            exit 0
+          fi
+          if [ -n "$current" ] && ! git merge-base --is-ancestor "$current" "$SHA"; then
+            echo "::error::codex-release is at $current, which $SHA does not contain; it only fast-forwards, so move it by hand"
+            exit 1
+          fi
+          git push origin "$SHA:refs/heads/codex-release"
+          echo "codex-release is now at Codex $VERSION ($SHA)"

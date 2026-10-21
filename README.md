@@ -58,9 +58,15 @@ does nothing where the marketplace is already registered.
 [View Postman on ChatGPT Plugins](https://chatgpt.com/plugins/postman?open_in_app)
 
 ```bash
-codex plugin marketplace add postmanlabs/postman-plugin
+codex plugin marketplace add postmanlabs/postman-plugin --ref codex-release
+codex plugin marketplace upgrade postman
 codex plugin add postman@postman
 ```
+
+`codex-release` moves only when Postman releases the Codex plugin, so Codex
+asks you to approve its session-start hook once per release. If you added the
+marketplace without `--ref`, run `codex plugin marketplace remove postman`
+first.
 
 ### Cursor
 

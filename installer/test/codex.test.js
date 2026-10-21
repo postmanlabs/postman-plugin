@@ -1,16 +1,21 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { codex } from '../dist/hosts/codex.js';
+import { codex, marketplaceRef } from '../dist/hosts/codex.js';
 import { fakeSystem } from './fake-system.js';
 
 const MARKETPLACES = 'codex plugin marketplace list --json',
     PLUGINS = 'codex plugin list --json',
     ours = { name: 'postman', marketplaceSource: { sourceType: 'git', source: 'https://github.com/postmanlabs/postman-plugin.git' } },
-    installed = (pluginId) => ({ pluginId, installed: true, version: '1.0.0' });
+    CONFIG = '/home/user/.codex/config.toml',
+    installed = (pluginId) => ({ pluginId, installed: true, version: '1.0.0' }),
+    // What `codex plugin marketplace add` writes, with `ref` only when it was given one.
+    config = (ref) => `[marketplaces.postman]\nsource_type = "git"\nsource = "https://github.com/postmanlabs/postman-plugin.git"\n${ref ? `ref = "${ref}"\n` : ''}`;
 
-function codexSystem ({ marketplaces = [ours], plugins = [] } = {}) {
+function codexSystem ({ marketplaces = [ours], plugins = [], files = { [CONFIG]: config('codex-release') }, env = {} } = {}) {
     return fakeSystem({
         bins: ['codex'],
+        files,
+        env,
         probes: {
             [MARKETPLACES]: JSON.stringify({ marketplaces }),
             [PLUGINS]: JSON.stringify({ installed: plugins, available: [] })
@@ -23,15 +28,68 @@ test('detects Codex by its CLI on PATH', async () => {
     assert.equal(await codex.detect(fakeSystem()), false);
 });
 
-test('fresh install adds this repo as the postman marketplace, then adds the plugin', async () => {
-    const system = codexSystem({ marketplaces: [] }),
+test('fresh install adds this repo at codex-release as the postman marketplace, records its revision, then adds the plugin', async () => {
+    const system = codexSystem({ marketplaces: [], files: {} }),
         outcome = await codex.install(system);
 
     assert.equal(outcome.message, 'installed postman@postman');
     assert.deepEqual(system.commands, [
-        'codex plugin marketplace add postmanlabs/postman-plugin --json',
+        'codex plugin marketplace add postmanlabs/postman-plugin --ref codex-release --json',
+        'codex plugin marketplace upgrade postman --json',
         'codex plugin add postman@postman --json'
     ]);
+});
+
+test('re-adds a marketplace that tracks main at codex-release, and still reports an update', async () => {
+    const system = codexSystem({ plugins: [installed('postman@postman')], files: { [CONFIG]: config() } }),
+        status = await codex.status(system),
+        outcome = await codex.install(system);
+
+    assert.match(status.notes.join('\n'), /tracks main and will be re-added at codex-release/);
+    assert.equal(outcome.message, 'updated postman@postman');
+    assert.deepEqual(system.commands, [
+        'codex plugin marketplace remove postman --json',
+        'codex plugin marketplace add postmanlabs/postman-plugin --ref codex-release --json',
+        'codex plugin marketplace upgrade postman --json',
+        'codex plugin add postman@postman --json'
+    ]);
+});
+
+test('refuses a marketplace pinned to another ref, leaving it as it is', async () => {
+    const system = codexSystem({ files: { [CONFIG]: config('my-branch') } }),
+        outcome = await codex.install(system);
+
+    assert.equal(outcome.outcome, 'blocked');
+    assert.match(outcome.message, /tracks my-branch, not codex-release; run `codex plugin marketplace remove postman`/);
+    assert.deepEqual(system.commands, []);
+});
+
+test('refuses to re-register a marketplace its user config does not declare', async () => {
+    for (const files of [{}, { [CONFIG]: '[marketplaces.other]\nsource = "x"\n' }]) {
+        const system = codexSystem({ files }),
+            outcome = await codex.install(system);
+
+        assert.equal(outcome.outcome, 'blocked');
+        assert.match(outcome.message, /registered outside \/home\/user\/\.codex\/config\.toml/);
+        assert.deepEqual(system.commands, []);
+    }
+});
+
+test('reads the ref from $CODEX_HOME/config.toml', async () => {
+    const system = codexSystem({ env: { CODEX_HOME: '/custom/codex' }, files: { '/custom/codex/config.toml': config('codex-release') } });
+
+    assert.equal((await codex.install(system)).outcome, 'done');
+    assert.deepEqual(system.commands, ['codex plugin marketplace upgrade postman --json', 'codex plugin add postman@postman --json']);
+});
+
+test('marketplaceRef reads only the named marketplace table', () => {
+    assert.equal(marketplaceRef(config('codex-release'), 'postman'), 'codex-release');
+    assert.equal(marketplaceRef(config(), 'postman'), null);
+    assert.equal(marketplaceRef(config('a').replace(/\n/g, '\r\n'), 'postman'), 'a');
+    assert.equal(marketplaceRef('[marketplaces."postman"] # ours\nref = \'b\' # pinned\n', 'postman'), 'b');
+    assert.equal(marketplaceRef('[marketplaces.postman]\nsource = "x"\n[marketplaces.other]\nref = "c"\n', 'postman'), null);
+    assert.equal(marketplaceRef('[marketplaces.postmanx]\nref = "d"\n', 'postman'), undefined);
+    assert.equal(marketplaceRef('', 'postman'), undefined);
 });
 
 test('re-run upgrades the marketplace and re-adds, which is how Codex updates', async () => {

@@ -181,6 +181,20 @@ Codex discovers `.claude-plugin/marketplace.json` — that path is in its
 file to maintain. The `marketplace add` step is required: only
 `~/.agents/plugins/marketplace.json` is discovered implicitly.
 
+Users register the marketplace at the `codex-release` branch, never `main`.
+Codex 0.164 and later ask to approve a plugin's hook again whenever any file
+under the plugin changes, and they refetch a git marketplace when it starts. A
+marketplace that tracks `main` asks after every commit, and until the user
+approves, the session-start mandate is missing. `codex-release` moves only when
+`.github/workflows/codex-release.yml` fast-forwards it. The workflow runs when a
+change to `.codex-plugin/plugin.json`'s `version` lands on `main`, so a Codex
+route release reaches Codex users as that release PR merges. Never push to the
+branch by hand, except to fix one the workflow refuses to move.
+
+Run `codex plugin marketplace upgrade postman` right after `marketplace add`.
+`add` records no revision, so without the upgrade Codex refetches at its next
+start and asks for approval a second time.
+
 ## The OpenCode plugin
 
 Run these from `opencode/`. CI's `opencode` job runs all but the last, which
@@ -382,7 +396,7 @@ wherever one exists:
 | Agent | What it runs |
 | --- | --- |
 | Claude Code | `claude plugin` against Anthropic's `claude-plugins-official` catalog, then uninstalls a user-scope `postman@postman` so skills don't load twice; a failed install leaves that copy in place |
-| Codex | `codex plugin` against this repo as the `postman` marketplace |
+| Codex | `codex plugin` against this repo as the `postman` marketplace at the `codex-release` branch (see [Codex marketplace discovery](#codex-marketplace-discovery)). It reads the ref from `$CODEX_HOME/config.toml`, since `marketplace list --json` doesn't report it. It removes and re-adds a marketplace registered with no ref, which tracks `main`, and refuses one at any other ref |
 | GitHub Copilot CLI | `copilot plugin` against this repo as the `postman` marketplace (Copilot reads `.claude-plugin/marketplace.json`), replacing a direct install, which Copilot is deprecating |
 | Cursor | a clone at `~/.cursor/plugins/local/postman`. A fresh install is skipped when the Cursor Marketplace copy is present, but an existing clone is kept and updated: Cursor keeps a disabled Marketplace copy on disk too, so the installer can't tell whether that copy is enabled |
 | Factory Droid | `droid plugin` against this repo as the `postman-plugin` marketplace |
@@ -393,7 +407,8 @@ wherever one exists:
 
 Every agent but Pi gets the plugin from GitHub, not from the npm package, so a
 skill change needs no installer release. On Claude Code, a route release
-reaches installer users when Anthropic's catalog moves its pin for `postman`.
+reaches installer users when Anthropic's catalog moves its pin for `postman`;
+on Codex, when the release moves `codex-release`.
 The installer's version is its own, independent of every other route's. Pi gets
 the package's `latest`, whichever version of the installer runs the adapter —
 see [The Pi package](#the-pi-package).

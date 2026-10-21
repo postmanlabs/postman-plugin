@@ -6,15 +6,17 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnCliSync } from '../../scripts/lib/cli.js';
+import { marketplaceRef } from '../dist/hosts/codex.js';
 import { parseJsonc } from '../dist/hosts/opencode-config.js';
-import { OPENCODE_SHIM, OPENCODE_SPEC } from '../dist/source.js';
+import { CODEX_REF, OPENCODE_SHIM, OPENCODE_SPEC } from '../dist/source.js';
 
 const [mode, ...agents] = process.argv.slice(2),
     home = os.homedir(),
     // What the installer installs: the spec installer smoke tells it to, else this repo's default branch.
     openCodeSpec = process.env.POSTMAN_PLUGIN_OPENCODE_SPEC || OPENCODE_SPEC,
     openCodeConfig = path.join(process.env.XDG_CONFIG_HOME || path.join(home, '.config'), 'opencode'),
-    kimiStore = path.join(process.env.KIMI_CODE_HOME || path.join(home, '.kimi-code'), 'plugins', 'installed.json');
+    kimiStore = path.join(process.env.KIMI_CODE_HOME || path.join(home, '.kimi-code'), 'plugins', 'installed.json'),
+    codexConfig = path.join(process.env.CODEX_HOME || path.join(home, '.codex'), 'config.toml');
 
 function output (command, args) {
     const result = spawnCliSync(command, args, { encoding: 'utf8', timeout: 120000 });
@@ -37,7 +39,10 @@ const AGENTS = {
     codex: {
         expected: ['postman@postman'],
         found: () => JSON.parse(output('codex', ['plugin', 'list', '--json'])).installed
-            .map(({ pluginId }) => pluginId).filter((id) => id.startsWith('postman@'))
+            .map(({ pluginId }) => pluginId).filter((id) => id.startsWith('postman@')),
+        // Checked after an install only: a remove leaves the marketplace registered.
+        alsoInstalled: () => assert.equal(marketplaceRef(fs.readFileSync(codexConfig, 'utf8'), 'postman'), CODEX_REF,
+            `Codex's postman marketplace isn't registered at ${CODEX_REF} in ${codexConfig}`)
     },
     copilot: {
         expected: ['postman@postman'],
@@ -88,11 +93,12 @@ assert.ok(['installed', 'removed'].includes(mode) && agents.length > 0, 'usage: 
 for (const agent of agents) {
     assert.ok(AGENTS[agent], `no check for the agent ${agent}`);
 
-    const { expected, found } = AGENTS[agent],
+    const { expected, found, alsoInstalled } = AGENTS[agent],
         actual = found();
 
     if (mode === 'installed') {
         assert.deepEqual(expected.filter((entry) => !actual.includes(entry)), [], `${agent} is missing Postman; it has ${JSON.stringify(actual)}`);
+        alsoInstalled?.();
     }
     else {
         assert.deepEqual(actual, [], `${agent} still has Postman`);
