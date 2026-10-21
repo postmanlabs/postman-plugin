@@ -39,12 +39,12 @@ Collections run directly: converting with `postman-to-k6` is not required.
 
 ## Importing from JMeter
 
-Have a JMeter `.jmx` instead of a collection? Don't rebuild it by hand — run the
-bundled importer (`references/jmeter-import/scripts/jmx_to_postman.py <plan>.jmx
--o <out>`; see `references/jmeter-import/README.md`), then treat its output as the
-collection above. Read the generated report: it marks what mapped exactly, what
-was approximated, and which JMeter features have no equivalent here — think-time
-timers, concurrent thread groups, and non-HTTP (JDBC/FTP/LDAP/Java) samplers are
+Have a JMeter `.jmx` instead of a collection? Import it by following
+`references/jmeter-import/README.md`, then treat the result as the collection
+above. Its mapping table carries the JMeter semantics that are easy to get
+wrong, and the import report marks what mapped exactly, what was approximated,
+and which JMeter features have no equivalent here — think-time timers,
+concurrent thread groups, and non-HTTP (JDBC/FTP/LDAP/Java) samplers are
 reported, never faked.
 
 ## Verification

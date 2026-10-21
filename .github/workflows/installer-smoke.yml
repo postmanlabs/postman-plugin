@@ -15,9 +15,9 @@ run-name: ${{ inputs.ref && format('Installer smoke on {0}', inputs.ref) || '' }
 on:
   push:
     branches: ['main']
-    paths: ['package.json', 'installer/**', 'opencode/**', 'scripts/lib/**', 'scripts/*-harness.js', '.github/workflows/installer-smoke.yml']
+    paths: ['package.json', 'installer/**', 'opencode/**', 'scripts/lib/**', 'scripts/*-harness.js', '!scripts/postman-cli-harness.js', '.github/workflows/installer-smoke.yml']
   pull_request:
-    paths: ['package.json', 'installer/**', 'opencode/**', 'scripts/lib/**', 'scripts/*-harness.js', '.github/workflows/installer-smoke.yml']
+    paths: ['package.json', 'installer/**', 'opencode/**', 'scripts/lib/**', 'scripts/*-harness.js', '!scripts/postman-cli-harness.js', '.github/workflows/installer-smoke.yml']
   schedule:
     - cron: '23 4 * * *'
   # The release-installer skill passes the exact commit it is about to tag.

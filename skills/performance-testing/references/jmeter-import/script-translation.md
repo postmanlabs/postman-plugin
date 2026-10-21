@@ -1,6 +1,6 @@
 # Translating JSR223 / BeanShell scripts to Postman JavaScript
 
-`scripts/groovy_to_js.py` does a best-effort mechanical pass and the importer wraps every result in an IIFE so it is always syntactically valid. It is **never trusted** — each imported script is flagged as a manual task. This file is how you (the model) finish the job.
+Every JSR223/BeanShell script is translated by hand and treated as a manual task until it's checked. Wrap each translation in an IIFE (`(function () { ... })();`) so a leftover `return` stays legal.
 
 ## Execution-context map
 
@@ -23,7 +23,7 @@ JMeter runs these inside a sampler's processor. Postman runs them as a request's
 | `UUID.randomUUID().toString()` | `require('uuid').v4()` | both |
 | `Integer.parseInt(x)` | `parseInt(x)` | both |
 
-## What the mechanical pass cannot do — fix these by hand
+## What doesn't map line by line
 
 - **BeanShell implicit result vars** (`ResponseCode`, `ResponseMessage`, `IsSuccess`, `bsh.args`, `Parameters`). No pm.* equivalent in a processor. For a sampler that sets `IsSuccess=false`, express it as a `pm.test(...)` that fails. For `return X`, delete the return (the IIFE makes it legal, but it's a no-op).
 - **Groovy closures / collection methods** (`.each {}`, `.collect {}`, `->`). Rewrite as `for...of` / `.map()` / arrow functions.
@@ -33,11 +33,10 @@ JMeter runs these inside a sampler's processor. Postman runs them as a request's
 
 ## Procedure
 
-1. Read the `// --- imported ... (REVIEW) ---` block in the request's event script.
-2. Compare against the original `<script>` text in the `.jmx` (the IR keeps the element's name).
-3. Rewrite line by line using the table. Preserve variable names so `{{var}}` references elsewhere still resolve.
-4. Remove the `// REVIEW` marker once correct.
-5. Re-run the node syntax gate from `SKILL.md` step 3.
+1. Read the original `<script>` text in the `.jmx` (note the element's name, so the report can point at it).
+2. Rewrite line by line using the table. Preserve variable names so `{{var}}` references elsewhere still resolve.
+3. Mark anything you're unsure of with a `// REVIEW` comment, and remove it once the logic is confirmed.
+4. Run the syntax check from `README.md` step 4.
 
 ## Example
 
@@ -57,9 +56,9 @@ pm.collectionVariables.set("authToken", token);
 console.log("got " + token);
 ```
 
-## Canonical JS templates (match the script byte-for-byte in fallback mode)
+## Canonical JS templates
 
-When importing by hand, emit exactly these so hand output equals the script's. `<default>` empty-string if JMeter has none. Source is `pm.response.text()` normally, or `pm.response.headers.toString()` when the extractor's `useHeaders` is true.
+Emit exactly these so every import produces the same code. `<default>` empty-string if JMeter has none. Source is `pm.response.text()` normally, or `pm.response.headers.toString()` when the extractor's `useHeaders` is true.
 
 **Regex extractor** (`$n$` template → group `n`):
 ```javascript

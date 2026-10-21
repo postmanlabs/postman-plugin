@@ -46,7 +46,8 @@ export async function checkCodexHookApproval () {
         codexBin = process.env.CODEX_BIN || 'codex',
         cli = path.resolve(import.meta.dirname, '../dist/cli.js'),
         env = codexEnvironment();
-    let standIn;
+    let standIn,
+        cachePath;
 
     Object.assign(env, {
         HOME: box.home, USERPROFILE: box.home,
@@ -66,15 +67,28 @@ export async function checkCodexHookApproval () {
             rpcChanges = [],
             codexHome = path.join(box.home, '.codex'),
             baseSystem = createSystem({ log: (line) => logs.push(line), env, home: box.home, cwd: box.project }),
-            system = { ...baseSystem, async withJsonRpc (...args) {
-                const root = path.join(codexHome, 'plugins', 'cache', 'postman', 'postman'),
-                    before = fs.existsSync(root) ? snapshot(root) : {};
+            system = { ...baseSystem, async run (command, args, ...rest) {
+                const result = await baseSystem.run(command, args, ...rest);
+
+                if (command === 'codex' && args.slice(0, 3).join(' ') === 'plugin add postman@postman' && result.code === 0) {
+                    // Codex's cache layout varies by platform. Capture its own
+                    // installedPath before the first approval app-server starts.
+                    cachePath = JSON.parse(result.stdout).installedPath;
+                    assert.equal(typeof cachePath, 'string', 'plugin add returned no installedPath');
+                    const relative = path.relative(fs.realpathSync(box.root), fs.realpathSync(cachePath));
+
+                    assert.ok(relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative), 'plugin cache escaped the throwaway profile');
+                }
+
+                return result;
+            }, async withJsonRpc (...args) {
+                const before = cachePath && fs.existsSync(cachePath) ? snapshot(cachePath) : {};
 
                 try {
                     return await baseSystem.withJsonRpc(...args);
                 }
                 finally {
-                    const after = fs.existsSync(root) ? snapshot(root) : {};
+                    const after = cachePath && fs.existsSync(cachePath) ? snapshot(cachePath) : {};
 
                     rpcChanges.push(...new Set([...Object.keys(before), ...Object.keys(after)]
                         .filter((file) => before[file] !== after[file])));
@@ -99,9 +113,7 @@ export async function checkCodexHookApproval () {
         assert.match(logs.join('\n'), /Approved Postman's Codex session-start hook/);
         assert.doesNotMatch(logs.join('\n'), /Approve Postman's|<EXTREMELY_IMPORTANT>|session-start-context\.md|hooks[\\/]session-start/);
 
-        const plugins = JSON.parse((await system.probe('codex', ['plugin', 'list', '--json'])).stdout),
-            version = plugins.installed.find(({ pluginId }) => pluginId === 'postman@postman').version,
-            installedPath = path.join(codexHome, 'plugins', 'cache', 'postman', 'postman', version),
+        const installedPath = cachePath,
             before = snapshot(installedPath),
             trusted = await list();
 
@@ -136,7 +148,9 @@ export async function checkCodexHookApproval () {
             '-c', 'model_providers.harness.wire_api="responses"'
         ],
             tui = (expectReview) => checkCodexTui({
-                args: ['--no-alt-screen', ...modelArgs],
+                // A pinned older Codex must reach hook review, not its unrelated
+                // update-available modal, which depends on a background HTTP check.
+                args: ['--no-alt-screen', '-c', 'check_for_update_on_startup=false', ...modelArgs],
                 env, cwd: box.project, expectReview
             }),
             result = await runAgent('codex', [

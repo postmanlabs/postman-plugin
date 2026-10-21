@@ -1,6 +1,6 @@
 # What Postman performance testing supports (the import target)
 
-Grounded in the `postman-cli`, `performance-test-api`, and `postman-performance-test` source — not the marketing docs. This is the ceiling the importer maps onto. When JMeter asks for something not here, it is reported, never faked.
+Grounded in the `postman-cli`, `performance-test-api`, and `postman-performance-test` source — not the marketing docs. This is the ceiling an import maps onto. When JMeter asks for something not here, it is reported, never faked.
 
 ## `postman performance run` CLI flags that matter for import
 
@@ -26,7 +26,7 @@ Four named shapes only, each derived from `(vu-count, duration)`:
 - `spike` — low baseline, one spike to full mid-run, back down.
 - `peak` — baseline, ramp up, hold, ramp down.
 
-JMeter custom ramp curves, stepping schedules, and arrival-rate shapes **cannot be reproduced**. Pick the closest of the four and report the approximation. Rule used by the importer: any ramp/stepping/concurrency/ultimate/arrivals group → `ramp-up`; a flat group with zero ramp → `fixed`.
+JMeter custom ramp curves, stepping schedules, and arrival-rate shapes **cannot be reproduced**. Pick the closest of the four and report the approximation. Rule: any ramp/stepping/concurrency/ultimate/arrivals group → `ramp-up`; a flat group with zero ramp → `fixed`.
 
 ## `--pass-if` metrics and operators
 
@@ -52,5 +52,5 @@ JMeter custom ramp curves, stepping schedules, and arrival-rate shapes **cannot 
 1. One collection, repeated across VUs. **No concurrent thread groups.**
 2. Time-based, not iteration-based. **Loop counts → duration.**
 3. One `--pass-if`.
-4. **No native think time** — timers are approximated (`--delay-request` for group scope, a pre-request pause for per-request), not reproduced exactly.
+4. **No think time** — timers are not reproduced; each one is reported.
 5. **HTTP(S) only.**

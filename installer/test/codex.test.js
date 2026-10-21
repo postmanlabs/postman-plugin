@@ -427,7 +427,7 @@ test('the TUI check detects hook review and requires a ready session', { skip: p
     await fake('OpenAI Codex\n› Ask Codex to do anything\nharness default');
     await fake('Hooks need review\n1 hook is new or changed.', { expectReview: true });
     await assert.rejects(fake('Hooks need review\n1 hook is new or changed.'), /still shows its hook review warning/);
-    await assert.rejects(fake('loading'), /did not show a ready prompt/);
+    await assert.rejects(fake('OpenAI Codex\nloading\nUpdate available'), /did not show a ready prompt/);
 });
 
 test('the RPC transport handles notifications, remote errors, EOF, bad JSON and timeouts', { timeout: 10000 }, async () => {
