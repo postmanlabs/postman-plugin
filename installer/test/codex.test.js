@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import path from 'node:path';
 import test from 'node:test';
 import { codex, marketplaceRef } from '../dist/hosts/codex.js';
 import { fakeSystem } from './fake-system.js';
@@ -6,7 +7,7 @@ import { fakeSystem } from './fake-system.js';
 const MARKETPLACES = 'codex plugin marketplace list --json',
     PLUGINS = 'codex plugin list --json',
     ours = { name: 'postman', marketplaceSource: { sourceType: 'git', source: 'https://github.com/postmanlabs/postman-plugin.git' } },
-    CONFIG = '/home/user/.codex/config.toml',
+    CONFIG = path.join('/home/user', '.codex', 'config.toml'),
     installed = (pluginId) => ({ pluginId, installed: true, version: '1.0.0' }),
     // What `codex plugin marketplace add` writes, with `ref` only when it was given one.
     config = (ref) => `[marketplaces.postman]\nsource_type = "git"\nsource = "https://github.com/postmanlabs/postman-plugin.git"\n${ref ? `ref = "${ref}"\n` : ''}`;
@@ -70,13 +71,13 @@ test('refuses to re-register a marketplace its user config does not declare', as
             outcome = await codex.install(system);
 
         assert.equal(outcome.outcome, 'blocked');
-        assert.match(outcome.message, /registered outside \/home\/user\/\.codex\/config\.toml/);
+        assert.ok(outcome.message.includes(`registered outside ${CONFIG}`), outcome.message);
         assert.deepEqual(system.commands, []);
     }
 });
 
 test('reads the ref from $CODEX_HOME/config.toml', async () => {
-    const system = codexSystem({ env: { CODEX_HOME: '/custom/codex' }, files: { '/custom/codex/config.toml': config('codex-release') } });
+    const system = codexSystem({ env: { CODEX_HOME: '/custom/codex' }, files: { [path.join('/custom/codex', 'config.toml')]: config('codex-release') } });
 
     assert.equal((await codex.install(system)).outcome, 'done');
     assert.deepEqual(system.commands, ['codex plugin marketplace upgrade postman --json', 'codex plugin add postman@postman --json']);
