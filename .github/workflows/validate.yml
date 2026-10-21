@@ -1,13 +1,14 @@
 # Independent concerns, one parallel job each, so a failure names itself:
 # `skills` checks what Claude Code loads from skills/ and that every
 # `postman:<name>` the repo ships names one of them, `manifest` checks the
-# index `postman init` fetches, `installer` unit-tests `npx @postman/postman-plugin`
+# index `postman init` fetches, `postman-cli` has released Postman CLIs install the skills
+# from this checkout, `installer` unit-tests `npx @postman/postman-plugin`
 # (installer-smoke.yml runs it against the real agent CLIs), `schema` checks each
 # vendor plugin manifest against that vendor's own published schema. One job per
 # route installs this checkout into a pinned agent (Cursor: the latest) and checks what it sends
 # its model and the MCP server: `claude-code`, `codex`, `copilot`, `cursor`, `factory`, `kimi`,
 # `opencode` and `pi`; `antigravity` checks only what agy registers (see that job). Every job but
-# `skills`, `manifest`, `schema`, `cursor` and `antigravity` runs on Linux, and on Windows too
+# `skills`, `manifest`, `postman-cli`, `schema`, `cursor` and `antigravity` runs on Linux, and on Windows too
 # unless a pull request changes only skills or docs (see `os`).
 name: Validate
 
@@ -115,6 +116,32 @@ jobs:
       # those, so both run.
       - name: Claude Code accepts the marketplace and plugin manifests
         run: npx -y @anthropic-ai/claude-code plugin validate .
+
+  # Every Postman CLI fetches the skills from `main`, so a merge publishes them to all of them at
+  # once, including ones released long ago. The harness serves this checkout to a released CLI and
+  # checks `init`, `skills status` and `skills update` accept it, with no skills and after init.
+  # Unlike the agent jobs this one runs the latest release, not a pinned one: the CLI is ours, and a
+  # release that refuses the bundle on `main` should fail here the day it ships.
+  postman-cli:
+    name: Postman CLI
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+
+      - name: Install the Postman CLI
+        run: npm install --no-save --prefix "$RUNNER_TEMP/postman" postman-cli@latest
+
+      - name: The CLI installs and keeps current the skills this checkout serves
+        run: node scripts/postman-cli-harness.js
+        env:
+          POSTMAN_BIN: ${{ runner.temp }}/postman/node_modules/.bin/postman
 
   # Its harness installs the plugin as a user does, has the pinned OpenCode CLI load
   # every skill, and checks what OpenCode sends a stand-in model and MCP server.
