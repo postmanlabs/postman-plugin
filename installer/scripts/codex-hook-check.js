@@ -239,18 +239,31 @@ export async function checkCodexHookApproval () {
         assert.deepEqual(rpcChanges, [], 'app-server changed cached files');
 
         // Only after the fresh-user case: exercise both historical registrations.
-        // Removing a marketplace also uninstalls the plugin, so install it again
-        // before testing the real update/migration path.
+        // Seed the legacy ref through Codex's config writer so this test keeps
+        // working when the unused remote release branch is eventually deleted.
         for (const ref of ['codex-release', null]) {
-            for (const args of [
-                ['plugin', 'marketplace', 'remove', 'postman', '--json'],
-                ['plugin', 'marketplace', 'add', REPO, ...(ref ? ['--ref', ref] : []), '--json'],
-                ['plugin', 'marketplace', 'upgrade', 'postman', '--json'],
-                ['plugin', 'add', 'postman@postman', '--json']
-            ]) {
-                const result = await system.run('codex', args);
+            if (ref) {
+                await system.withJsonRpc('codex', ['app-server'], async (rpc) => {
+                    await rpc.request('initialize', { clientInfo: { name: 'postman-installer-smoke', version: '1' } });
+                    rpc.notify('initialized');
+                    await rpc.request('config/batchWrite', {
+                        edits: [{ keyPath: 'marketplaces.postman.ref', value: ref, mergeStrategy: 'upsert' }],
+                        reloadUserConfig: true
+                    });
+                });
+            }
+            else {
+                // Removing the marketplace uninstalls its plugin too.
+                for (const args of [
+                    ['plugin', 'marketplace', 'remove', 'postman', '--json'],
+                    ['plugin', 'marketplace', 'add', REPO, '--json'],
+                    ['plugin', 'marketplace', 'upgrade', 'postman', '--json'],
+                    ['plugin', 'add', 'postman@postman', '--json']
+                ]) {
+                    const result = await system.run('codex', args);
 
-                assert.equal(result.code, 0, result.stdout + result.stderr);
+                    assert.equal(result.code, 0, result.stdout + result.stderr);
+                }
             }
 
             assert.equal(await registeredRef(system), ref);
