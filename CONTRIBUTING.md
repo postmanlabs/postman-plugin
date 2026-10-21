@@ -110,6 +110,7 @@ mcp.json                          Factory Droid's MCP config — must keep this 
 mcp.opencode.json                 OpenCode's MCP config, read by the plugin at runtime
 mcp.pi.json                       Pi's MCP config, registered by the Pi extension at runtime
 mcp_config.json                   Antigravity's MCP config — must keep this exact root filename
+hooks/preload-workspace-context  Claude Code's second session-start hook: prints the notes recent `postman workspace push -m` runs left in the bound workspace, and nothing when it cannot — see scripts/preload-hook.test.js
 skills/<name>/SKILL.md            one skill per directory — see skills/ for the current list
 manifest.json                     generated index of the skill files
 scripts/build-manifest.js         regenerates it, and Kimi's and Antigravity's copies of the mandate
