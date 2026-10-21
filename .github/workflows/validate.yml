@@ -202,11 +202,11 @@ jobs:
         shell: pwsh
         run: npm run build && node --test --test-reporter=spec --test-reporter-destination=stdout --test-reporter=tap --test-reporter-destination=unit-tests.tap test/*.test.js
 
-      # A green run that skipped tests hid that Windows ran nothing end to end. Windows
-      # skips nothing; elsewhere only a test of the Windows process layer may skip.
-      - name: No unit test was skipped but a Windows-only one off Windows
+      # Keep skips restricted to the named platform tests. Hook trust and model
+      # delivery still run on Windows; only the Linux pseudo-terminal check skips.
+      - name: Only the platform-specific terminal and process tests may skip
         env:
-          ALLOWED_SKIP: ${{ runner.os == 'Windows' && '^$' || '# SKIP Windows only$' }}
+          ALLOWED_SKIP: ${{ runner.os == 'Windows' && '# SKIP Linux terminal check$' || '# SKIP Windows only$' }}
         run: |
           test -s unit-tests.tap
           if grep -E '# SKIP' unit-tests.tap | grep -v -E "$ALLOWED_SKIP"; then exit 1; fi

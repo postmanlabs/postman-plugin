@@ -60,6 +60,8 @@ jobs:
         with:
           node-version: lts/*
       - name: Build and unit-test the installer, including automatic hook approval and RPC failures
+        # Git Bash enables backup privilege, bypassing Windows ACL deny tests.
+        shell: pwsh
         run: npm ci && npm test
       - name: Install the tested Codex version
         run: npm install --prefix "$RUNNER_TEMP/codex" @openai/codex@${{ matrix.version }}
@@ -98,6 +100,7 @@ jobs:
           node-version: lts/*
 
       - name: Build
+        shell: pwsh
         run: npm ci && npm test
 
       - name: Install the agent CLIs

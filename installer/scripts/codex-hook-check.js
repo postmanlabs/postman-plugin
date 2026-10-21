@@ -10,6 +10,15 @@ import { createSystem } from '../dist/system.js';
 import { assertMandate, runAgent, startStandIn, workspace } from '../../scripts/lib/harness.js';
 import { checkCodexTui } from './codex-tui-check.js';
 
+export function codexEnvironment (source = process.env, platform = process.platform) {
+    // process.env is case-insensitive on Windows; a plain copy is not. Normalize
+    // before filtering and prepending PATH, so Node/Git stay on the child's path
+    // and a differently-cased CODEX_HOME cannot escape the throwaway profile.
+    return Object.fromEntries(Object.entries(source)
+        .map(([key, value]) => [platform === 'win32' ? key.toUpperCase() : key, value])
+        .filter(([key]) => !/^(CODEX_|OPENAI_)/.test(key)));
+}
+
 export function snapshot (root) {
     const files = {};
 
@@ -36,7 +45,7 @@ export async function checkCodexHookApproval () {
         previousCwd = process.cwd(),
         codexBin = process.env.CODEX_BIN || 'codex',
         cli = path.resolve(import.meta.dirname, '../dist/cli.js'),
-        env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !/^(CODEX_|OPENAI_)/.test(key)));
+        env = codexEnvironment();
     let standIn;
 
     Object.assign(env, {

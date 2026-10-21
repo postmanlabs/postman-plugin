@@ -7,6 +7,7 @@ import { POSTMAN_HOOK_KEY } from '../dist/hosts/codex-hooks.js';
 import { run } from '../dist/run.js';
 import { createSystem } from '../dist/system.js';
 import { checkCodexTui } from '../scripts/codex-tui-check.js';
+import { codexEnvironment } from '../scripts/codex-hook-check.js';
 
 const MARKETPLACES = 'codex plugin marketplace list --json',
     REACH = 'git ls-remote --exit-code https://github.com/postmanlabs/postman-plugin.git refs/heads/codex-release',
@@ -403,6 +404,16 @@ test('dry-run ref detection starts no app-server, even for an installed marketpl
     assert.deepEqual(system.rpcSessions, []);
     assert.match(system.lines.join('\n'), /App-server is deferred/);
     assert.equal(await createSystem({ dryRun: true, log: () => {} }).rpc('/nonexistent/codex', [], []), null);
+});
+
+test('isolated Codex smoke retains Windows Path and strips profile and credential overrides case-insensitively', () => {
+    assert.deepEqual(codexEnvironment({
+        Path: 'C:\\node;C:\\git', PathExt: '.EXE;.CMD', UserProfile: 'C:\\users\\runner',
+        codex_home: 'old-profile', OPENAI_API_KEY: 'test-value', Codex_Bin: 'other-codex'
+    }, 'win32'), { PATH: 'C:\\node;C:\\git', PATHEXT: '.EXE;.CMD', USERPROFILE: 'C:\\users\\runner' });
+    assert.deepEqual(codexEnvironment({ PATH: '/bin', Path: 'separate-posix-key', CODEX_HOME: '/old-profile' }, 'linux'), {
+        PATH: '/bin', Path: 'separate-posix-key'
+    });
 });
 
 test('the TUI check detects hook review and requires a ready session', { skip: process.platform !== 'linux' && 'Linux terminal check', timeout: 10000 }, async () => {
