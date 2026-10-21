@@ -396,7 +396,7 @@ wherever one exists:
 | Agent | What it runs |
 | --- | --- |
 | Claude Code | `claude plugin` against Anthropic's `claude-plugins-official` catalog, then uninstalls a user-scope `postman@postman` so skills don't load twice; a failed install leaves that copy in place |
-| Codex | `codex plugin` against this repo as the `postman` marketplace at the `codex-release` branch (see [Codex marketplace discovery](#codex-marketplace-discovery)). It reads the ref from `$CODEX_HOME/config.toml`, since `marketplace list --json` doesn't report it. It removes and re-adds a marketplace registered with no ref, which tracks `main`, and refuses one at any other ref or a ref it can't read |
+| Codex | `codex plugin` against this repo as the `postman` marketplace at the `codex-release` branch (see [Codex marketplace discovery](#codex-marketplace-discovery)). It asks Codex for the ref with `config/read` over `codex app-server`, since `marketplace list --json` doesn't report it. It removes and re-adds a marketplace registered with no ref, which tracks `main`, and refuses one at any other ref or a ref it can't read |
 | GitHub Copilot CLI | `copilot plugin` against this repo as the `postman` marketplace (Copilot reads `.claude-plugin/marketplace.json`), replacing a direct install, which Copilot is deprecating |
 | Cursor | a clone at `~/.cursor/plugins/local/postman`. A fresh install is skipped when the Cursor Marketplace copy is present, but an existing clone is kept and updated: Cursor keeps a disabled Marketplace copy on disk too, so the installer can't tell whether that copy is enabled |
 | Factory Droid | `droid plugin` against this repo as the `postman-plugin` marketplace |
@@ -444,8 +444,9 @@ declaration/content hash split. The adapter confirms the installed instruction
 file exists and rechecks the hash before writing; a changed hash is skipped
 until the next run. RPC errors and timeouts produce a note and leave
 installation successful. `System.withJsonRpc` owns process cleanup and
-per-request deadlines. A dry run prints the planned config write without
-starting app-server, whose startup can refresh marketplaces.
+per-request deadlines, and shares its transport with `System.rpc` for config
+reads. A dry run prints the planned config write and defers marketplace ref
+inspection without starting app-server, whose startup can refresh marketplaces.
 
 From `installer/`, `CODEX_BIN=<path to codex> node scripts/smoke-check.js codex-hooks`
 starts from a throwaway home without a Codex config directory. It runs the real
@@ -458,6 +459,18 @@ The installed MCP configuration is left intact; the existing route harness
 separately captures MCP headers with its stand-in server. Installer smoke runs
 this on both 0.159.0 and 0.164.0-alpha.8, and on the latest release, on Linux and
 Windows. These are tested versions, not a measured minimum.
+
+On Linux it also opens the real TUI under a pseudo-terminal using `script`,
+with the same home and working directory as the installer. It requires a ready
+session without “Hooks need review” after installation, verifies that stale
+trust does show that warning as a negative control, then checks the warning is
+gone after updating. It exits each TUI without choosing a trust option or
+sending a model prompt. Windows and macOS check trust state and model delivery;
+the direct terminal check runs in the Linux smoke jobs.
+
+Approval belongs to the Codex profile selected by `HOME` and `CODEX_HOME`.
+Starting Codex with a different profile still requires approval there; the
+installer does not update other profiles on the machine.
 
 To release it, run `/release-installer rc`, `/release-installer latest` or
 `/release-installer <version>` in Claude Code. The skill in

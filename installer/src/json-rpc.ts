@@ -3,10 +3,16 @@ import { createInterface } from 'node:readline';
 
 export interface JsonRpc {
     request<T = unknown> (method: string, params: unknown): Promise<T>;
-    notify (method: string): void;
+    notify (method: string, params?: unknown): void;
 }
 
-/** One stdio session; request deadlines exclude time spent waiting for human input. */
+export class JsonRpcError extends Error {
+    constructor (readonly reply: { code?: number; message?: string }) {
+        super(`app-server RPC error ${reply.code ?? ''}: ${reply.message ?? 'unknown error'}`);
+    }
+}
+
+/** One stdio session with a deadline for each request. */
 export async function withJsonRpc<T> (
     file: string, args: string[], env: NodeJS.ProcessEnv, use: (rpc: JsonRpc) => Promise<T>, timeoutMs: number
 ): Promise<T> {
@@ -72,7 +78,7 @@ export async function withJsonRpc<T> (
         pending.delete(message.id);
 
         if (message.error) {
-            entry.reject(new Error(`app-server RPC error ${message.error.code ?? ''}: ${message.error.message ?? 'unknown error'}`));
+            entry.reject(new JsonRpcError(message.error));
         }
         else if ('result' in message) {
             entry.resolve(message.result);
@@ -98,12 +104,12 @@ export async function withJsonRpc<T> (
                     child.stdin.write(JSON.stringify({ jsonrpc: '2.0', id, method, params }) + '\n');
                 });
             },
-            notify (method) {
+            notify (method, params) {
                 if (failure) {
                     throw failure;
                 }
 
-                child.stdin.write(JSON.stringify({ jsonrpc: '2.0', method }) + '\n');
+                child.stdin.write(JSON.stringify({ jsonrpc: '2.0', method, params }) + '\n');
             }
         });
     }

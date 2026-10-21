@@ -3,7 +3,7 @@ import path from 'node:path';
 /**
  * An in-memory System. `probes` and `runs` map a command line to its result:
  * a string (stdout, exit 0), an `{ code, stdout, stderr }` object, or a
- * function of the fake returning either. A file whose content is an Error
+ * function of the fake returning either; `rpcs` stubs `rpc` (see it below). A file whose content is an Error
  * exists but throws that error when read. `commands` records every change.
  */
 export function fakeSystem ({
@@ -29,10 +29,10 @@ export function fakeSystem ({
         dirs: new Set(dirs),
         probes: { ...probes },
         runs: { ...runs },
+        rpcs: { ...rpcs },
         commands: [],
         runEnv: {},
         lines: [],
-        rpcs: { ...rpcs },
         rpcCalls: [],
         rpcSessions: [],
 
@@ -71,6 +71,18 @@ export function fakeSystem ({
 
         async probe (command, args) {
             return respond(system.probes, [command, ...args].join(' '), { code: 1, stdout: '', stderr: 'no probe stubbed' });
+        },
+
+        // `rpcs` maps a command line to its replies (an array, or `null` for a server that fails), or to a function of the
+        // fake and the calls returning either. Unstubbed, the server fails.
+        async rpc (command, args, calls) {
+            if (system.dryRun) {
+                return null;
+            }
+
+            const entry = system.rpcs[[command, ...args].join(' ')];
+
+            return typeof entry === 'function' ? entry(system, calls) : entry ?? null;
         },
 
         async run (command, args, options = {}) {

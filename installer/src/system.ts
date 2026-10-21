@@ -3,10 +3,13 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { redact } from './source.js';
-import { type JsonRpc, withJsonRpc } from './json-rpc.js';
+import { type JsonRpc, JsonRpcError, withJsonRpc } from './json-rpc.js';
 
 export type ExecResult = { code: number; stdout: string; stderr: string };
 export type ExecOptions = { env?: Record<string, string> };
+/** A JSON-RPC request, or with `notify` a notification, which gets no reply. */
+export type RpcCall = { method: string; params?: unknown; notify?: boolean };
+export type RpcReply = { result?: unknown; error?: { code?: number; message?: string } };
 
 /**
  * Everything a host adapter may do to the machine. `probe` is for read-only
@@ -27,6 +30,12 @@ export interface System {
     /** The names in a directory; empty when it is missing or not a directory, and any other error is thrown, like `readFile`. */
     readDir (dir: string): Promise<string[]>;
     probe (command: string, args: string[]): Promise<ExecResult>;
+    /**
+     * Starts a JSON-RPC server on stdio, sends each call in turn and returns the requests' replies, or `null` when the
+     * server fails to start, exits or stops answering first. A dry run returns `null` without starting it:
+     * even a read-only call can trigger startup tasks that change cached plugins.
+     */
+    rpc (command: string, args: string[], calls: RpcCall[]): Promise<RpcReply[] | null>;
     run (command: string, args: string[], options?: ExecOptions): Promise<ExecResult>;
     /** A bounded stdio RPC session. May change state, so a dry run logs it without starting it. */
     withJsonRpc<T> (command: string, args: string[], use: (rpc: JsonRpc) => Promise<T>, timeoutMs?: number): Promise<T | undefined>;
@@ -158,6 +167,40 @@ export function createSystem ({
         },
         async probe (command, args) {
             return execute(await resolve(command), args, env);
+        },
+        async rpc (command, args, calls) {
+            if (dryRun) {
+                return null;
+            }
+
+            try {
+                return await withJsonRpc(await resolve(command), args, env, async (rpc) => {
+                    const replies: RpcReply[] = [];
+
+                    for (const call of calls) {
+                        if (call.notify) {
+                            rpc.notify(call.method, call.params);
+                            continue;
+                        }
+
+                        try {
+                            replies.push({ result: await rpc.request(call.method, call.params) });
+                        }
+                        catch (error) {
+                            if (!(error instanceof JsonRpcError)) {
+                                throw error;
+                            }
+
+                            replies.push({ error: error.reply });
+                        }
+                    }
+
+                    return replies;
+                }, 30000);
+            }
+            catch {
+                return null;
+            }
         },
         async run (command, args, options = {}) {
             log(`  $ ${formatCommand(command, args)}`);

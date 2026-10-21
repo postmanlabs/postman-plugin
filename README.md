@@ -32,7 +32,8 @@ For Codex, installation also approves Postman's session-start hook, which adds
 instructions for using Postman's API skills. There is no separate hook prompt
 or dump of its instructions. Already trusted hooks are left alone. If Codex's
 hook API is unavailable, installation continues with a note to approve the hook
-inside Codex.
+inside Codex. Run the installer and Codex with the same `HOME` and `CODEX_HOME`;
+hook approval applies to that profile.
 
 You can also use the following commands to install individually:
 

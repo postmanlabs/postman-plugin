@@ -1,4 +1,3 @@
-import path from 'node:path';
 import { CODEX_REF, GIT_URL, REPO, isSameRepo, redact } from '../source.js';
 import type { System } from '../system.js';
 import { StepFailed, blocked, failed, guard, mustProbeJson, mustRun, parseJson } from './shared.js';
@@ -13,7 +12,7 @@ const MARKETPLACE = 'postman',
     NEXT = 'Restart Codex for the change to take effect.';
 
 type Marketplace = { name: string; marketplaceSource?: { sourceType?: string; source?: string } };
-/** A marketplace's ref in Codex's user config: `null` when it has none, `undefined` when it has no table there or its ref can't be read. */
+/** A marketplace's ref: `null` when it has none, `undefined` when Codex can't report it. */
 type Ref = string | null | undefined;
 type InstalledPlugin = { pluginId: string; installed?: boolean; version?: string };
 
@@ -25,58 +24,21 @@ async function listPlugins (system: System): Promise<InstalledPlugin[]> {
     return (await mustProbeJson<{ installed?: InstalledPlugin[] }>(system, 'codex', ['plugin', 'list', '--json'])).installed ?? [];
 }
 
-const configFile = (system: System) => path.join(system.env.CODEX_HOME || path.join(system.home, '.codex'), 'config.toml');
+/** The marketplace's ref as Codex's own config reader reports it; `marketplace list --json` doesn't. */
+export async function registeredRef (system: System): Promise<Ref> {
+    const replies = await system.rpc('codex', ['app-server'], [
+            { method: 'initialize', params: { clientInfo: { name: 'postman-plugin', version: '0' } } },
+            { method: 'initialized', notify: true },
+            { method: 'config/read', params: {} }
+        ]),
+        read = replies?.[1]?.result as { config?: { marketplaces?: Record<string, { ref?: unknown } | undefined> } } | undefined,
+        entry = read?.config?.marketplaces?.[MARKETPLACE];
 
-/** Indexes of the lines matching `header`, skipping lines inside a `"""` or `'''` multi-line string. */
-function headerLines (lines: string[], header: RegExp): number[] {
-    const found: number[] = [];
-    let open: string | null = null;
-
-    lines.forEach((line, index) => {
-        if (open === null && header.test(line)) {
-            found.push(index);
-        }
-
-        for (const delimiter of ['"""', "'''"]) {
-            if ((open === null || open === delimiter) && line.split(delimiter).length % 2 === 0) {
-                open = open === null ? delimiter : null;
-            }
-        }
-    });
-
-    return found;
-}
-
-/** Reads `ref` from the `[marketplaces.<name>]` table Codex writes; `marketplace list --json` doesn't report it. Fails closed on any other TOML form. */
-export function marketplaceRef (toml: string, name: string): Ref {
-    const header = new RegExp(`^\\s*\\[\\s*marketplaces\\s*\\.\\s*(["']?)${name}\\1\\s*\\]\\s*(#.*)?$`),
-        lines = toml.split(/\r?\n/),
-        headers = headerLines(lines, header),
-        [start] = headers;
-
-    // A second match means one sits in text this line reader can't tell from a table.
-    if (headers.length !== 1) {
+    if (!entry || typeof entry !== 'object') {
         return undefined;
     }
 
-    for (const line of lines.slice(start + 1)) {
-        if (/^\s*\[/.test(line)) {
-            break;
-        }
-
-        const ref = line.match(/^\s*ref\s*=\s*(?:"([^"\\]*)"|'([^']*)')\s*(#.*)?$/);
-
-        if (ref) {
-            return ref[1] ?? ref[2];
-        }
-
-        // A quoted key, a multi-line string or an escape: some ref is set, so `null` would replace it.
-        if (/^\s*(?:ref|"ref"|'ref')\s*[=.]/.test(line)) {
-            return undefined;
-        }
-    }
-
-    return null;
+    return typeof entry.ref === 'string' ? entry.ref : entry.ref === null || entry.ref === undefined ? null : undefined;
 }
 
 async function addMarketplace (system: System): Promise<void> {
@@ -86,7 +48,7 @@ async function addMarketplace (system: System): Promise<void> {
 }
 
 /** Adds or upgrades the marketplace, except one registered with no ref, which it leaves for `migrate`. */
-async function refreshMarketplace (system: System): Promise<'pinned' | 'unpinned'> {
+async function refreshMarketplace (system: System): Promise<'pinned' | 'unpinned' | 'deferred'> {
     const listing = await mustProbeJson<{ marketplaces?: Marketplace[] }>(system, 'codex', ['plugin', 'marketplace', 'list', '--json']),
         existing = listing.marketplaces?.find((marketplace) => marketplace.name === MARKETPLACE);
 
@@ -105,9 +67,13 @@ async function refreshMarketplace (system: System): Promise<'pinned' | 'unpinned
         blocked(`marketplace ${MARKETPLACE} is registered from ${from}, not ${REPO}`);
     }
 
-    const file = configFile(system),
-        text = await system.readFile(file),
-        ref = text === null ? undefined : marketplaceRef(text, MARKETPLACE);
+    if (system.dryRun) {
+        system.log(`  note: Would ask Codex for marketplace ${MARKETPLACE}'s ref: upgrade it at ${CODEX_REF}, re-register it there if unpinned, or stop for any other or unreadable ref. App-server is deferred because its startup can refresh plugins.`);
+
+        return 'deferred';
+    }
+
+    const ref = await registeredRef(system);
 
     if (ref === CODEX_REF) {
         await mustRun(system, 'codex', ['plugin', 'marketplace', 'upgrade', MARKETPLACE, '--json']);
@@ -116,7 +82,7 @@ async function refreshMarketplace (system: System): Promise<'pinned' | 'unpinned
     }
 
     if (ref === undefined) {
-        blocked(`can't read which ref marketplace ${MARKETPLACE} tracks from ${file}; to move it to ${CODEX_REF}, run \`codex plugin marketplace remove ${MARKETPLACE}\` and re-run`);
+        blocked(`Codex's \`config/read\` doesn't report which ref marketplace ${MARKETPLACE} tracks; to move it to ${CODEX_REF}, run \`codex plugin marketplace remove ${MARKETPLACE}\` and re-run`);
     }
 
     if (ref !== null) {
@@ -168,7 +134,7 @@ async function migrate (system: System, wasInstalled: boolean): Promise<void> {
 
         failed(`${error.outcome.message}\n${restored ?
             `restored marketplace ${MARKETPLACE} tracking main${wasInstalled ? ` and ${PLUGIN_ID}` : ''}` :
-            `could not restore it either; run \`codex plugin marketplace add ${REPO} --ref ${CODEX_REF}\` and \`codex plugin add ${PLUGIN_ID}\``}`);
+            `could not restore it either; run \`codex plugin marketplace remove ${MARKETPLACE}\`, \`codex plugin marketplace add ${REPO} --ref ${CODEX_REF}\`, \`codex plugin marketplace upgrade ${MARKETPLACE}\` and \`codex plugin add ${PLUGIN_ID}\``}`);
     }
 }
 
@@ -200,10 +166,9 @@ export const codex: Host = {
         }
 
         const installed = plugins.find((plugin) => plugin.pluginId === PLUGIN_ID && plugin.installed !== false),
-            notes = SHADOW_IDS.filter((id) => isInstalled(plugins, id)).map((id) => `${id} duplicates it and will be removed`),
-            config = await system.readFile(configFile(system));
+            notes = SHADOW_IDS.filter((id) => isInstalled(plugins, id)).map((id) => `${id} duplicates it and will be removed`);
 
-        if (installed && config !== null && marketplaceRef(config, MARKETPLACE) === null) {
+        if (installed && await registeredRef(system) === null) {
             notes.push(`marketplace ${MARKETPLACE} tracks main and will be re-added at ${CODEX_REF}; the installer then approves its session-start hook`);
         }
 

@@ -8,6 +8,7 @@ import { POSTMAN_HOOK_KEY } from '../dist/hosts/codex-hooks.js';
 import { run as install } from '../dist/run.js';
 import { createSystem } from '../dist/system.js';
 import { assertMandate, runAgent, startStandIn, workspace } from '../../scripts/lib/harness.js';
+import { checkCodexTui } from './codex-tui-check.js';
 
 export function snapshot (root) {
     const files = {};
@@ -119,14 +120,20 @@ export async function checkCodexHookApproval () {
             { type: 'response.output_item.done', item: { type: 'message', role: 'assistant', id: 'answer', content: [{ type: 'output_text', text: 'ok' }] } },
             { type: 'response.completed', response: { id: 'approval-check', usage: { input_tokens: 1, output_tokens: 1, total_tokens: 2 } } }
         ].map((event) => `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`).join('') }));
-        const result = await runAgent('codex', [
-            'exec', '--skip-git-repo-check', '--ephemeral', '--sandbox', 'danger-full-access',
+        const modelArgs = [
             '-c', 'model="harness"', '-c', 'model_provider="harness"',
             '-c', 'model_providers.harness.name="harness"',
             '-c', `model_providers.harness.base_url="${standIn.base}/v1"`,
-            '-c', 'model_providers.harness.wire_api="responses"',
-            'Say ok.'
-        ], { env, cwd: box.project });
+            '-c', 'model_providers.harness.wire_api="responses"'
+        ],
+            tui = (expectReview) => checkCodexTui({
+                args: ['--no-alt-screen', ...modelArgs],
+                env, cwd: box.project, expectReview
+            }),
+            result = await runAgent('codex', [
+                'exec', '--skip-git-repo-check', '--ephemeral', '--sandbox', 'danger-full-access', ...modelArgs,
+                'Say ok.'
+            ], { env, cwd: box.project });
 
         assert.equal(result.code, 0, result.stdout + result.stderr);
         const request = standIn.modelRequests.find(({ url }) => url.startsWith('/v1/responses'));
@@ -145,6 +152,21 @@ export async function checkCodexHookApproval () {
         assert.deepEqual(snapshot(installedPath), before, 'a later Codex session changed cached contents');
         assert.equal((await list()).trustStatus, 'trusted', 'approval must survive the later session');
 
+        if (process.platform === 'linux') {
+            // Only after the fresh installer has completed, trust this throwaway
+            // project so folder review cannot hide hook review. No hook trust is
+            // changed here. Older TUI versions ignore a CLI project-trust override.
+            await system.withJsonRpc('codex', ['app-server'], async (rpc) => {
+                await rpc.request('initialize', { clientInfo: { name: 'postman-installer-smoke', version: '1' } });
+                rpc.notify('initialized');
+                await rpc.request('config/batchWrite', {
+                    edits: [{ keyPath: 'projects', value: { [box.project]: { trust_level: 'trusted' } }, mergeStrategy: 'upsert' }],
+                    reloadUserConfig: true
+                });
+            });
+            await tui(false);
+        }
+
         // Make only this throwaway home's Postman approval stale, then exercise the
         // real CLI update path without an extra flag or an interactive terminal.
         await system.withJsonRpc('codex', ['app-server'], async (rpc) => {
@@ -156,18 +178,28 @@ export async function checkCodexHookApproval () {
             });
         });
         assert.equal((await list()).trustStatus, 'modified');
+
+        if (process.platform === 'linux') {
+            // Negative control proves the test can actually reach the warning; it
+            // exits without selecting an approval or sending anything to the model.
+            await tui(true);
+        }
         const updated = await runAgent(process.execPath, [cli, 'install', '--yes', '--agent', 'codex'], { env, cwd: box.project });
 
         assert.equal(updated.code, 0, updated.stdout + updated.stderr);
         assert.match(updated.stdout, /Approved Postman's Codex session-start hook/);
         assert.doesNotMatch(updated.stdout, /Approve Postman's|<EXTREMELY_IMPORTANT>|session-start-context\.md|hooks[\\/]session-start/);
         assert.equal((await list()).trustStatus, 'trusted');
+
+        if (process.platform === 'linux') {
+            await tui(false);
+        }
         assert.deepEqual(snapshot(installedPath), before);
         assert.deepEqual(rpcChanges, [], 'app-server changed cached files');
 
         const versionText = (await system.probe('codex', ['--version'])).stdout.trim();
 
-        console.log(`${versionText}: fresh and modified hooks automatically trusted; trusted reruns skip approval; dry run writes nothing; mandate and ${manifest.skills.length} skills reach the model without bypass; ${Object.keys(before).length} cached files unchanged`);
+        console.log(`${versionText}: fresh and modified hooks automatically trusted; trusted reruns skip approval; dry run writes nothing; mandate and ${manifest.skills.length} skills reach the model without bypass; ${Object.keys(before).length} cached files unchanged; ${process.platform === 'linux' ? 'TUI warning appears for modified trust and disappears after installation' : 'TUI check is Linux-only (trust state checked)'}`);
     }
     finally {
         standIn?.server.close();

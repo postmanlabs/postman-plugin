@@ -63,7 +63,7 @@ jobs:
         run: npm ci && npm test
       - name: Install the tested Codex version
         run: npm install --prefix "$RUNNER_TEMP/codex" @openai/codex@${{ matrix.version }}
-      - name: Automatic approval persists and the mandate reaches the model without a trust bypass
+      - name: Approval persists, the mandate reaches the model, and Linux TUI hook review disappears
         run: node scripts/smoke-check.js codex-hooks
         env:
           CODEX_BIN: ${{ runner.temp }}/codex/node_modules/.bin/codex${{ runner.os == 'Windows' && '.cmd' || '' }}
@@ -183,7 +183,7 @@ jobs:
         if: ${{ !cancelled() }}
         run: node ../scripts/codex-harness.js
 
-      - name: The latest Codex automatically approves the Postman hook through app-server
+      - name: The latest Codex approves the hook and Linux TUI startup needs no hook review
         if: ${{ !cancelled() }}
         run: node scripts/smoke-check.js codex-hooks
 
