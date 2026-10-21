@@ -177,13 +177,15 @@ function bareMandate () {
  */
 function kimiMandate () {
     const mandate = fs.readFileSync(MANDATE, 'utf8'),
+        // A Windows checkout with core.autocrlf gives the mandate CRLF, and `--check` compares bytes.
+        eol = mandate.includes('\r\n') ? '\r\n' : '\n',
         close = '</EXTREMELY_IMPORTANT>';
 
     if (!mandate.includes(close)) {
         throw new Error(`${path.relative(ROOT, MANDATE)}: no ${close} to put Kimi's naming note before`);
     }
 
-    return mandate.replace(close, '\nIf your skill listing names these skills without the `postman:` prefix, drop the prefix when you load one.\n' + close);
+    return mandate.replace(close, `${eol}If your skill listing names these skills without the \`postman:\` prefix, drop the prefix when you load one.${eol}${close}`);
 }
 
 const outputs = [
