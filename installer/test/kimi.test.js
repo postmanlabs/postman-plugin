@@ -72,11 +72,15 @@ test('remove is a manual step, since Kimi has no shell command for it', async ()
     assert.equal((await kimi.remove(fakeSystem())).outcome, 'skipped');
 });
 
-test('the Kimi manifest hands Kimi the mandate, naming skills as Kimi lists them', () => {
+test('the Kimi manifest hands Kimi the mandate, naming skills as 2.3.0 lists them and as earlier releases do', () => {
     const { systemPromptPath } = JSON.parse(fs.readFileSync(path.join(repoRoot, '.kimi-plugin', 'plugin.json'), 'utf8')),
-        mandate = fs.readFileSync(path.join(repoRoot, 'hooks', 'session-start-context.md'), 'utf8');
+        [mandate] = fs.readFileSync(path.join(repoRoot, 'hooks', 'session-start-context.md'), 'utf8').split('</EXTREMELY_IMPORTANT>');
 
     // Kimi ignores a path that does not start with `./`.
     assert.match(systemPromptPath, /^\.\//);
-    assert.equal(fs.readFileSync(path.join(repoRoot, systemPromptPath), 'utf8'), mandate.replace(/`postman:([a-z0-9-]+)`/g, '`$1`'));
+
+    const kimiMandate = fs.readFileSync(path.join(repoRoot, systemPromptPath), 'utf8');
+
+    assert.ok(kimiMandate.startsWith(mandate), `${systemPromptPath} is not the shared mandate with its \`postman:\` names`);
+    assert.match(kimiMandate.slice(mandate.length), /^\nIf your skill listing names these skills without the `postman:` prefix, drop the prefix when you load one\.\n<\/EXTREMELY_IMPORTANT>\n$/);
 });
