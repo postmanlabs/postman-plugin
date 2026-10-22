@@ -19,12 +19,11 @@ exercise the guarantees users depend on.
    the linked workspace unless one is supplied. Inspect command-specific
    `-h` and available service options for supported schedules and limits.
    Creation starts an immediate run by default; `--no-run-now` avoids that
-   when only scheduling was requested. Without `--timezone`, the schedule
-   uses the time zone of the machine running the CLI, often UTC on a CI
-   runner, so pass `--timezone` (for example `America/New_York`) for the
-   zone the user means. Leave the month field as `*`; to limit a schedule to
-   certain months, write them as three-letter names such as `jan`, not
-   numbers.
+   when only scheduling was requested. Pass `--timezone` with the zone the
+   user means (for example `America/New_York`); without it the schedule uses
+   the zone of the machine running the CLI. Leave the month field as `*`; to
+   limit a schedule to certain months, write them as three-letter names such
+   as `jan`, not numbers.
 3. Choose a Postman region for a reachable public API. Use a self-hosted
    runner when the target is reachable only inside the user's network;
    running one adds infrastructure to maintain. `postman runner regions`
