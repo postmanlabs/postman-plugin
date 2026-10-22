@@ -131,8 +131,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/application-testing/SKILL.md",
-          "bytes": 12361,
-          "sha256": "aae1d7bc57f1f1eb58fb3c8a9ce898ba4bc72ca7dd8baad1762c2434db3f9d04"
+          "bytes": 12219,
+          "sha256": "1b789da895d1d4882f42b85f12ca6bbda1674d065bac15b879f62cf483bac809"
         }
       ]
     },
