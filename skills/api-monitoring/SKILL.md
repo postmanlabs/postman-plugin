@@ -33,11 +33,10 @@ exercise the guarantees users depend on.
    multiple locations help distinguish API failures from regional reachability.
 4. Update a monitor in place to keep its run history.
    `monitor update` cannot change the collection, and cannot pause or resume
-   the monitor: use `monitor pause`/`monitor resume`, and expect `update` to
-   leave a paused monitor paused. `update -e` swaps the environment and
-   `--clear-environment` removes it. A different collection requires a
-   replacement, so plan the handoff before deleting the old monitor and its
-   continuity. Permanent deletion needs explicit intent.
+   the monitor: use `monitor pause`/`monitor resume` for that. `update -e`
+   swaps the environment and `--clear-environment` removes it. A different
+   collection requires a replacement, so plan the handoff before deleting the
+   old monitor and its continuity. Permanent deletion needs explicit intent.
 5. Use `postman monitor run <id>` for an immediate verdict, such as after a
    deploy. `--async` returns a job handle when the caller need not wait.
    The CLI timeout caps waiting, not execution: after a timeout, read the job

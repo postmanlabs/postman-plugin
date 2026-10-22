@@ -86,8 +86,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-monitoring/SKILL.md",
-          "bytes": 4687,
-          "sha256": "2e03cb6107cbbbc0803bfa9b913b30dca601d17db49048537f2f29adfbb87663"
+          "bytes": 4639,
+          "sha256": "a28e0dee63392b7ac4c9f21b64ccbd00e19e8cb2fc81efcf96d16f9b0bd5a4a7"
         }
       ]
     },
