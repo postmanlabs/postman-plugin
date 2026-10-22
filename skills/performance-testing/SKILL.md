@@ -37,6 +37,16 @@ Collections run directly: converting with `postman-to-k6` is not required.
    `--use-mock` can baseline collection/script overhead, but its numbers
    cannot establish the real backend's capacity.
 
+## Importing from JMeter
+
+Have a JMeter `.jmx` instead of a collection? Import it by following
+`references/jmeter-import/README.md`, then treat the result as the collection
+above. Its mapping table carries the JMeter semantics that are easy to get
+wrong, and the import report marks what mapped exactly, what was approximated,
+and which JMeter features have no equivalent here — think-time timers,
+concurrent thread groups, and non-HTTP (JDBC/FTP/LDAP/Java) samplers are
+reported, never faked.
+
 ## Verification
 
 Report the workload, runner, achieved traffic, latency and error metrics,

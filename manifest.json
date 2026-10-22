@@ -245,8 +245,38 @@
         {
           "target": "SKILL.md",
           "source": "skills/performance-testing/SKILL.md",
-          "bytes": 2783,
-          "sha256": "729acf6f497051a421768e469cc1ff558d255afb4f5c0b4b47d6b2137878278e"
+          "bytes": 3280,
+          "sha256": "7f76f94adcd2df847f59e8ad2a7e5bb71e3ad5772b928d6344e1c72a9a58b36a"
+        },
+        {
+          "target": "references/jmeter-import/README.md",
+          "source": "skills/performance-testing/references/jmeter-import/README.md",
+          "bytes": 7579,
+          "sha256": "7990ff904b234e40078d9ed29609f29b3c7df7340b77ef10618fd2fbc3aed3fd"
+        },
+        {
+          "target": "references/jmeter-import/import-report.md",
+          "source": "skills/performance-testing/references/jmeter-import/import-report.md",
+          "bytes": 1859,
+          "sha256": "76e83f73c932003294cdc7832c4c63071a0dde487a687cfbe9d4e68b6b9366a5"
+        },
+        {
+          "target": "references/jmeter-import/mapping-table.md",
+          "source": "skills/performance-testing/references/jmeter-import/mapping-table.md",
+          "bytes": 5921,
+          "sha256": "f4dd409b97354fe68b870f6daf234b4e1d678d2c6d6fb074bd2aa75c8c6551d3"
+        },
+        {
+          "target": "references/jmeter-import/postman-perf-capabilities.md",
+          "source": "skills/performance-testing/references/jmeter-import/postman-perf-capabilities.md",
+          "bytes": 3739,
+          "sha256": "9791ef71c13bc3c55c60c3965f16743409ba1547a4dad1630c5b523c49b57c46"
+        },
+        {
+          "target": "references/jmeter-import/script-translation.md",
+          "source": "skills/performance-testing/references/jmeter-import/script-translation.md",
+          "bytes": 5709,
+          "sha256": "0d3e4a91aabb136808c01d94fe8919d28286a3683d4a0b16ec5f2e1c413c81fc"
         }
       ]
     },

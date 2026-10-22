@@ -13,7 +13,7 @@ plugin route below — each route's manifest or package points back at the same
 | --- | --- | --- | --- |
 | Claude Code plugin | `/plugin marketplace add postmanlabs/postman-plugin` clones this repo | `mcp.claude-code.json` | `postman-claude-code-plugin` |
 | Cursor plugin | `.cursor-plugin/plugin.json` points at this repo's `skills/` dir | `mcp.cursor.json` | `postman-cursor-plugin` |
-| GitHub Copilot CLI plugin | `.github/plugin/plugin.json` points at the same `skills/` dir and `hooks/hooks.json` | `mcp.copilot.json` | `postman-copilot-plugin` |
+| GitHub Copilot CLI plugin | `.github/plugin/plugin.json` points at the same `skills/` dir and its own `hooks/copilot-hooks.json`, which runs the same scripts | `mcp.copilot.json` | `postman-copilot-plugin` |
 | Kimi Code plugin | `.kimi-plugin/plugin.json` points at the same `skills/` dir | `mcpServers` in `.kimi-plugin/plugin.json` | `postman-kimi-plugin` |
 | Antigravity plugin | `agy plugin install https://github.com/postmanlabs/postman-plugin` clones this repo; `.antigravity-plugin/plugin.json` points at the same `skills/` dir | `mcp_config.json` | `postman-antigravity-plugin` |
 | Codex plugin | `.codex-plugin/plugin.json` points at the same `skills/` dir | `mcp.codex.json` | `postman-codex-plugin` |
@@ -270,10 +270,17 @@ Kimi discards a SessionStart hook's output, so the mandate reaches it through
 `systemPromptPath` in `.kimi-plugin/plugin.json`, which Kimi Code adds to the
 system prompt from 0.31.0 on; older releases load the skills without it. The
 file it names, `.kimi-plugin/session-start-context.md`, is
-`hooks/session-start-context.md` with `` `postman:<skill>` `` rewritten to
-`` `<skill>` ``, because Kimi's skill names are un-namespaced, as Droid's are.
+`hooks/session-start-context.md` plus a line telling the model to drop the
+`postman:` prefix where its skill listing has none. Kimi Code lists and resolves
+plugin skills as `postman:<skill>` from 2.3.0 on, and only as `<skill>` before
+it, so the mandate names them as 2.3.0 does and the line covers older releases.
 `node scripts/build-manifest.js` writes it, so don't edit it by hand: `--check`
 fails CI and the pre-commit guard when it is stale.
+
+`scripts/kimi-harness.js` loads the entry skill by the name the mandate gives,
+without the prefix when Kimi lists skills bare. CI's `kimi` job runs it against
+a pinned Kimi from before 2.3.0, and the `Installer smoke` workflow against the
+latest, so both forms are checked.
 
 ## The Antigravity plugin
 
@@ -283,8 +290,8 @@ Installing again replaces that copy, which is how it updates; agy has no update
 command. Antigravity has no session-start hook (it never runs `hooks/`), so the
 mandate reaches it as an always-on rule: agy loads `rules/GEMINI.md` from the
 plugin root with no frontmatter. That file is `hooks/session-start-context.md`
-with `` `postman:<skill>` `` rewritten to `` `<skill>` ``, the same copy Kimi
-gets; `node scripts/build-manifest.js` writes it, so don't edit it by hand.
+with `` `postman:<skill>` `` rewritten to `` `<skill>` ``;
+`node scripts/build-manifest.js` writes it, so don't edit it by hand.
 
 agy 1.3.5 ignores the manifest's `mcpServers` path, though Antigravity's docs
 describe it, and loads only its default, `mcp_config.json` at the plugin root.
@@ -331,8 +338,8 @@ DROID_BIN=<path to droid> node scripts/factory-harness.js
 Each route has a harness that installs this checkout the way a user gets it,
 under a throwaway home, and checks what the agent sends its model and the MCP
 server: every skill in `manifest.json` listed, the session-start mandate in the
-form that agent resolves (`postman:` names for Claude Code and Codex, bare names
-elsewhere), the skill the mandate names loaded, and the route's MCP headers.
+form that agent resolves (`postman:` names for Claude Code, Codex and Kimi Code,
+bare names elsewhere), the skill the mandate names loaded, and the route's MCP headers.
 `scripts/lib/harness.js` holds the stand-in they share. CI's job per route runs
 each harness against a pinned agent; the `Installer smoke` workflow runs it
 against the latest one nightly.
@@ -340,6 +347,7 @@ against the latest one nightly.
 ```
 CLAUDE_BIN=<path to claude> node scripts/claude-code-harness.js
 CODEX_BIN=<path to codex> node scripts/codex-harness.js
+COPILOT_BIN=<path to copilot> node scripts/copilot-harness.js
 KIMI_BIN=<path to kimi> node scripts/kimi-harness.js
 AGY_BIN=<path to agy> node scripts/antigravity-harness.js
 CURSOR_API_KEY=<key> CURSOR_BIN=<path to cursor-agent> node scripts/cursor-harness.js
@@ -351,7 +359,9 @@ DROID_BIN=<path to droid> node scripts/factory-harness.js
 Each `*_BIN` defaults to the agent's command on `PATH`. Codex skips a plugin's
 hook until the user trusts it, so its harness runs twice: untrusted, which must
 carry the skills and no mandate, and with `--dangerously-bypass-hook-trust`,
-which must carry both. Cursor's CLI has no stand-in model, so its harness asks
+which must carry both. Copilot CLI's harness runs it with `COPILOT_OFFLINE=true`
+and a BYOK provider, `COPILOT_PROVIDER_BASE_URL`, pointed at the stand-in, so it
+needs no GitHub account. Cursor's CLI has no stand-in model, so its harness asks
 Cursor's model to quote the mandate and the skill it names, and needs a
 `CURSOR_API_KEY`; CI's Cursor steps are commented out for now, so run it
 locally. When they return, CI reads the key from the repository secret of that name. It

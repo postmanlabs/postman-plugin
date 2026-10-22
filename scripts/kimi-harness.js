@@ -20,6 +20,16 @@ const kimi = process.env.KIMI_BIN || 'kimi',
     env = Object.fromEntries(Object.entries(process.env).filter(([name]) => !/^KIMI_/.test(name))),
     slashes = (text) => text.replace(/\\/g, '/');
 
+// Kimi Code lists plugin skills as `postman:<skill>` from 2.3.0 on, and as `<skill>` before it.
+const listing = (skill) => new RegExp(`^- (postman:)?${skill}: `, 'm');
+
+/** The mandate's name for the entry skill, without `postman:` where Kimi lists skills bare, as the mandate says. */
+function listedName (transcript) {
+    const named = mandatedSkill(transcript);
+
+    return new RegExp(`^- ${named}: `, 'm').test(transcript) ? named : named.replace(/^postman:/, '');
+}
+
 /** The session's first turn loads the entry skill by the name the mandate gives it, its second says "ok". */
 function answer (request, body) {
     if (request.url.endsWith('/models')) {
@@ -28,7 +38,7 @@ function answer (request, body) {
 
     return chatCompletion.hasToolResult(body) ?
         { body: chatCompletion.say('ok') } :
-        { body: chatCompletion.call('Skill', { skill: mandatedSkill(chatCompletion.transcript(body)) }) };
+        { body: chatCompletion.call('Skill', { skill: listedName(chatCompletion.transcript(body)) }) };
 }
 
 let standIn;
@@ -64,8 +74,9 @@ try {
 
     const [first, second] = turns.map(({ body }) => chatCompletion.transcript(body));
 
-    assertSkillsListed('Kimi Code', first, (skill) => new RegExp(`^- ${skill}: `, 'm'));
-    assertMandate('Kimi Code', first, { namespaced: false });
+    assertSkillsListed('Kimi Code', first, listing);
+    assertMandate('Kimi Code', first, { namespaced: true });
+    assert.ok(first.includes(fs.readFileSync(path.join(repoRoot, '.kimi-plugin', 'session-start-context.md'), 'utf8').trim()), 'Kimi Code did not send the model its own copy of the mandate');
     assert.ok(second.includes(skillExcerpt(ENTRY_SKILL)), `the mandated skill did not load:\n${second.slice(-800)}`);
     assert.ok(slashes(second).includes(slashes(path.join(record.root, 'skills', ENTRY_SKILL))), `${ENTRY_SKILL} did not load from the installed plugin at ${record.root}`);
     assertMcpHeaders('Kimi Code', standIn.mcpRequests, headers);

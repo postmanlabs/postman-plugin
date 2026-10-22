@@ -18,7 +18,7 @@ install path. Every vendor names that differently, and only some substitute
 | --- | --- | --- |
 | Claude Code | `CLAUDE_PLUGIN_ROOT` | yes |
 | Cursor | `CURSOR_PLUGIN_ROOT`, plus `CLAUDE_PLUGIN_ROOT` as an explicit alias | yes — in `command`, `args`, `env` values and `cwd`. Not `${PLUGIN_ROOT}` |
-| Copilot / VS Code | `CLAUDE_PLUGIN_ROOT`, also injected into the hook's environment | yes |
+| Copilot CLI / VS Code | `COPILOT_PLUGIN_ROOT`, plus `CLAUDE_PLUGIN_ROOT` and `PLUGIN_ROOT`, all also in the hook's environment (Copilot CLI 1.0.98) | yes |
 | Codex | `PLUGIN_ROOT` and `PLUGIN_DATA`, plus `CLAUDE_PLUGIN_ROOT`/`CLAUDE_PLUGIN_DATA` for compatibility | yes — those four only, and it exports them too. Any other `${...}`, like `${DROID_PLUGIN_ROOT}`, reaches the shell as written |
 | Factory Droid | `DROID_PLUGIN_ROOT`, plus `CLAUDE_PLUGIN_ROOT` for compatibility | yes — `${DROID_PLUGIN_ROOT}`, `$DROID_PLUGIN_ROOT`, `${CLAUDE_PLUGIN_ROOT}` and `$CLAUDE_PLUGIN_ROOT` |
 | Kimi Code | `KIMI_PLUGIN_ROOT`, and cwd is set to the plugin root | not documented |
@@ -29,7 +29,7 @@ install path. Every vendor names that differently, and only some substitute
 
 So a single vendor token is wrong on every other route, and forking the file per
 route re-creates the problem the shared `skills/` directory exists to avoid.
-`hooks/hooks.json` runs one command everywhere but Codex (see below):
+`hooks/hooks.json` runs one command everywhere but Codex and Copilot CLI (see below):
 
 ```
 "${CLAUDE_PLUGIN_ROOT}/hooks/session-start" "${DROID_PLUGIN_ROOT}"
@@ -51,6 +51,10 @@ route re-creates the problem the shared `skills/` directory exists to avoid.
   whose stdout isn't JSON as `invalid_json`, so with it set the scripts print
   `{"additional_context": "<mandate>"}`. A third argument can't be the signal:
   `${CURSOR_PLUGIN_ROOT}` would reach Droid's cmd.exe unexpanded.
+- **Copilot CLI is told apart the same way, under another key.** It sets
+  `COPILOT_PLUGIN_ROOT`, runs the hook and reports it successful, but injects
+  only the `additionalContext` of a JSON stdout. Plain markdown is dropped with
+  no error, so with it set the scripts print `{"additionalContext": "<mandate>"}`.
 - **`hooks/session-start` must stay executable and LF.** The shell runs it by
   path, so it needs its mode bit, and `.gitattributes` pins it to LF so a
   Windows checkout with `core.autocrlf` doesn't hand bash a `\r` on every line.
@@ -59,11 +63,11 @@ route re-creates the problem the shared `skills/` directory exists to avoid.
 
 `hooks/session-start-context.md` is one file read by every route that has a
 context mechanism — Claude Code, Cursor and Factory Droid through
-`hooks/hooks.json`, Codex through its fallback to that same file, OpenCode and
+`hooks/hooks.json`, Codex and Copilot CLI through their own hooks files on the same scripts, OpenCode and
 Pi through their own code, and Kimi and Antigravity through copies `scripts/build-manifest.js`
-generate. Cursor, Droid, OpenCode, Pi, Kimi and Antigravity name skills without the
+generate. Cursor, Copilot CLI, Droid, OpenCode, Pi, Kimi and Antigravity name skills without the
 `postman:` prefix, so each gets `` `postman:<skill>` `` rewritten to the bare
-name: the two plugins in code, the hook scripts for Droid and Cursor, and the
+name: the two plugins in code, the hook scripts for Droid, Cursor and Copilot CLI, and the
 build script for the Kimi and Antigravity copies. Droid's Skill tool answers
 `Skill "postman:api-engineer" not found` otherwise; Cursor sends a plugin skill
 to its backend by path, and invokes it as `/<skill>`. So the file must not name
@@ -107,6 +111,10 @@ cmd.exe (`shell_detect.rs`'s `default_user_shell`). `cmd /d /c` runs from both.
 Its `commandWindows` replaces `command` on Windows, which is the only reason the
 route has its own `hooks/codex-hooks.json`.
 
+Copilot CLI's own hook shape takes a `bash` and a `powershell` command, so its
+file gives each shell its own form rather than relying on `shell: "bash"`;
+`cmd /d /c` runs the `.cmd` twin from PowerShell, as Codex's does.
+
 Claude Code on a Windows box with no Git Bash falls back to PowerShell, where a
 quoted path is a string, not a command, so the hook prints the path instead of
 the mandate. Supporting it means a third, PowerShell form of the command.
@@ -121,7 +129,7 @@ Discovery is the other half, and it is not uniform either:
 | Cursor | manifest `hooks` (path string or inline object); falls back to `hooks/hooks.json` |
 | Codex | manifest `hooks`, resolved relative to the plugin root and required to stay inside it; otherwise `hooks/hooks.json`, its `DEFAULT_HOOKS_CONFIG_FILE`. This repo's `.codex-plugin/plugin.json` names `hooks/codex-hooks.json`, because the shared command is a quoted path, and Codex runs a hook through the session's shell, PowerShell on Windows, which prints a quoted path instead of running it. Codex's own file gives Windows `commandWindows`, `cmd /d /c` on `session-start.cmd` with no argument, which runs from PowerShell and cmd.exe alike and keeps the `postman:` names Codex resolves |
 | Factory Droid | `hooks/hooks.json` at the plugin root, in the same `hooks`-wrapped shape as Claude Code. It finds the scripts through Droid's `${CLAUDE_PLUGIN_ROOT}` alias and gets `${DROID_PLUGIN_ROOT}` as its argument, which is what makes the scripts strip the `postman:` prefix. A top-level event key is the shape of a user's `.factory/hooks.json`, not a plugin's |
-| Copilot / VS Code | layout-dependent — `hooks/hooks.json` for the Claude layout, `com.github.copilot/hooks/hooks.json` for Agent Plugins 1.0, `hooks.json` at the root for the Copilot layout |
+| Copilot / VS Code | layout-dependent — `hooks/hooks.json` for the Claude layout, `com.github.copilot/hooks/hooks.json` for Agent Plugins 1.0, `hooks.json` at the root for the Copilot layout. A manifest `hooks` key overrides it: this repo's `.github/plugin/plugin.json` names `hooks/copilot-hooks.json`, in Copilot's own `version: 1` shape, whose separate `bash` and `powershell` commands run `hooks/session-start` and `cmd /d /c` on `session-start.cmd` |
 | Kimi Code | **nowhere.** Hooks are an inline `hooks` array in the manifest, entries shaped `event` / `matcher` / `command` / `timeout`, and Kimi documents no default file to discover. It also discards a SessionStart hook's output, so the mandate goes through the manifest's `systemPromptPath` instead |
 | OpenCode | **no `hooks.json`.** Nothing session-shaped in its config schema; the plugin pushes the mandate into the system prompt from its own hooks — see item 1 below |
 | Pi | **no `hooks.json`.** Its extensions subscribe to events instead; the package's extension sets the mandate as a system-prompt section on `before_agent_start` |

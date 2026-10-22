@@ -1,13 +1,14 @@
 # Independent concerns, one parallel job each, so a failure names itself:
 # `skills` checks what Claude Code loads from skills/ and that every
 # `postman:<name>` the repo ships names one of them, `manifest` checks the
-# index `postman init` fetches, `installer` unit-tests `npx @postman/postman-plugin`
+# index `postman init` fetches, `postman-cli` has released Postman CLIs install the skills
+# from this checkout, `installer` unit-tests `npx @postman/postman-plugin`
 # (installer-smoke.yml runs it against the real agent CLIs), `schema` checks each
 # vendor plugin manifest against that vendor's own published schema. One job per
 # route installs this checkout into a pinned agent (Cursor: the latest) and checks what it sends
-# its model and the MCP server: `claude-code`, `codex`, `cursor`, `factory`, `kimi`,
+# its model and the MCP server: `claude-code`, `codex`, `copilot`, `cursor`, `factory`, `kimi`,
 # `opencode` and `pi`; `antigravity` checks only what agy registers (see that job). Every job but
-# `skills`, `manifest`, `schema`, `cursor` and `antigravity` runs on Linux, and on Windows too
+# `skills`, `manifest`, `postman-cli`, `schema`, `cursor` and `antigravity` runs on Linux, and on Windows too
 # unless a pull request changes only skills or docs (see `os`).
 name: Validate
 
@@ -116,6 +117,32 @@ jobs:
       - name: Claude Code accepts the marketplace and plugin manifests
         run: npx -y @anthropic-ai/claude-code plugin validate .
 
+  # Every Postman CLI fetches the skills from `main`, so a merge publishes them to all of them at
+  # once, including ones released long ago. The harness serves this checkout to a released CLI and
+  # checks `init`, `skills status` and `skills update` accept it, with no skills and after init.
+  # Unlike the agent jobs this one runs the latest release, not a pinned one: the CLI is ours, and a
+  # release that refuses the bundle on `main` should fail here the day it ships.
+  postman-cli:
+    name: Postman CLI
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+
+      - name: Install the Postman CLI
+        run: npm install --no-save --prefix "$RUNNER_TEMP/postman" postman-cli@latest
+
+      - name: The CLI installs and keeps current the skills this checkout serves
+        run: node scripts/postman-cli-harness.js
+        env:
+          POSTMAN_BIN: ${{ runner.temp }}/postman/node_modules/.bin/postman
+
   # Its harness installs the plugin as a user does, has the pinned OpenCode CLI load
   # every skill, and checks what OpenCode sends a stand-in model and MCP server.
   opencode:
@@ -202,11 +229,11 @@ jobs:
         shell: pwsh
         run: npm run build && node --test --test-reporter=spec --test-reporter-destination=stdout --test-reporter=tap --test-reporter-destination=unit-tests.tap test/*.test.js
 
-      # A green run that skipped tests hid that Windows ran nothing end to end. Windows
-      # skips nothing; elsewhere only a test of the Windows process layer may skip.
-      - name: No unit test was skipped but a Windows-only one off Windows
+      # Keep skips restricted to the named platform tests. Hook trust and model
+      # delivery still run on Windows; only the Linux pseudo-terminal check skips.
+      - name: Only the platform-specific terminal and process tests may skip
         env:
-          ALLOWED_SKIP: ${{ runner.os == 'Windows' && '^$' || '# SKIP Windows only$' }}
+          ALLOWED_SKIP: ${{ runner.os == 'Windows' && '# SKIP Linux terminal check$' || '# SKIP Windows only$' }}
         run: |
           test -s unit-tests.tap
           if grep -E '# SKIP' unit-tests.tap | grep -v -E "$ALLOWED_SKIP"; then exit 1; fi
@@ -335,6 +362,36 @@ jobs:
         env:
           CODEX_BIN: ${{ runner.temp }}/codex/node_modules/.bin/codex${{ runner.os == 'Windows' && '.cmd' || '' }}
 
+  # Copilot CLI installs this checkout as the `postman` marketplace, as the installer does. The harness
+  # runs it offline against a stand-in BYOK model and MCP server: the skills, the hook's mandate and the skill it names.
+  copilot:
+    name: GitHub Copilot CLI plugin / ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    needs: os
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.os.outputs.matrix) }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+
+      # Pinned so a Copilot CLI release can't fail a PR on its own; installer-smoke.yml runs the latest nightly.
+      - name: Install Copilot CLI
+        run: npm install --no-save --prefix "$RUNNER_TEMP/copilot" @github/copilot@1.0.98
+
+      - name: Copilot CLI loads the skills, the mandate and the MCP server from the marketplace
+        run: node scripts/copilot-harness.js
+        env:
+          COPILOT_BIN: ${{ runner.temp }}/copilot/node_modules/.bin/copilot${{ runner.os == 'Windows' && '.cmd' || '' }}
+
   # Kimi Code gets this checkout from the `plugins` CLI, as the installer gives it the repo. The harness
   # checks what Kimi sends a stand-in model and MCP server: the skills, the mandate and the skill it names.
   kimi:
@@ -348,6 +405,7 @@ jobs:
       run:
         shell: bash
     # Pinned so a Kimi Code release can't fail a PR on its own; installer-smoke.yml runs the latest nightly.
+    # Before 2.3.0, which lists skills as postman:<skill>, so PRs still check the mandate's bare-name fallback.
     env:
       KIMI_VERSION: 2.1.1
     steps:
@@ -452,8 +510,9 @@ jobs:
   # on every run, so a vendor tightening its schema fails CI here rather than
   # at marketplace review. Files with no published schema (.kimi-plugin/plugin.json,
   # .codex-plugin/plugin.json, .factory-plugin/*.json, .antigravity-plugin/plugin.json,
-  # the other mcp.*.json, mcp.json, mcp_config.json, manifest.json) are covered by the
-  # `manifest` job above, and Antigravity's by `agy plugin validate` in `antigravity`. Codex
+  # .github/plugin/plugin.json, the other mcp.*.json, mcp.json, mcp_config.json, manifest.json)
+  # are covered by the `manifest` job above, Antigravity's by `agy plugin validate` in
+  # `antigravity`, and Copilot CLI's by its install in `copilot`. Codex
   # documents its manifest in prose only and publishes no schema for it; the
   # agent-plugins.org schema is not a substitute, since it describes the
   # root-level `plugin.json` Agent Plugins format, which Codex selects by path

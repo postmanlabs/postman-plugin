@@ -3,7 +3,7 @@
   "displayName": "Postman",
   "version": "0.1.0",
   "description": "Equip Antigravity with specialized Postman skills for the complete API lifecycle. Discover, design, test, document, mock, monitor, and improve APIs through agent-friendly, filesystem-first workflows.",
-  "logo": "https://voyager.postman.com/logo/postman-logo-icon-orange.svg",
+  "logo": "./assets/logo.svg",
   "suggestedPrompts": [
     "Create a collection for the API in this repo, add tests, and run them.",
     "I'm changing the credit card service. What APIs in my company use it?",
