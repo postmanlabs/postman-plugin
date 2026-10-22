@@ -28,10 +28,10 @@ exercise the guarantees users depend on.
 3. Choose a Postman region for a reachable public API. Use a self-hosted
    runner when the target is reachable only inside the user's network;
    running one adds infrastructure to maintain. `postman runner regions`
-   provides valid hosted locations and `runner list` provides registered
-   private runner IDs. `monitor create/update --runner` accepts either;
+   provides valid hosted locations and `runner list --json` the full IDs of
+   registered private runners. `monitor create/update --runner` accepts either;
    multiple locations help distinguish API failures from regional reachability.
-4. Preserve monitor identity when updating schedule or run settings.
+4. Update a monitor in place to keep its run history.
    `monitor update` cannot change the collection, and cannot pause or resume
    the monitor: use `monitor pause`/`monitor resume`, and expect `update` to
    leave a paused monitor paused. `update -e` swaps the environment and
@@ -40,30 +40,34 @@ exercise the guarantees users depend on.
    continuity. Permanent deletion needs explicit intent.
 5. Use `postman monitor run <id>` for an immediate verdict, such as after a
    deploy. `--async` returns a job handle when the caller need not wait.
-   The CLI timeout caps waiting, not execution; after a timeout, inspect
-   the submitted job instead of sending duplicate traffic or reporting failure.
-6. Diagnose at the level of the evidence. `monitor jobs list <monitor-id>`
-   finds jobs, `monitor jobs get <job-id>` shows terminal state and regional
-   outcomes, and `monitor runs get <run-id>` shows assertions within an
-   attempt. A failing region, a connection error, and a failed assertion
-   imply different fixes. Preserve normal exit-code failures for CI gates.
+   The CLI timeout caps waiting, not execution: after a timeout, read the job
+   with `monitor jobs get <job-id>`; its state is the verdict.
+6. Answer each failure question at its level. `monitor jobs list
+   <monitor-id>` finds jobs, `monitor jobs get <job-id>` shows terminal state
+   and regional outcomes, and `monitor runs get <run-id>` shows assertions
+   within an attempt. A failing region, a connection error, and a failed
+   assertion imply different fixes. For a trend across runs, such as which
+   request got slow, use `monitor metrics <monitor-id>`. In a CI gate, run
+   `monitor run` without `-x`, so a failed run fails the build.
 
-For discovery, `monitor list` supports workspace and collection filters;
-use its returned cursor for pagination rather than offset. Its runner filter
+For discovery, `monitor list` supports workspace and collection filters; to
+page it, pass `--cursor` with the value from the previous page. Its runner filter
 is for a self-hosted ID and cannot be combined with other filters; a page-local
 name filter does not establish absence across all pages.
 
 For a private runner, use `runner start` with the ID and key from the runner
 created in Postman, and verify it is reporting in before assigning runs: a
 recent `Last ping` in `runner list` (`lastPingAt` under `--json`; `never`
-means it has not connected). Inspect its help for proxy,
-private CA, residency, and health-metric options only when the network requires
-them. Runner activity is reported by default; `--no-report-events` disables
-that reporting when the task requires it. Use **bootstrap** for unresolved
-authentication rather than placing runner keys in repository files.
+means it has not connected). Inspect its help for proxy, private CA,
+residency, and health-metric options only when the network requires them.
+Runner activity is reported by default; `--no-report-events` disables that
+reporting when the task requires it. Pass the runner key at runtime, from the
+user or a secret store (for example `--key "$RUNNER_KEY"`), and keep it out of
+files in the repository. If a `monitor` or `runner list` command fails on
+authentication, use **bootstrap**.
 
 ## Verification
 
 Report the actual monitor configuration or terminal job/run outcome, including
 where it executed and which checks failed. A created monitor, accepted job,
-or connected runner alone does not prove the API passed its health checks.
+or a runner reporting in alone does not prove the API passed its health checks.
