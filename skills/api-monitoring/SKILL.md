@@ -19,10 +19,11 @@ exercise the guarantees users depend on.
    the linked workspace unless one is supplied. Inspect command-specific
    `-h` and available service options for supported schedules and limits.
    Creation starts an immediate run by default; `--no-run-now` avoids that
-   when only scheduling was requested. A schedule expressed in the host's
-   default timezone can fire at the wrong operational time. Leave the month
-   field as `*`; to limit a schedule to certain months, write them as
-   three-letter names such as `jan`, not numbers.
+   when only scheduling was requested. Without `--timezone`, the schedule
+   uses the time zone of the machine running the CLI, often UTC on a CI runner, so
+   pass `--timezone` (for example `America/New_York`) for the zone the user
+   means. Leave the month field as `*`; to limit a schedule to certain
+   months, write them as three-letter names such as `jan`, not numbers.
 3. Choose a Postman region for a reachable public API. Use a self-hosted
    runner when the target is reachable only inside the user's network;
    running one adds infrastructure to maintain. `postman runner regions`
@@ -30,8 +31,9 @@ exercise the guarantees users depend on.
    private runner IDs. `monitor create/update --runner` accepts either;
    multiple locations help distinguish API failures from regional reachability.
 4. Preserve monitor identity when updating schedule or run settings.
-   `monitor update` cannot change its collection and does not pause it; use
-   `pause`/`resume` for that. `update -e` swaps the environment and
+   `monitor update` cannot change the collection, and cannot pause or resume
+   the monitor: use `monitor pause`/`monitor resume`, and expect `update` to
+   leave a paused monitor paused. `update -e` swaps the environment and
    `--clear-environment` removes it. A different collection requires a
    replacement, so plan the handoff before deleting the old monitor and its
    continuity. Permanent deletion needs explicit intent.
