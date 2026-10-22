@@ -21,8 +21,8 @@ exercise the guarantees users depend on.
    Creation starts an immediate run by default; `--no-run-now` avoids that
    when only scheduling was requested. A schedule expressed in the host's
    default timezone can fire at the wrong operational time. Leave the month
-   field as `*`; to limit a schedule to certain months, write them as names
-   (`jan`-`dec`), not numbers.
+   field as `*`; to limit a schedule to certain months, write them as
+   three-letter names such as `jan`, not numbers.
 3. Choose a Postman region for a reachable public API. Use a self-hosted
    runner when the target is reachable only inside the user's network;
    running one adds infrastructure to maintain. `postman runner regions`
@@ -51,8 +51,9 @@ is for a self-hosted ID and cannot be combined with other filters; a page-local
 name filter does not establish absence across all pages.
 
 For a private runner, use `runner start` with the ID and key from the runner
-created in the Postman app, and verify it is reporting in (a recent
-`Last ping` in `runner list`) before assigning runs. Inspect its help for proxy,
+created in Postman, and verify it is reporting in before assigning runs: a
+recent `Last ping` in `runner list` (`lastPingAt` under `--json`; `never`
+means it has not connected). Inspect its help for proxy,
 private CA, residency, and health-metric options only when the network requires
 them. Runner activity is reported by default; `--no-report-events` disables
 that reporting when the task requires it. Use **bootstrap** for unresolved
