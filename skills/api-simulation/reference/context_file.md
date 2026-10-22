@@ -12,6 +12,10 @@ there is no schema to satisfy — but the generated headings and the
 `<!-- begin:observations -->` markers are what a reader and the next write
 expect to find, so keep them.
 
+Keep it to the four generated sections, in Markdown, under about a screenful,
+so the line that matters is the one a reader lands on rather than one they
+have to search for.
+
 ## What the generated file contains
 
 A fresh file states the simulation's name, the date, its members and the hosts
@@ -30,6 +34,43 @@ comment, so a half-filled file reads as half-filled instead of as fact.
 Four assumptions come generated, so don't restate them: an unmatched request
 reaches the real host, mocks don't hot-reload, only HTTP dependencies are
 simulated, and the port must be free with one simulation at a time.
+
+## What earns a line
+
+Write what running it taught you, and only that. Each line passes one test:
+the repo doesn't already state it. That leaves four kinds of thing, and they
+are the file's whole value:
+
+- **A precondition you had to discover** — the setting, the service, the
+  cleanup a run needs before it works at all.
+- **A failure and its cause**, with where it surfaced, so the next session
+  recognizes it instead of debugging it again.
+- **What the simulation can't reproduce**, so a passing run is read for what
+  it actually proves.
+- **What the last run served**: which members took traffic, which stayed
+  silent, and why.
+
+For anything the repo does state — routes and request shapes, valid actions,
+auth mechanics, each mock's hosts, config flags — point at the file that holds
+it (`actions are in config/actions.js`, `credentials come from
+config/env/development.js`) and let the reader go there. One source stays
+true; a copy here drifts, and this file gets committed, so a named file is
+also how a credential stays out of it.
+
+Write statements that stay true between runs. Counts, timings and coverage
+belong to the run that produced them, so leave them in the log and keep the
+pattern here: "every member served except `workspace`" rather than a tally.
+
+A good `## Observations` is a few lines:
+
+```markdown
+<!-- begin:observations -->
+2026-10-22: every member served except `workspace`, which the service never
+calls in development, and `god`, which models no endpoints. A stale Redis
+`EVENT_BATCH` key from an earlier run crashed the aggregation flush before it
+was cleared.
+<!-- end:observations -->
+```
 
 ## Working with it
 
@@ -58,10 +99,12 @@ A run that only confirms the file still rewrites `## Observations`.
 
 ## Rules
 
-- Record what you observed, not what you assume. Keep anything you only
-  reasoned out brief, and don't write it as confirmed.
-- Don't delete another session's assumption because this run didn't hit it.
-  Not exercised is not the same as not true.
-- Don't restate the simulation definition. If it's in the `.sim.yaml`, it
-  doesn't belong here.
-- Don't rewrite `## Purpose` unless the simulation's scope genuinely changed.
+- Write what you observed, and mark anything you reasoned out as reasoning,
+  briefly, so the next session knows which is which.
+- Leave another session's assumptions and limits standing unless your run
+  contradicted one: not exercised is not the same as not true.
+- Keep this file for how the simulation behaves, and let the `.sim.yaml`
+  speak for what it is.
+- Rewrite `## Purpose` when the simulation's scope genuinely changed.
+- Prefer deleting a line to adding one. Everything here is something the next
+  session must either trust or re-check.

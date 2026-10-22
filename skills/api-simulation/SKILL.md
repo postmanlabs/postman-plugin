@@ -89,7 +89,8 @@ hostname with no DNS record works.
   and `NODE_EXTRA_CA_CERTS`, in the shell that starts the code, before it
   starts: an intercepted HTTPS host is served from a CA made fresh each run
   and deleted on exit. Copy the CA path from the banner, since each install
-  channel has its own, and don't put these in a shell profile.
+  channel has its own, and set all three for that session alone, so trust in
+  a CA ends with the run that made it.
 - Every request is logged as mocked or passed through, `--log-format json`
   for machine-readable lines, so a dependency logged as passed through means
   a missing `origin`, not a mock that served. Conditions don't apply here and
@@ -145,7 +146,15 @@ it — a new file is mostly `@todo`s, which are the questions a first real run
 answers. Leave it truer than you found it: the `@todo`s your run can answer,
 whatever it found wrong, a precondition you had to discover, and what the
 members actually served, which is the one section a run always rewrites.
-Its sections and conventions are in
+
+Keep it to its four Markdown sections and about a screenful, and give each
+line the same test: the repo doesn't already state it. A precondition you had
+to discover, a failure and its cause, what the simulation can't reproduce, and
+which members served or stayed silent are what only a run teaches. For routes,
+request shapes, auth or config, name the file that holds them and let the
+reader go there — one source stays true, and a named file is how a credential
+stays out of a committed document. Write what holds between runs, leaving
+counts and timings in the log. Its sections and conventions are in
 [reference/context_file.md](reference/context_file.md).
 
 ## Keeping it
