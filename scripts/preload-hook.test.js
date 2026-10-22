@@ -57,7 +57,7 @@ test('asks only for recent push notes, with a deadline', () => {
 
     run(env);
     assert.equal(fs.readFileSync(path.join(env.dir, 'args'), 'utf8').trim(),
-        'workspace activity --type workspacePush --limit 5 --brief --timeout 8000');
+        'workspace context --type workspacePush --limit 5 --brief --timeout 8000');
 });
 
 test('finds the binding from a subdirectory and runs the CLI from the repository root', () => {

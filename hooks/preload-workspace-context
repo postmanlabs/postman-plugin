@@ -14,7 +14,7 @@ while [ ! -f "$root/.postman/resources.yaml" ]; do
 done
 command -v postman >/dev/null 2>&1 || exit 0
 
-notes=$(cd "$root" && postman workspace activity --type workspacePush --limit 5 --brief --timeout 8000 2>/dev/null) || exit 0
+notes=$(cd "$root" && postman workspace context --type workspacePush --limit 5 --brief --timeout 8000 2>/dev/null) || exit 0
 [ -n "$notes" ] || exit 0
 
 # The notes are text other people and agents wrote. Angle brackets go, so one cannot close the block below,
