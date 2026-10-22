@@ -16,9 +16,12 @@ credentials and leave side effects. A simulation runs that code over real
 HTTP, the same way in CI, and its log shows what each dependency was asked.
 
 Do only what the task needs. If a `.sim.yaml` in `postman/simulations/`
-already covers it, run that one. One request through the changed path proves
-a change; build failure variants only when asked how the code fails or when
-it must survive a failure.
+already covers it, run that one, and read the `<name>.context.md` beside it
+first: it holds the commands, the preconditions and the failures earlier runs
+hit, so reading it costs less than rebuilding any of that from the `.sim.yaml`
+and the handlers. One request through the changed path proves a change; build
+failure variants only when asked how the code fails or when it must survive a
+failure.
 
 `postman simulation` needs CLI 1.70.0 or later (`postman --version`; an older
 CLI answers `postman simulation -h` with its general help).
@@ -137,25 +140,19 @@ stock reserved and never released.
 
 ## Its context document
 
-Every simulation is created with a `<name>.context.md` beside it, holding
-what running this one has taught: the commands that start it and prove it's
-up, the preconditions and what breaks when one fails, the data seeded to test
-with, and what a passing run still doesn't prove. The `.sim.yaml` says what
-the simulation is, not how it behaves, so read this before rebuilding any of
-it — a new file is mostly `@todo`s, which are the questions a first real run
-answers. Leave it truer than you found it: the `@todo`s your run can answer,
-whatever it found wrong, a precondition you had to discover, and what the
-members actually served, which is the one section a run always rewrites.
+Every simulation is created with a `<name>.context.md` beside it, holding what
+running this one has taught: the commands that start it and prove it's up, the
+preconditions and what breaks when one fails, the data seeded to test with,
+the failures earlier runs already hit, and what a passing run still doesn't
+prove. The `.sim.yaml` says what the simulation is, not how it behaves, so
+this is the file that saves a session the search. A new one is mostly
+`@todo`s, which are the questions a first real run answers.
 
-Keep it to its four Markdown sections and about a screenful, and give each
-line the same test: the repo doesn't already state it. A precondition you had
-to discover, a failure and its cause, what the simulation can't reproduce, and
-which members served or stayed silent are what only a run teaches. For routes,
-request shapes, auth or config, name the file that holds them and let the
-reader go there — one source stays true, and a named file is how a credential
-stays out of a committed document. Write what holds between runs, leaving
-counts and timings in the log. Its sections and conventions are in
-[reference/context_file.md](reference/context_file.md).
+Every line passes one test — the repo doesn't already state it — so it stays
+about a screenful, and a claim carries the date and the run that established
+it, because the log it came from isn't committed. Its sections and conventions
+are in [reference/context_file.md](reference/context_file.md); read that
+before writing it back.
 
 ## Keeping it
 
@@ -192,3 +189,8 @@ or hung, the run proved nothing; say so and why. Say what a pass proves,
 your code against these stand-ins rather than the real services, what still
 needs the real service before release, and where each mock came from,
 including when you skipped the owner's.
+
+Then write the run back into `<name>.context.md`, so the next session starts
+where this one ended: the `@todo`s it answered, whatever it found wrong, a
+precondition you had to discover, what broke and why, and which members served
+or stayed silent — the last is the one section every run rewrites.
