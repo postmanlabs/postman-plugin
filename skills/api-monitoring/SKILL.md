@@ -20,7 +20,9 @@ exercise the guarantees users depend on.
    `-h` and available service options for supported schedules and limits.
    Creation starts an immediate run by default; `--no-run-now` avoids that
    when only scheduling was requested. A schedule expressed in the host's
-   default timezone can fire at the wrong operational time.
+   default timezone can fire at the wrong operational time. Leave the month
+   field as `*`; to limit a schedule to certain months, write them as names
+   (`jan`-`dec`), not numbers.
 3. Choose a Postman region for a reachable public API. Use a self-hosted
    runner when the target is reachable only inside the user's network;
    running one adds infrastructure to maintain. `postman runner regions`
@@ -28,10 +30,11 @@ exercise the guarantees users depend on.
    private runner IDs. `monitor create/update --runner` accepts either;
    multiple locations help distinguish API failures from regional reachability.
 4. Preserve monitor identity when updating schedule or run settings.
-   `monitor update` cannot change its collection or environment and does not
-   pause it; use `pause`/`resume` for that. A different collection/environment
-   requires a replacement, so plan the handoff before deleting the old
-   monitor and its continuity. Permanent deletion needs explicit intent.
+   `monitor update` cannot change its collection and does not pause it; use
+   `pause`/`resume` for that. `update -e` swaps the environment and
+   `--clear-environment` removes it. A different collection requires a
+   replacement, so plan the handoff before deleting the old monitor and its
+   continuity. Permanent deletion needs explicit intent.
 5. Use `postman monitor run <id>` for an immediate verdict, such as after a
    deploy. `--async` returns a job handle when the caller need not wait.
    The CLI timeout caps waiting, not execution; after a timeout, inspect
@@ -47,8 +50,9 @@ use its returned cursor for pagination rather than offset. Its runner filter
 is for a self-hosted ID and cannot be combined with other filters; a page-local
 name filter does not establish absence across all pages.
 
-For a private runner, use `runner start` with the registered ID and key and
-verify that it connects before assigning runs. Inspect its help for proxy,
+For a private runner, use `runner start` with the ID and key from the runner
+created in the Postman app, and verify it is reporting in (a recent
+`Last ping` in `runner list`) before assigning runs. Inspect its help for proxy,
 private CA, residency, and health-metric options only when the network requires
 them. Runner activity is reported by default; `--no-report-events` disables
 that reporting when the task requires it. Use **bootstrap** for unresolved
