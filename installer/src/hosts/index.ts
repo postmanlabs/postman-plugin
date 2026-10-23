@@ -5,8 +5,9 @@ import { copilot } from './copilot.js';
 import { cursor } from './cursor.js';
 import { factory } from './factory.js';
 import { kimi } from './kimi.js';
+import { kiro } from './kiro.js';
 import { opencode } from './opencode.js';
 import { pi } from './pi.js';
 import type { Host } from './types.js';
 
-export const HOSTS: readonly Host[] = [antigravity, claudeCode, codex, copilot, cursor, factory, kimi, opencode, pi];
+export const HOSTS: readonly Host[] = [antigravity, claudeCode, codex, copilot, cursor, factory, kimi, kiro, opencode, pi];
