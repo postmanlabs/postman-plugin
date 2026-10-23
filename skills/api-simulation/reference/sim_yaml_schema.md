@@ -56,8 +56,8 @@ The same `.sim.yaml`, with `origin` deciding which hostnames reach which
 member. A path is required: `--proxy` takes no simulation id, because the
 file on disk is what declares the hostnames.
 
-`origin` is declared in the mock's own manifest and copied onto every member
-built from it, so every simulation using that mock intercepts the same hosts:
+`origin` lives in two places, and a run reads only one of them. It is
+*declared* in the mock's own manifest:
 
 ```yaml
 # postman/mocks/payments/config.yaml
@@ -66,12 +66,31 @@ origin: api.stripe.com        # a string, or a list
 mockSrc: ./default.js
 ```
 
+and `simulation create` *copies* it onto each member it writes, which is the
+copy `--proxy` matches on:
+
+```yaml
+# postman/simulations/checkout/checkout.sim.yaml
+mocks:
+  - routeKey: payments
+    origin: api.stripe.com
+    path: postman/mocks/payments
+```
+
+Because it's a copy taken when the file was written, adding or changing an
+`origin:` in a manifest does nothing to a `.sim.yaml` that already exists:
+edit the member, or recreate the simulation. Equally, a member's `origin:`
+can be edited directly without touching the mock, which is how one mock
+stands in for different hosts in two simulations.
+
 A scheme and port are stripped (`https://API.Stripe.com:443` →
 `api.stripe.com`). A value that can't match a `Host` — a path left on a
 copied URL, a wildcard — is warned about and skipped by name, leaving the
-mock a working member. `mock get` shows what a mock declares, and `origin` is
-left out of a member entirely when its mock declares none, since `origin: []`
-would read as deliberately unreachable.
+mock a working member. Two members claiming the same hostname is a conflict
+and fails the run, since only one of them could answer for it. `mock get`
+shows what a mock declares, and `origin` is left out of a member entirely
+when its mock declares none, since `origin: []` would read as deliberately
+unreachable.
 
 Members run on throwaway ports, so a manifest's `port` is ignored.
 `postman simulation run --help` lists the flags proxy mode adds —

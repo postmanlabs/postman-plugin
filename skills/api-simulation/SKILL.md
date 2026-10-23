@@ -84,12 +84,14 @@ caller's own process needs in order to reach the proxy, and what to do about a
 client that ignores it are all there and change with the CLI, so take them
 from the command rather than from here.
 
-Two things decide whether a proxied run proves anything. Which hostnames reach
-which member comes from each mock's own `origin:`, not from the `.sim.yaml`
-([reference/sim_yaml_schema.md](reference/sim_yaml_schema.md)), so a member
-whose mock declares none is never matched and its traffic reaches the real
-service — a run can come up having intercepted nothing. And conditions don't
-apply here: member `scenarios` are ignored, so failures need the one-port run.
+Two things decide whether a proxied run proves anything. A run matches on the
+member's `origin:` in the `.sim.yaml`, which `simulation create` copies from
+the mock's own manifest — so a member with none is never matched and its
+traffic reaches the real service, and adding an `origin:` to a manifest leaves
+an existing `.sim.yaml` untouched until you edit the member or recreate it
+([reference/sim_yaml_schema.md](reference/sim_yaml_schema.md)). A run can come
+up having intercepted nothing. And conditions don't apply here: member
+`scenarios` are ignored, so failures need the one-port run.
 
 ## Reading the log
 
