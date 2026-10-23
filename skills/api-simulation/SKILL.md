@@ -16,9 +16,12 @@ credentials and leave side effects. A simulation runs that code over real
 HTTP, the same way in CI, and its log shows what each dependency was asked.
 
 Do only what the task needs. If a `.sim.yaml` in `postman/simulations/`
-already covers it, run that one. One request through the changed path proves
-a change; build failure variants only when asked how the code fails or when
-it must survive a failure.
+already covers it, run that one, and read the `<name>.context.md` beside it
+first: it holds the commands, the preconditions and the failures earlier runs
+hit, so reading it costs less than rebuilding any of that from the `.sim.yaml`
+and the handlers. One request through the changed path proves a change; build
+failure variants only when asked how the code fails or when it must survive a
+failure.
 
 `postman simulation` needs CLI 1.70.0 or later (`postman --version`; an older
 CLI answers `postman simulation -h` with its general help).
@@ -34,6 +37,11 @@ CLI answers `postman simulation -h` with its general help).
   the contract will do; one that invents responses can send the caller down a
   path the real service never would. In a mock you build, answer `501` for calls this path
   doesn't make: a `404` reads to the caller like a real "not found".
+- **Bring in each mock you don't own as a dependency first, then build the
+  simulation over them.** `postman dependency add mock <name-or-id>` declares
+  it in `.postman/resources.yaml` and materialises it under
+  `postman/.dependencies/`, and the member's `path:` points there; `-w
+  <workspace>` resolves a name from the workspace that owns it.
 - **Prefix each mock's `pm.state` keys with its name.** As of CLI 1.73.0,
   members of a local run read each other's keys, so two mocks storing
   `orders` overwrite each other.
@@ -41,18 +49,17 @@ CLI answers `postman simulation -h` with its general help).
 ## Running it
 
 The run is a server that never exits, so a foreground command never returns.
-Start it in the background with an explicit port, its log in a file:
+Start it in the background, its log in a file:
 
 ```bash
 postman simulation run postman/simulations/checkout-dev.sim.yaml --port 4900 --output ndjson > sim.ndjson 2> sim.err &
 ```
 
-Without `--port`, a busy 3000 silently becomes a random port and every base
-URL points at nothing. It's up when `sim.ndjson` has a `listening` event; a
-start-up error is in `sim.err`. It listens on 127.0.0.1 only, so a caller in
-a container or VM can't reach it. Stop it with
-`pkill -INT -f "simulation run <file>"`; `kill $!` leaves it running,
-because the `postman` launcher ignores the signal. Nothing reloads: restart
+`--port` is optional. It's up when `sim.ndjson` has a `listening` event; a
+start-up error is in `sim.err`. That event carries the bound port and each
+member's address, so take the base URLs from it rather than from the port you
+asked for. Stop it with
+`pkill -INT -f "simulation run .*<file>.sim.yaml"`. Nothing reloads: restart
 it after a mock edit.
 
 Point the caller at it without changing what the code does once deployed.
@@ -60,10 +67,30 @@ Under path routing, swap only the host and keep the path:
 `https://catalog.internal.example.com/v2` becomes
 `http://127.0.0.1:4900/catalog/v2`; a dropped `/v2` is the usual cause of a
 `404`. A hard-coded base URL should read an environment variable with
-today's value as the default. If the code mustn't change at all,
-`simulation run --proxy` reaches the members through `HTTPS_PROXY` instead;
-it applies no conditions, and passes any other host through to the real
-service.
+today's value as the default. If the code mustn't change at all, run it
+behind the proxy instead, below.
+
+## Through a proxy, when no base URL can change
+
+`simulation run <file.sim.yaml> --proxy` puts the members behind a local
+forward proxy that answers for the dependencies' own hostnames, so the code
+keeps the base URLs it ships with. Any other host passes through to the real
+service. Reach for it when hostnames are hard-coded, built from config the
+change shouldn't touch, or owned by an SDK — and because nothing it answers
+for has to resolve, an internal hostname with no DNS record works.
+
+Read `postman simulation run --help` before driving it. The flags, what the
+caller's own process needs in order to reach the proxy, and what to do about a
+client that ignores it are all there and change with the CLI, so take them
+from the command rather than from here.
+
+Two things decide whether a proxied run proves anything. A member with no
+`origin:` in the `.sim.yaml` is never matched, so its traffic reaches the real
+service and a run can come up having intercepted nothing — `simulation create`
+copies that field from the mock's manifest, so editing the manifest alone
+won't fix it ([reference/sim_yaml_schema.md](reference/sim_yaml_schema.md)).
+And conditions don't apply here: member `scenarios` are ignored, so failures
+need the one-port run.
 
 ## Reading the log
 
@@ -102,10 +129,27 @@ failure never reaches the mock and isn't logged, so judge it by what the
 caller did, and check the other members' logs for side effects, such as
 stock reserved and never released.
 
+## Its context document
+
+Every simulation is created with a `<name>.context.md` beside it, holding what
+running this one has taught: the commands that start it and prove it's up, the
+preconditions and what breaks when one fails, what it takes for granted about
+the dependencies themselves, the data seeded to test with, the failures earlier
+runs already hit, and what a passing run still doesn't prove. The `.sim.yaml` says what the simulation is, not how it behaves, so
+this is the file that saves a session the search. A new one is mostly
+`@todo`s, which are the questions a first real run answers.
+
+Every line passes one test — the repo doesn't already state it — so it stays
+about a screenful, and a claim carries the date and the run that established
+it, because the log it came from isn't committed. Its sections and conventions
+are in [reference/context_file.md](reference/context_file.md); read that
+before writing it back.
+
 ## Keeping it
 
-Commit your own mocks, the `.sim.yaml` and what `postman dependency add`
-changed, so the next session or CI reruns it in one command. Don't commit
+Commit your own mocks, the `.sim.yaml`, its context document and what
+`postman dependency add` changed, so the next session or CI reruns it in one
+command. Don't commit
 `postman/.dependencies/`: a copy goes stale when its owner updates theirs,
 and `postman dependency install` restores it. Don't commit `sim.ndjson`: the
 CLI redacts common auth headers and fields, but other headers and bodies are
@@ -136,3 +180,9 @@ or hung, the run proved nothing; say so and why. Say what a pass proves,
 your code against these stand-ins rather than the real services, what still
 needs the real service before release, and where each mock came from,
 including when you skipped the owner's.
+
+Then write the run back into `<name>.context.md`, so the next session starts
+where this one ended: the `@todo`s it answered, whatever it found wrong, a
+precondition you had to discover, what broke and why, and which members served
+or stayed silent — the last is a line every run adds, so a member silent across
+several runs reads as a pattern rather than a one-off.
