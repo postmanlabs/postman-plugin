@@ -32,6 +32,11 @@ const lines = (text, needle) => text.split(/\r?\n/).filter((line) => line.includ
 
 // `expected` must all be found after an install; nothing at all may be found after a remove.
 const AGENTS = {
+    antigravity: {
+        expected: ['postman'],
+        found: () => JSON.parse(output('agy', ['plugin', 'list', '--json']))
+            .map(({ name }) => name).filter((name) => name === 'postman')
+    },
     'claude-code': {
         expected: ['postman@claude-plugins-official [user]'],
         found: () => JSON.parse(output('claude', ['plugin', 'list', '--json']))
