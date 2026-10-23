@@ -99,8 +99,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-simulation/SKILL.md",
-          "bytes": 11286,
-          "sha256": "ad1eaad1a00316d9a48cedaedcf515892d84d0d53edfeeca0e51166643b2d3e3"
+          "bytes": 10642,
+          "sha256": "d467f5fe83c03736a8bb9081ceef1ed101cfe5775bb43390a75fe51df45a05d8"
         },
         {
           "target": "reference/context_file.md",

@@ -74,32 +74,22 @@ behind the proxy instead, below.
 
 `simulation run <file.sim.yaml> --proxy` puts the members behind a local
 forward proxy that answers for the dependencies' own hostnames, so the code
-keeps the base URLs it ships with and reaches the mocks through
-`HTTP_PROXY`/`HTTPS_PROXY`. Any other host passes through to the real
-service, HTTPS tunneled undecrypted. Reach for it when hostnames are
-hard-coded, built from config the change shouldn't touch, or owned by an
-SDK — and because nothing it answers for has to resolve, an internal
-hostname with no DNS record works.
+keeps the base URLs it ships with. Any other host passes through to the real
+service. Reach for it when hostnames are hard-coded, built from config the
+change shouldn't touch, or owned by an SDK — and because nothing it answers
+for has to resolve, an internal hostname with no DNS record works.
 
-- **A hostname belongs to the mock, not the simulation,** so a member whose
-  mock declares no `origin:` is never matched and its host reaches the real
-  service; with none declared anywhere, the proxy intercepts nothing. The
-  field's shape is in [reference/sim_yaml_schema.md](reference/sim_yaml_schema.md).
-- **Check the client honors `HTTP_PROXY`/`HTTPS_PROXY` first:**
-  `--proxy --doctor`. Node's `fetch` ignores them, needing undici's
-  `EnvHttpProxyAgent` as the global dispatcher — keep that out of the code
-  under test by preloading it with
-  `NODE_OPTIONS="--require ./proxy-agent.cjs"`, from a file inside the project
-  so `undici` resolves.
-- **Set the banner's three shell environment variables — `HTTPS_PROXY`,
-  `HTTP_PROXY` and `NODE_EXTRA_CA_CERTS` — in the shell that starts the code,
-  before it starts.** They're read by the HTTP client inside your service, so
-  they belong to that shell, not the one running the simulation, and not a
-  shell profile.
-- Every request is logged to the proxy's own stdout — the terminal you started
-  it in — as mocked or passed through. A dependency logged as passed through
-  means a missing `origin`, not a mock that served. Conditions don't apply
-  here and member `scenarios` are ignored, so failures need the one-port run.
+Read `postman simulation run --help` before driving it. The flags, what the
+caller's own process needs in order to reach the proxy, and what to do about a
+client that ignores it are all there and change with the CLI, so take them
+from the command rather than from here.
+
+Two things decide whether a proxied run proves anything. Which hostnames reach
+which member comes from each mock's own `origin:`, not from the `.sim.yaml`
+([reference/sim_yaml_schema.md](reference/sim_yaml_schema.md)), so a member
+whose mock declares none is never matched and its traffic reaches the real
+service — a run can come up having intercepted nothing. And conditions don't
+apply here: member `scenarios` are ignored, so failures need the one-port run.
 
 ## Reading the log
 
