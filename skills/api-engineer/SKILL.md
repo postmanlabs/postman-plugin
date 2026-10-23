@@ -52,8 +52,9 @@ guesswork each time work resumes.
 8. Publishing validated local changes to the bound workspace makes them available
    for future work and teammates with access. Because `postman workspace push`
    changes shared state, obtain user consent before pushing; an existing request
-   to publish those changes supplies that consent. For publication tied to reviewed
-   PR merges, see **ci-integration**.
+   to publish those changes supplies that consent. Say what you changed and why
+   with `-m`; see **bootstrap**. For publication tied to reviewed PR merges, see
+   **ci-integration**.
 9. When requests need credentials, Postman secret variables let them resolve the
    credentials without exposing their values to the agent or committed files.
    See **variables**.

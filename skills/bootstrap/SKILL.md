@@ -75,6 +75,23 @@ A request to publish supplies consent for its scoped push; otherwise obtain
 consent after the diff is reviewable. See **ci-integration** for publishing
 reviewed changes after merge.
 
+## Say what a push changed
+
+A push shows in the workspace activity feed, and `-m` adds a message there
+beside the pusher's name and agent. Before pushing, run
+`postman workspace diff --push-strategy default --json`: `entities` lists each
+`create` and `update` with its `type` and `name`. Write one or two sentences on
+what you changed in this session and why, then push with
+`postman workspace push --yes -m "<message>"`.
+
+Describe only your own changes. If the diff lists changes you did not make,
+leave them out of the message and tell the user. Keep it under 500 characters,
+and leave out secrets, tokens, internal URLs and text copied from the user's
+prompt, because everyone in the workspace sees it. The message is saved only
+when the push creates, updates or deletes something; if saving fails, the
+push still succeeds and a warning is printed. If `postman workspace push --help`
+does not list `-m`, push without a message.
+
 ## Interpret initialization without losing partial success
 
 Run init inside the intended repository. It scaffolds Postman files and
