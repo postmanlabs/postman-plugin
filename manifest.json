@@ -9,8 +9,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-engineer/SKILL.md",
-          "bytes": 5417,
-          "sha256": "5d8b2dd5225cb131c45b279d7ad5d91911894169eccea6a4b0b81a913bcd2260"
+          "bytes": 5833,
+          "sha256": "4cc5b06d76ee77fd7b98c17f0a1299479162ab669a5a5547ee557ad6dc2c9a29"
         }
       ]
     },
@@ -131,8 +131,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/bootstrap/SKILL.md",
-          "bytes": 7693,
-          "sha256": "6b3652f38a788f7a2a3dca30fb134b8aabb59f853bf8ee0f07a3fe9fd45b0f27"
+          "bytes": 8274,
+          "sha256": "5b2dc72aa03334a6057c362154a4d59e63e9df8183f0b5ffd312580cc5982b0a"
         },
         {
           "target": "reference/cli_installation.md",

@@ -11,6 +11,17 @@ in a PR. A workspace binding connects that work to maintained shared context.
 Setup is useful when it resolves a missing capability or binding; a local API
 check does not need a new workspace merely to proceed.
 
+## Start with postman init
+
+`postman init` is idempotent and safe to run in any project, including one
+already initialized. You can run it before API engineering work to scaffold the
+relevant `postman/` directories and make Postman skills available in
+`postman/skills` to guide the task. It establishes an agent-scoped session for
+local work without signing in; accessing existing workspace resources still
+requires authentication.
+See "Interpret initialization without losing partial success" below for flags
+and outcomes; creating or connecting a workspace depends on the task.
+
 ## Resolve only the missing setup
 
 Inspect `postman --version`, `.postman/resources.yaml`, and the relevant
