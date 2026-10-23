@@ -20,7 +20,8 @@ mocks:                                 # required: one entry per member
 ```
 
 Run the `.sim.yaml` rather than a simulation id: a run by id drops every
-member's conditions (CLI 1.70.0–1.73.0).
+member's conditions (CLI 1.70.0–1.73.0), and `--proxy` takes no id at all,
+since the file is what declares the hostnames.
 
 `simulation create` writes each `path:` relative to the repository root, the
 directory holding `postman/`, and puts the simulation in a folder of its own
@@ -50,28 +51,22 @@ directory it looked in.
 - A `latency` request is served and logged, with a `duration` that leaves
   out the delay.
 
-## Proxy mode (`--proxy`)
+## `origin`
 
-The same `.sim.yaml`, with `origin` deciding which hostnames reach which
-member. A path is required: `--proxy` takes no simulation id, because the
-file on disk is what declares the hostnames.
+The hostnames a member answers for under `--proxy`, and the only thing that
+decides which member a proxied request reaches.
 
-A run matches the member's `origin:`. `simulation create` copies that from
-the mock's manifest (`origin: api.stripe.com`, a string or a list, beside
-`mockSrc`), so changing a manifest leaves an existing `.sim.yaml` alone until
-you edit the member or recreate it — and a member can be edited on its own.
+`simulation create` copies `origin` from the mock's manifest
+(`origin: api.stripe.com`, a string or a list).
 
 A scheme and port are stripped (`https://API.Stripe.com:443` →
 `api.stripe.com`). An unmatchable value — a path left on a copied URL, a
 wildcard — is warned about and skipped, leaving the member working; two
 members claiming one hostname fails the run. A member whose mock declares
-none has no `origin` key, since `origin: []` would read as deliberately
-unreachable.
+none has no `origin` key, since `origin: []` would reach the actual service instead of the mock.
 
-Members run on throwaway ports, so a manifest's `port` is ignored.
-`postman simulation run --help` lists the flags proxy mode adds —
-`--proxy-port`, `--scenario`, `--session`, `--log-format`, `--log-body` and
-`--doctor` — and what each one does.
+Under `--proxy` the members run on throwaway ports, so a manifest's `port` is
+ignored.
 
 ## The log (`--output ndjson`)
 

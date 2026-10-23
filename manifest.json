@@ -111,8 +111,8 @@
         {
           "target": "reference/sim_yaml_schema.md",
           "source": "skills/api-simulation/reference/sim_yaml_schema.md",
-          "bytes": 4181,
-          "sha256": "54b3d6075dbe79519286e3cb3c67816b55fed085d60f0fe8023ea4aee1cae521"
+          "bytes": 3833,
+          "sha256": "a80e83487165b16c1732f1ee3365785dc74e6a1c1123c324da571f53f8efa1c6"
         }
       ]
     },
