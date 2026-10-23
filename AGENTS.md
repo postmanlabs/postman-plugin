@@ -17,17 +17,13 @@ Whenever a change to this repo adds, renames, or removes a directory under
    create the same problem.
 2. Grep the whole repo for the old name before deleting or renaming a
    skill directory —
-   `grep -rn "<old-name>" README.md CONTRIBUTING.md skills/ hooks/ intent.md opencode/evals/` —
+   `grep -rn "<old-name>" README.md CONTRIBUTING.md skills/ hooks/ intent.md` —
    since other `SKILL.md` files reference each other by name in prose
    (descriptions, Critical Rules, "see `<skill>`" pointers), and
    `hooks/session-start-context.md` names skills too, not just frontmatter
    or `manifest.json`. Fix every hit; a bare-name reference to a deleted
    skill fails silently. Only a `postman:<name>` one fails CI's `skills` job.
-3. Give every added or renamed skill at least one case in
-   `opencode/evals/cases.json`, and drop cases for a removed one. This
-   reference errors too: CI's `opencode` job fails on a skill
-   with no case or a case naming a skill that no longer exists.
-4. Run `node scripts/build-manifest.js` and commit everything it
+3. Run `node scripts/build-manifest.js` and commit everything it
    regenerates alongside the skill change.
 
 `intent.md` is a historical design record of how the current skill set was

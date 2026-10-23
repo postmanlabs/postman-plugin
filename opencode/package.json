@@ -8,9 +8,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "npm run build && node --test test/*.test.js",
-    "test:harness": "npm run build && node scripts/test-harness.js",
-    "eval:skills": "node scripts/eval-skills.js",
-    "eval:skills:validate": "node scripts/eval-skills.js --validate"
+    "test:harness": "npm run build && node scripts/test-harness.js"
   },
   "devDependencies": {
     "@opencode-ai/plugin": "1.18.32",
