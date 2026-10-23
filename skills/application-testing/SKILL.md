@@ -33,11 +33,10 @@ This skill applies only when the repository has Playwright e2e tests. Verify tha
 
 ### Authentication
 
-Publishing results to Postman requires credentials. Check in this order before taking any action:
+Publishing results to Postman requires credentials. Authenticate only when workspace publishing is needed:
 
-1. **Stored session** — run `postman whoami` first. If the CLI is already authenticated, no further action is needed.
-2. **Environment variable** — if `POSTMAN_API_KEY` is set, the CLI reads it automatically. No login step is needed; this is the expected path in CI and agentic contexts.
-3. **Interactive login** — only initiate `postman login` if neither of the above is in place.
+- If `POSTMAN_API_KEY` is in the environment, run `postman login --with-api-key "$POSTMAN_API_KEY"`. This is the expected path in CI and agentic contexts.
+- If the key is not available, surface the gap to the user — do not initiate `postman login` in an agentic context, as it requires a human to complete a browser flow.
 
 If this run does not need to publish results (local debugging, dry run), authentication can be skipped by passing `--report-events false`.
 
@@ -59,28 +58,24 @@ Decide what action (if any) is needed based on what the dry run reports:
 
 **Legacy pattern:** If the project uses `attachNetworkCapture()` in spec files instead of `withPostman()`, that is still supported — do not re-run setup. The CLI detects it automatically. Only migrate to `withPostman()` if the user asks to upgrade.
 
+### Server reachability
+
+`postman app test` spawns Playwright, which drives the live application — servers must be running before the command starts.
+
+Check `playwright.config.*` for a `webServer` entry. If present unconditionally, Playwright manages server startup automatically. If absent or conditional (e.g. gated on an env var), verify the servers are reachable before running. If they are not, check `webServer.command`, `package.json` scripts, and any README for the startup command, and surface it to the user.
+
 ---
 
 ## Running
 
-Before running, verify the application servers are reachable. The command spawns Playwright, which drives the live app — if servers are not up, tests fail immediately and nothing is captured.
-
-Check `playwright.config.*` for a `webServer` entry. If it is present unconditionally, Playwright manages server startup automatically. If it is absent or conditional (e.g. gated on an env var), servers must already be running. In that case:
-- Check whether the servers are actually reachable before running.
-- If they are not, look at `webServer.command` in the Playwright config, `package.json` scripts, and any README to identify the command that starts them, and surface it to the user.
-
 Before constructing any command, run `postman app test --help` to confirm the available flags for the installed CLI version. Do not guess flag names.
 
-**Always ask the user before running** — do not pick a collection or test command silently. Even when the answer seems obvious, confirm:
-- Which collection to test against (or whether to generate one from traffic)
-- Which test command to use (or confirm the default `npx playwright test` is correct)
+**No `postman.config.cjs` yet** — the first run generates and saves `postman.config.cjs`, writing these choices as the defaults for all future runs. Confirm both with the user before running:
 
-Assess the current project state to decide what to ask:
-
-**No `postman.config.cjs` yet** — the run needs a test command and a collection source:
-
-- *Test command*: check `package.json` scripts for a project-specific test command (e.g. `npm run test:e2e`). Present what you find and confirm with the user — the CLI defaults to `npx playwright test` when a Playwright config is found, but confirm this is what they want.
+- *Test command*: check `package.json` scripts for a project-specific test command (e.g. `npm run test:e2e`). Present what you find and ask the user to confirm — the CLI defaults to `npx playwright test` when a Playwright config is found, but do not assume that is what they want.
 - *Collection*: check `postman/collections/` and list what is available. Ask the user which collection to use. If none exist, ask whether to generate one from captured traffic.
+
+Once confirmed, run `postman app test` with the appropriate flags (e.g. `--target-collection <path>` or `--generate-collection`) — the CLI generates and saves `postman.config.cjs` automatically. Do not write the config file manually.
 
 Running `postman app test` without a collection in a non-interactive context exits with code 2 unless a collection source is provided explicitly.
 
@@ -92,26 +87,16 @@ Running `postman app test` without a collection in a non-interactive context exi
 
 ## Config File (`postman.config.cjs`)
 
-The generated `postman.config.cjs` includes comments explaining every field — read it for the full reference. It stays current with the CLI version installed in the repo.
+Lives at the **repository root**. The generated file includes comments explaining every field — read it for the full reference. It stays current with the CLI version installed in the repo.
 
 To edit config for common needs:
 - **Change the test command** — update `command`
 - **Add or change a collection** — update `targets.default.collections`
 - **Exclude noisy requests** — add `filters` (urlPatterns, methods, headers)
-- **Rewrite URLs before matching** — add `transformers`
+- **Rewrite URLs before matching** — add `transformers` (config entries that normalize staging/proxy prefixes before the CLI matches captured URLs against the collection)
 - **Multiple named environments** — add entries under `targets`
 
 A **target** is a named set of collections + optional environment. The `default` target is used when no `--target` flag is passed. Individual values can be overridden per-run without editing config — consult `postman app test --help` for the override flags.
-
----
-
-## Key Flags
-
-If unsure about any command's options or behavior, run `--help` on it:
-```bash
-postman app test --help
-postman app setup-capture --help
-```
 
 ---
 
@@ -123,17 +108,9 @@ postman --version
 ```
 This skill targets the latest CLI release. If the version is outdated, load the `bootstrap` skill for installation and update steps, then re-run. The `--help` output for each command shows the flags actually available in the installed version.
 
-Read the CLI error output first — it names the specific failure and what to fix. Two scenarios where the output alone is not enough:
+Read the CLI error output first — it names the specific failure and what to fix.
 
-### "No network traffic was captured"
-
-The CLI doesn't diagnose why. Check:
-
-1. **Browsers not installed** — if tests fail with "Executable doesn't exist", run `npx playwright install` (check `package.json` scripts or CI config for how the repo installs them).
-2. **`withPostman()` not wrapping the config** — run `postman app setup-capture --dry-run` to confirm, then apply setup.
-3. **Artifacts in a non-default directory** — pass `--network-log <path>` if Playwright's `outputDir` is custom.
-
-### Tests run but requests show "not matched"
+### Requests show "not matched" in the summary table
 
 Run with `--verbose --no-report-events` to see the unmatched URLs without publishing a diagnostic run to Application Inventory. Then:
 
@@ -155,8 +132,9 @@ Run with `--verbose --no-report-events` to see the unmatched URLs without publis
 
 ## Anti-patterns
 
-- **Do not use capture-only mode when the run command can generate a collection** — capture-only puts the collection in a local output directory and requires manual config setup. The run command can generate the collection, test with it immediately, and save it to config in a single step when no collection is already configured.
+- **Capture-only mode is for reviewing traffic before committing to a collection** — use it when you want to inspect what the app generates before deciding on a collection structure. It is not a substitute for `--generate-collection`, which generates, tests, and saves to config in one step when no collection is configured.
 - **Do not run `postman app init`** — it is deprecated. `postman app test` runs the same setup on first use.
+- **Do not manually write `postman.config.cjs`** — the CLI generates it automatically on first run when you pass `--target-collection` or `--generate-collection`. Writing it by hand bypasses the CLI's generation logic.
 - **Do not combine capture-only mode with a target collection** — capture-only skips collection matching entirely; passing a collection alongside it has no effect and signals a misunderstanding of the mode.
 
 ## Verification
