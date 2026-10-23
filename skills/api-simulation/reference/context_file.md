@@ -28,8 +28,8 @@ comment, so a half-filled file reads as half-filled instead of as fact.
 | Header | Generation date and what the mocks came from. |
 | `## Purpose` | What the simulation stands in for and what work it unblocks. Generated as the member list and a pointer to the handlers; needs hindsight, so it is the last thing to rewrite. |
 | `## Execution` | The commands, in order: start the simulation, start the service pointed at it, prove it is up, count what got called, stop. The generated block leaves the service's own command, the proof request, the port and the log path as `@todo`. |
-| `## Assumptions` | Every precondition someone had to discover, the seeded data worth reusing, and what the simulation cannot reproduce. Each is a bold claim, the consequence of it not holding, and how it was established. |
-| `## Observations` | The last run only, between the `begin`/`end` markers: which members took traffic and which took none. A summary, not a request log, and a failure goes in `## What didn't work` instead. |
+| `## Assumptions` | Every precondition someone had to discover, what the simulation takes for granted about the dependencies' own behaviour, the seeded data worth reusing, and what the simulation cannot reproduce. Each is a dated claim, the consequence of it not holding, and how it was established. |
+| `## Observations` | The last run only, dated, between the `begin`/`end` markers: which members took traffic and which took none. A summary, not a request log, and a failure goes in `## What didn't work` instead. |
 | `## What didn't work` | Failures this simulation has already hit, a dated line each: what broke, the signature you'd recognize it by, where it surfaced, and the cause. Not generated — add the heading at the end, after `## Observations`, the first time a run gives you one. |
 
 `## What didn't work` is the only section that accretes; every other one is
@@ -38,22 +38,25 @@ gone after the next run and a failure is the one thing a session shouldn't
 have to debug twice. A line stays until a run shows it fixed, and keep the ten
 most recent at most — past that the oldest go, fixed or not.
 
-Four assumptions come generated, so don't restate them: an unmatched request
-reaches the real host, mocks don't hot-reload, only HTTP dependencies are
-simulated, and the port must be free with one simulation at a time.
+Don't restate what the generated file already says: its `## Assumptions` ships
+with the ones that hold for every simulation.
 
 ## What earns a line
 
 Write what running it taught you, and only that. Each line passes one test:
-the repo doesn't already state it. That leaves four kinds of thing, and they
+the repo doesn't already state it. That leaves five kinds of thing, and they
 are the file's whole value:
 
 - **A precondition you had to discover** — the setting, the service, the
   cleanup a run needs before it works at all. In `## Assumptions`.
 - **A failure and its cause**, with where it surfaced, so the next session
   recognizes it instead of debugging it again. In `## What didn't work`.
-- **What the simulation can't reproduce**, so a passing run is read for what
-  it actually proves. In `## Assumptions`.
+- **What the run takes for granted about a dependency itself** — that an
+  operation is idempotent, that a timeout means nothing committed, what order
+  events arrive in. A mock answers these whether or not anyone checked, so its
+  answer is a belief your code now relies on. In `## Assumptions`.
+- **What the simulation can't reproduce, and what nobody has settled**, so a
+  passing run is read for what it actually proves. In `## Assumptions`.
 - **What the last run served**: which members took traffic, which stayed
   silent, and why. In `## Observations`.
 
@@ -83,10 +86,20 @@ handler that threw, the mock example captured from the real service, the test
 that reproduces it. Not the run's log, which is wherever that run redirected
 output and which the next run overwrites.
 
-A good `## Observations` is a few lines, and a good `## What didn't work` is
-one per failure:
+A good `## Assumptions` is a claim, its consequence and its date; a good
+`## Observations` is a few lines; a good `## What didn't work` is one line per
+failure:
 
 ```markdown
+## Assumptions
+
+- **`payments` treats a retried charge as idempotent on `Idempotency-Key`.**
+  If it doesn't, the retry path charges twice. Nobody has settled it and the
+  mock answers as though it does. (reasoned 2026-10-22, the mock's handler)
+- **Redis holds no `EVENT_BATCH` key when a run starts.** A leftover one
+  crashes the aggregation flush before any request is sent. (observed
+  2026-10-22)
+
 <!-- begin:observations -->
 2026-10-22: every member served except `workspace`, which the service never
 calls in development, and `god`, which models no endpoints.

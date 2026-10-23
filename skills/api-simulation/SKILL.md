@@ -37,6 +37,11 @@ CLI answers `postman simulation -h` with its general help).
   the contract will do; one that invents responses can send the caller down a
   path the real service never would. In a mock you build, answer `501` for calls this path
   doesn't make: a `404` reads to the caller like a real "not found".
+- **Bring in each mock you don't own as a dependency first, then build the
+  simulation over them.** `postman dependency add mock <name-or-id>` declares
+  it in `.postman/resources.yaml` and materialises it under
+  `postman/.dependencies/`, and the member's `path:` points there; `-w
+  <workspace>` resolves a name from the workspace that owns it.
 - **Prefix each mock's `pm.state` keys with its name.** As of CLI 1.73.0,
   members of a local run read each other's keys, so two mocks storing
   `orders` overwrite each other.
@@ -44,20 +49,18 @@ CLI answers `postman simulation -h` with its general help).
 ## Running it
 
 The run is a server that never exits, so a foreground command never returns.
-Start it in the background with an explicit port, its log in a file:
+Start it in the background, its log in a file:
 
 ```bash
 postman simulation run postman/simulations/checkout-dev.sim.yaml --port 4900 --output ndjson > sim.ndjson 2> sim.err &
 ```
 
-Without `--port`, a busy 3000 silently becomes a random port and every base
-URL points at nothing. It's up when `sim.ndjson` has a `listening` event; a
-start-up error is in `sim.err`. It listens on 127.0.0.1 only, so a caller in
-a container or VM can't reach it. Stop it with
-`pkill -INT -f "simulation run .*<file>.sim.yaml"` — `-f` matches the whole
-command line, so a pattern built from the bare filename misses a run launched
-by path; `kill $!` leaves it running, because the `postman` launcher ignores
-the signal. Nothing reloads: restart it after a mock edit.
+`--port` is optional. It's up when `sim.ndjson` has a `listening` event; a
+start-up error is in `sim.err`. That event carries the bound port and each
+member's address, so take the base URLs from it rather than from the port you
+asked for. Stop it with
+`pkill -INT -f "simulation run .*<file>.sim.yaml"`. Nothing reloads: restart
+it after a mock edit.
 
 Point the caller at it without changing what the code does once deployed.
 Under path routing, swap only the host and keep the path:
@@ -78,28 +81,21 @@ hard-coded, built from config the change shouldn't touch, or owned by an
 SDK — and because nothing it answers for has to resolve, an internal
 hostname with no DNS record works.
 
-- **A hostname belongs to the mock, not the simulation.** `origin:` in the
-  mock's own `config.yaml`, a string or a list, carried onto every member
-  built from it. A member with none is never matched and its host reaches
-  the real service; with none anywhere, the proxy intercepts nothing.
-- **Check the client honors the variables first:** `--proxy --doctor` probes
-  the ones the project has installed and prints a fix for each that doesn't.
-  Node's `fetch` ignores them, needing undici's `EnvHttpProxyAgent` as the
-  global dispatcher — keep that out of the code under test by preloading it
-  with `NODE_OPTIONS=--require ./proxy-agent.cjs`, from a file inside the
-  project so `undici` resolves.
-- **Export all three of the banner's lines**, `HTTPS_PROXY`, `HTTP_PROXY`
-  and `NODE_EXTRA_CA_CERTS`, in the shell that starts the code, before it
-  starts: an intercepted HTTPS host is served from a CA made fresh each run
-  and deleted on exit. Copy the CA path from the banner, since each install
-  channel has its own, and set all three for that session alone, so trust in
-  a CA ends with the run that made it.
-- Every request is logged as mocked or passed through, `--log-format json`
-  for machine-readable lines, so a dependency logged as passed through means
-  a missing `origin`, not a mock that served. Conditions don't apply here and
-  member `scenarios` are ignored, so failures need the one-port run;
-  `--scenario <name>` picks one for every member at once, and a member
-  without it serves its default.
+- **A hostname belongs to the mock, not the simulation,** so a member whose
+  mock declares no `origin:` is never matched and its host reaches the real
+  service; with none declared anywhere, the proxy intercepts nothing. The
+  field's shape is in [reference/sim_yaml_schema.md](reference/sim_yaml_schema.md).
+- **Check the client honors the variables first:** `--proxy --doctor`. Node's
+  `fetch` ignores them, needing undici's `EnvHttpProxyAgent` as the global
+  dispatcher — keep that out of the code under test by preloading it with
+  `NODE_OPTIONS="--require ./proxy-agent.cjs"`, from a file inside the project
+  so `undici` resolves.
+- **Export the banner's variables in the shell that starts the code, before it
+  starts** — that shell, not the one running the simulation, and not a shell
+  profile.
+- A dependency logged as passed through means a missing `origin`, not a mock
+  that served. Conditions don't apply here and member `scenarios` are ignored,
+  so failures need the one-port run.
 
 ## Reading the log
 
@@ -142,9 +138,9 @@ stock reserved and never released.
 
 Every simulation is created with a `<name>.context.md` beside it, holding what
 running this one has taught: the commands that start it and prove it's up, the
-preconditions and what breaks when one fails, the data seeded to test with,
-the failures earlier runs already hit, and what a passing run still doesn't
-prove. The `.sim.yaml` says what the simulation is, not how it behaves, so
+preconditions and what breaks when one fails, what it takes for granted about
+the dependencies themselves, the data seeded to test with, the failures earlier
+runs already hit, and what a passing run still doesn't prove. The `.sim.yaml` says what the simulation is, not how it behaves, so
 this is the file that saves a session the search. A new one is mostly
 `@todo`s, which are the questions a first real run answers.
 

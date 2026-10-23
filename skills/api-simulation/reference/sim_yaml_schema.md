@@ -73,25 +73,10 @@ mock a working member. `mock get` shows what a mock declares, and `origin` is
 left out of a member entirely when its mock declares none, since `origin: []`
 would read as deliberately unreachable.
 
-A matched request is forwarded to that member with `pm-mock-scenario`,
-`x-mock-scenario` and `x-mock-session`, plus `/<routeKey>` on the path under
-`routing: path` or an `x-mock-slug` header under `routing: header`. A member
-that doesn't answer in 30s gives `504`, one that can't be reached `502`.
-Members run on throwaway ports, so a manifest's `port` is ignored and no
-start history is recorded (`--workspace` and `--simulation` warn). Ctrl+C
-prints the total, mocked and passed-through counts.
-
-| Flag | Notes |
-| --- | --- |
-| `--proxy-port <n>` | Default `7001`, bound to `127.0.0.1` — point clients there, not at `localhost`. A busy port fails at once with exit `1`. |
-| `--scenario <name>` | Sent to every member, default `default`. A member without that scenario serves its default. |
-| `--session <id>` | Sent as `x-mock-session`. Default: a generated id. |
-| `--log-format <text\|json>` | Request log: method, host, path, destination (a routeKey, or `passthrough`), status, duration. |
-| `--log-body` | Also log response bodies, truncated. Buffers responses; debugging only. |
-| `--doctor` | Probe each installed HTTP client through the proxy, print a fix for each that ignores the proxy variables, exit `0` if all reached it. With no origins declared it reports nothing to probe. |
-
-Each of these without `--proxy` is a usage error (exit `2`), as is an
-unsupported `--log-format`.
+Members run on throwaway ports, so a manifest's `port` is ignored.
+`postman simulation run --help` lists the flags proxy mode adds —
+`--proxy-port`, `--scenario`, `--session`, `--log-format`, `--log-body` and
+`--doctor` — and what each one does.
 
 ## The log (`--output ndjson`)
 
