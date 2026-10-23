@@ -58,11 +58,10 @@ are the file's whole value:
   silent, and why. In `## Observations`.
 
 For anything the repo does state — routes and request shapes, valid actions,
-auth mechanics, each mock's hosts, config flags — point at the file that holds
-it (`actions are in config/actions.js`, `credentials come from
-config/env/development.js`) and let the reader go there. One source stays
-true; a copy here drifts, and this file gets committed, so a named file is
-also how a credential stays out of it.
+auth mechanics, each mock's hosts, config flags — name the file that holds it,
+the way the generated `## Purpose` points at the handlers, and let the reader
+go there. One source stays true; a copy here drifts, and this file gets
+committed, so a named file is also how a credential stays out of it.
 
 Write statements that stay true between runs. Counts, timings and coverage
 belong to the run that produced them, so leave them in the log and keep the
