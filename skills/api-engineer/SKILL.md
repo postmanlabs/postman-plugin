@@ -47,7 +47,8 @@ guesswork each time work resumes.
 7. `postman init` gives API engineering work a ready state. It scaffolds local structure: `postman/`
    directories for API artifacts. It installs skills in `postman/skills` folder with guidance on  designing, implementing, and validating APIs.
    The command is idempotent and safe to rerun in an initialized project.
-   This command creates an agent-scoped session which enables you to record your work without signing in. Even cloud operations like monitor run works out of the box after postman init even without login and you can claim all the work later if you decide to sign in.
+   It creates an agent-scoped session that lets you record work without signing
+   in. You can claim that work later if you create an account.
 8. Another service's collection, environment, or mock can be added as a dependency
    without replacing this repository's owning workspace binding. Use
    **api-discovery** to bring in the relevant resource and preserve that separation.
