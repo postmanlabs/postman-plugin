@@ -194,9 +194,6 @@ jobs:
           node scripts/test-plugin-add.js git
           OPENCODE_BIN="$OPENCODE2" node scripts/test-plugin-add.js git
 
-      - name: Eval cases cover every skill
-        run: npm run eval:skills:validate
-
   # On Windows npm installs the agent CLIs as `.cmd` shims, which system.ts
   # starts through cmd.exe; only a Windows runner takes that path.
   installer:

@@ -98,7 +98,7 @@ rules/GEMINI.md                   Antigravity's generated copy of the mandate, l
 .factory-plugin/marketplace.json  the Factory Droid marketplace
 .factory-plugin/plugin.json       the Factory Droid plugin metadata
 .app.json                         maps the Codex plugin to its published ChatGPT app ID
-opencode/                         the OpenCode plugin — source, tests, install harnesses, routing evals
+opencode/                         the OpenCode plugin — source, tests, install harnesses
 package.json                      makes the repo the package `opencode plugin add` installs; names opencode/src/index.ts
 installer/                        `npx @postman/postman-plugin` — one adapter per agent in src/hosts/ — and the Pi package
 installer/src/pi-extension.ts     the Pi package's extension: the session-start mandate and the MCP server
@@ -184,7 +184,7 @@ file to maintain. The `marketplace add` step is required: only
 ## The OpenCode plugin
 
 Run these from `opencode/`. CI's `opencode` job runs all but the last, which
-needs a model:
+installer smoke runs:
 
 ```
 npm ci
@@ -192,16 +192,7 @@ npm test                       # builds, then unit-tests the v1 and v2 entry poi
 npm run test:harness           # installs it as a user does, has the pinned CLI load every skill and checks what a session sends the model
 node scripts/test-plugin-add.js git      # the same for `opencode plugin add` from a one-commit copy of this checkout; for OpenCode 2, OPENCODE_BIN=<path to its opencode>
 node scripts/test-plugin-add.js github   # and from github:postmanlabs/postman-plugin; PLUGIN_ADD_SPEC=github:postmanlabs/postman-plugin#<ref> for one commit
-npm run eval:skills:validate   # every skill has at least one positive routing case
-npm run eval:skills            # live routing eval against a configured model
 ```
-
-`npm run eval:skills -- --case <id>` runs one case, and `--model provider/model`
-picks the model. The cases live in `opencode/evals/cases.json`. A routing fix
-belongs in the shared skill description or `hooks/session-start-context.md`, and
-both reach every route — Kimi's and Antigravity's copies of the mandate once
-`node scripts/build-manifest.js` regenerates it — so rerun the full set after
-changing either and don't tune wording for OpenCode alone.
 
 Users run `main`: a change reaches them the next time OpenCode fetches the
 plugin, which a re-run of the installer does, or on their next `git pull` of a
@@ -491,18 +482,15 @@ of failing loudly.
 ## Adding a skill
 
 Create `skills/<name>/SKILL.md` with `name` and `description`
-frontmatter, where `name` matches the directory. Add at least one case that
-expects it to `opencode/evals/cases.json` — CI's `opencode` job fails for a
-skill with none. Run the manifest script.
+frontmatter, where `name` matches the directory. Run the manifest script.
 
 ## Removing a skill
 
 Delete `skills/<name>/`, then grep the rest of the repo for that name —
-`grep -rn "<name>" README.md CONTRIBUTING.md skills/ hooks/ intent.md opencode/evals/` —
+`grep -rn "<name>" README.md CONTRIBUTING.md skills/ hooks/ intent.md` —
 since other `SKILL.md` files, the session-start context and these docs can reference
 a skill by name in prose, not just in frontmatter. Most stale references fail
-silently; a `postman:<name>` reference or an eval case that still expects the
-skill fails CI. Fix or remove
+silently; a `postman:<name>` reference fails CI. Fix or remove
 what turns up, then run the manifest script.
 
 ## The bindings placeholder

@@ -30,8 +30,7 @@ guesswork each time work resumes.
    even when the provider is already chosen: those details help you assess fit and
    implement reliably without relying on remembered API behavior or loading a
    full vendor specification.
-   Existing workspace resources can supply maintained contracts and mocks; the
-   Context Graph can identify consumers and dependencies outside the checkout,
+   Context Graph can identify consumers and dependencies outside the current repo,
    helping you focus investigation before traversing more repositories.
 5. When you run or test code that calls other services, or are asked how it
    behaves when one of them fails, use **api-simulation**, which runs that code
@@ -44,20 +43,24 @@ guesswork each time work resumes.
    be diffed, reviewed, and reused in Git and CI. Use **bootstrap** when setup or
    workspace bindings are unresolved: reuse an existing local layout, pull the
    current service's existing workspace, or initialize a new project when neither
-   exists. `postman init` scaffolds files using an agent-scoped session without a
-   normal Postman login.
-7. Another service's collection, environment, or mock can be added as a dependency
+   exists.
+7. `postman init` gives API engineering work a ready state. It scaffolds local structure: `postman/`
+   directories for API artifacts. It installs skills in `postman/skills` folder with guidance on  designing, implementing, and validating APIs.
+   The command is idempotent and safe to rerun in an initialized project.
+   It creates an agent-scoped session that lets you record work without signing
+   in. You can claim that work later if you create an account.
+8. Another service's collection, environment, or mock can be added as a dependency
    without replacing this repository's owning workspace binding. Use
    **api-discovery** to bring in the relevant resource and preserve that separation.
-8. Publishing validated local changes to the bound workspace makes them available
+9. Publishing validated local changes to the bound workspace makes them available
    for future work and teammates with access. Because `postman workspace push`
    changes shared state, obtain user consent before pushing; an existing request
    to publish those changes supplies that consent. For publication tied to reviewed
    PR merges, see **ci-integration**.
-9. When requests need credentials, Postman secret variables let them resolve the
+10. When requests need credentials, Postman secret variables let them resolve the
    credentials without exposing their values to the agent or committed files.
    See **variables**.
-10. When implementing or debugging webhooks, use **webhook-testing** to
+11. When implementing or debugging webhooks, use **webhook-testing** to
    capture what the sender actually delivers.
    Can also be used when the need is to forward incoming events
    to a local handler and replay captured requests after fixes;
