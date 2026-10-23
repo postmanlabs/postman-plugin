@@ -85,17 +85,21 @@ hostname with no DNS record works.
   mock declares no `origin:` is never matched and its host reaches the real
   service; with none declared anywhere, the proxy intercepts nothing. The
   field's shape is in [reference/sim_yaml_schema.md](reference/sim_yaml_schema.md).
-- **Check the client honors the variables first:** `--proxy --doctor`. Node's
-  `fetch` ignores them, needing undici's `EnvHttpProxyAgent` as the global
-  dispatcher — keep that out of the code under test by preloading it with
+- **Check the client honors `HTTP_PROXY`/`HTTPS_PROXY` first:**
+  `--proxy --doctor`. Node's `fetch` ignores them, needing undici's
+  `EnvHttpProxyAgent` as the global dispatcher — keep that out of the code
+  under test by preloading it with
   `NODE_OPTIONS="--require ./proxy-agent.cjs"`, from a file inside the project
   so `undici` resolves.
-- **Export the banner's variables in the shell that starts the code, before it
-  starts** — that shell, not the one running the simulation, and not a shell
-  profile.
-- A dependency logged as passed through means a missing `origin`, not a mock
-  that served. Conditions don't apply here and member `scenarios` are ignored,
-  so failures need the one-port run.
+- **Set the banner's three shell environment variables — `HTTPS_PROXY`,
+  `HTTP_PROXY` and `NODE_EXTRA_CA_CERTS` — in the shell that starts the code,
+  before it starts.** They're read by the HTTP client inside your service, so
+  they belong to that shell, not the one running the simulation, and not a
+  shell profile.
+- Every request is logged to the proxy's own stdout — the terminal you started
+  it in — as mocked or passed through. A dependency logged as passed through
+  means a missing `origin`, not a mock that served. Conditions don't apply
+  here and member `scenarios` are ignored, so failures need the one-port run.
 
 ## Reading the log
 
@@ -189,4 +193,5 @@ including when you skipped the owner's.
 Then write the run back into `<name>.context.md`, so the next session starts
 where this one ended: the `@todo`s it answered, whatever it found wrong, a
 precondition you had to discover, what broke and why, and which members served
-or stayed silent — the last is the one section every run rewrites.
+or stayed silent — the last is a line every run adds, so a member silent across
+several runs reads as a pattern rather than a one-off.
