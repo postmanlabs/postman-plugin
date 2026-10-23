@@ -1,8 +1,8 @@
 ---
 name: add-marketplace
-description: Add a new vendor plugin route (marketplace) to this repo - Windsurf, Zed, Copilot, Gemini CLI, or any other agent that can be pointed at a skills directory, whether it loads a plugin manifest, only a project config, or a package from a registry. Use when asked to add, wire up, or onboard a new marketplace, vendor, plugin route, or agent target. Covers the manifest or config, the MCP config, the session-start hook, the CI schema check, the installer adapter, and the README and CONTRIBUTING sections that do not update themselves.
+description: Use before making Postman install into, load in, or support another coding agent - a new route under `.<vendor>-plugin/`, `mcp.<vendor>.json`, or an adapter in `installer/src/hosts/`, for any agent (Windsurf, Zed, Gemini CLI, Amp, or one that loads a manifest, a root config, or a registry package). Also use when changing how an existing route loads skills, the session-start hook or the MCP server. Covers the manifest, MCP config, hook, CI schema check, installer adapter, delivery harness in validate and smoke CI, and the README and CONTRIBUTING sections.
+when_to_use: Triggers on "add support for <agent>", "make the plugin work in <agent>", "add a <agent> route/marketplace/plugin", "onboard <agent>", "npx @postman/postman-plugin should install into <agent>", or any new file in installer/src/hosts/ or a new `.<vendor>-plugin/` directory.
 argument-hint: <vendor-name>
-disable-model-invocation: true
 ---
 
 # Add a vendor plugin route
@@ -12,8 +12,8 @@ directories. Every route points back at them; none gets its own copy. Adding one
 is a handful of files' worth of edits plus a docs pass, and most of the cost is in the
 parts nothing validates.
 
-Vendor to add: **$ARGUMENTS** (if that is empty, ask which vendor before doing
-anything else).
+Vendor to add: **$ARGUMENTS**. If that is empty, take the vendor from the
+request; ask only when the request names none.
 
 ## Work in a worktree
 
@@ -158,7 +158,7 @@ the injection itself: the OpenCode plugin reads
 plugin hooks. Either way it is always-on context rather than a `SessionStart`
 event, but the effect on the session is the one that matters.
 
-Both failure modes here are silent, and in CI only the Droid harness runs `hooks/` through an agent, so read
+Both failure modes here are silent, and only a route's own harness (Step 7) shows the mandate reaching the model, so read
 [references/hooks.md](references/hooks.md) before editing anything under
 `hooks/`: it carries the per-vendor variable and discovery tables, the load-bearing
 properties of that command, and the six things to establish for a
@@ -252,7 +252,29 @@ nothing, and says nothing.
 3. Add `installer/test/<vendor>.test.js` pinning the exact command sequence for
    a fresh install, a re-run and a remove.
 
-## Step 7 — Verify
+## Step 7 — The delivery harness, in validate and smoke CI
+
+An install that exits 0 proves nothing: a hook can run, report success and
+still deliver no mandate. `AGENTS.md` requires every route to have a harness
+that checks what the agent sends its model, so the route is not done without one.
+
+1. Add `scripts/<vendor>-harness.js` on `scripts/lib/harness.js`'s stand-in,
+   with `scripts/claude-code-harness.js` as the model. Install the checkout the
+   way the installer does, run one headless session, and assert every skill in
+   `manifest.json` is listed, the mandate arrives in the form the agent resolves,
+   the skill it names loads, and the MCP server gets the route's headers. Most
+   agents reach a local model through a custom-provider or BYOK setting; if this
+   one cannot, check what it registers instead and say why, as Antigravity's does.
+2. Run it against `main` first. It should fail wherever the route is incomplete.
+   That failure is the evidence the harness checks something.
+3. Add a job to `.github/workflows/validate.yml` that runs it against a pinned
+   agent release, on the `os` matrix so Windows is measured too.
+4. Add the agent to `.github/workflows/installer-smoke.yml`: install its latest
+   release, add its id to `REMOVABLE` with a matching entry in
+   `installer/scripts/smoke-check.js`, and run the harness against it.
+5. List the harness in `CONTRIBUTING.md`'s "Checking what each route delivers".
+
+## Step 8 — Verify
 
 `$ROUTE_FILE` is the manifest, root config or package manifest from Step 1.
 
@@ -262,9 +284,10 @@ actionlint .github/workflows/validate.yml
 node scripts/check-json.js "$ROUTE_FILE"
 npx -y @anthropic-ai/claude-code plugin validate .
 node .claude/hooks/validate-manifests.js && echo "manifests consistent"
+node scripts/<vendor>-harness.js   # Step 7; against main it must fail, here it must pass
 
-# Root resolution for the session-start hook. Pass this vendor's plugin-root
-# variable - or `none` for a config-only or package vendor, which has none and
+# Root resolution for the session-start hook. Pass the plugin-root variable the
+# route's hook command names - or `none` for a config-only or package vendor, which has none and
 # should not gain one. `none` says "not applicable" and still exercises the shared hook;
 # naming a variable that does not exist reports a FAIL that reads like a
 # regression.
@@ -305,7 +328,7 @@ covers what each of these checks and — more usefully — what none of them do.
   breaks all four at once.
 - **Do not bump any version.** `AGENTS.md` keeps bumps to a dedicated release
   PR. The new route's `0.1.0` is its starting value, not a bump; every other
-  route's strings come out of your diff untouched, which Step 7 checks.
+  route's strings come out of your diff untouched, which Step 8 checks.
 - **Do not run `node scripts/build-manifest.js` expecting a diff** *from the
   route itself*. `manifest.json` indexes the skill *files* and takes `plugin`
   from `.claude-plugin/plugin.json`'s name, and the Kimi and Antigravity copies
