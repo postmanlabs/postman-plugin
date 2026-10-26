@@ -111,9 +111,6 @@ jobs:
       - name: Routes agree with their MCP configs
         run: node .claude/hooks/validate-manifests.js
 
-      - name: The workspace pre-load hook prints the notes, and nothing when it cannot
-        run: node --test scripts/preload-hook.test.js
-
       # SchemaStore's Claude Code schemas check structure and types but accept
       # invalid plugin names and unknown keys; Claude Code's own validator catches
       # those, so both run.

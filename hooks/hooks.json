@@ -9,13 +9,6 @@
             "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/session-start\" \"${DROID_PLUGIN_ROOT}\"",
             "shell": "bash",
             "async": false
-          },
-          {
-            "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/preload-workspace-context\" \"${DROID_PLUGIN_ROOT}\"",
-            "shell": "bash",
-            "timeout": 12,
-            "async": false
           }
         ]
       }
