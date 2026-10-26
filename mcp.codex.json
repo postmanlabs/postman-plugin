@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "postman": {
+    "postman-mcp": {
       "type": "http",
       "url": "https://mcp.postman.com/mcp",
       "http_headers": {
