@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { codex, registeredRef } from '../dist/hosts/codex.js';
@@ -504,4 +505,15 @@ test('the RPC transport handles notifications, remote errors, EOF, bad JSON and 
 
     await createSystem({ dryRun: true, log: () => {} }).withJsonRpc('/nonexistent/codex', [], async () => { called = true; });
     assert.equal(called, false);
+});
+
+// Signed in through ChatGPT, Codex drops a plugin's MCP server that shares a name with one of its apps.
+// https://github.com/openai/codex/blob/rust-v0.164.0/codex-rs/core-plugins/src/app_mcp_routing.rs#L20-L38
+test('no MCP server in mcp.codex.json shares a name with an app in .app.json', () => {
+    const repoRoot = path.resolve(import.meta.dirname, '..', '..'),
+        read = (file) => JSON.parse(fs.readFileSync(path.join(repoRoot, file), 'utf8')),
+        apps = Object.keys(read('.app.json').apps),
+        servers = Object.keys(read('mcp.codex.json').mcpServers);
+
+    assert.deepEqual(servers.filter((name) => apps.includes(name)), [], 'rename the server, or Codex hides it from ChatGPT sign-ins');
 });
