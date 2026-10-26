@@ -1,7 +1,7 @@
 {
   "name": "postman",
   "displayName": "Postman",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Equip Antigravity with specialized Postman skills for the complete API lifecycle. Discover, design, test, document, mock, monitor, and improve APIs through agent-friendly, filesystem-first workflows.",
   "logo": "./assets/logo.svg",
   "suggestedPrompts": [
