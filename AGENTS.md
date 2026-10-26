@@ -60,6 +60,13 @@ that agent's releases, once per install route, and cite the bisect in the
 PR. A changelog entry, the version CI pins and a number another doc states
 are not minimums. A change to a route's manifest can move it.
 
+## Add a route with the add-marketplace skill
+
+Before making Postman install into, load in, or support another agent, load
+the `add-marketplace` skill (`.claude/skills/add-marketplace/SKILL.md`) and
+follow every step. A route missing any of them, the delivery harness included,
+is not done.
+
 ## Check what a route delivers, not that it installed
 
 When you change how a route delivers Postman (`hooks/`, a route manifest
