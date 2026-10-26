@@ -28,6 +28,14 @@ One command configures **Antigravity, Claude Code, Codex, GitHub Copilot CLI, Cu
 Factory Droid, Kimi Code, OpenCode and Pi**. Run it again to update, `status` to see what's installed,
 and `remove` to uninstall; `--agent <id>` limits any of them to one agent.
 
+For Codex, installation also approves Postman's session-start hook, which adds
+instructions for using Postman's API skills. There is no separate hook prompt
+or dump of its instructions. Already trusted hooks are left alone. If Codex's
+hook API is unavailable, installation continues with a note to approve the hook
+inside Codex. Run the installer and Codex with the same `HOME` and `CODEX_HOME`;
+hook approval applies to that profile. If Codex later refreshes the plugin from
+`main` and its contents change, run the installer again to approve the update.
+
 You can also use the following commands to install individually:
 
 ### Antigravity
@@ -58,9 +66,14 @@ does nothing where the marketplace is already registered.
 [View Postman on ChatGPT Plugins](https://chatgpt.com/plugins/postman?open_in_app)
 
 ```bash
-codex plugin marketplace add postmanlabs/postman-plugin
+codex plugin marketplace add postmanlabs/postman-plugin --ref main
+codex plugin marketplace upgrade postman
 codex plugin add postman@postman
 ```
+
+These commands track `main`; review the session-start hook in Codex after a
+manual install. The npx installer also approves the hook after each install or
+update.
 
 ### Cursor
 
@@ -218,6 +231,12 @@ exercise failure paths.
 
 
 ## How Postman builds context
+
+`postman init` is idempotent and safe to run in any project. Run it before API
+engineering work to create the relevant local directories and make Postman
+skills available to guide the task, even if the project is already initialized.
+See [bootstrap](skills/bootstrap/SKILL.md#start-with-postman-init) for setup
+options and workspace binding.
 
 Work done in a Postman folder produces artifacts: collection runs, lint
 results, request history, mock deployments. When that folder is connected to a

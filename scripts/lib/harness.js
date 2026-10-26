@@ -155,7 +155,7 @@ export function assertMcpHeaders (agent, mcpRequests, headers) {
     }
 }
 
-/** `postman:` names for Claude Code and Codex; bare names for every agent that doesn't namespace skills. */
+/** `postman:` names for Claude Code, Codex and Kimi Code; bare names for every agent that doesn't namespace skills. */
 export function assertMandate (agent, text, { namespaced }) {
     assert.match(text, /<EXTREMELY_IMPORTANT>\s*You have the Postman plugin/, `the session-start mandate is not in what ${agent} sent the model`);
 

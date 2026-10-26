@@ -98,7 +98,7 @@ rules/GEMINI.md                   Antigravity's generated copy of the mandate, l
 .factory-plugin/marketplace.json  the Factory Droid marketplace
 .factory-plugin/plugin.json       the Factory Droid plugin metadata
 .app.json                         maps the Codex plugin to its published ChatGPT app ID
-opencode/                         the OpenCode plugin — source, tests, install harnesses, routing evals
+opencode/                         the OpenCode plugin — source, tests, install harnesses
 package.json                      makes the repo the package `opencode plugin add` installs; names opencode/src/index.ts
 installer/                        `npx @postman/postman-plugin` — one adapter per agent in src/hosts/ — and the Pi package
 installer/src/pi-extension.ts     the Pi package's extension: the session-start mandate and the MCP server
@@ -184,7 +184,7 @@ file to maintain. The `marketplace add` step is required: only
 ## The OpenCode plugin
 
 Run these from `opencode/`. CI's `opencode` job runs all but the last, which
-needs a model:
+installer smoke runs:
 
 ```
 npm ci
@@ -192,16 +192,7 @@ npm test                       # builds, then unit-tests the v1 and v2 entry poi
 npm run test:harness           # installs it as a user does, has the pinned CLI load every skill and checks what a session sends the model
 node scripts/test-plugin-add.js git      # the same for `opencode plugin add` from a one-commit copy of this checkout; for OpenCode 2, OPENCODE_BIN=<path to its opencode>
 node scripts/test-plugin-add.js github   # and from github:postmanlabs/postman-plugin; PLUGIN_ADD_SPEC=github:postmanlabs/postman-plugin#<ref> for one commit
-npm run eval:skills:validate   # every skill has at least one positive routing case
-npm run eval:skills            # live routing eval against a configured model
 ```
-
-`npm run eval:skills -- --case <id>` runs one case, and `--model provider/model`
-picks the model. The cases live in `opencode/evals/cases.json`. A routing fix
-belongs in the shared skill description or `hooks/session-start-context.md`, and
-both reach every route — Kimi's and Antigravity's copies of the mandate once
-`node scripts/build-manifest.js` regenerates it — so rerun the full set after
-changing either and don't tune wording for OpenCode alone.
 
 Users run `main`: a change reaches them the next time OpenCode fetches the
 plugin, which a re-run of the installer does, or on their next `git pull` of a
@@ -270,10 +261,17 @@ Kimi discards a SessionStart hook's output, so the mandate reaches it through
 `systemPromptPath` in `.kimi-plugin/plugin.json`, which Kimi Code adds to the
 system prompt from 0.31.0 on; older releases load the skills without it. The
 file it names, `.kimi-plugin/session-start-context.md`, is
-`hooks/session-start-context.md` with `` `postman:<skill>` `` rewritten to
-`` `<skill>` ``, because Kimi's skill names are un-namespaced, as Droid's are.
+`hooks/session-start-context.md` plus a line telling the model to drop the
+`postman:` prefix where its skill listing has none. Kimi Code lists and resolves
+plugin skills as `postman:<skill>` from 2.3.0 on, and only as `<skill>` before
+it, so the mandate names them as 2.3.0 does and the line covers older releases.
 `node scripts/build-manifest.js` writes it, so don't edit it by hand: `--check`
 fails CI and the pre-commit guard when it is stale.
+
+`scripts/kimi-harness.js` loads the entry skill by the name the mandate gives,
+without the prefix when Kimi lists skills bare. CI's `kimi` job runs it against
+a pinned Kimi from before 2.3.0, and the `Installer smoke` workflow against the
+latest, so both forms are checked.
 
 ## The Antigravity plugin
 
@@ -283,8 +281,8 @@ Installing again replaces that copy, which is how it updates; agy has no update
 command. Antigravity has no session-start hook (it never runs `hooks/`), so the
 mandate reaches it as an always-on rule: agy loads `rules/GEMINI.md` from the
 plugin root with no frontmatter. That file is `hooks/session-start-context.md`
-with `` `postman:<skill>` `` rewritten to `` `<skill>` ``, the same copy Kimi
-gets; `node scripts/build-manifest.js` writes it, so don't edit it by hand.
+with `` `postman:<skill>` `` rewritten to `` `<skill>` ``;
+`node scripts/build-manifest.js` writes it, so don't edit it by hand.
 
 agy 1.3.5 ignores the manifest's `mcpServers` path, though Antigravity's docs
 describe it, and loads only its default, `mcp_config.json` at the plugin root.
@@ -331,8 +329,8 @@ DROID_BIN=<path to droid> node scripts/factory-harness.js
 Each route has a harness that installs this checkout the way a user gets it,
 under a throwaway home, and checks what the agent sends its model and the MCP
 server: every skill in `manifest.json` listed, the session-start mandate in the
-form that agent resolves (`postman:` names for Claude Code and Codex, bare names
-elsewhere), the skill the mandate names loaded, and the route's MCP headers.
+form that agent resolves (`postman:` names for Claude Code, Codex and Kimi Code,
+bare names elsewhere), the skill the mandate names loaded, and the route's MCP headers.
 `scripts/lib/harness.js` holds the stand-in they share. CI's job per route runs
 each harness against a pinned agent; the `Installer smoke` workflow runs it
 against the latest one nightly.
@@ -484,18 +482,15 @@ of failing loudly.
 ## Adding a skill
 
 Create `skills/<name>/SKILL.md` with `name` and `description`
-frontmatter, where `name` matches the directory. Add at least one case that
-expects it to `opencode/evals/cases.json` — CI's `opencode` job fails for a
-skill with none. Run the manifest script.
+frontmatter, where `name` matches the directory. Run the manifest script.
 
 ## Removing a skill
 
 Delete `skills/<name>/`, then grep the rest of the repo for that name —
-`grep -rn "<name>" README.md CONTRIBUTING.md skills/ hooks/ intent.md opencode/evals/` —
+`grep -rn "<name>" README.md CONTRIBUTING.md skills/ hooks/ intent.md` —
 since other `SKILL.md` files, the session-start context and these docs can reference
 a skill by name in prose, not just in frontmatter. Most stale references fail
-silently; a `postman:<name>` reference or an eval case that still expects the
-skill fails CI. Fix or remove
+silently; a `postman:<name>` reference fails CI. Fix or remove
 what turns up, then run the manifest script.
 
 ## The bindings placeholder

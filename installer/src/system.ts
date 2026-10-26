@@ -3,13 +3,17 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { redact } from './source.js';
+import { type JsonRpc, JsonRpcError, withJsonRpc } from './json-rpc.js';
 
 export type ExecResult = { code: number; stdout: string; stderr: string };
 export type ExecOptions = { env?: Record<string, string> };
+/** A JSON-RPC request, or with `notify` a notification, which gets no reply. */
+export type RpcCall = { method: string; params?: unknown; notify?: boolean };
+export type RpcReply = { result?: unknown; error?: { code?: number; message?: string } };
 
 /**
  * Everything a host adapter may do to the machine. `probe` is for read-only
- * commands and always runs; `run`, `writeFile` and `remove` change state, so a
+ * commands and always runs; `run`, `withJsonRpc`, `writeFile` and `remove` change state, so a
  * dry run prints them instead.
  */
 export interface System {
@@ -17,6 +21,7 @@ export interface System {
     readonly platform: NodeJS.Platform;
     readonly env: NodeJS.ProcessEnv;
     readonly dryRun: boolean;
+    readonly cwd: string;
     which (command: string): Promise<string | null>;
     /** `false` only when the path does not exist; any other error is thrown, like `readFile`. */
     exists (file: string): Promise<boolean>;
@@ -25,7 +30,15 @@ export interface System {
     /** The names in a directory; empty when it is missing or not a directory, and any other error is thrown, like `readFile`. */
     readDir (dir: string): Promise<string[]>;
     probe (command: string, args: string[]): Promise<ExecResult>;
+    /**
+     * Starts a JSON-RPC server on stdio, sends each call in turn and returns the requests' replies, or `null` when the
+     * server fails to start, exits or stops answering first. A dry run returns `null` without starting it:
+     * even a read-only call can trigger startup tasks that change cached plugins.
+     */
+    rpc (command: string, args: string[], calls: RpcCall[]): Promise<RpcReply[] | null>;
     run (command: string, args: string[], options?: ExecOptions): Promise<ExecResult>;
+    /** A bounded stdio RPC session. May change state, so a dry run logs it without starting it. */
+    withJsonRpc<T> (command: string, args: string[], use: (rpc: JsonRpc) => Promise<T>, timeoutMs?: number): Promise<T | undefined>;
     writeFile (file: string, content: string): Promise<void>;
     remove (file: string): Promise<void>;
     /** Moves a file or directory; a dry run prints it instead. */
@@ -74,9 +87,11 @@ export function formatCommand (command: string, args: string[]): string {
     return [command, ...args].map((part) => redact(part)).map((part) => (/^[\w@./:=~-]+$/.test(part) ? part : JSON.stringify(part))).join(' ');
 }
 
-export function createSystem ({ dryRun = false, log = (line: string) => console.log(line) } = {}): System {
-    const env = process.env,
-        platform = process.platform;
+export function createSystem ({
+    dryRun = false, log = (line: string) => console.log(line),
+    env = process.env, home = os.homedir(), cwd = process.cwd()
+} = {}): System {
+    const platform = process.platform;
 
     async function which (command: string): Promise<string | null> {
         const extensions = platform === 'win32' ? (env.PATHEXT || '.EXE;.CMD;.BAT').split(';') : [''];
@@ -106,10 +121,11 @@ export function createSystem ({ dryRun = false, log = (line: string) => console.
     }
 
     return {
-        home: os.homedir(),
+        home,
         platform,
         env,
         dryRun,
+        cwd,
         which,
         async exists (file) {
             try {
@@ -152,6 +168,40 @@ export function createSystem ({ dryRun = false, log = (line: string) => console.
         async probe (command, args) {
             return execute(await resolve(command), args, env);
         },
+        async rpc (command, args, calls) {
+            if (dryRun) {
+                return null;
+            }
+
+            try {
+                return await withJsonRpc(await resolve(command), args, env, async (rpc) => {
+                    const replies: RpcReply[] = [];
+
+                    for (const call of calls) {
+                        if (call.notify) {
+                            rpc.notify(call.method, call.params);
+                            continue;
+                        }
+
+                        try {
+                            replies.push({ result: await rpc.request(call.method, call.params) });
+                        }
+                        catch (error) {
+                            if (!(error instanceof JsonRpcError)) {
+                                throw error;
+                            }
+
+                            replies.push({ error: error.reply });
+                        }
+                    }
+
+                    return replies;
+                }, 30000);
+            }
+            catch {
+                return null;
+            }
+        },
         async run (command, args, options = {}) {
             log(`  $ ${formatCommand(command, args)}`);
 
@@ -160,6 +210,13 @@ export function createSystem ({ dryRun = false, log = (line: string) => console.
             }
 
             return execute(await resolve(command), args, { ...env, ...options.env });
+        },
+        async withJsonRpc (command, args, use, timeoutMs = 15000) {
+            log(`  $ ${formatCommand(command, args)} (stdio RPC)`);
+
+            if (!dryRun) {
+                return withJsonRpc(await resolve(command), args, env, use, timeoutMs);
+            }
         },
         async writeFile (file, content) {
             log(`  write ${file}`);

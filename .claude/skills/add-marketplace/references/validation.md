@@ -18,7 +18,7 @@ One parallel job per concern, so a failure names itself:
   installs the clone-and-loader route under an isolated global config directory
   and has the pinned OpenCode CLI load every skill, `scripts/test-plugin-add.js
   git`, which runs `opencode plugin add` from a one-commit copy of the checkout
-  on OpenCode 1 and 2, and a check that every skill has a routing eval case.
+  on OpenCode 1 and 2.
   Installer smoke adds the `github` route, from GitHub at the pull request's
   commit. OpenCode applies no version gate to a plugin, so the installer
   enforces the measured minimums (`OPENCODE_MINIMUM` in

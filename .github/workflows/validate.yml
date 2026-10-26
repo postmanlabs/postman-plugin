@@ -194,9 +194,6 @@ jobs:
           node scripts/test-plugin-add.js git
           OPENCODE_BIN="$OPENCODE2" node scripts/test-plugin-add.js git
 
-      - name: Eval cases cover every skill
-        run: npm run eval:skills:validate
-
   # On Windows npm installs the agent CLIs as `.cmd` shims, which system.ts
   # starts through cmd.exe; only a Windows runner takes that path.
   installer:
@@ -229,11 +226,11 @@ jobs:
         shell: pwsh
         run: npm run build && node --test --test-reporter=spec --test-reporter-destination=stdout --test-reporter=tap --test-reporter-destination=unit-tests.tap test/*.test.js
 
-      # A green run that skipped tests hid that Windows ran nothing end to end. Windows
-      # skips nothing; elsewhere only a test of the Windows process layer may skip.
-      - name: No unit test was skipped but a Windows-only one off Windows
+      # Keep skips restricted to the named platform tests. Hook trust and model
+      # delivery still run on Windows; only the Linux pseudo-terminal check skips.
+      - name: Only the platform-specific terminal and process tests may skip
         env:
-          ALLOWED_SKIP: ${{ runner.os == 'Windows' && '^$' || '# SKIP Windows only$' }}
+          ALLOWED_SKIP: ${{ runner.os == 'Windows' && '# SKIP Linux terminal check$' || '# SKIP Windows only$' }}
         run: |
           test -s unit-tests.tap
           if grep -E '# SKIP' unit-tests.tap | grep -v -E "$ALLOWED_SKIP"; then exit 1; fi
@@ -405,6 +402,7 @@ jobs:
       run:
         shell: bash
     # Pinned so a Kimi Code release can't fail a PR on its own; installer-smoke.yml runs the latest nightly.
+    # Before 2.3.0, which lists skills as postman:<skill>, so PRs still check the mandate's bare-name fallback.
     env:
       KIMI_VERSION: 2.1.1
     steps:

@@ -38,6 +38,38 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  codex-hook-approval:
+    name: Codex hook approval / ${{ matrix.version }} / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        version: ['0.159.0', '0.164.0-alpha.8']
+    defaults:
+      run:
+        shell: bash
+        working-directory: installer
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+      - name: Build and unit-test the installer, including automatic hook approval and RPC failures
+        # Git Bash enables backup privilege, bypassing Windows ACL deny tests.
+        shell: pwsh
+        run: npm ci && npm test
+      - name: Install the tested Codex version
+        run: npm install --prefix "$RUNNER_TEMP/codex" @openai/codex@${{ matrix.version }}
+      - name: Install from main, migrate legacy refs, and verify approval, mandate delivery and Linux TUI
+        run: node scripts/smoke-check.js codex-hooks
+        env:
+          CODEX_BIN: ${{ runner.temp }}/codex/node_modules/.bin/codex${{ runner.os == 'Windows' && '.cmd' || '' }}
+
   smoke:
     name: Installer against real CLIs / ${{ matrix.label }}
     runs-on: ${{ matrix.os }}
@@ -68,7 +100,8 @@ jobs:
           node-version: lts/*
 
       - name: Build
-        run: npm ci && npm run build
+        shell: pwsh
+        run: npm ci && npm test
 
       - name: Install the agent CLIs
         run: npm install -g @anthropic-ai/claude-code @openai/codex @github/copilot droid @earendil-works/pi-coding-agent opencode-ai
@@ -152,6 +185,10 @@ jobs:
       - name: The latest Codex loads this checkout
         if: ${{ !cancelled() }}
         run: node ../scripts/codex-harness.js
+
+      - name: The latest Codex approves the hook and Linux TUI startup needs no hook review
+        if: ${{ !cancelled() }}
+        run: node scripts/smoke-check.js codex-hooks
 
       - name: The latest Kimi Code loads this checkout
         if: ${{ !cancelled() }}
