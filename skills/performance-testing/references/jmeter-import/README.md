@@ -8,7 +8,15 @@ Turn a JMeter test plan into three artifacts:
 2. **Performance config** — VU count, duration, load profile, data file, `--pass-if`, and the exact `postman performance run` command.
 3. **Import report** — what imported exactly, what was approximated, what needs manual work, what is unsupported.
 
-There is no importer to run: you read the `.jmx` and build these yourself. The files next to this one are the algorithm:
+**Preferred — run the CLI importer** (deterministic, same result on any model):
+
+```bash
+postman collection import --type jmeter <plan>.jmx
+```
+
+It writes the Postman collection and prints the suggested `postman performance run` settings plus the import report. Use it whenever the installed CLI has the command — `postman collection import -h` lists `jmeter` under `--type`.
+
+**Fallback — build it by hand.** If the CLI doesn't have the importer yet (older version) or there's no shell to run it, do the import yourself: read the `.jmx` and build the three artifacts, using the files next to this one as the algorithm. The hand path is lower-fidelity (it depends on the model getting the exact CLI flags and edge rules right), so prefer the command when it's available.
 
 - `mapping-table.md` — what each JMeter element becomes, and how faithfully.
 - `postman-perf-capabilities.md` — the hard limits of the import target.
