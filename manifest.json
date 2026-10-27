@@ -257,8 +257,8 @@
         {
           "target": "references/jmeter-import/README.md",
           "source": "skills/performance-testing/references/jmeter-import/README.md",
-          "bytes": 8235,
-          "sha256": "eb3e3cc3f5a8668490d3fe92cf116b21705eb02eb0149ca8d5595fe4b39ae4d8"
+          "bytes": 8349,
+          "sha256": "e78e4c0f6dbe2c2d7515eea72bb494891912df900d52246909099e468903cc76"
         },
         {
           "target": "references/jmeter-import/import-report.md",
@@ -281,8 +281,8 @@
         {
           "target": "references/jmeter-import/script-translation.md",
           "source": "skills/performance-testing/references/jmeter-import/script-translation.md",
-          "bytes": 5709,
-          "sha256": "0d3e4a91aabb136808c01d94fe8919d28286a3683d4a0b16ec5f2e1c413c81fc"
+          "bytes": 5903,
+          "sha256": "e2a4a7b197c781f29445177bdd3bf98a39011a775d27b72c4b318221be5c9381"
         }
       ]
     },

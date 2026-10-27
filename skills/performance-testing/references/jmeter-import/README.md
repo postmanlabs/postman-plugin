@@ -37,7 +37,7 @@ JMX has one structural rule: every element is followed by a sibling `<hashTree>`
 
 These are easy to get subtly wrong:
 
-- **Implicit HTTP success** — JMeter fails a sample on HTTP ≥ 400 even with no assertion. Every request gets the default 200–399 `pm.test` from `script-translation.md`, **unless** it has a Response Assertion whose `test_field` is `response_code` or `response_message`, or any assertion with `assume_success=true` (Ignore Status). An assertion on the body (`response_data`) does not suppress it.
+- **Implicit HTTP success** — JMeter fails a sample on HTTP ≥ 400 even with no assertion. Every request gets the default 200–399 `pm.test` from `script-translation.md`, **unless** an assertion sets `assume_success=true` (Ignore Status). A `response_code`/`response_message` or body assertion does **not** suppress it — JMeter still fails the sample on a bad status, so the implicit check and the assertion are both emitted (e.g. a `code==404` assertion with `assume_success=false` still fails the request).
 - **Port 0 / -1** → "use protocol default" → omit from the URL.
 - **Full-URL path** — if `HTTPSampler.path` starts with `http://` or `https://`, use it verbatim and ignore domain/port.
 - **HEAD / TRACE arguments** — JMeter doesn't send separate parameters as a query for these; drop them and note it.
