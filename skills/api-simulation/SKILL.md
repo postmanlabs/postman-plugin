@@ -5,9 +5,10 @@ description: Runs your code for real against stand-ins for the HTTP services it 
 
 # API Simulation
 
-A simulation serves several mocks as one environment, each reached by its
-routeKey: as a path prefix by default, or as an `x-mock-slug` header when the
-caller's paths can't change.
+A simulation serves several mocks as one environment: by default behind a
+proxy that answers for the dependencies' own hostnames, so the code under test
+keeps the base URLs it ships with, or on one local port where each member is
+reached by its routeKey.
 
 Run your code against it rather than stubbing its HTTP client in tests or
 calling the real services. A stub skips the client, config, timeouts and
@@ -52,32 +53,18 @@ The run is a server that never exits, so a foreground command never returns.
 Start it in the background, its log in a file:
 
 ```bash
-postman simulation run postman/simulations/checkout-dev.sim.yaml --port 4900 --output ndjson > sim.ndjson 2> sim.err &
+postman simulation run postman/simulations/checkout-dev.sim.yaml --proxy --output ndjson > sim.ndjson 2> sim.err &
 ```
 
-`--port` is optional. It's up when `sim.ndjson` has a `listening` event; a
-start-up error is in `sim.err`. That event carries the bound port and each
-member's address, so take the base URLs from it rather than from the port you
-asked for. Stop it with
+`--proxy` is how to run it unless something below rules it out: nothing about
+the code changes for the run — not a base URL, not a config file, not an SDK's
+built-in host — and because nothing the proxy answers for has to resolve, an
+internal hostname with no DNS record works.
+
+It's up when `sim.ndjson` has a `listening` event; a start-up error is in
+`sim.err`, a busy proxy port among them. Stop it with
 `pkill -INT -f "simulation run .*<file>.sim.yaml"`. Nothing reloads: restart
 it after a mock edit.
-
-Point the caller at it without changing what the code does once deployed.
-Under path routing, swap only the host and keep the path:
-`https://catalog.internal.example.com/v2` becomes
-`http://127.0.0.1:4900/catalog/v2`; a dropped `/v2` is the usual cause of a
-`404`. A hard-coded base URL should read an environment variable with
-today's value as the default. If the code mustn't change at all, run it
-behind the proxy instead, below.
-
-## Through a proxy, when no base URL can change
-
-`simulation run <file.sim.yaml> --proxy` puts the members behind a local
-forward proxy that answers for the dependencies' own hostnames, so the code
-keeps the base URLs it ships with. Any other host passes through to the real
-service. Reach for it when hostnames are hard-coded, built from config the
-change shouldn't touch, or owned by an SDK — and because nothing it answers
-for has to resolve, an internal hostname with no DNS record works.
 
 Read `postman simulation run --help` before driving it. The flags, what the
 caller's own process needs in order to reach the proxy, and what to do about a
@@ -89,8 +76,15 @@ Two things decide whether a proxied run proves anything. A member with no
 service and a run can come up having intercepted nothing — `simulation create`
 copies that field from the mock's manifest, so editing the manifest alone
 won't fix it ([reference/sim_yaml_schema.md](reference/sim_yaml_schema.md)).
-And conditions don't apply here: member `scenarios` are ignored, so failures
-need the one-port run.
+And conditions don't apply here: member `scenarios` are ignored.
+
+## Running it on one port instead
+
+Two things need `--port`: injecting a failure, which proxy mode can't do
+because it ignores conditions, and a client that won't honour the proxy
+however it's configured. The cost is repointing the code at the port — the
+change the proxy exists to avoid — so a base URL that can't change rules this
+mode out too.
 
 ## Reading the log
 
@@ -98,8 +92,8 @@ A passing test command doesn't show the dependency path ran: read
 `sim.ndjson`. A member with no `request` events isn't wired or isn't on this
 path. Some answers come from the simulation itself and mean wiring, not code:
 
-- `404 Unknown simulation member`: a base URL lost its routeKey, or a client
-  sent the wrong `x-mock-slug`.
+- `404 Unknown simulation member`, on a one-port run: a base URL lost its
+  routeKey, or a client sent the wrong `x-mock-slug`.
 - `501`, or a generated mock's `404 Endpoint not defined`: a call the mock
   doesn't model yet.
 - `502 Proxy error`: the member's process died, usually an async throw in a
@@ -108,10 +102,11 @@ path. Some answers come from the simulation itself and mean wiring, not code:
 
 ## When a dependency goes down
 
-Run it rather than reason from the code: each way of going down takes a
-different path through the caller, and a stub skips the client code that
-picks the path. Fail the one dependency in each shape that matters, a run
-each, with the others answering normally:
+On the one-port run, since conditions are what proxy mode ignores. Run it
+rather than reason from the code: each way of going down takes a different
+path through the caller, and a stub skips the client code that picks the
+path. Fail the one dependency in each shape that matters, a run each, with
+the others answering normally:
 
 - **Unreachable:** point its base URL at a port nothing listens on.
 - **Hanging:** give its member a `latency` condition longer than the
@@ -132,18 +127,20 @@ stock reserved and never released.
 ## Its context document
 
 Every simulation is created with a `<name>.context.md` beside it, holding what
-running this one has taught: the commands that start it and prove it's up, the
-preconditions and what breaks when one fails, what it takes for granted about
-the dependencies themselves, the data seeded to test with, the failures earlier
-runs already hit, and what a passing run still doesn't prove. The `.sim.yaml` says what the simulation is, not how it behaves, so
-this is the file that saves a session the search. A new one is mostly
-`@todo`s, which are the questions a first real run answers.
+running this one has taught: the commands that start it and prove it's up, what
+must be true before a run works, what the code takes for granted about the
+dependencies themselves, what each run actually showed, and the failures
+earlier runs already hit. The `.sim.yaml` says what the simulation is, not how
+it behaves, so this is the record that saves a session the search.
 
-Every line passes one test — the repo doesn't already state it — so it stays
-about a screenful, and a claim carries the date and the run that established
-it, because the log it came from isn't committed. Its sections and conventions
-are in [reference/context_file.md](reference/context_file.md); read that
-before writing it back.
+Read it before anything else, and write this run back into it before you
+finish. Each claim carries a status and the fingerprint its evidence was taken
+against, so the next session can tell what a run established from what someone
+reasoned, and what has gone stale since. Never recreate the file: it is written
+from a fixed template, and everything in it is something an earlier session
+established. Its sections, fields and write-back order are in
+[reference/context_file.md](reference/context_file.md); read that before
+writing to it.
 
 ## Keeping it
 
@@ -182,7 +179,9 @@ needs the real service before release, and where each mock came from,
 including when you skipped the owner's.
 
 Then write the run back into `<name>.context.md`, so the next session starts
-where this one ended: the `@todo`s it answered, whatever it found wrong, a
-precondition you had to discover, what broke and why, and which members served
-or stayed silent — the last is a line every run adds, so a member silent across
-several runs reads as a pattern rather than a one-off.
+where this one ended: the observation of what this run showed, a precondition
+you had to discover, what broke and why it misled you, and a new status for
+every assumption the run settled or contradicted. Say "held in the scenarios
+run" rather than "works" — the record is read later as evidence, and the two
+don't mean the same thing. [reference/context_file.md](reference/context_file.md)
+has the order to do it in.
