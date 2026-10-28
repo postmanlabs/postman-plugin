@@ -105,8 +105,8 @@
         {
           "target": "reference/context_file.md",
           "source": "skills/api-simulation/reference/context_file.md",
-          "bytes": 9473,
-          "sha256": "c370667de1eb859d920d8610890b972ba58eca35be4d603bffdbe1c8455b5ca1"
+          "bytes": 9477,
+          "sha256": "6ca3748d867f296e9b2c32ee0efeb477a9621852748256cf52d5f6066aac0bb6"
         },
         {
           "target": "reference/sim_yaml_schema.md",

@@ -15,17 +15,17 @@ done.
 
 ## Its shape
 
-The whole file is YAML under a fixed key schema. The key names, `schema:` and
-the `type` vocabulary are fixed; the template carries each key's field schema,
-that vocabulary and a worked example in the comments above it, and points here
-for everything below. A `null` is something nobody has established yet.
+The whole file is YAML under a fixed key schema. The key names and the `type`
+vocabulary are fixed; the template carries each key's field schema, that
+vocabulary and a worked example in the comments above it, and points here for
+everything below. A `null` is something nobody has established yet.
 
 `purpose` and `setup` are the only keys a session rewrites. Everything else
 is appended to, or has an entry's `status` changed.
 
 | Key | Holds |
 | --- | --- |
-| `purpose` | `stands_in_for` and `unblocks` — what the simulation stands in for and what work it unblocks. Both need hindsight, so they are the last thing to write. `mocks` lists each member's `route_key`, `handler` and the `origin` host it answers for. |
+| `purpose` | `stands_in_for` and `unblocks` — what the simulation stands in for and what work it unblocks. Both need hindsight, so they are the last thing to write. The members it serves, their route keys and the hosts they answer for are in the `.sim.yaml` beside it. |
 | `setup` | The shared starting point: an ordered list of steps, each `id`, `what` and `command` — start the simulation, start the service pointed at it, confirm it answers, read what it served, stop. Only commands you ran successfully in this session; a `command: null` is a step nobody has run. |
 | `fingerprints` | One entry per distinct state of the repo and tooling. What every piece of evidence is pinned to. |
 | `prerequisites` | What must be true outside the simulation — databases, caches, ports, credentials, local services — each with a `check` command. |
