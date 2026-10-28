@@ -27,7 +27,7 @@ is appended to, or has an entry's `status` changed.
 | --- | --- |
 | `purpose` | `stands_in_for` and `unblocks` — what the simulation stands in for and what work it unblocks. Both need hindsight, so they are the last thing to write. The members it serves, their route keys and the hosts they answer for are in the `.sim.yaml` beside it. |
 | `setup` | The shared starting point: an ordered list of steps, each `id`, `what` and `command` — start the simulation, start the service pointed at it, confirm it answers, read what it served, stop. Only commands you ran successfully in this session; a `command: null` is a step nobody has run. |
-| `fingerprints` | One entry per distinct state of the repo and tooling. What every piece of evidence is pinned to. |
+| `fingerprints` | One entry per distinct state of the repo and tooling — `id`, `date`, `commit`, `cli`. What every piece of evidence is pinned to, and what lets a `confirmed` claim go stale. |
 | `prerequisites` | What must be true outside the simulation — databases, caches, ports, credentials, local services — each with a `check` command. |
 | `assumptions` | One claim each: `id`, `type`, `claim`, `consequence` and `affects` are the claim and stay put; `verification` holds the `status`, `source`, `depends_on` and `counterexample` that a run changes. |
 | `observations` | What a run actually showed. Append only. |
@@ -57,10 +57,11 @@ still want to run it.
 ## 1. Before writing
 
 - Parse the whole file first.
-- Take a fingerprint: `git rev-parse HEAD`, `postman --version`, the sha256 of
-  the `.sim.yaml`, of each `postman/mocks/<member>/` folder, and of the
-  fixtures. If any value differs from the newest entry in `fingerprints`,
-  append a new entry.
+- Take a fingerprint: `git rev-parse HEAD` and `postman --version`. If either
+  differs from the newest entry in `fingerprints`, append a new entry. The
+  `.sim.yaml` and the mock handlers are tracked files, so the commit sha is what
+  covers them; where the tree is dirty, the entry says so, since a sha alone
+  reads as a clean checkout.
 - Staleness pass: for each assumption, compare its `depends_on` keys between
   the fingerprint of its newest evidence and the newest fingerprint. Where any
   differ, set `status: stale`. **Never delete it.** Re-test it in this run if
@@ -92,8 +93,9 @@ Everything here lives under an assumption's `verification`, except `affects`.
   running it.
 - `status: contradicted` requires a `counterexample`: the request sequence and
   the outcome.
-- `depends_on` names the `fingerprints` keys this claim is sensitive to, and is
-  never empty — it is what the staleness pass compares.
+- `depends_on` names the `fingerprints` keys this claim is sensitive to —
+  `commit`, `cli`, or both — and is never empty, since it is what the staleness pass
+  compares.
 - `affects` names the file and line range that relies on the claim, so a
   contradicted assumption points at the code to revisit.
 - For every `unknown` behaviour assumption, run the collection again with
