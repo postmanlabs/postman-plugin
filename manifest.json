@@ -94,25 +94,25 @@
     {
       "name": "api-simulation",
       "plugin": "postman",
-      "description": "Runs your code for real against stand-ins for the HTTP services it calls, served together as one environment on one local port or one deployed URL, whether that code is a service you're changing, a frontend, a test suite or a demo. Use when you add or change code that calls other services and need to run it, test it, prove a fix or reproduce an upstream failure (timeouts, 5xx, 409, 429) end to end, locally or in CI, without the real services because they're unreachable, need credentials, cost money, have side effects or don't exist yet. Also answers what happens to a request, or to the data it writes, when a service it calls goes down, is slow or returns errors (\"what happens to a booking if the email service is down?\"), by running each failure instead of reading the code. Applies even when nobody says mock or simulation. To give a frontend or another team a stand-in for an API, use api-mocking. Covers `postman simulation`.",
+      "description": "Runs services, frontends, tests or demos against stand-ins for their HTTP dependencies, served as one environment locally or at a deployed URL. Use when you add or change code that calls other services and need to run it, test it, prove a fix or reproduce an upstream failure (timeouts, 5xx, 409, 429) end to end, locally or in CI, without the real services because they're unreachable, need credentials, cost money, have side effects or don't exist yet. Also answers what happens to a request, or to the data it writes, when a service it calls goes down, is slow or returns errors (\"what happens to a booking if the email service is down?\"), by exercising relevant failures and observing caller outcomes. Applies even when nobody says mock or simulation, and a `postman/simulations/` directory in the repository is itself a reason to load this before changing code it covers. To give a frontend or another team a stand-in for an API, use api-mocking. Covers `postman simulation`.",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/api-simulation/SKILL.md",
-          "bytes": 10663,
-          "sha256": "271b69bc61835b7aa08365d48d4064614aa108bef391d0b69b3bb118a10afb10"
+          "bytes": 12720,
+          "sha256": "23aa8cf7808d915a59476bfb7d810dba13132a9f5b7d1c98ae24d2986473f13e"
         },
         {
           "target": "reference/context_file.md",
           "source": "skills/api-simulation/reference/context_file.md",
-          "bytes": 9005,
-          "sha256": "01b81e84bcad0c8f0ea9c44c80a524e603073aeb90b82ffd26173a73c63beb7b"
+          "bytes": 10413,
+          "sha256": "e3c98791c833a0a967c60c06c8519a7dabd04f03e29c6ca7bca4431fcea85c62"
         },
         {
           "target": "reference/sim_yaml_schema.md",
           "source": "skills/api-simulation/reference/sim_yaml_schema.md",
-          "bytes": 3833,
-          "sha256": "a80e83487165b16c1732f1ee3365785dc74e6a1c1123c324da571f53f8efa1c6"
+          "bytes": 3835,
+          "sha256": "70d5973bfc8ff39efd455f89fc40e05b16507c17b236594bcc87979fc0d6ee02"
         }
       ]
     },
