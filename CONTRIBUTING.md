@@ -7,13 +7,15 @@ using the plugin, see [README.md](README.md).
 
 The skill files in this repository are the single source of truth for every
 plugin route below — each route's manifest or package points back at the same
-`skills/` directory rather than keeping a copy of its own in git:
+`skills/` directory rather than keeping a copy of its own in git. The one
+exception is `agent-plugin/`, whose copy `scripts/build-manifest.js` generates:
 
 | Route | How it gets the files | MCP config it reads | Reports itself as |
 | --- | --- | --- | --- |
 | Claude Code plugin | `/plugin marketplace add postmanlabs/postman-plugin` clones this repo | `mcp.claude-code.json` | `postman-claude-code-plugin` |
 | Cursor plugin | `.cursor-plugin/plugin.json` points at this repo's `skills/` dir | `mcp.cursor.json` | `postman-cursor-plugin` |
-| GitHub Copilot CLI plugin | `.github/plugin/plugin.json` points at the same `skills/` dir and its own `hooks/copilot-hooks.json`, which runs the same scripts | `mcp.copilot.json` | `postman-copilot-plugin` |
+| GitHub Copilot CLI plugin | `copilot plugin marketplace add postmanlabs/postman-plugin` reads `.github/plugin/marketplace.json`, which installs `agent-plugin/`: an [Agent Plugins](https://agent-plugins.org) plugin with generated copies of `skills/` and the hook scripts, and its hook in `com.github.copilot/hooks/hooks.json` | `agent-plugin/mcp.json` | `postman-agent-plugin` |
+| GitHub Copilot CLI plugin, legacy | a direct install of the repo root, or a marketplace read without `.github/plugin/marketplace.json`: `.github/plugin/plugin.json` points at `skills/` and `hooks/copilot-hooks.json`. Kept until awesome-copilot lists `agent-plugin/` | `mcp.copilot.json` | `postman-copilot-plugin` |
 | Kimi Code plugin | `.kimi-plugin/plugin.json` points at the same `skills/` dir | `mcpServers` in `.kimi-plugin/plugin.json` | `postman-kimi-plugin` |
 | Antigravity plugin | `agy plugin install https://github.com/postmanlabs/postman-plugin` clones this repo; `.antigravity-plugin/plugin.json` points at the same `skills/` dir | `mcp_config.json` | `postman-antigravity-plugin` |
 | Codex plugin | `.codex-plugin/plugin.json` points at the same `skills/` dir | `mcp.codex.json` | `postman-codex-plugin` |
@@ -90,7 +92,10 @@ it lands.
 .claude-plugin/marketplace.json   the marketplace Claude Code adds
 .claude-plugin/plugin.json        the Claude Code plugin manifest
 .cursor-plugin/plugin.json        the Cursor plugin manifest
-.github/plugin/plugin.json        the GitHub Copilot CLI plugin manifest — never a root `plugin.json`, which would send Codex down its Agent Plugins loader
+.github/plugin/marketplace.json   the marketplace Copilot CLI adds; Copilot reads it before .claude-plugin/marketplace.json, and it installs agent-plugin/
+.github/plugin/plugin.json        the legacy GitHub Copilot CLI plugin manifest — never a root `plugin.json`, which would send Codex down its Agent Plugins loader
+agent-plugin/                     GitHub Copilot CLI's Agent Plugins plugin; plugin.json and mcp.json are hand-written, everything else is generated
+agent-plugin/com.github.copilot/  Copilot-only files; Copilot reads an Agent Plugins plugin's hooks only from com.github.copilot/hooks/hooks.json
 .kimi-plugin/plugin.json          the Kimi Code plugin manifest — carries its MCP block inline, and names Kimi's generated copy of the mandate
 .antigravity-plugin/plugin.json   the Antigravity plugin manifest
 rules/GEMINI.md                   Antigravity's generated copy of the mandate, loaded as an always-on rule
@@ -112,7 +117,7 @@ mcp.pi.json                       Pi's MCP config, registered by the Pi extensio
 mcp_config.json                   Antigravity's MCP config — must keep this exact root filename
 skills/<name>/SKILL.md            one skill per directory — see skills/ for the current list
 manifest.json                     generated index of the skill files
-scripts/build-manifest.js         regenerates it, and Kimi's and Antigravity's copies of the mandate
+scripts/build-manifest.js         regenerates it, Kimi's and Antigravity's copies of the mandate, and agent-plugin/'s copies of skills/ and the hooks
 scripts/routes.js                 every route, read by the pre-commit guard and the installer's tests
 ```
 
@@ -124,6 +129,7 @@ traffic can be attributed to the agent it came from:
 ```
 mcp.claude-code.json        <- .claude-plugin/plugin.json  "mcpServers": "./mcp.claude-code.json"
 mcp.cursor.json             <- .cursor-plugin/plugin.json  "mcpServers": "./mcp.cursor.json"
+agent-plugin/mcp.json       <- the Agent Plugins spec reads this filename from the plugin root
 mcp.copilot.json            <- .github/plugin/plugin.json  "mcpServers": "./mcp.copilot.json"
 mcp.codex.json              <- .codex-plugin/plugin.json   "mcpServers": "./mcp.codex.json"
 .kimi-plugin/plugin.json       inline — Kimi documents no path form
@@ -339,6 +345,7 @@ against the latest one nightly.
 CLAUDE_BIN=<path to claude> node scripts/claude-code-harness.js
 CODEX_BIN=<path to codex> node scripts/codex-harness.js
 COPILOT_BIN=<path to copilot> node scripts/copilot-harness.js
+COPILOT_ROUTE=legacy COPILOT_BIN=<path to copilot> node scripts/copilot-harness.js
 KIMI_BIN=<path to kimi> node scripts/kimi-harness.js
 AGY_BIN=<path to agy> node scripts/antigravity-harness.js
 CURSOR_API_KEY=<key> CURSOR_BIN=<path to cursor-agent> node scripts/cursor-harness.js
@@ -352,7 +359,10 @@ hook until the user trusts it, so its harness runs twice: untrusted, which must
 carry the skills and no mandate, and with `--dangerously-bypass-hook-trust`,
 which must carry both. Copilot CLI's harness runs it with `COPILOT_OFFLINE=true`
 and a BYOK provider, `COPILOT_PROVIDER_BASE_URL`, pointed at the stand-in, so it
-needs no GitHub account. Cursor's CLI has no stand-in model, so its harness asks
+needs no GitHub account. It installs `agent-plugin/` through
+`.github/plugin/marketplace.json`; with `COPILOT_ROUTE=legacy` it leaves that
+file out of the copy, so Copilot installs the repo root and loads
+`.github/plugin/plugin.json`. Cursor's CLI has no stand-in model, so its harness asks
 Cursor's model to quote the mandate and the skill it names, and needs a
 `CURSOR_API_KEY`; CI's Cursor steps are commented out for now, so run it
 locally. When they return, CI reads the key from the repository secret of that name. It

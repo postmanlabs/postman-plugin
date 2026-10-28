@@ -384,10 +384,18 @@ jobs:
       - name: Install Copilot CLI
         run: npm install --no-save --prefix "$RUNNER_TEMP/copilot" @github/copilot@1.0.98
 
-      - name: Copilot CLI loads the skills, the mandate and the MCP server from the marketplace
+      - name: Copilot CLI loads the skills, the mandate and the MCP server from agent-plugin/
         run: node scripts/copilot-harness.js
         env:
           COPILOT_BIN: ${{ runner.temp }}/copilot/node_modules/.bin/copilot${{ runner.os == 'Windows' && '.cmd' || '' }}
+
+      # .github/plugin/plugin.json still ships, for a direct install and for a marketplace Copilot
+      # lists without .github/plugin/marketplace.json, which is the state before agent-plugin/.
+      - name: Copilot CLI loads the skills, the mandate and the MCP server from .github/plugin/
+        run: node scripts/copilot-harness.js
+        env:
+          COPILOT_BIN: ${{ runner.temp }}/copilot/node_modules/.bin/copilot${{ runner.os == 'Windows' && '.cmd' || '' }}
+          COPILOT_ROUTE: legacy
 
   # Kimi Code gets this checkout from the `plugins` CLI, as the installer gives it the repo. The harness
   # checks what Kimi sends a stand-in model and MCP server: the skills, the mandate and the skill it names.
@@ -513,7 +521,8 @@ jobs:
   # documents its manifest in prose only and publishes no schema for it; the
   # agent-plugins.org schema is not a substitute, since it describes the
   # root-level `plugin.json` Agent Plugins format, which Codex selects by path
-  # and which .codex-plugin/plugin.json is deliberately not.
+  # and which .codex-plugin/plugin.json is deliberately not. agent-plugin/ is
+  # that format, so its two files are checked against it here.
   schema:
     name: Schema / ${{ matrix.name }}
     runs-on: ubuntu-latest
@@ -533,6 +542,16 @@ jobs:
             file: .cursor-plugin/plugin.json
             schema: https://raw.githubusercontent.com/cursor/plugins/main/schemas/plugin.schema.json
             spec: draft7
+          # GitHub Copilot CLI's Agent Plugins route. awesome-copilot rejects a plugin
+          # whose manifest or mcp.json fails these two.
+          - name: Agent Plugins plugin
+            file: agent-plugin/plugin.json
+            schema: https://agent-plugins.org/schemas/1.0.0/plugin.schema.json
+            spec: draft2020
+          - name: Agent Plugins MCP config
+            file: agent-plugin/mcp.json
+            schema: https://agent-plugins.org/schemas/1.0.0/mcp.schema.json
+            spec: draft2020
           # mcp.opencode.json is a valid OpenCode config fragment, so the config
           # schema checks its server block. That schema $refs models.dev for the
           # model union, and ajv resolves no reference over the network - without

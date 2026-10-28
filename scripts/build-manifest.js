@@ -15,6 +15,11 @@
  * keeps the `postman:` names and says to drop the prefix where Kimi lists skills
  * bare; Antigravity's names skills bare.
  *
+ * And it copies the skills, the session-start scripts and Copilot's hook config
+ * into `agent-plugin/`, the Agent Plugins (agent-plugins.org) route. The spec
+ * skips a skill whose files resolve outside the plugin root, so a symlink to
+ * `skills/` would not do, and a Windows checkout turns one into a text file.
+ *
  * Run `node scripts/build-manifest.js` after changing any skill or the mandate.
  * CI re-runs it with `--check` and fails if any of these files is stale — a wrong sha256
  * makes the CLI reject a legitimate skill, which is a confusing way to find out.
@@ -32,6 +37,13 @@ const ROOT = path.join(__dirname, '..'),
     MANDATE = path.join(ROOT, 'hooks', 'session-start-context.md'),
     KIMI_MANDATE = path.join(ROOT, '.kimi-plugin', 'session-start-context.md'),
     ANTIGRAVITY_MANDATE = path.join(ROOT, 'rules', 'GEMINI.md'),
+    AGENT_PLUGIN = path.join(ROOT, 'agent-plugin'),
+    // What agent-plugin/ copies from the root, so a file is generated if, and only if, it is under one of these.
+    AGENT_PLUGIN_SKILLS = path.join(AGENT_PLUGIN, 'skills'),
+    AGENT_PLUGIN_HOOKS = path.join(AGENT_PLUGIN, 'hooks'),
+    AGENT_PLUGIN_HOOK_SCRIPTS = ['session-start', 'session-start.cmd', 'session-start-context.md'],
+    // Copilot CLI reads an Agent Plugins plugin's hooks only from its namespace directory.
+    COPILOT_HOOKS = path.join(AGENT_PLUGIN, 'com.github.copilot', 'hooks', 'hooks.json'),
     SCHEMA_VERSION = 1,
 
     // `postman init` writes AGENTS.md naming the manifest's first skill as the entry point.
@@ -188,28 +200,69 @@ function kimiMandate () {
     return mandate.replace(close, `${eol}If your skill listing names these skills without the \`postman:\` prefix, drop the prefix when you load one.${eol}${close}`);
 }
 
-const outputs = [
-    [MANIFEST, JSON.stringify(build(), null, 2) + '\n'],
-    [KIMI_MANDATE, kimiMandate()],
-    [ANTIGRAVITY_MANDATE, bareMandate()]
-];
+/**
+ * @param {object} manifest - What build() returned.
+ * @returns {Array<[string, Buffer, number]>} Each agent-plugin/ copy, its source's bytes and its source's mode.
+ */
+function agentPluginCopies (manifest) {
+    const copy = (from, to) => [to, fs.readFileSync(from), fs.statSync(from).mode & 0o777];
+
+    return [
+        ...manifest.skills.flatMap((skill) => skill.files.map((file) => copy(path.join(ROOT, file.source), path.join(AGENT_PLUGIN_SKILLS, skill.name, file.target)))),
+        ...AGENT_PLUGIN_HOOK_SCRIPTS.map((name) => copy(path.join(ROOT, 'hooks', name), path.join(AGENT_PLUGIN_HOOKS, name))),
+        copy(path.join(ROOT, 'hooks', 'copilot-hooks.json'), COPILOT_HOOKS)
+    ];
+}
+
+/**
+ * @param {string[]} generated - Absolute paths this run writes.
+ * @returns {string[]} Files under agent-plugin/'s copied directories that nothing copies any more, such as a removed skill's.
+ */
+function leftovers (generated) {
+    const keep = new Set(generated);
+
+    return [AGENT_PLUGIN_SKILLS, AGENT_PLUGIN_HOOKS]
+        .filter((dir) => fs.existsSync(dir))
+        .flatMap((dir) => walk(dir).map((rel) => path.join(dir, rel)))
+        .filter((file) => !keep.has(file));
+}
+
+const manifest = build(),
+    outputs = [
+        [MANIFEST, Buffer.from(JSON.stringify(manifest, null, 2) + '\n')],
+        [KIMI_MANDATE, Buffer.from(kimiMandate())],
+        [ANTIGRAVITY_MANDATE, Buffer.from(bareMandate())],
+        ...agentPluginCopies(manifest)
+    ],
+    extra = leftovers(outputs.map(([file]) => file));
 
 if (process.argv.includes('--check')) {
     const stale = outputs
-        .filter(([file, content]) => !fs.existsSync(file) || fs.readFileSync(file, 'utf8') !== content)
-        .map(([file]) => path.relative(ROOT, file));
+        .filter(([file, content]) => !fs.existsSync(file) || !fs.readFileSync(file).equals(content))
+        .map(([file]) => path.relative(ROOT, file))
+        .concat(extra.map((file) => `${path.relative(ROOT, file)} (no longer generated)`));
 
     if (stale.length) {
         console.error(`Stale: ${stale.join(', ')}. Run \`node scripts/build-manifest.js\` and commit the result.`);
         process.exit(1);
     }
 
-    console.log(`${outputs.map(([file]) => path.relative(ROOT, file)).join(', ')} are up to date.`);
+    console.log(`manifest.json, the mandate's copies and ${outputs.length - 3} agent-plugin/ copies are up to date.`);
 }
 else {
-    for (const [file, content] of outputs) {
+    for (const [file, content, mode] of outputs) {
         fs.mkdirSync(path.dirname(file), { recursive: true });
         fs.writeFileSync(file, content);
-        console.log(`Wrote ${path.relative(ROOT, file)}`);
+
+        // The hook runs session-start directly, so the copy keeps the source's executable bit.
+        if (mode !== undefined) {
+            fs.chmodSync(file, mode);
+        }
     }
+
+    for (const file of extra) {
+        fs.rmSync(file);
+    }
+
+    console.log(`Wrote manifest.json, the mandate's copies and ${outputs.length - 3} agent-plugin/ copies${extra.length ? `, and removed ${extra.length} stale ones` : ''}`);
 }

@@ -18,7 +18,8 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'
 
 test('every route in scripts/routes.js, and every .*-plugin/ directory, has an installer adapter', () => {
     const covered = HOSTS.map((host) => host.route),
-        missing = routes.filter((route) => !covered.includes(route));
+        // A superseded route still ships for installs made without the installer; its successor's adapter covers it.
+        missing = routes.filter((route) => !covered.includes(route) && !covered.includes(MANIFEST_ROUTES[route]?.supersededBy));
 
     assert.deepEqual(missing, [], `no adapter in installer/src/hosts/ for ${missing.join(', ')} - add one (see add-marketplace)`);
 });

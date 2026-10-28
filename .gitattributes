@@ -1,3 +1,5 @@
 # A Windows checkout with core.autocrlf would give the sh hook CRLF, which bash cannot run.
 hooks/session-start text eol=lf
 hooks/session-start.cmd text eol=crlf
+agent-plugin/hooks/session-start text eol=lf
+agent-plugin/hooks/session-start.cmd text eol=crlf

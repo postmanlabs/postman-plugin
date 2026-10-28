@@ -1,0 +1,29 @@
+{
+  "name": "postman",
+  "description": "Develop, test, manage, and distribute APIs and services.",
+  "owner": {
+    "name": "Postman",
+    "email": "postman-plugins@postman.com",
+    "url": "https://github.com/postmanlabs"
+  },
+  "plugins": [
+    {
+      "name": "postman",
+      "source": "./agent-plugin",
+      "description": "Work with Postman from your agent: bootstrap a repo's Postman setup, mock an API before it's implemented, run collection and governance checks in CI, monitor a live endpoint, deploy and debug Postman Flows, and publish generated API documentation.",
+      "homepage": "https://github.com/postmanlabs/postman-plugin",
+      "repository": "https://github.com/postmanlabs/postman-plugin",
+      "license": "Apache-2.0",
+      "keywords": [
+        "postman",
+        "api",
+        "mocking",
+        "monitoring",
+        "ci",
+        "documentation",
+        "flows",
+        "mcp"
+      ]
+    }
+  ]
+}
