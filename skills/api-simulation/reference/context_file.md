@@ -22,7 +22,7 @@ comments above it. A `null` is something nobody has established yet.
 | Key | Holds |
 | --- | --- |
 | `purpose` | `stands_in_for` and `unblocks` — what the simulation stands in for and what work it unblocks. Both need hindsight, so they are the last thing to write. The members it serves, their route keys and the hosts they answer for are in the `.sim.yaml` beside it. |
-| `assumptions` | What the code relies on about a dependency's behaviour. One claim per entry: `id`, `status`, `claim`, `reason`, `verification`, `source`. |
+| `assumptions` | What the code relies on about a dependency's behaviour. One claim per entry: `id`, `status`, `claim`, `reason`, `verification`, `source`, `updated_at`. |
 | `fingerprints` | What the claims were written against — `id`, `date`, `commit`, `cli`. |
 
 Everything else about this simulation lives where it already is: the members and
@@ -51,6 +51,7 @@ whether or not anyone checked, so its answer is a belief your code now carries.
     request and one ACS refusal. The allowed request produced a billing call;
     the refused one produced none.
   source: config/policies.js:125-126; runs/summary-gates-001
+  updated_at: "2026-10-28"
 ```
 
 One claim per entry. A sentence holding two claims is two entries, because
@@ -105,6 +106,21 @@ the code". A claim with nothing to point at is `unknown`.
 Where two sources disagree, `verification` says what each one showed and
 `status` is `conflicting` — that is the state a contract promising one thing
 while the running service does another belongs in.
+
+### `updated_at`
+
+The day the entry was last written, `YYYY-MM-DD`. Set it when you add a claim,
+and set it again whenever you change one — a new status, a fresh piece of
+verification, a reworded claim.
+
+It is what tells a reader how old a belief is. `fingerprints` says which commit
+and CLI the claims were written against; `updated_at` says when this particular
+one was last looked at, which is the question you ask before depending on it. A
+claim nobody has touched in months is worth re-checking whatever its status
+says.
+
+Nothing enforces this. `simulation create` writes an empty list and no command
+edits entries, so the field is only as true as the session that last wrote it.
 
 ## Where claims come from
 
