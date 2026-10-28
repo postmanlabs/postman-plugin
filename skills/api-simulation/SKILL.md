@@ -82,20 +82,17 @@ caller's own process needs in order to reach the proxy, and what to do about a
 client that ignores it are all there and change with the CLI, so take them
 from the command rather than from here.
 
-Two things decide whether a proxied run proves anything. A member with no
-`origin:` in the `.sim.yaml` is never matched, so its traffic reaches the real
+What decides whether a proxied run proves anything is `origin:`. A member with
+none in the `.sim.yaml` is never matched, so its traffic reaches the real
 service and a run can come up having intercepted nothing — `simulation create`
 copies that field from the mock's manifest, so editing the manifest alone
 won't fix it ([reference/sim_yaml_schema.md](reference/sim_yaml_schema.md)).
-And conditions don't apply here: member `scenarios` are ignored.
 
 ## Running it on one port instead
 
-Two things need `--port`: injecting a failure, which proxy mode can't do
-because it ignores conditions, and a client that won't honour the proxy
-however it's configured. The cost is repointing the code at the port — the
-change the proxy exists to avoid — so a base URL that can't change rules this
-mode out too.
+`--port` is for a client that won't honour the proxy however it's configured.
+The cost is repointing the code at the port — the change the proxy exists to
+avoid — so a base URL that can't change rules this mode out too.
 
 ## Reading the log
 
@@ -113,13 +110,13 @@ path. Some answers come from the simulation itself and mean wiring, not code:
 
 ## When a dependency goes down
 
-On the one-port run, since conditions are what proxy mode ignores. Run it
-rather than reason from the code: each way of going down takes a different
+Run it rather than reason from the code: each way of going down takes a different
 path through the caller, and a stub skips the client code that picks the
 path. Fail the one dependency in each shape that matters, a run each, with
 the others answering normally:
 
-- **Unreachable:** point its base URL at a port nothing listens on.
+- **Unreachable:** point its base URL at a port nothing listens on. This one
+  needs the one-port run, since under `--proxy` the base URLs are the point.
 - **Hanging:** give its member a `latency` condition longer than the
   client's timeout. If the client sets none, that is the finding: Node's
   `fetch` waits about five minutes, so say so rather than wait it out.
