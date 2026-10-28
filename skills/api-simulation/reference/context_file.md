@@ -45,6 +45,10 @@ up against it, confirm it answers, read what it served, take it down. It is the
 same for everyone whatever they came to do, which is what makes it safe to run
 top to bottom before reading any further.
 
+Where every member declares an `origin`, the start step records that `--proxy`
+is available: it serves each member on the real hostname that origin names, so
+the service under test keeps the base URLs it ships with.
+
 A command that belongs to one claim — making a member fail, moving a plan,
 denying a permission, seeding a row — lives with that claim, named in the
 assumption's `consequence` or in the observation that recorded what it showed.
