@@ -123,7 +123,9 @@ try {
 
     assert.match(run(droid, ['plugin', 'marketplace', 'add', marketplace]), /postman-plugin/);
     run(droid, ['plugin', 'install', PLUGIN_ID, '--scope', 'user']);
-    assert.match(run(droid, ['plugin', 'list', '--scope', 'user']), new RegExp(`^\\s*${PLUGIN_ID}\\s+\\[user\\]`, 'm'));
+    const bracketedOrTabledUserScope = `(?:\\[user\\]|\\S+\\s+user\\s)`;
+
+    assert.match(run(droid, ['plugin', 'list', '--scope', 'user']), new RegExp(`^\\s*${PLUGIN_ID}\\s+${bracketedOrTabledUserScope}`, 'm'));
 
     const settingsFile = path.join(home, '.factory', 'settings.json'),
         settings = JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
