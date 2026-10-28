@@ -8,12 +8,52 @@ const MARKETPLACE = 'postman-plugin',
     SCOPE = 'user',
     NEXT = 'Restart Droid for the change to take effect.';
 
+type Row = Record<string, string>;
+
+function rowsOfWrappedTable (text: string): Row[] {
+    const lines = text.split(/\r?\n/),
+        headerAt = lines.findIndex((line) => /^[A-Z]+(?: [A-Z]+)*(?: {2,}[A-Z]+(?: [A-Z]+)*)+\s*$/.test(line));
+
+    if (headerAt === -1) {
+        return [];
+    }
+
+    const columns = [...lines[headerAt].matchAll(/[A-Z]+(?: [A-Z]+)*/g)].map((match) => ({ name: match[0], start: match.index })),
+        rows: Row[] = [];
+
+    for (const line of lines.slice(headerAt + 1)) {
+        const cells = columns.map(({ start }, i) => line.slice(start, columns[i + 1]?.start).trim()),
+            previous = rows.at(-1),
+            continuesPrevious = !cells[0];
+
+        if (!continuesPrevious) {
+            rows.push(Object.fromEntries(columns.map(({ name }, i) => [name, cells[i]])));
+        }
+        else if (previous) {
+            columns.forEach(({ name }, i) => { previous[name] += cells[i]; });
+        }
+    }
+
+    return rows;
+}
+
+export function installedPlugins (droidPluginList: string): string[] {
+    const bracketedScopes = droidPluginList.split(/\r?\n/)
+        .map((line) => /^\s*(\S+@\S+)\s+\[(\w+)\]/.exec(line))
+        .filter((match) => match !== null)
+        .map(([, plugin, scope]) => `${plugin} [${scope}]`);
+
+    return bracketedScopes.length ?
+        bracketedScopes :
+        rowsOfWrappedTable(droidPluginList).map((row) => `${row.PLUGIN} [${row.SOURCE}]`);
+}
+
 function hasInstalledPlugin (text: string): boolean {
-    return text.split('\n').some((line) => new RegExp(`^${PLUGIN_ID}\\s+\\[${SCOPE}\\]`).test(line.trimStart()));
+    return installedPlugins(text).includes(`${PLUGIN_ID} [${SCOPE}]`);
 }
 
 function marketplaceSource (text: string): string | null {
-    for (const line of text.split('\n')) {
+    for (const line of text.split(/\r?\n/)) {
         const match = /^\s*(\S+)\s+\(\d+ plugins?\)\s+(.+?)(?:\s+"[^"]*")?\s*$/.exec(line);
 
         if (match && match[1] === MARKETPLACE) {
@@ -21,7 +61,7 @@ function marketplaceSource (text: string): string | null {
         }
     }
 
-    return null;
+    return rowsOfWrappedTable(text).find((row) => row.MARKETPLACE === MARKETPLACE)?.SOURCE ?? null;
 }
 
 function sourceWithoutFactoryPrefix (source: string): string {

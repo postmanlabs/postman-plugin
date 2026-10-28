@@ -77,3 +77,51 @@ test('remove uninstalls the user-scope plugin only when present', async () => {
     assert.deepEqual(system.commands, ['droid plugin uninstall postman@postman-plugin --scope user']);
     assert.equal((await factory.remove(factorySystem())).outcome, 'skipped');
 });
+
+const TABLE_MARKETPLACES = [
+        'MARKETPLACE     SOURCE                             PLUGINS  DISPLAY NAME',
+        'postman-plugin  github:postmanlabs/postman-plugin        1  —',
+        ''
+    ].join('\n'),
+    TABLE_PLUGINS = [
+        'PLUGIN                  STATUS   SOURCE  VERSION',
+        'postman@postman-plugin  Enabled  user    e94d308f9603',
+        ''
+    ].join('\n');
+
+function tableSystem ({ marketplaces = TABLE_MARKETPLACES, plugins = TABLE_PLUGINS } = {}) {
+    return fakeSystem({ bins: ['droid'], probes: { [MARKETPLACES]: marketplaces, [PLUGINS]: plugins } });
+}
+
+test('status and re-run read the table Droid 0.251.0 and later print', async () => {
+    assert.equal((await factory.status(tableSystem())).installed, true);
+    assert.equal((await factory.status(tableSystem({ plugins: TABLE_PLUGINS.replace('postman@', 'other@') }))).installed, false);
+
+    const system = tableSystem();
+
+    assert.equal((await factory.install(system)).message, 'updated postman@postman-plugin');
+    assert.deepEqual(system.commands, [
+        'droid plugin marketplace update postman-plugin',
+        'droid plugin update postman@postman-plugin --scope user'
+    ]);
+});
+
+test('reads a Windows table and ignores a project-scope row', async () => {
+    assert.equal((await factory.status(tableSystem({ plugins: TABLE_PLUGINS.replaceAll('\n', '\r\n') }))).installed, true);
+    assert.equal((await factory.status(tableSystem({ plugins: TABLE_PLUGINS.replace('user   ', 'project') }))).installed, false);
+});
+
+test('reads a table marketplace source that Droid wrapped onto more lines', async () => {
+    const wrapped = [
+            'MARKETPLACE     SOURCE                                    PLUGINS  DISPLAY NAME',
+            'postman-plugin  local:/home/someone/src/a-very-long-path        1  postman-plugin',
+            '                /postman-plugin',
+            ''
+        ].join('\n'),
+        system = tableSystem({ marketplaces: wrapped }),
+        outcome = await factory.install(system);
+
+    assert.equal(outcome.outcome, 'blocked');
+    assert.match(outcome.message, /local:\/home\/someone\/src\/a-very-long-path\/postman-plugin,/);
+    assert.deepEqual(system.commands, []);
+});
