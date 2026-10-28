@@ -5,6 +5,18 @@ description: Runs services, frontends, tests or demos against stand-ins for thei
 
 # API Simulation
 
+Simulation is where a change gets tried before it is committed. The services
+the code calls run as code you control, so a hypothesis can be exercised faster
+than real time and as often as it takes, with none of what a real call leaves
+behind — data mutated, money spent, someone notified. Side effects are what
+limits how much can be tried at once, and this is what moves that limit.
+
+That makes the loop cheap on purpose: state what the code assumes about a
+dependency, exercise it, let the result correct the code, and confirm against
+the real service at the end rather than at every step. A result from a
+simulation is bounded accordingly — it holds across the worlds that were
+explored, which is what makes it worth having early and worth confirming late.
+
 Check whether an existing simulation in `postman/simulations/` covers the
 dependency interactions relevant to the task. Reusing its mocks and wiring
 can avoid rebuilding an environment; extend it only where the behavior you
