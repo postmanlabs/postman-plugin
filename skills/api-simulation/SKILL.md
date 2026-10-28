@@ -13,9 +13,9 @@ and that same command is what CI runs. A repository with `postman/simulations/`
 has already paid that cost: the path you're changing may be covered already.
 
 The `<name>.context.yaml` beside a simulation is where the last session's work
-went: the prerequisites, the setup that worked, what the code takes for granted
-about each dependency, and the evidence each of those rests on. So the second
-change to a service costs less than the first, and the tenth costs least.
+went: what the code takes for granted about each dependency it calls, and the
+evidence each of those beliefs rests on. So the second change to a service costs
+less than the first, and the tenth costs least.
 
 A simulation serves several mocks as one environment: by default behind a
 proxy that answers for the dependencies' own hostnames, so the code under test
@@ -137,17 +137,18 @@ stock reserved and never released.
 
 ## Its context document
 
-Every simulation is created with a `<name>.context.yaml` beside it, holding what
-running this one has taught: the commands that start it and prove it's up, what
-must be true before a run works, what the code takes for granted about the
-dependencies themselves, what each run actually showed, and the failures
-earlier runs already hit. The `.sim.yaml` says what the simulation is, not how
-it behaves, so this is the record that saves a session the search.
+Every simulation is created with a `<name>.context.yaml` beside it, holding
+what the code is believed to rely on about the dependencies it calls — who the
+caller is taken to be, which plan or permission is assumed, the order calls go
+in, what gets retried, the shape of the data — and what each belief rests on.
+The `.sim.yaml` says what the simulation is, not what the services it stands in
+for do, so this is the record that saves a session the search.
 
-Read it before anything else — it is YAML under a fixed schema — and write
-this run back into it before you finish. Each claim carries a status and the
-fingerprint its evidence was taken against, so the next session can tell what a
-run established from what someone reasoned, and what has gone stale since.
+Read it before anything else — it is YAML under a fixed schema — and write what
+you established back into it before you finish. Each claim carries a `status`,
+the `reason` the evidence adds up to it, the `verification` that was done and
+what it showed, and a `source` to re-check it against, so the next session can
+tell a claim a contract promises from one a request actually demonstrated.
 Never recreate the file: it is written from a fixed template, and everything in
 it is something an earlier session established. Its keys, fields and write-back
 order are in
@@ -190,10 +191,12 @@ your code against these stand-ins rather than the real services, what still
 needs the real service before release, and where each mock came from,
 including when you skipped the owner's.
 
-Then write the run back into `<name>.context.yaml`, so the next session starts
-where this one ended: the observation of what this run showed, a precondition
-you had to discover, what broke and why it misled you, and a new status for
-every assumption the run settled or contradicted. Say "held in the scenarios
-run" rather than "works" — the record is read later as evidence, and the two
-don't mean the same thing. [reference/context_file.md](reference/context_file.md)
-has the order to do it in.
+Then write what you established back into `<name>.context.yaml`, so the next
+session starts where this one ended: a claim for anything the run settled that
+was not already written down, a new `status` for every claim it settled or
+contradicted, and in each case the `verification` that was done and the
+`source` to re-check it against. Scope what you claim to what you actually
+exercised — "held in the scenarios run" rather than "works" — since the record
+is read later as evidence, and the two don't mean the same thing.
+[reference/context_file.md](reference/context_file.md) has what each field is
+for.
