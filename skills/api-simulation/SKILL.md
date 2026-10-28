@@ -1,39 +1,38 @@
 ---
 name: api-simulation
-description: Runs your code for real against stand-ins for the HTTP services it calls, served together as one environment on one local port or one deployed URL, whether that code is a service you're changing, a frontend, a test suite or a demo. Use when you add or change code that calls other services and need to run it, test it, prove a fix or reproduce an upstream failure (timeouts, 5xx, 409, 429) end to end, locally or in CI, without the real services because they're unreachable, need credentials, cost money, have side effects or don't exist yet. Also answers what happens to a request, or to the data it writes, when a service it calls goes down, is slow or returns errors ("what happens to a booking if the email service is down?"), by running each failure instead of reading the code. Applies even when nobody says mock or simulation, and a `postman/simulations/` directory in the repository is itself a reason to load this before changing code it covers. To give a frontend or another team a stand-in for an API, use api-mocking. Covers `postman simulation`.
+description: Runs services, frontends, tests or demos against stand-ins for their HTTP dependencies, served as one environment locally or at a deployed URL. Use when you add or change code that calls other services and need to run it, test it, prove a fix or reproduce an upstream failure (timeouts, 5xx, 409, 429) end to end, locally or in CI, without the real services because they're unreachable, need credentials, cost money, have side effects or don't exist yet. Also answers what happens to a request, or to the data it writes, when a service it calls goes down, is slow or returns errors ("what happens to a booking if the email service is down?"), by exercising relevant failures and observing caller outcomes. Applies even when nobody says mock or simulation, and a `postman/simulations/` directory in the repository is itself a reason to load this before changing code it covers. To give a frontend or another team a stand-in for an API, use api-mocking. Covers `postman simulation`.
 ---
 
 # API Simulation
 
-Building, fixing and testing an API goes faster here than against the real
-services or against stubs. One command brings up every dependency the code
-calls, so a change is exercised end to end in seconds — nothing to get
-credentials for, no environment to book, no other team's service to wait on —
-and that same command is what CI runs. A repository with `postman/simulations/`
-has already paid that cost: the path you're changing may be covered already.
+Check whether an existing simulation in `postman/simulations/` covers the
+dependency interactions relevant to the task. Reusing its mocks and wiring
+can avoid rebuilding an environment; extend it only where the behavior you
+need to exercise is missing.
 
 The `<name>.context.yaml` beside a simulation is where the last session's work
 went: what the code takes for granted about each dependency it calls, and the
-evidence each of those beliefs rests on. So the second change to a service costs
-less than the first, and the tenth costs least.
+evidence each of those beliefs rests on. Use it to identify reusable findings
+and unresolved assumptions before repeating an investigation.
 
 A simulation serves several mocks as one environment: by default behind a
 proxy that answers for the dependencies' own hostnames, so the code under test
 keeps the base URLs it ships with, or on one local port where each member is
 reached by its routeKey.
 
-Run your code against it rather than stubbing its HTTP client in tests or
-calling the real services. A stub skips the client, config, timeouts and
-error handling that will run in production; the real services need
-credentials and leave side effects. A simulation runs that code over real
-HTTP, the same way in CI, and its log shows what each dependency was asked.
+Simulation adds value when the result depends on real HTTP behavior, such as
+client configuration, serialization, timeouts or retries, and the real
+dependencies are unavailable or unsuitable for the exercise. Stubbing the
+HTTP client can bypass those behaviors. Choose verification that exercises
+what matters to the task: an existing test may already answer a local logic
+question, while a claim about the provider may need its contract or a real
+service check. A simulation's log shows what each stand-in was asked.
 
-Do only what the task needs. Where a `.sim.yaml` in `postman/simulations/`
-already covers it, that one runs as it stands, and its context document is
-cheaper to read than the `.sim.yaml` and the handlers are to re-derive. What
-that document can't settle is what a run proved, which is decided here. One
-request through the changed path proves a change; failure variants are worth
-building when asked how the code fails or when it must survive a failure.
+Define the expected outcome and what observation would distinguish correct
+from incorrect behavior, including side effects when relevant. A request
+through the changed path shows that it ran; its response and resulting state
+determine whether the expectation held. Choose boundary and failure cases
+from the behavior changed and the consequences of getting it wrong.
 
 `postman simulation` needs CLI 1.70.0 or later (`postman --version`; an older
 CLI answers `postman simulation -h` with its general help).
@@ -110,10 +109,17 @@ path. Some answers come from the simulation itself and mean wiring, not code:
 
 ## When a dependency goes down
 
-Run it rather than reason from the code: each way of going down takes a different
-path through the caller, and a stub skips the client code that picks the
-path. Fail the one dependency in each shape that matters, a run each, with
-the others answering normally:
+Choose failures from the outcome the user needs to understand. A failure
+before a write, a timeout after a write may have completed, and a failure
+during compensation can expose different risks: lost work, duplicate writes
+or unreleased resources. Read the caller to identify relevant paths, then
+exercise the ones whose runtime behavior remains uncertain.
+
+Isolating one failure helps attribute the result. Combine failures or model
+partial completion when the question depends on their interaction. The
+injection must represent the event being investigated: delaying a response
+alone does not establish whether a write completed before the timeout.
+Examples of available techniques:
 
 - **Unreachable:** point its base URL at a port nothing listens on. This one
   needs the one-port run, since under `--proxy` the base URLs are the point.
@@ -141,14 +147,15 @@ in, what gets retried, the shape of the data — and what each belief rests on.
 The `.sim.yaml` says what the simulation is, not what the services it stands in
 for do, so this is the record that saves a session the search.
 
-Read it before anything else — it is YAML under a fixed schema — and write what
-you established back into it before you finish. Each claim carries a `status`,
+Read relevant claims before investigating the dependencies, and assess whether
+their evidence still applies to this task. Write what you established back
+into the document before you finish. Each claim carries a `status`,
 the `reason` the evidence adds up to it, the `verification` that was done and
 what it showed, and a `source` to re-check it against, so the next session can
 tell a claim a contract promises from one a request actually demonstrated.
-Never recreate the file: it is written from a fixed template, and everything in
-it is something an earlier session established. Its keys, fields and write-back
-order are in
+Preserve existing claims and their evidence when updating the file, including
+unresolved assumptions and historical findings. Its fixed schema and guidance
+on evidence and reuse are in
 [reference/context_file.md](reference/context_file.md); read that before
 writing to it.
 
@@ -180,19 +187,20 @@ first. It fails on a pulled member, which keeps its owner's `id:`; copy it to
 
 ## Before you say it works
 
-Claim nothing until what you're testing actually ran: a service printed
-that it's listening and answered your request, or the frontend or test
-suite finished, and its calls are in the log. If its start command exited
-or hung, the run proved nothing; say so and why. Say what a pass proves,
+Claim a simulation passes only after the code under test ran and you observed
+the expected response or state change. Use its calls in the log to confirm
+the dependency path was exercised; for injected failures, use the caller
+outcomes described above. If startup failed or the relevant path never ran,
+report that limitation. Say what a pass proves,
 your code against these stand-ins rather than the real services, what still
 needs the real service before release, and where each mock came from,
 including when you skipped the owner's.
 
 Then write what you established back into `<name>.context.yaml`, so the next
-session starts where this one ended: a claim for anything the run settled that
-was not already written down, a new `status` for every claim it settled or
-contradicted, and in each case the `verification` that was done and the
-`source` to re-check it against. Scope what you claim to what you actually
+session starts where this one ended. Add or update claims that help a later
+session reuse the findings. For each claim the run settled or contradicted,
+update its `status`, the `verification` that was done and the `source` to
+re-check it against. Scope what you claim to what you actually
 exercised — "held in the scenarios run" rather than "works" — since the record
 is read later as evidence, and the two don't mean the same thing.
 [reference/context_file.md](reference/context_file.md) has what each field is

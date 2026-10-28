@@ -6,8 +6,9 @@ gets `checkout.context.yaml`, and a foldered simulation keeps both in its folder
 `simulation update` renames it with the simulation, and `simulation delete`
 removes it.
 
-**Never recreate it and never overwrite it.** It holds what earlier sessions
-established, and a fresh copy throws that away while looking complete.
+**Update the existing record without discarding prior claims or evidence.**
+Replacing it with a fresh template loses findings and unresolved assumptions
+while looking complete.
 
 It carries what is believed about the services this simulation stands in for,
 and what each belief rests on. **api-simulation** is how a simulation is run,
@@ -21,18 +22,21 @@ comments above it. A `null` is something nobody has established yet.
 
 | Key | Holds |
 | --- | --- |
-| `purpose` | `stands_in_for` and `unblocks` — what the simulation stands in for and what work it unblocks. Both need hindsight, so they are the last thing to write. The members it serves, their route keys and the hosts they answer for are in the `.sim.yaml` beside it. |
+| `purpose` | `stands_in_for` and `unblocks` — what the simulation stands in for and what work it unblocks. Record the intended purpose when known and refine it as you learn, distinguishing intended outcomes from demonstrated results. The members it serves, their route keys and the hosts they answer for are in the `.sim.yaml` beside it. |
 | `assumptions` | What the code relies on about a dependency's behaviour. One claim per entry: `id`, `status`, `claim`, `reason`, `verification`, `source`, `updated_at`. |
 | `fingerprints` | What the claims were written against — `id`, `date`, `commit`, `cli`. |
 
 Everything else about this simulation lives where it already is: the members and
 their origins in the `.sim.yaml`, the handlers in `postman/mocks/`, and how to
-run any of it in **api-simulation**. This record is for what none of those say.
+run any of it in **api-simulation**. Use this record to connect those details
+to the assumptions and findings a later session needs.
 
-Every entry passes one test: the repo doesn't already state it. For routes,
-request shapes, auth or config, name the file that holds it and let the reader
-go there — one source stays true, a copy here drifts, and this file is
-committed, so a named file is also how a credential stays out of it.
+Keep an entry when it helps a later session make a decision without repeating
+the investigation, even if supporting details already exist in the repo.
+For routes, request shapes, auth or config, link the file that holds them and
+record the conclusion, evidence and uncertainty relevant to the caller.
+Avoid copying details that can drift, and keep credentials out of this
+committed record.
 
 ## What an assumption is
 
@@ -44,12 +48,14 @@ whether or not anyone checked, so its answer is a belief your code now carries.
 ```yaml
 - id: summary-checks-access-before-plan
   status: supported
-  claim: The summary validates the model, then asks ACS, then asks billing. A
-    caller ACS refuses never reaches billing.
-  reason: The policy chain fixes the order, and a run agreed with it.
-  verification: Read the chain in config/policies.js, then drove one allowed
-    request and one ACS refusal. The allowed request produced a billing call;
-    the refused one produced none.
+  claim: In the summary scenario exercised, an ACS refusal prevented a
+    billing call.
+  reason: The policy chain gates billing on ACS access, and the simulated
+    refusal exercised that gate. This supports caller behavior for the
+    modeled refusal; it does not establish when the real ACS refuses access.
+  verification: On 2026-10-28, read config/policies.js and drove a summary
+    request against an ACS stand-in returning the modeled refusal. No billing
+    request appeared in the simulation log.
   source: config/policies.js:125-126; runs/summary-gates-001
   updated_at: "2026-10-28"
 ```
@@ -67,9 +73,10 @@ evidence can settle one and leave the other standing.
 | `conflicting` | Applicable sources disagree. | Documentation promises immediate revocation; a real probe observes continued access. |
 
 `supported` is the one to be careful with: support comes with a scope, so the
-claim says what that scope is. "Idempotent for 24 hours" is supportable;
-"idempotent" is not, and a claim stated that broadly is `supported` only for
-the window someone actually checked.
+claim says what that scope is. Name the operation, relevant conditions and
+window the evidence covers. Narrow an overbroad claim before marking it
+`supported`; a check at one point in a window does not establish behavior
+throughout it.
 
 `contradicted` and `conflicting` are findings to report, not states to route
 around. A contradiction says the code relies on something untrue; a conflict
@@ -85,17 +92,28 @@ field that earns its place on a `conflicting` or `unknown` claim, where the
 status alone does not say what is unresolved.
 
 `verification` is what was actually done and what it showed — a contract read,
-a request made and its response, a handler inspected. Name what is still
+a request made and its response, a handler inspected. Include when the
+verification occurred and the revision or environment it covered, using a
+fingerprint entry where applicable. Name what is still
 planned or blocked and what would settle it, and say when a piece of evidence
 has gone stale and why, since stale evidence stays as history but cannot
 establish a current status.
+
+Match the claim to the kind of evidence. A mock handler shows what the
+stand-in models; a simulated run shows how the caller behaved under that
+model. Neither independently establishes the real dependency's behavior.
+Use provider evidence for that: distinguish a published contract's promise
+from behavior observed against the real service, and retain the conditions
+and scope of each. If only the mock supports a provider assumption, that
+assumption remains `unknown` even when the caller test passes.
 
 `source` is where to go and re-check it, so the next session can audit the
 claim rather than take it on trust. Any of:
 
 - a file and line range in this repo, where the code shows what it relies on;
-- a request that was actually made and what came back — the sequence and the
-  status codes, not a summary;
+- a request that was actually made and what came back — the target environment
+  (stand-in or real service), sequence and status codes, with a retrievable
+  test or run reference where available;
 - the dependency's own code, or its published contract, read for the endpoint
   in question.
 
@@ -113,11 +131,10 @@ The day the entry was last written, `YYYY-MM-DD`. Set it when you add a claim,
 and set it again whenever you change one — a new status, a fresh piece of
 verification, a reworded claim.
 
-It is what tells a reader how old a belief is. `fingerprints` says which commit
-and CLI the claims were written against; `updated_at` says when this particular
-one was last looked at, which is the question you ask before depending on it. A
-claim nobody has touched in months is worth re-checking whatever its status
-says.
+This date tracks record maintenance. Rewording a claim does not refresh its
+evidence: judge that from the date, revision and environment in `verification`
+and its referenced fingerprint. Re-check when relevant behavior or conditions
+have changed, or when the evidence's applicability is unclear.
 
 Nothing enforces this. `simulation create` writes an empty list and no command
 edits entries, so the field is only as true as the session that last wrote it.
@@ -139,21 +156,25 @@ What the claims were written against: `git rev-parse HEAD` and
 `postman --version`. Append an entry when either differs, and say so when the
 tree is dirty — a sha alone reads as a clean checkout.
 
-This is what keeps a `supported` claim from reading as current forever. A claim
-carried over from an older fingerprint is one nothing has re-checked since,
-which is worth knowing before a run depends on it.
+Tie each verification to the fingerprint it used. Appending a new fingerprint
+does not revalidate older claims. A changed commit or CLI is a reason to
+assess whether relevant behavior changed; it does not by itself invalidate
+all prior evidence.
 
 ## Reading it before you start
 
-Read it before anything else, and treat what it answers as answered. The code
-you are about to change still needs reading; what the dependencies around it
-are taken to do is what this file is for. A session that reads the record and
-then repeats the work it was meant to replace has paid for it twice.
+Read the claims relevant to the task before repeating dependency research.
+Compare their scope and evidence with the code, configuration and provider
+conditions your work depends on. Reuse findings that still apply, and inspect
+the code you are changing to identify assumptions the change may affect.
 
-Then read the statuses before concluding anything holds. A `supported` claim
-holds until your evidence contradicts it. An `unknown` or `conflicting` one is
-a question — settle it cheaply when your work depends on it, and write back
-what you found.
+Treat `supported` as conditional on that applicability, not as a permanent
+guarantee. Revisit affected claims when relevant conditions change or their
+evidence no longer establishes the current behavior. If current support is
+unresolved, mark the claim `unknown` and preserve the prior evidence with the
+reason it no longer settles the question. An `unknown` or `conflicting` claim
+is worth investigating when the task depends on it; record what would settle
+it if verification remains blocked.
 
-Leave another session's claims standing unless your evidence contradicts one:
-not exercised is not the same as not true.
+Preserve unrelated claims and their history. A claim not exercised in this
+session is not thereby contradicted or stale.
