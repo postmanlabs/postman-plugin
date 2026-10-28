@@ -20,13 +20,13 @@ the `type` vocabulary are fixed; the template carries each key's field schema,
 that vocabulary and a worked example in the comments above it, and points here
 for everything below. A `null` is something nobody has established yet.
 
-`purpose` and `execution` are the only keys a session rewrites. Everything else
+`purpose` and `setup` are the only keys a session rewrites. Everything else
 is appended to, or has an entry's `status` changed.
 
 | Key | Holds |
 | --- | --- |
 | `purpose` | `stands_in_for` and `unblocks` — what the simulation stands in for and what work it unblocks. Both need hindsight, so they are the last thing to write. `mocks` lists each member's `route_key`, `handler` and the `origin` host it answers for. |
-| `execution` | How to get this simulation running and prove it is up, and nothing else. An ordered list of steps, each `id`, `what` and `command`: start the simulation, start the service pointed at it, prove it is up, read what got called, stop. Only commands you ran successfully in this session; a `command: null` is a step nobody has run. |
+| `setup` | The shared starting point: an ordered list of steps, each `id`, `what` and `command` — start the simulation, start the service pointed at it, confirm it answers, read what it served, stop. Only commands you ran successfully in this session; a `command: null` is a step nobody has run. |
 | `fingerprints` | One entry per distinct state of the repo and tooling. What every piece of evidence is pinned to. |
 | `prerequisites` | What must be true outside the simulation — databases, caches, ports, credentials, local services — each with a `check` command. |
 | `assumptions` | One claim each: `id`, `type`, `claim`, `consequence` and `affects` are the claim and stay put; `verification` holds the `status`, `source`, `depends_on` and `counterexample` that a run changes. |
@@ -38,21 +38,21 @@ request shapes, auth or config, name the file that holds it and let the reader
 go there — one source stays true, a copy here drifts, and this file is
 committed, so a named file is also how a credential stays out of it.
 
-### What `execution` is not
+### What `setup` holds
 
-`execution` is the lifecycle: bring the environment up, show it is up, read what
-it served, take it down. It is the part a reader runs verbatim before doing any
-work of their own, so it stays the same whatever they came to do.
+`setup` is the shared starting point: bring the simulation up, bring the service
+up against it, confirm it answers, read what it served, take it down. It is the
+same for everyone whatever they came to do, which is what makes it safe to run
+top to bottom before reading any further.
 
-What a dependency *does* is not lifecycle. A command that makes a member fail,
-moves a plan, denies a permission or seeds a row is a way of exercising one
-claim, and it belongs to that claim — name the control in the assumption's
-`consequence`, or record what it showed as an observation. Put it in `execution`
-and the next session runs a scenario nobody asked for and reads the result as
-the environment's normal state.
+A command that belongs to one claim — making a member fail, moving a plan,
+denying a permission, seeding a row — lives with that claim, named in the
+assumption's `consequence` or in the observation that recorded what it showed.
+There it travels with the reason someone would run it, and a reader meets it
+when they are asking about that claim.
 
-A useful check: if a step would make no sense to someone who had not read the
-rest of the file, it is not lifecycle.
+One test for a step: a reader who knows nothing else about this service would
+still want to run it.
 
 ## 1. Before writing
 
@@ -141,7 +141,7 @@ Append only, one entry per failure:
 - `cause`
 - `fix`
 
-Where the fix changed a command, update `execution` to match.
+Where the fix changed a command, update `setup` to match.
 
 For evidence beyond the entry, name a committed file: the handler that threw,
 the mock example captured from the real service, the test that reproduces it.
@@ -150,10 +150,10 @@ the next run overwrites.
 
 ## 6. Before finishing
 
-- `execution` contains only commands you ran successfully in this session.
+- `setup` contains only commands you ran successfully in this session.
   Re-run any you changed.
 - Never write "works" or "proven". Write "held in the scenarios run".
-- Remove nothing except stale entries in `purpose` or `execution`.
+- Remove nothing except stale entries in `purpose` or `setup`.
 
 ## Reading it before you start
 
@@ -165,7 +165,7 @@ can judge; the record alone is the happy path, with nothing to diagnose from
 the moment it stops holding.
 
 What the record answers is answered.
-`execution` holds commands that ran and `prerequisites` holds what someone
+`setup` holds commands that ran and `prerequisites` holds what someone
 already established, so both are usable as they stand rather than as a starting
 point to rebuild from. The code you are about to change still needs reading;
 the setup around it is what this file is for. A session that reads the record
