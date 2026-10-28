@@ -29,7 +29,7 @@ is appended to, or has an entry's `status` changed.
 | `execution` | An ordered list of steps, each `id`, `what` and `command`. Only commands you ran successfully in this session: start the simulation, start the service pointed at it, prove it is up, count what got called, stop. A `command: null` is a step nobody has run. |
 | `fingerprints` | One entry per distinct state of the repo and tooling. What every piece of evidence is pinned to. |
 | `prerequisites` | What must be true outside the simulation — databases, caches, ports, credentials, local services — each with a `check` command. |
-| `assumptions` | One claim each, `kind: behaviour` or `kind: tooling`, with `status`, `source`, `depends_on` and `affects`. |
+| `assumptions` | One claim each: `id`, `type`, `claim`, `consequence` and `affects` are the claim and stay put; `verification` holds the `status`, `source`, `depends_on` and `counterexample` that a run changes. |
 | `observations` | What a run actually showed. Append only. |
 | `didnt_work` | A failure, why it misled, its cause and its fix. Append only. |
 
@@ -55,23 +55,29 @@ committed, so a named file is also how a credential stays out of it.
 - **`prerequisites`** — anything outside the simulation that must be true
   before a run works at all. Include the `check` command that shows whether it
   is.
-- **`assumptions`, `kind: behaviour`** — what the service's code relies on
+- **`assumptions`, `type: behaviour.*`** — what the service's code relies on
   about a dependency: who the caller is, its plan, its permissions, call order,
   retries, the shape of the data. A mock answers these whether or not anyone
   checked, so its answer is a belief your code now carries.
-- **`assumptions`, `kind: tooling`** — what you believe about the simulation or
-  the CLI. Always put `cli` in its `depends_on`.
+- **`assumptions`, `type: tooling.*`** — what you believe about the simulation
+  or the CLI. Always put `cli` in its `verification.depends_on`.
 
 One claim per assumption. A sentence holding two claims is two entries, because
 a run can contradict one of them and leave the other standing.
 
 ## 3. Status rules
 
-- No linked observation → `status: unknown`.
+Everything here lives under an assumption's `verification`, except `affects`.
+
+- No linked observation → `status: unknown`. There is no evidence list on the
+  assumption: observations point in through their `supports` and `contradicts`,
+  so an absence of inbound links is what `unknown` means.
 - `source: reasoned` can never be `status: confirmed`. Reading the code is not
   running it.
 - `status: contradicted` requires a `counterexample`: the request sequence and
   the outcome.
+- `depends_on` names the `fingerprints` keys this claim is sensitive to, and is
+  never empty — it is what the staleness pass compares.
 - `affects` names the file and line range that relies on the claim, so a
   contradicted assumption points at the code to revisit.
 - For every `unknown` behaviour assumption, run the collection again with
