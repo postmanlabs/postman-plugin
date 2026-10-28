@@ -5,27 +5,27 @@ description: Runs services, frontends, tests or demos against stand-ins for thei
 
 # API Simulation
 
-Simulation is where a change gets tried before it is committed. The services
-the code calls run as code you control, so a hypothesis can be exercised faster
-than real time and as often as it takes, with none of what a real call leaves
-behind — data mutated, money spent, someone notified. Side effects are what
-limits how much can be tried at once, and this is what moves that limit.
+Simulation lets you control how dependencies behave and explore how your code
+responds to different outcomes. This makes it easier to test assumptions
+repeatedly without real calls changing data, spending money, or notifying
+someone. Simulation context records those assumptions, the evidence supporting
+them, and what remains unknown. As sessions build on this context, it helps
+surface incorrect assumptions and avoid repeated investigation.
 
-That makes the loop cheap on purpose: state what the code assumes about a
-dependency, exercise it, let the result correct the code, and confirm against
-the real service at the end rather than at every step. A result from a
-simulation is bounded accordingly — it holds across the worlds that were
-explored, which is what makes it worth having early and worth confirming late.
+Together, the simulation and its context provide a place to explore changes
+and identify what still needs validation against the real dependencies.
 
 Check whether an existing simulation in `postman/simulations/` covers the
 dependency interactions relevant to the task. Reusing its mocks and wiring
 can avoid rebuilding an environment; extend it only where the behavior you
 need to exercise is missing.
 
-The `<name>.context.yaml` beside a simulation is where the last session's work
-went: what the code takes for granted about each dependency it calls, and the
-evidence each of those beliefs rests on. Use it to identify reusable findings
-and unresolved assumptions before repeating an investigation.
+The `<name>.context.yaml` beside a simulation records those assumptions, their
+supporting evidence, and unresolved questions so later sessions can build on
+earlier findings. For example, a timeout from `/payments` does not establish
+whether the payment failed or completed before the response arrived. The
+context file will document what has been established about the real provider
+and identify what still needs verification.
 
 A simulation serves several mocks as one environment: by default behind a
 proxy that answers for the dependencies' own hostnames, so the code under test
