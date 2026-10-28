@@ -16,9 +16,9 @@ done.
 ## Its shape
 
 The whole file is YAML under a fixed key schema. The key names, `schema:` and
-the `type` vocabulary are fixed; the template carries that vocabulary, and each
-key's rules, in the comments above it. A `null` is something nobody has
-established yet.
+the `type` vocabulary are fixed; the template carries each key's field schema,
+that vocabulary and a worked example in the comments above it, and points here
+for everything below. A `null` is something nobody has established yet.
 
 `purpose` and `execution` are the only keys a session rewrites. Everything else
 is appended to, or has an entry's `status` changed.
