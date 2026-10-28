@@ -89,9 +89,11 @@ won't fix it ([reference/sim_yaml_schema.md](reference/sim_yaml_schema.md)).
 
 ## Running it on one port instead
 
-`--port` is for a client that won't honour the proxy however it's configured.
-The cost is repointing the code at the port — the change the proxy exists to
-avoid — so a base URL that can't change rules this mode out too.
+`--port` puts every member on one local port, each addressable by its routeKey,
+with the code under test pointed at that port. Reach for it when a client has
+no proxy setting to honour, and when you want to address a member yourself —
+each one keeps a stable URL for the whole run, so a mock's control routes and
+its individual responses are a curl away.
 
 ## Reading the log
 
