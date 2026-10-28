@@ -26,7 +26,7 @@ since the file is what declares the hostnames.
 `simulation create` writes each `path:` relative to the repository root, the
 directory holding `postman/`, and puts the simulation in a folder of its own
 (`postman/simulations/checkout-dev/checkout-dev.sim.yaml`) so its
-`<name>.context.md` sits beside it; the app records that document in a
+`<name>.context.yaml` sits beside it; the app records that document in a
 `context:` ref. Reading is broader than writing — a path relative to
 `postman/simulations/`, to the file, absolute or `~/`, naming the folder or
 the manifest inside it, all resolve — and an unresolvable one names every

@@ -94,25 +94,25 @@
     {
       "name": "api-simulation",
       "plugin": "postman",
-      "description": "Runs your code for real against stand-ins for the HTTP services it calls, served together as one environment on one local port or one deployed URL, whether that code is a service you're changing, a frontend, a test suite or a demo. Use when you add or change code that calls other services and need to run it, test it, prove a fix or reproduce an upstream failure (timeouts, 5xx, 409, 429) end to end, locally or in CI, without the real services because they're unreachable, need credentials, cost money, have side effects or don't exist yet. Also answers what happens to a request, or to the data it writes, when a service it calls goes down, is slow or returns errors (\"what happens to a booking if the email service is down?\"), by running each failure instead of reading the code. Applies even when nobody says mock or simulation. To give a frontend or another team a stand-in for an API, use api-mocking. Covers `postman simulation`.",
+      "description": "Runs your code for real against stand-ins for the HTTP services it calls, served together as one environment on one local port or one deployed URL, whether that code is a service you're changing, a frontend, a test suite or a demo. Use when you add or change code that calls other services and need to run it, test it, prove a fix or reproduce an upstream failure (timeouts, 5xx, 409, 429) end to end, locally or in CI, without the real services because they're unreachable, need credentials, cost money, have side effects or don't exist yet. Also answers what happens to a request, or to the data it writes, when a service it calls goes down, is slow or returns errors (\"what happens to a booking if the email service is down?\"), by running each failure instead of reading the code. Applies even when nobody says mock or simulation, and a `postman/simulations/` directory in the repository is itself a reason to load this before changing code it covers. To give a frontend or another team a stand-in for an API, use api-mocking. Covers `postman simulation`.",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/api-simulation/SKILL.md",
-          "bytes": 10573,
-          "sha256": "1693bb54e632e8c16d0f3af1cbe83c46d6184356e8e238e33931bb573d326daa"
+          "bytes": 11490,
+          "sha256": "b78ddb6894ae19f82767624bdd923685bffd4e37366be4359366071ce803b3e5"
         },
         {
           "target": "reference/context_file.md",
           "source": "skills/api-simulation/reference/context_file.md",
-          "bytes": 6518,
-          "sha256": "0dea7edd0be966abee6fa9ba66b5b6b7c99f80ba98b7262939b6c484f2e5643c"
+          "bytes": 7194,
+          "sha256": "109c3dc8d721c076cc1aefbce381caefcf2b4532a8415d09a8bc32678a00cc85"
         },
         {
           "target": "reference/sim_yaml_schema.md",
           "source": "skills/api-simulation/reference/sim_yaml_schema.md",
-          "bytes": 3833,
-          "sha256": "a80e83487165b16c1732f1ee3365785dc74e6a1c1123c324da571f53f8efa1c6"
+          "bytes": 3835,
+          "sha256": "70d5973bfc8ff39efd455f89fc40e05b16507c17b236594bcc87979fc0d6ee02"
         }
       ]
     },

@@ -1,9 +1,21 @@
 ---
 name: api-simulation
-description: Runs your code for real against stand-ins for the HTTP services it calls, served together as one environment on one local port or one deployed URL, whether that code is a service you're changing, a frontend, a test suite or a demo. Use when you add or change code that calls other services and need to run it, test it, prove a fix or reproduce an upstream failure (timeouts, 5xx, 409, 429) end to end, locally or in CI, without the real services because they're unreachable, need credentials, cost money, have side effects or don't exist yet. Also answers what happens to a request, or to the data it writes, when a service it calls goes down, is slow or returns errors ("what happens to a booking if the email service is down?"), by running each failure instead of reading the code. Applies even when nobody says mock or simulation. To give a frontend or another team a stand-in for an API, use api-mocking. Covers `postman simulation`.
+description: Runs your code for real against stand-ins for the HTTP services it calls, served together as one environment on one local port or one deployed URL, whether that code is a service you're changing, a frontend, a test suite or a demo. Use when you add or change code that calls other services and need to run it, test it, prove a fix or reproduce an upstream failure (timeouts, 5xx, 409, 429) end to end, locally or in CI, without the real services because they're unreachable, need credentials, cost money, have side effects or don't exist yet. Also answers what happens to a request, or to the data it writes, when a service it calls goes down, is slow or returns errors ("what happens to a booking if the email service is down?"), by running each failure instead of reading the code. Applies even when nobody says mock or simulation, and a `postman/simulations/` directory in the repository is itself a reason to load this before changing code it covers. To give a frontend or another team a stand-in for an API, use api-mocking. Covers `postman simulation`.
 ---
 
 # API Simulation
+
+Building, fixing and testing an API goes faster here than against the real
+services or against stubs. One command brings up every dependency the code
+calls, so a change is exercised end to end in seconds — nothing to get
+credentials for, no environment to book, no other team's service to wait on —
+and that same command is what CI runs. A repository with `postman/simulations/`
+has already paid that cost: the path you're changing may be covered already.
+
+The `<name>.context.yaml` beside a simulation is where the last session's work
+went: the prerequisites, the setup that worked, what the code takes for granted
+about each dependency, and the evidence each of those rests on. So the second
+change to a service costs less than the first, and the tenth costs least.
 
 A simulation serves several mocks as one environment: by default behind a
 proxy that answers for the dependencies' own hostnames, so the code under test
@@ -16,13 +28,12 @@ error handling that will run in production; the real services need
 credentials and leave side effects. A simulation runs that code over real
 HTTP, the same way in CI, and its log shows what each dependency was asked.
 
-Do only what the task needs. If a `.sim.yaml` in `postman/simulations/`
-already covers it, run that one, and read the `<name>.context.md` beside it
-first: it holds the commands, the preconditions and the failures earlier runs
-hit, so reading it costs less than rebuilding any of that from the `.sim.yaml`
-and the handlers. One request through the changed path proves a change; build
-failure variants only when asked how the code fails or when it must survive a
-failure.
+Do only what the task needs. Where a `.sim.yaml` in `postman/simulations/`
+already covers it, that one runs as it stands, and its context document is
+cheaper to read than the `.sim.yaml` and the handlers are to re-derive. What
+that document can't settle is what a run proved, which is decided here. One
+request through the changed path proves a change; failure variants are worth
+building when asked how the code fails or when it must survive a failure.
 
 `postman simulation` needs CLI 1.70.0 or later (`postman --version`; an older
 CLI answers `postman simulation -h` with its general help).
@@ -126,19 +137,20 @@ stock reserved and never released.
 
 ## Its context document
 
-Every simulation is created with a `<name>.context.md` beside it, holding what
+Every simulation is created with a `<name>.context.yaml` beside it, holding what
 running this one has taught: the commands that start it and prove it's up, what
 must be true before a run works, what the code takes for granted about the
 dependencies themselves, what each run actually showed, and the failures
 earlier runs already hit. The `.sim.yaml` says what the simulation is, not how
 it behaves, so this is the record that saves a session the search.
 
-Read it before anything else, and write this run back into it before you
-finish. Each claim carries a status and the fingerprint its evidence was taken
-against, so the next session can tell what a run established from what someone
-reasoned, and what has gone stale since. Never recreate the file: it is written
-from a fixed template, and everything in it is something an earlier session
-established. Its sections, fields and write-back order are in
+Read it before anything else — it is YAML under a fixed schema — and write
+this run back into it before you finish. Each claim carries a status and the
+fingerprint its evidence was taken against, so the next session can tell what a
+run established from what someone reasoned, and what has gone stale since.
+Never recreate the file: it is written from a fixed template, and everything in
+it is something an earlier session established. Its keys, fields and write-back
+order are in
 [reference/context_file.md](reference/context_file.md); read that before
 writing to it.
 
@@ -178,7 +190,7 @@ your code against these stand-ins rather than the real services, what still
 needs the real service before release, and where each mock came from,
 including when you skipped the owner's.
 
-Then write the run back into `<name>.context.md`, so the next session starts
+Then write the run back into `<name>.context.yaml`, so the next session starts
 where this one ended: the observation of what this run showed, a precondition
 you had to discover, what broke and why it misled you, and a new status for
 every assumption the run settled or contradicted. Say "held in the scenarios

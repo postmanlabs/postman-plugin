@@ -1,7 +1,7 @@
-# `<name>.context.md`
+# `<name>.context.yaml`
 
 The handoff record beside a simulation: `postman/simulations/checkout.sim.yaml`
-gets `checkout.context.md`, and a foldered simulation keeps both in its folder.
+gets `checkout.context.yaml`, and a foldered simulation keeps both in its folder.
 `simulation create` and the Postman app write it from a fixed template,
 `simulation update` renames it with the simulation, and `simulation delete`
 removes it.
@@ -9,25 +9,29 @@ removes it.
 **Never recreate it and never overwrite it.** It holds what earlier sessions
 established, and a fresh copy throws that away while looking complete.
 
+It is what is true of this simulation. **api-simulation** is how a simulation
+is run, read and judged — its commands running clean is not yet the work being
+done.
+
 ## Its shape
 
-Everything between a `<!-- begin:<name> -->` / `<!-- end:<name> -->` pair is a
-YAML list that the next session parses. Keep the markers, keep the field names,
-and take each `type` from the list the template carries.
+The whole file is YAML under a fixed key schema. The key names, `schema:` and
+the `type` vocabulary are fixed; the template carries that vocabulary, and each
+key's rules, in the comments above it. A `null` is something nobody has
+established yet.
 
-`## Purpose` and `## Execution` are the only prose, and the only text you may
-edit outside the markers. Everything else is appended to or has its `status`
-changed.
+`purpose` and `execution` are the only keys a session rewrites. Everything else
+is appended to, or has an entry's `status` changed.
 
-| Section | Holds |
+| Key | Holds |
 | --- | --- |
-| `## Purpose` | What the simulation stands in for and what work it unblocks. Needs hindsight, so it is the last thing to rewrite. |
-| `## Execution` | Only commands you ran successfully in this session, in order: start the simulation, start the service pointed at it, prove it is up, count what got called, stop. |
-| `<!-- begin:fingerprints -->` | One entry per distinct state of the repo and tooling. What every piece of evidence is pinned to. |
-| `<!-- begin:prerequisites -->` | What must be true outside the simulation — databases, caches, ports, credentials, local services — each with a `check` command. |
-| `<!-- begin:assumptions -->` | One claim each, `kind: behaviour` or `kind: tooling`, with `status`, `source`, `depends_on` and `affects`. |
-| `<!-- begin:observations -->` | What a run actually showed. Append only. |
-| `<!-- begin:didnt-work -->` | A failure, why it misled, its cause and its fix. Append only. |
+| `purpose` | `stands_in_for` and `unblocks` — what the simulation stands in for and what work it unblocks. Both need hindsight, so they are the last thing to write. `mocks` lists each member's `route_key`, `handler` and the `origin` host it answers for. |
+| `execution` | An ordered list of steps, each `id`, `what` and `command`. Only commands you ran successfully in this session: start the simulation, start the service pointed at it, prove it is up, count what got called, stop. A `command: null` is a step nobody has run. |
+| `fingerprints` | One entry per distinct state of the repo and tooling. What every piece of evidence is pinned to. |
+| `prerequisites` | What must be true outside the simulation — databases, caches, ports, credentials, local services — each with a `check` command. |
+| `assumptions` | One claim each, `kind: behaviour` or `kind: tooling`, with `status`, `source`, `depends_on` and `affects`. |
+| `observations` | What a run actually showed. Append only. |
+| `didnt_work` | A failure, why it misled, its cause and its fix. Append only. |
 
 Every entry passes one test: the repo doesn't already state it. For routes,
 request shapes, auth or config, name the file that holds it and let the reader
@@ -36,11 +40,11 @@ committed, so a named file is also how a credential stays out of it.
 
 ## 1. Before writing
 
-- Parse every marker block first.
+- Parse the whole file first.
 - Take a fingerprint: `git rev-parse HEAD`, `postman --version`, the sha256 of
   the `.sim.yaml`, of each `postman/mocks/<member>/` folder, and of the
-  fixtures. If any value differs from the newest entry in fingerprints, append
-  a new entry.
+  fixtures. If any value differs from the newest entry in `fingerprints`,
+  append a new entry.
 - Staleness pass: for each assumption, compare its `depends_on` keys between
   the fingerprint of its newest evidence and the newest fingerprint. Where any
   differ, set `status: stale`. **Never delete it.** Re-test it in this run if
@@ -48,13 +52,14 @@ committed, so a named file is also how a credential stays out of it.
 
 ## 2. Sort what you learned
 
-- **Prerequisites** — anything outside the simulation that must be true before
-  a run works at all. Include the `check` command that shows whether it is.
-- **Assumptions, `kind: behaviour`** — what the service's code relies on about
-  a dependency: who the caller is, its plan, its permissions, call order,
+- **`prerequisites`** — anything outside the simulation that must be true
+  before a run works at all. Include the `check` command that shows whether it
+  is.
+- **`assumptions`, `kind: behaviour`** — what the service's code relies on
+  about a dependency: who the caller is, its plan, its permissions, call order,
   retries, the shape of the data. A mock answers these whether or not anyone
   checked, so its answer is a belief your code now carries.
-- **Assumptions, `kind: tooling`** — what you believe about the simulation or
+- **`assumptions`, `kind: tooling`** — what you believe about the simulation or
   the CLI. Always put `cli` in its `depends_on`.
 
 One claim per assumption. A sentence holding two claims is two entries, because
@@ -96,7 +101,7 @@ Append only, one entry per failure:
 - `cause`
 - `fix`
 
-Where the fix changed a command, update `## Execution` to match.
+Where the fix changed a command, update `execution` to match.
 
 For evidence beyond the entry, name a committed file: the handler that threw,
 the mock example captured from the real service, the test that reproduces it.
@@ -105,20 +110,26 @@ the next run overwrites.
 
 ## 6. Before finishing
 
-- `## Execution` contains only commands you ran successfully in this session.
+- `execution` contains only commands you ran successfully in this session.
   Re-run any you changed.
 - Never write "works" or "proven". Write "held in the scenarios run".
-- Remove nothing except stale text in `## Purpose` or `## Execution`.
+- Remove nothing except stale entries in `purpose` or `execution`.
 
 ## Reading it before you start
 
-Read it before anything else, and treat what it answers as answered.
-`## Execution` holds commands that ran and `## Prerequisites` holds what
-someone already established, so both are usable as they stand rather than as a
-starting point to rebuild from. The code you are about to change still needs
-reading; the setup around it is what this file is for. A session that reads the
-record and then repeats the search it was meant to replace has paid for it
-twice.
+This record carries one simulation's particulars: its commands, its
+prerequisites, what its runs showed. **api-simulation** carries the method —
+which mode to run in, what the log's own answers mean, how to make a dependency
+fail, and what a pass does and doesn't prove. The two together are a run you
+can judge; the record alone is the happy path, with nothing to diagnose from
+the moment it stops holding.
+
+What the record answers is answered.
+`execution` holds commands that ran and `prerequisites` holds what someone
+already established, so both are usable as they stand rather than as a starting
+point to rebuild from. The code you are about to change still needs reading;
+the setup around it is what this file is for. A session that reads the record
+and then repeats the search it was meant to replace has paid for it twice.
 
 Then read the statuses before concluding anything works. A `confirmed`
 assumption holds until your run contradicts it. A `reasoned` or `unknown` one
