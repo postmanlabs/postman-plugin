@@ -45,18 +45,31 @@ what the caller is taken to be, which plan or permission is assumed, the order
 calls go in, what gets retried, the shape of the data. A mock answers these
 whether or not anyone checked, so its answer is a belief your code now carries.
 
+For example, checkout may retry a payment after a timeout without knowing
+whether the first attempt charged the customer. This illustrative entry
+records the provider assumption that makes that retry safe; the paths and
+run reference are examples, not evidence from this repository.
+
 ```yaml
-- id: summary-checks-access-before-plan
-  status: supported
-  claim: In the summary scenario exercised, an ACS refusal prevented a
-    billing call.
-  reason: The policy chain gates billing on ACS access, and the simulated
-    refusal exercised that gate. This supports caller behavior for the
-    modeled refusal; it does not establish when the real ACS refuses access.
-  verification: On 2026-10-28, read config/policies.js and drove a summary
-    request against an ACS stand-in returning the modeled refusal. No billing
-    request appeared in the simulation log.
-  source: config/policies.js:125-126; runs/summary-gates-001
+- id: payment-retry-does-not-double-charge
+  status: unknown
+  claim: Retrying a payment for the same unchanged cart with identical payment
+    details and the same idempotency key within 24 hours creates at most one
+    charge at the payment provider, even if the first response times out.
+  reason: Checkout relies on this guarantee to retry without double-charging
+    the customer. The stand-in deduplicates payments by key, but that behavior
+    was configured by us; a passing simulation does not establish the
+    provider's retention window or handling of a retry after a timeout.
+  verification: On 2026-10-28, ran the checkout timeout test. The stand-in
+    recorded a successful charge, then delayed its response past the caller's
+    timeout. Checkout retried with the same payment details and key, and the
+    stand-in returned the original payment ID with one charge in its state.
+    This demonstrates caller key reuse in this scenario. The provider's
+    idempotency contract has not been checked; confirm its scope and retention
+    window, including retries after an ambiguous outcome, before relying on
+    this assumption for real payments.
+  source: src/checkout/submit-payment.ts; postman/mocks/payments/handler.js;
+    tests/checkout/payment-timeout.test.ts; runs/cart-payment-timeout-001
   updated_at: "2026-10-28"
 ```
 
