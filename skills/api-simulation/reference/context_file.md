@@ -9,179 +9,116 @@ removes it.
 **Never recreate it and never overwrite it.** It holds what earlier sessions
 established, and a fresh copy throws that away while looking complete.
 
-It is what is true of this simulation. **api-simulation** is how a simulation
-is run, read and judged — its commands running clean is not yet the work being
-done.
+It carries what is believed about the services this simulation stands in for,
+and what each belief rests on. **api-simulation** is how a simulation is run,
+read and judged — its commands running clean is not yet the work being done.
 
 ## Its shape
 
-The whole file is YAML under a fixed key schema. The key names and the `type`
-vocabulary are fixed; the template carries each key's field schema, that
-vocabulary and a worked example in the comments above it, and points here for
-everything below. A `null` is something nobody has established yet.
-
-`purpose` and `setup` are the only keys a session rewrites. Everything else
-is appended to, or has an entry's `status` changed.
+The whole file is YAML under a fixed key schema. The key names and the `status`
+vocabulary are fixed; the template carries each key's field schema in the
+comments above it. A `null` is something nobody has established yet.
 
 | Key | Holds |
 | --- | --- |
 | `purpose` | `stands_in_for` and `unblocks` — what the simulation stands in for and what work it unblocks. Both need hindsight, so they are the last thing to write. The members it serves, their route keys and the hosts they answer for are in the `.sim.yaml` beside it. |
-| `setup` | The shared starting point: an ordered list of steps, each `id`, `what` and `command` — start the simulation, start the service pointed at it, confirm it answers, read what it served, stop. Only commands you ran successfully in this session; a `command: null` is a step nobody has run. |
-| `fingerprints` | One entry per distinct state of the repo and tooling — `id`, `date`, `commit`, `cli`. What every piece of evidence is pinned to, and what lets a `confirmed` claim go stale. |
-| `prerequisites` | What must be true outside the simulation — databases, caches, ports, credentials, local services — each with a `check` command. |
-| `assumptions` | One claim each: `id`, `type`, `claim`, `consequence` and `affects` are the claim and stay put; `verification` holds the `status`, `source`, `depends_on` and `counterexample` that a run changes. |
-| `observations` | What a run actually showed. Append only. |
-| `didnt_work` | A failure, why it misled, its cause and its fix. Append only. |
+| `assumptions` | What the code relies on about a dependency's behaviour. One claim per entry: `id`, `status`, `claim`, `source`. |
+| `fingerprints` | What the claims were written against — `id`, `date`, `commit`, `cli`. |
+
+Everything else about this simulation lives where it already is: the members and
+their origins in the `.sim.yaml`, the handlers in `postman/mocks/`, and how to
+run any of it in **api-simulation**. This record is for what none of those say.
 
 Every entry passes one test: the repo doesn't already state it. For routes,
 request shapes, auth or config, name the file that holds it and let the reader
 go there — one source stays true, a copy here drifts, and this file is
 committed, so a named file is also how a credential stays out of it.
 
-### What `setup` holds
+## What an assumption is
 
-`setup` is the shared starting point: bring the simulation up, bring the service
-up against it, confirm it answers, read what it served, take it down. It is the
-same for everyone whatever they came to do, which is what makes it safe to run
-top to bottom before reading any further.
+A claim about how a dependency behaves, which the code under test relies on:
+what the caller is taken to be, which plan or permission is assumed, the order
+calls go in, what gets retried, the shape of the data. A mock answers these
+whether or not anyone checked, so its answer is a belief your code now carries.
 
-Where every member declares an `origin`, the start step records that `--proxy`
-is available: it serves each member on the real hostname that origin names, so
-the service under test keeps the base URLs it ships with.
+```yaml
+- id: summary-checks-access-before-plan
+  status: supported
+  claim: The summary validates the model, then asks ACS, then asks billing. A
+    caller ACS refuses never reaches billing.
+  source: config/policies.js:125-126, and a run where an ACS refusal produced no
+    billing request in the log.
+```
 
-A command that belongs to one claim — making a member fail, moving a plan,
-denying a permission, seeding a row — lives with that claim, named in the
-assumption's `consequence` or in the observation that recorded what it showed.
-There it travels with the reason someone would run it, and a reader meets it
-when they are asking about that claim.
+One claim per entry. A sentence holding two claims is two entries, because
+evidence can settle one and leave the other standing.
 
-One test for a step: a reader who knows nothing else about this service would
-still want to run it.
+### `status`
 
-## 1. Before writing
+| Value | Means | For example |
+| --- | --- | --- |
+| `supported` | Evidence supports the claim, within a stated scope. | The provider guarantees idempotency for 24 hours. |
+| `contradicted` | Evidence provides a counterexample. | A timed-out request did create an order. |
+| `unknown` | Available evidence cannot establish or reject it. | Key scope across token refresh is unspecified. |
+| `conflicting` | Applicable sources disagree. | Documentation promises immediate revocation; a real probe observes continued access. |
 
-- Parse the whole file first.
-- Take a fingerprint: `git rev-parse HEAD` and `postman --version`. If either
-  differs from the newest entry in `fingerprints`, append a new entry. The
-  `.sim.yaml` and the mock handlers are tracked files, so the commit sha is what
-  covers them; where the tree is dirty, the entry says so, since a sha alone
-  reads as a clean checkout.
-- Staleness pass: for each assumption, compare its `depends_on` keys between
-  the fingerprint of its newest evidence and the newest fingerprint. Where any
-  differ, set `status: stale`. **Never delete it.** Re-test it in this run if
-  you can.
+`supported` is the one to be careful with: support comes with a scope, so the
+claim says what that scope is. "Idempotent for 24 hours" is supportable;
+"idempotent" is not, and a claim stated that broadly is `supported` only for
+the window someone actually checked.
 
-## 2. Sort what you learned
+`contradicted` and `conflicting` are findings to report, not states to route
+around. A contradiction says the code relies on something untrue; a conflict
+says two sources disagree and nobody has settled which governs — often a
+contract promising one thing while the running service does another.
 
-- **`prerequisites`** — anything outside the simulation that must be true
-  before a run works at all. Include the `check` command that shows whether it
-  is.
-- **`assumptions`, `type: behaviour.*`** — what the service's code relies on
-  about a dependency: who the caller is, its plan, its permissions, call order,
-  retries, the shape of the data. A mock answers these whether or not anyone
-  checked, so its answer is a belief your code now carries.
-- **`assumptions`, `type: tooling.*`** — what you believe about the simulation
-  or the CLI. Always put `cli` in its `verification.depends_on`.
+### `source`
 
-One claim per assumption. A sentence holding two claims is two entries, because
-a run can contradict one of them and leave the other standing.
+Where the evidence is, so the next session can re-check it rather than take the
+claim on trust. Any of:
 
-## 3. Status rules
+- a file and line range in this repo, where the code shows what it relies on;
+- a request that was actually made and what came back — the sequence and the
+  status codes, not a summary;
+- the dependency's own code, or its published contract, read for the endpoint
+  in question.
 
-Everything here lives under an assumption's `verification`, except `affects`.
+A claim is only as good as what it points at, so `source` carries the specific
+thing, not its category: `api/policies/hasAccess.js:12-115` rather than "read
+the code". A claim with nothing to point at is `unknown`.
 
-- No linked observation → `status: unknown`. There is no evidence list on the
-  assumption: observations point in through their `supports` and `contradicts`,
-  so an absence of inbound links is what `unknown` means.
-- `source: reasoned` can never be `status: confirmed`. Reading the code is not
-  running it.
-- `status: contradicted` requires a `counterexample`: the request sequence and
-  the outcome.
-- `depends_on` names the `fingerprints` keys this claim is sensitive to —
-  `commit`, `cli`, or both — and is never empty, since it is what the staleness pass
-  compares.
-- `affects` names the file and line range that relies on the claim, so a
-  contradicted assumption points at the code to revisit.
-- For every `unknown` behaviour assumption, run the collection again with
-  member scenarios that would test it, and record the result as an
-  observation. An unknown is the question the next run exists to answer, not a
-  gap to note and leave.
+## Where claims come from
 
-## 4. Observations
+Evidence first, claim second. Make the run or read the code, then write down
+what it establishes — including the parts nobody had written down before, which
+are the valuable half: a call order you did not expect, a dependency answering
+something the code does not handle, a member never called at all.
 
-Append only. Never edit or delete one; a newer entry supersedes an older one,
-and the pair is how a pattern becomes visible — a member silent across three
-runs is worth more than the same fact seen once.
+Going the other way — writing the claim and then looking for something to back
+it — is how a guess ends up marked `supported`. A claim written ahead of any
+evidence is fine; it is `unknown` until something points at it.
 
-Each entry carries its `id`, `date`, `session`, the exact `run` command, the
-`scenarios` used (`{}` for defaults), what it `saw` (log lines, request order,
-status codes), what it `supports`, what it `contradicts`, and its
-`fingerprint`.
+## Fingerprints
 
-### An observation can create an assumption
+What the claims were written against: `git rev-parse HEAD` and
+`postman --version`. Append an entry when either differs, and say so when the
+tree is dirty — a sha alone reads as a clean checkout.
 
-The order is: a run shows something, and the belief follows from it. So write
-the observation first, from what the log and the responses actually say, and
-only then ask what each part of it settles.
-
-Most of what a run shows will answer an assumption that is already there. What
-does not is the valuable half: a request order nobody had written down, a
-dependency answering something the code did not expect, a member never called at
-all. That is a new assumption — add it, with `source: observed`, and point the
-observation's `supports` at it. An observation whose `supports` is empty is a
-session that saw something and drew nothing from it.
-
-Going the other way — inventing an assumption and then looking for a run to
-confirm it — is how a guess ends up marked `confirmed`. An assumption written
-before any run exists is fine, but it is `source: reasoned` and `status:
-unknown` until a run says otherwise.
-
-## 5. What didn't work
-
-Append only, one entry per failure:
-
-- `symptom` — exactly what appeared, and where. The error text, the status, the
-  member that sent it. Quote the error itself, never a response body.
-- `misleading_because` — why it looked like something else. This is the field
-  that saves the next session the hour you lost.
-- `cause`
-- `fix`
-
-Where the fix changed a command, update `setup` to match.
-
-For evidence beyond the entry, name a committed file: the handler that threw,
-the mock example captured from the real service, the test that reproduces it.
-Not the run's log, which lives wherever that run redirected output and which
-the next run overwrites.
-
-## 6. Before finishing
-
-- `setup` contains only commands you ran successfully in this session.
-  Re-run any you changed.
-- Never write "works" or "proven". Write "held in the scenarios run".
-- Remove nothing except stale entries in `purpose` or `setup`.
+This is what keeps a `supported` claim from reading as current forever. A claim
+carried over from an older fingerprint is one nothing has re-checked since,
+which is worth knowing before a run depends on it.
 
 ## Reading it before you start
 
-This record carries one simulation's particulars: its commands, its
-prerequisites, what its runs showed. **api-simulation** carries the method —
-which mode to run in, what the log's own answers mean, how to make a dependency
-fail, and what a pass does and doesn't prove. The two together are a run you
-can judge; the record alone is the happy path, with nothing to diagnose from
-the moment it stops holding.
+Read it before anything else, and treat what it answers as answered. The code
+you are about to change still needs reading; what the dependencies around it
+are taken to do is what this file is for. A session that reads the record and
+then repeats the work it was meant to replace has paid for it twice.
 
-What the record answers is answered.
-`setup` holds commands that ran and `prerequisites` holds what someone
-already established, so both are usable as they stand rather than as a starting
-point to rebuild from. The code you are about to change still needs reading;
-the setup around it is what this file is for. A session that reads the record
-and then repeats the search it was meant to replace has paid for it twice.
+Then read the statuses before concluding anything holds. A `supported` claim
+holds until your evidence contradicts it. An `unknown` or `conflicting` one is
+a question — settle it cheaply when your work depends on it, and write back
+what you found.
 
-Then read the statuses before concluding anything works. A `confirmed`
-assumption holds until your run contradicts it. A `reasoned` or `unknown` one
-is a hypothesis — check it, cheaply, when your run depends on it. A `stale` one
-was true against an older fingerprint and nothing has re-tested it since. A
-claim this run contradicts is a finding to report, not to quietly route around.
-
-Leave another session's assumptions and limits standing unless your run
-contradicted one: not exercised is not the same as not true.
+Leave another session's claims standing unless your evidence contradicts one:
+not exercised is not the same as not true.
