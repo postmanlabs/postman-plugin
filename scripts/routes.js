@@ -20,12 +20,15 @@ const MANIFEST_ROUTES = {
         '.antigravity-plugin': { mcpConfig: 'mcp_config.json' },
         // GitHub Copilot CLI's legacy manifest. It sits inside `.github/`, so
         // MANIFEST_DIR_PATTERN cannot find it; NESTED_MANIFEST_DIRS lists it instead.
-        '.github/plugin': {}
+        '.github/plugin': {},
+        // Kiro's power manifest must be a root-level plugin.json, which this repo cannot have
+        // (Codex would take it for its own); a `kiro/` subfolder is imported as a power instead.
+        kiro: { mcpConfig: 'kiro/mcp.json' }
     },
     MANIFEST_DIR_PATTERN = /^\..+-plugin$/,
 
     // Manifest routes whose directory is not a top-level `.*-plugin/`.
-    NESTED_MANIFEST_DIRS = ['.github/plugin'],
+    NESTED_MANIFEST_DIRS = ['.github/plugin', 'kiro'],
 
     // Routes shipped as a registry package, so MANIFEST_DIR_PATTERN never matches
     // them. A route missing here is never checked, which looks exactly like passing.

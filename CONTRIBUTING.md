@@ -7,7 +7,8 @@ using the plugin, see [README.md](README.md).
 
 The skill files in this repository are the single source of truth for every
 plugin route below — each route's manifest or package points back at the same
-`skills/` directory rather than keeping a copy of its own in git:
+`skills/` directory rather than keeping a copy of its own in git. Kiro is the one
+exception, explained under the table:
 
 | Route | How it gets the files | MCP config it reads | Reports itself as |
 | --- | --- | --- | --- |
@@ -18,6 +19,7 @@ plugin route below — each route's manifest or package points back at the same
 | Antigravity plugin | `agy plugin install https://github.com/postmanlabs/postman-plugin` clones this repo; `.antigravity-plugin/plugin.json` points at the same `skills/` dir | `mcp_config.json` | `postman-antigravity-plugin` |
 | Codex plugin | `.codex-plugin/plugin.json` points at the same `skills/` dir | `mcp.codex.json` | `postman-codex-plugin` |
 | Factory Droid plugin | `.factory-plugin/marketplace.json` installs this repo root as the plugin, so Droid reads the same root `skills/` dir | `mcp.json` | `postman-factory-plugin` |
+| Kiro power | Import power from GitHub in the Kiro IDE, with `https://github.com/postmanlabs/postman-plugin/tree/main/kiro`; `kiro/plugin.json` finds the generated `kiro/skills/` by Kiro's fixed layout | `kiro/mcp.json` | `postman-kiro-plugin` |
 | OpenCode plugin | `opencode plugin add github:postmanlabs/postman-plugin` installs this repo's `main`, whose root `package.json` names `opencode/src/index.ts`; or a clone of this repo, loaded by a one-line local plugin | `mcp.opencode.json` | `postman-opencode-plugin` |
 | Pi package | `pi install npm:@postman/postman-plugin` — the installer's npm tarball, which carries `skills/`, `hooks/session-start-context.md` and `mcp.pi.json` staged at pack time | `mcp.pi.json`, registered by `installer/src/pi-extension.ts` | `postman-pi-plugin` |
 
@@ -28,6 +30,20 @@ before it had a route of its own. That fallback is not a substitute for one:
 Codex would read `mcp.claude-code.json`, whose `headers` key Codex does not
 understand, so its traffic arrived with no `X-Source` at all. Keep
 `.codex-plugin/plugin.json` first in precedence and Codex never falls back.
+
+Kiro reads the Agent Plugins format: a `plugin.json` at the root of the power, with
+`skills/` and `mcp.json` in fixed places that the manifest cannot override, and a
+schema that rejects every other key. This repo can't have a root `plugin.json`, so
+the power is the `kiro/` subfolder, which Kiro imports from a `/tree/main/kiro` URL.
+The spec rejects a symlink out of the plugin root, so `kiro/skills/` is a generated,
+byte-for-byte copy of `skills/`: `node scripts/build-manifest.js` writes it,
+`--check` fails CI when it is stale or holds a file `skills/` no longer has, and
+nobody edits it by hand. The format has no hooks and no always-on context, so the
+route ships without the session-start mandate; Kiro loads skills by matching the
+manifest's keywords and each skill's description. Kiro's MCP config takes
+`"type": "streamable-http"`, where Factory Droid's root `mcp.json` has `"http"`.
+The installer can only print the import steps, and no CI job installs the power:
+the `schema` job validates both files against agent-plugins.org's own schemas.
 
 OpenCode has no plugin-manifest format; it loads a package whose `package.json`
 names a server entrypoint (`exports["./server"]`, else `main`). That package is
@@ -93,6 +109,9 @@ it lands.
 .github/plugin/plugin.json        the GitHub Copilot CLI plugin manifest — never a root `plugin.json`, which would send Codex down its Agent Plugins loader
 .kimi-plugin/plugin.json          the Kimi Code plugin manifest — carries its MCP block inline, and names Kimi's generated copy of the mandate
 .antigravity-plugin/plugin.json   the Antigravity plugin manifest
+kiro/plugin.json                  the Kiro power manifest — in a subfolder, never a root `plugin.json`
+kiro/mcp.json                     Kiro's MCP config — must keep this exact filename, at the power's root
+kiro/skills/                      generated copy of `skills/`, which Kiro can't reach outside the power
 rules/GEMINI.md                   Antigravity's generated copy of the mandate, loaded as an always-on rule
 .codex-plugin/plugin.json         the Codex plugin manifest
 .factory-plugin/marketplace.json  the Factory Droid marketplace
@@ -112,7 +131,7 @@ mcp.pi.json                       Pi's MCP config, registered by the Pi extensio
 mcp_config.json                   Antigravity's MCP config — must keep this exact root filename
 skills/<name>/SKILL.md            one skill per directory — see skills/ for the current list
 manifest.json                     generated index of the skill files
-scripts/build-manifest.js         regenerates it, and Kimi's and Antigravity's copies of the mandate
+scripts/build-manifest.js         regenerates it, Kimi's and Antigravity's copies of the mandate, and kiro/skills/
 scripts/routes.js                 every route, read by the pre-commit guard and the installer's tests
 ```
 
@@ -129,6 +148,7 @@ mcp.codex.json              <- .codex-plugin/plugin.json   "mcpServers": "./mcp.
 .kimi-plugin/plugin.json       inline — Kimi documents no path form
 mcp_config.json             <- Antigravity reads this root filename from the installed plugin
 mcp.json                    <- Factory Droid reads this root filename from the installed plugin
+kiro/mcp.json               <- Kiro reads this filename at the power's root; kiro/plugin.json holds the version
 mcp.opencode.json           <- opencode/src/index.ts       read at runtime; opencode/package.json holds the version
 mcp.pi.json                 <- installer/src/pi-extension.ts   read at runtime; installer/package.json holds the version
 ```
@@ -164,7 +184,7 @@ There is no generator, deliberately: a tool whose job is to keep these
 identical is wrong once versions are per-route.
 
 Every route names its endpoint outright — `/mcp` for Claude Code, Cursor,
-Codex, Copilot CLI, Factory Droid, Antigravity and Pi, `/minimal` for Kimi Code and OpenCode. Don't reintroduce a `${POSTMAN_MCP_MODE:-...}`
+Codex, Copilot CLI, Factory Droid, Antigravity, Kiro and Pi, `/minimal` for Kimi Code and OpenCode. Don't reintroduce a `${POSTMAN_MCP_MODE:-...}`
 placeholder to express the default: no route expands `${...}` inside an MCP URL,
 so the whole segment ships literally and the request never reaches the intended
 mode. `claude plugin list --json` reports the registered URL with the
@@ -385,6 +405,7 @@ wherever one exists:
 | Cursor | a clone at `~/.cursor/plugins/local/postman`. A fresh install is skipped when the Cursor Marketplace copy is present, but an existing clone is kept and updated: Cursor keeps a disabled Marketplace copy on disk too, so the installer can't tell whether that copy is enabled |
 | Factory Droid | `droid plugin` against this repo as the `postman-plugin` marketplace |
 | Antigravity | `agy plugin install https://github.com/postmanlabs/postman-plugin`, again on a re-run, which replaces the installed copy; `agy plugin uninstall postman` removes it |
+| Kiro | nothing: Kiro imports powers only from its IDE, so the installer prints the `/tree/main/kiro` URL and the Powers panel steps, and reports the install as manual |
 | Kimi Code | `npx --package=plugins@1.3.4 plugins add postmanlabs/postman-plugin --target kimi`, because Kimi installs plugins only from its TUI |
 | OpenCode | `opencode plugin add github:postmanlabs/postman-plugin` on OpenCode 2.0.4 or later, `opencode plugin --global …` on OpenCode 1.14.33 or later. A re-run refetches that spec in place, so it moves to the newest commit on `main`, and replaces an entry for any other spec of the repository (a branch, a tag or a git URL) by adding the bare spec and then removing the old one; on OpenCode 1 the add is forced, which replaces the same package in place. It reads the global config (`plugins`, or `plugin` on OpenCode 1, in `opencode.json` or `opencode.jsonc`) to see what is installed, removes with `opencode plugin remove` on OpenCode 2 and otherwise by editing the config entry — on OpenCode 1, and on 2 when the entry is in `opencode.jsonc` beside an `opencode.json`, the only file `plugin remove` edits — and then deletes an older clone-and-loader install so no skill loads twice. It refetches by re-running with `--force` on OpenCode 1 and, on OpenCode 2, by deleting the cached copy under `<cache>/opencode/npm/git-postman-plugin-*` and adding again: `plugin add` reuses that cache, and `plugin update`, `list` and `check` need OpenCode's background service, which a second instance on the same port or a cold start answers wrongly. It refuses to refresh an entry that the refresh would not write back to, where it would register a second copy instead: on OpenCode 2 one outside the first of `opencode.json`, `opencode.jsonc` and their `.opencode/` copies that exists, which is the file `plugin add` edits; on OpenCode 1 one in `OPENCODE_CONFIG_DIR`, which `plugin --global` ignores. `POSTMAN_PLUGIN_OPENCODE_SPEC` installs another spec instead, which installer smoke sets to a one-commit copy of its checkout on every run but the nightly one |
 | Pi | `pi install npm:@postman/postman-plugin`, or `pi update` when it's installed, then `pi remove` for any git install of this repo, which would load the same skills twice |
