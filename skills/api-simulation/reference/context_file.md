@@ -26,7 +26,7 @@ is appended to, or has an entry's `status` changed.
 | Key | Holds |
 | --- | --- |
 | `purpose` | `stands_in_for` and `unblocks` — what the simulation stands in for and what work it unblocks. Both need hindsight, so they are the last thing to write. `mocks` lists each member's `route_key`, `handler` and the `origin` host it answers for. |
-| `execution` | An ordered list of steps, each `id`, `what` and `command`. Only commands you ran successfully in this session: start the simulation, start the service pointed at it, prove it is up, count what got called, stop. A `command: null` is a step nobody has run. |
+| `execution` | How to get this simulation running and prove it is up, and nothing else. An ordered list of steps, each `id`, `what` and `command`: start the simulation, start the service pointed at it, prove it is up, read what got called, stop. Only commands you ran successfully in this session; a `command: null` is a step nobody has run. |
 | `fingerprints` | One entry per distinct state of the repo and tooling. What every piece of evidence is pinned to. |
 | `prerequisites` | What must be true outside the simulation — databases, caches, ports, credentials, local services — each with a `check` command. |
 | `assumptions` | One claim each: `id`, `type`, `claim`, `consequence` and `affects` are the claim and stay put; `verification` holds the `status`, `source`, `depends_on` and `counterexample` that a run changes. |
@@ -37,6 +37,22 @@ Every entry passes one test: the repo doesn't already state it. For routes,
 request shapes, auth or config, name the file that holds it and let the reader
 go there — one source stays true, a copy here drifts, and this file is
 committed, so a named file is also how a credential stays out of it.
+
+### What `execution` is not
+
+`execution` is the lifecycle: bring the environment up, show it is up, read what
+it served, take it down. It is the part a reader runs verbatim before doing any
+work of their own, so it stays the same whatever they came to do.
+
+What a dependency *does* is not lifecycle. A command that makes a member fail,
+moves a plan, denies a permission or seeds a row is a way of exercising one
+claim, and it belongs to that claim — name the control in the assumption's
+`consequence`, or record what it showed as an observation. Put it in `execution`
+and the next session runs a scenario nobody asked for and reads the result as
+the environment's normal state.
+
+A useful check: if a step would make no sense to someone who had not read the
+rest of the file, it is not lifecycle.
 
 ## 1. Before writing
 
@@ -95,6 +111,24 @@ Each entry carries its `id`, `date`, `session`, the exact `run` command, the
 `scenarios` used (`{}` for defaults), what it `saw` (log lines, request order,
 status codes), what it `supports`, what it `contradicts`, and its
 `fingerprint`.
+
+### An observation can create an assumption
+
+The order is: a run shows something, and the belief follows from it. So write
+the observation first, from what the log and the responses actually say, and
+only then ask what each part of it settles.
+
+Most of what a run shows will answer an assumption that is already there. What
+does not is the valuable half: a request order nobody had written down, a
+dependency answering something the code did not expect, a member never called at
+all. That is a new assumption — add it, with `source: observed`, and point the
+observation's `supports` at it. An observation whose `supports` is empty is a
+session that saw something and drew nothing from it.
+
+Going the other way — inventing an assumption and then looking for a run to
+confirm it — is how a guess ends up marked `confirmed`. An assumption written
+before any run exists is fine, but it is `source: reasoned` and `status:
+unknown` until a run says otherwise.
 
 ## 5. What didn't work
 
