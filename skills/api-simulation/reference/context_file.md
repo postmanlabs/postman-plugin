@@ -22,7 +22,7 @@ comments above it. A `null` is something nobody has established yet.
 | Key | Holds |
 | --- | --- |
 | `purpose` | `stands_in_for` and `unblocks` — what the simulation stands in for and what work it unblocks. Both need hindsight, so they are the last thing to write. The members it serves, their route keys and the hosts they answer for are in the `.sim.yaml` beside it. |
-| `assumptions` | What the code relies on about a dependency's behaviour. One claim per entry: `id`, `status`, `claim`, `source`. |
+| `assumptions` | What the code relies on about a dependency's behaviour. One claim per entry: `id`, `status`, `claim`, `reason`, `verification`, `source`. |
 | `fingerprints` | What the claims were written against — `id`, `date`, `commit`, `cli`. |
 
 Everything else about this simulation lives where it already is: the members and
@@ -46,8 +46,11 @@ whether or not anyone checked, so its answer is a belief your code now carries.
   status: supported
   claim: The summary validates the model, then asks ACS, then asks billing. A
     caller ACS refuses never reaches billing.
-  source: config/policies.js:125-126, and a run where an ACS refusal produced no
-    billing request in the log.
+  reason: The policy chain fixes the order, and a run agreed with it.
+  verification: Read the chain in config/policies.js, then drove one allowed
+    request and one ACS refusal. The allowed request produced a billing call;
+    the refused one produced none.
+  source: config/policies.js:125-126; runs/summary-gates-001
 ```
 
 One claim per entry. A sentence holding two claims is two entries, because
@@ -72,10 +75,22 @@ around. A contradiction says the code relies on something untrue; a conflict
 says two sources disagree and nobody has settled which governs — often a
 contract promising one thing while the running service does another.
 
-### `source`
+### `reason`, `verification` and `source`
 
-Where the evidence is, so the next session can re-check it rather than take the
-claim on trust. Any of:
+Three different jobs, and keeping them apart is what makes a claim checkable.
+
+`reason` is the judgment: why the evidence adds up to this status. It is the
+field that earns its place on a `conflicting` or `unknown` claim, where the
+status alone does not say what is unresolved.
+
+`verification` is what was actually done and what it showed — a contract read,
+a request made and its response, a handler inspected. Name what is still
+planned or blocked and what would settle it, and say when a piece of evidence
+has gone stale and why, since stale evidence stays as history but cannot
+establish a current status.
+
+`source` is where to go and re-check it, so the next session can audit the
+claim rather than take it on trust. Any of:
 
 - a file and line range in this repo, where the code shows what it relies on;
 - a request that was actually made and what came back — the sequence and the
@@ -86,6 +101,10 @@ claim on trust. Any of:
 A claim is only as good as what it points at, so `source` carries the specific
 thing, not its category: `api/policies/hasAccess.js:12-115` rather than "read
 the code". A claim with nothing to point at is `unknown`.
+
+Where two sources disagree, `verification` says what each one showed and
+`status` is `conflicting` — that is the state a contract promising one thing
+while the running service does another belongs in.
 
 ## Where claims come from
 
