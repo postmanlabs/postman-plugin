@@ -1,6 +1,6 @@
 ---
 name: collection-schema-v3
-description: Use when writing or debugging local Postman v3 collection and environment YAML, including collection lint failures. Preserves the per-entity files, inherited context, and schema shapes that make API changes reusable and reviewable in Git. Use for requests such as "fix this request YAML".
+description: Use when writing or debugging local Postman v3 collection, environment, dataset, mock, globals, spec or document files, including collection lint failures. Preserves the per-entity files, inherited context, and schema shapes that make API changes reusable and reviewable in Git. Use for requests such as "fix this request YAML".
 ---
 
 # Collection Schema (v3, Git-Native)
@@ -20,9 +20,11 @@ checks, without regenerating a single large collection export.
    field into each request creates competing values and noisy future edits.
    See **variables** when deciding the scope of a value or secret reference.
 3. Use [HTTP field shapes and examples](reference/http.md) when authoring
-   request, example, or definition files. For other protocols, read
-   [their schemas](reference/other_protocols.md); HTTP's URL/body/script shape
-   cannot be assumed for gRPC, WebSocket, MCP, or LLM requests.
+   request, example, or definition files. For other protocols and every other
+   entity (datasets, mocks, globals, specs, documents, SDKs), read
+   [the complete field lists](reference/other_entities.md); HTTP's
+   URL/body/script shape cannot be assumed for gRPC, WebSocket, MCP, or LLM
+   requests.
    [Environment files](reference/environment.md) have their own schema and
    do not use the collection entity's `$kind` discriminator.
 4. Preserve types at the YAML boundary. Quote `{{variables}}` and strings that
@@ -40,10 +42,31 @@ checks, without regenerating a single large collection export.
    accurate or useful. Assertions derived from the contract belong with the
    request through **api-testing**.
 
+## Critical rules
+
+Unrecognised keys are dropped without an error, so a misspelling costs you the
+field and nothing reports it. Read
+[authoring pitfalls](reference/authoring-pitfalls.md) before writing anything
+beyond an HTTP request; the rules that fail most often:
+
+- `postman collection lint` is silent on unrecognised keys (`metod:`, `event:`,
+  `dataMode:`). Finish with `postman workspace lint`, which reports them as
+  `FMT206`/`FMT208`.
+- `userPrompts` and `systemPrompts` take `contentType`, not `type`.
+- `headers`, `variables` and `auth.credentials` accept a map as well as an
+  array; the app writes maps, so prefer them unless a key needs `description`
+  or `disabled`.
+- `queryParams` and the URL's query string must agree (`FMT209`).
+- `$kind` belongs to collection files (definitions, requests, examples, messages).
+  Datasets use `type: dataset`, mocks use `version: 1`, and filename suffixes (`.environment.yaml`, `.globals.yaml`) are
+  enforced.
+- Never hand-author `.postman/resources.yaml`; the CLI maintains it.
+
 ## Verification
 
 Run `postman collection lint <collection-path>` for collection changes and
-`postman environment lint <path>` for environment changes. Then inspect the
+`postman environment lint <path>` for environment changes, then
+`postman workspace lint` to catch the keys `collection lint` ignores. Then inspect the
 diff for unintended scope changes; when execution is appropriate, run the
 changed request through its collection to check inherited context. Report
 structural validation separately from behavior verified against a target.

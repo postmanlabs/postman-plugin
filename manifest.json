@@ -177,13 +177,19 @@
     {
       "name": "collection-schema-v3",
       "plugin": "postman",
-      "description": "Use when writing or debugging local Postman v3 collection and environment YAML, including collection lint failures. Preserves the per-entity files, inherited context, and schema shapes that make API changes reusable and reviewable in Git. Use for requests such as \"fix this request YAML\".",
+      "description": "Use when writing or debugging local Postman v3 collection, environment, dataset, mock, globals, spec or document files, including collection lint failures. Preserves the per-entity files, inherited context, and schema shapes that make API changes reusable and reviewable in Git. Use for requests such as \"fix this request YAML\".",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/collection-schema-v3/SKILL.md",
-          "bytes": 3093,
-          "sha256": "95f2349ba42f46e8ea6fdb3b8f01297ddfea63817883fe859f9d213e23a10370"
+          "bytes": 4333,
+          "sha256": "2844969f5ba461c8eda263c5b3cf7a0842b4fc6f8a6e2fcd35eac6c6efa78a99"
+        },
+        {
+          "target": "reference/authoring-pitfalls.md",
+          "source": "skills/collection-schema-v3/reference/authoring-pitfalls.md",
+          "bytes": 16629,
+          "sha256": "3ac6854ef6b374ce402c08e9a2ad50746ab88ffd1b3b0c1d021a7926977379ea"
         },
         {
           "target": "reference/environment.md",
@@ -194,14 +200,14 @@
         {
           "target": "reference/http.md",
           "source": "skills/collection-schema-v3/reference/http.md",
-          "bytes": 5354,
-          "sha256": "9db348b1ca9c0e6eba70f3864210df92de5aba5d1c8a4e9a8cc794fb73997787"
+          "bytes": 5596,
+          "sha256": "f7158be6a6937f9d026c47a85bd78ccd3b958b29ee497bad72029566a42e49f8"
         },
         {
-          "target": "reference/other_protocols.md",
-          "source": "skills/collection-schema-v3/reference/other_protocols.md",
-          "bytes": 3454,
-          "sha256": "c27c63240d8608016c1c54a9200e63ca6bac9d77acc71712c9697189e2f62d6a"
+          "target": "reference/other_entities.md",
+          "source": "skills/collection-schema-v3/reference/other_entities.md",
+          "bytes": 17460,
+          "sha256": "2ef1f0487193232e27cc1520442d21acebbb07a7221261365112d70b264093ba"
         }
       ]
     },

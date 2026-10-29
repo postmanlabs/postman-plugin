@@ -12,9 +12,10 @@ Optional metadata for a collection or folder:
 - `name` — optional, defaults to the filesystem folder name.
 - `description` — optional.
 - `variables` — array of `{key, value, description?, disabled?}`. `value`
-  must be a string; `disabled` a boolean.
-- `auth` — a single auth object `{type, credentials: [{key, value}, ...]}`,
-  or an array for multiAuth: `[{id, name, type, credentials, rules?}, ...]`.
+  must be a string; `disabled` a boolean. A map of name to value is also
+  accepted when no entry needs `description` or `disabled`.
+- `auth` — a single auth object `{type, credentials: [{key, value}, ...]}`
+  (`credentials` may also be a map of name to value), or an array for multiAuth: `[{id, name, type, credentials, rules?}, ...]`.
 - `scripts` — array of `{type, code, language: "text/javascript"}`. `type`
   is one of `http:beforeRequest`, `http:afterResponse`,
   `graphql:beforeQuery`, `graphql:afterResponse`, `grpc:beforeInvoke`,
@@ -30,7 +31,9 @@ Optional metadata for a collection or folder:
   insertion between two requests shouldn't force renumbering every sibling.
 - `url` — string, with `{{varName}}` variable syntax.
 - `method` — `GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS`.
-- `headers` — array of `{key, value, description?, disabled?}`.
+- `headers` — array of `{key, value, description?, disabled?}`. A map of
+  header name to value is also accepted when no entry needs `description` or
+  `disabled`.
 - `queryParams` — array of `{key, value, description?, disabled?}`.
 - `pathVariables` — array of `{key, value, description?}`.
 - `body` — `{type, content}`; `type` required whenever `body` is present.
