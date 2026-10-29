@@ -43,7 +43,8 @@ const ROOT = path.join(__dirname, '..'),
     AGENT_PLUGIN_HOOKS = path.join(AGENT_PLUGIN, 'hooks'),
     AGENT_PLUGIN_HOOK_SCRIPTS = ['session-start', 'session-start.cmd', 'session-start-context.md'],
     // Copilot CLI reads an Agent Plugins plugin's hooks only from its namespace directory.
-    COPILOT_HOOKS = path.join(AGENT_PLUGIN, 'com.github.copilot', 'hooks', 'hooks.json'),
+    COPILOT_DIR = path.join(AGENT_PLUGIN, 'com.github.copilot'),
+    COPILOT_HOOKS = path.join(COPILOT_DIR, 'hooks', 'hooks.json'),
     SCHEMA_VERSION = 1,
 
     // `postman init` writes AGENTS.md naming the manifest's first skill as the entry point.
@@ -215,30 +216,64 @@ function agentPluginCopies (manifest) {
 }
 
 /**
+ * Removes the directories under `dir` that removing leftovers emptied, such as a removed skill's.
+ *
+ * @param {string} dir - Directory to prune below, never itself.
+ */
+function pruneEmptyDirs (dir) {
+    if (!fs.existsSync(dir)) {
+        return;
+    }
+
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const sub = path.join(dir, entry.name);
+
+        if (entry.isDirectory()) {
+            pruneEmptyDirs(sub);
+
+            if (!fs.readdirSync(sub).length) {
+                fs.rmdirSync(sub);
+            }
+        }
+    }
+}
+
+/**
+ * @param {string} file - Absolute path of a copy.
+ * @param {number} mode - Its source's mode.
+ * @returns {boolean} Whether the copy's executable bits differ from the source's. A Windows checkout, or one with
+ * core.fileMode off, reports no bits at all, so there it cannot tell and says no.
+ */
+function modeDiffers (file, mode) {
+    return process.platform !== 'win32' && (fs.statSync(file).mode & 0o111) !== (mode & 0o111);
+}
+
+/**
  * @param {string[]} generated - Absolute paths this run writes.
  * @returns {string[]} Files under agent-plugin/'s copied directories that nothing copies any more, such as a removed skill's.
  */
 function leftovers (generated) {
     const keep = new Set(generated);
 
-    return [AGENT_PLUGIN_SKILLS, AGENT_PLUGIN_HOOKS]
+    return [AGENT_PLUGIN_SKILLS, AGENT_PLUGIN_HOOKS, COPILOT_DIR]
         .filter((dir) => fs.existsSync(dir))
         .flatMap((dir) => walk(dir).map((rel) => path.join(dir, rel)))
         .filter((file) => !keep.has(file));
 }
 
 const manifest = build(),
+    copies = agentPluginCopies(manifest),
     outputs = [
         [MANIFEST, Buffer.from(JSON.stringify(manifest, null, 2) + '\n')],
         [KIMI_MANDATE, Buffer.from(kimiMandate())],
         [ANTIGRAVITY_MANDATE, Buffer.from(bareMandate())],
-        ...agentPluginCopies(manifest)
+        ...copies
     ],
     extra = leftovers(outputs.map(([file]) => file));
 
 if (process.argv.includes('--check')) {
     const stale = outputs
-        .filter(([file, content]) => !fs.existsSync(file) || !fs.readFileSync(file).equals(content))
+        .filter(([file, content, mode]) => !fs.existsSync(file) || !fs.readFileSync(file).equals(content) || (mode !== undefined && modeDiffers(file, mode)))
         .map(([file]) => path.relative(ROOT, file))
         .concat(extra.map((file) => `${path.relative(ROOT, file)} (no longer generated)`));
 
@@ -247,7 +282,7 @@ if (process.argv.includes('--check')) {
         process.exit(1);
     }
 
-    console.log(`manifest.json, the mandate's copies and ${outputs.length - 3} agent-plugin/ copies are up to date.`);
+    console.log(`manifest.json, the mandate's copies and ${copies.length} agent-plugin/ copies are up to date.`);
 }
 else {
     for (const [file, content, mode] of outputs) {
@@ -264,5 +299,7 @@ else {
         fs.rmSync(file);
     }
 
-    console.log(`Wrote manifest.json, the mandate's copies and ${outputs.length - 3} agent-plugin/ copies${extra.length ? `, and removed ${extra.length} stale ones` : ''}`);
+    pruneEmptyDirs(AGENT_PLUGIN);
+
+    console.log(`Wrote manifest.json, the mandate's copies and ${copies.length} agent-plugin/ copies${extra.length ? `, and removed ${extra.length} stale ones` : ''}`);
 }

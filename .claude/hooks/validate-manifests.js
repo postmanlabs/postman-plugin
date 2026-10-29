@@ -56,6 +56,7 @@ function runChecks () {
     generatedFilesAreInSync();
     manifestRoutesAgreeWithTheirMcpConfig();
     packageRoutesAgreeWithTheirMcpConfig();
+    supersededRoutesShareTheirSuccessorsVersion();
     noTwoRoutesShareAnXSource();
 }
 
@@ -78,7 +79,9 @@ function generatedFilesAreInSync () {
         });
     }
     catch (e) {
-        errors.push('manifest.json or a generated copy of the mandate (.kimi-plugin/session-start-context.md, rules/GEMINI.md) is stale. Run `node scripts/build-manifest.js` and stage the result.');
+        const detail = e.stderr ? String(e.stderr).trim() : '';
+
+        errors.push(detail || 'manifest.json, a generated copy of the mandate (.kimi-plugin/session-start-context.md, rules/GEMINI.md) or an agent-plugin/ copy is stale. Run `node scripts/build-manifest.js` and stage the result.');
     }
 }
 
@@ -178,6 +181,23 @@ function checkRoute (config, where, keys, manifestVersion) {
 
         if (source && version && headers['User-Agent'] !== `${source}/${version}`) {
             errors.push(`${at}: User-Agent is ${headers['User-Agent'] || '(unset)'}, expected ${source}/${version}`);
+        }
+    }
+}
+
+// A superseded route ships the same skills as its successor, so a release that bumps one
+// and not the other files the same content under two versions.
+function supersededRoutesShareTheirSuccessorsVersion () {
+    for (const [dir, route] of Object.entries(MANIFEST_ROUTES)) {
+        if (!route.supersededBy || !exists(`${dir}/plugin.json`) || !exists(`${route.supersededBy}/plugin.json`)) {
+            continue;
+        }
+
+        const version = readJson(`${dir}/plugin.json`).version,
+            successor = readJson(`${route.supersededBy}/plugin.json`).version;
+
+        if (version !== successor) {
+            errors.push(`${dir}/plugin.json is version ${version} but ${route.supersededBy}/plugin.json, which supersedes it, is ${successor} - while both ship, a release bumps them together`);
         }
     }
 }

@@ -152,6 +152,10 @@ all:
   route the manifest `version` and both header strings must agree, and nothing
   enforces that either — a mismatch is accepted at runtime and the traffic is
   filed under a version that was never cut.
+  The one exception is GitHub Copilot CLI's two routes, which ship the same
+  skills: while both ship, a Copilot release bumps `agent-plugin/plugin.json`,
+  `agent-plugin/mcp.json`, `.github/plugin/plugin.json` and `mcp.copilot.json`
+  together, and the pre-commit guard fails if the two manifests disagree.
 - **The URL's mode segment** (`/mcp` vs `/minimal`) selects a different tool
   surface. Unifying it changes which tools the `/minimal` routes (Kimi Code,
   opencode) get — a product decision, not a tidy-up.
@@ -391,7 +395,7 @@ wherever one exists:
 | --- | --- |
 | Claude Code | `claude plugin` against Anthropic's `claude-plugins-official` catalog, then uninstalls a user-scope `postman@postman` so skills don't load twice; a failed install leaves that copy in place |
 | Codex | `codex plugin` against this repo as the `postman` marketplace |
-| GitHub Copilot CLI | `copilot plugin` against this repo as the `postman` marketplace (Copilot reads `.claude-plugin/marketplace.json`), replacing a direct install, which Copilot is deprecating |
+| GitHub Copilot CLI | `copilot plugin` against this repo as the `postman` marketplace (Copilot reads `.github/plugin/marketplace.json`, which installs `agent-plugin/`), replacing a direct install, which Copilot is deprecating |
 | Cursor | a clone at `~/.cursor/plugins/local/postman`. A fresh install is skipped when the Cursor Marketplace copy is present, but an existing clone is kept and updated: Cursor keeps a disabled Marketplace copy on disk too, so the installer can't tell whether that copy is enabled |
 | Factory Droid | `droid plugin` against this repo as the `postman-plugin` marketplace |
 | Antigravity | `agy plugin install https://github.com/postmanlabs/postman-plugin`, again on a re-run, which replaces the installed copy; `agy plugin uninstall postman` removes it |
