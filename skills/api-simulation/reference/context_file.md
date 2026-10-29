@@ -6,6 +6,12 @@ gets `checkout.context.yaml`, and a foldered simulation keeps both in its folder
 `simulation update` renames it with the simulation, and `simulation delete`
 removes it.
 
+Check that path before you work on a simulation. When the record is there,
+read it and add to it. When it is not — a simulation written by hand, or by a
+CLI older than the template — write it yourself from the schema below, which
+is the same schema the template carries, so this session's findings land where
+the next session looks for them.
+
 **Update the existing record without discarding prior claims or evidence.**
 Replacing it with a fresh template loses findings and unresolved assumptions
 while looking complete.
@@ -37,6 +43,44 @@ For routes, request shapes, auth or config, link the file that holds them and
 record the conclusion, evidence and uncertainty relevant to the caller.
 Avoid copying details that can drift, and keep credentials out of this
 committed record.
+
+## Writing one that isn't there
+
+Write it at the path the simulation would have given it — beside the
+`.sim.yaml`, inside the folder for a foldered simulation, named after the
+simulation — with the three keys and `null` wherever nothing is established
+yet:
+
+```yaml
+purpose:
+  stands_in_for: null
+  unblocks: null
+assumptions: []
+fingerprints: []
+```
+
+Where a `<name>.context.md` sits there instead, from a CLI that wrote the
+document as prose, carry its claims and their evidence into the new file as
+entries and delete the markdown one, so the simulation keeps one record rather
+than two that disagree.
+
+Fill `purpose` from what the task already tells you the simulation is for, and
+refine it as the session establishes more. Add a fingerprint when you record
+your first claim, so each `verification` has something to point at:
+
+```yaml
+fingerprints:
+  - id: fp-1
+    date: "2026-10-29"
+    commit: 9c1f2ab  # git rev-parse HEAD; say so when the tree is dirty
+    cli: 1.80.0      # postman --version
+```
+
+Then every claim goes in the same way it would in a record a command wrote:
+evidence first, and `unknown` until something points at it. A file that starts
+with an empty `assumptions` list is accurate; the claims arrive as the session
+establishes them. Commit it with the simulation, as **api-simulation**'s
+"Keeping it" says.
 
 ## What an assumption is
 
