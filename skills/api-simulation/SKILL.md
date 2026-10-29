@@ -154,12 +154,17 @@ stock reserved and never released.
 
 ## Its context document
 
-Every simulation is created with a `<name>.context.yaml` beside it, holding
+A simulation keeps a `<name>.context.yaml` beside it, holding
 what the code is believed to rely on about the dependencies it calls — who the
 caller is taken to be, which plan or permission is assumed, the order calls go
 in, what gets retried, the shape of the data — and what each belief rests on.
 The `.sim.yaml` says what the simulation is, not what the services it stands in
 for do, so this is the record that saves a session the search.
+
+Look for it beside the `.sim.yaml` when you start. `simulation create` writes
+one, and a simulation written by hand or by an older CLI has none — write that
+file yourself from the schema, so what this session establishes has somewhere
+to go.
 
 Read relevant claims before investigating the dependencies, and assess whether
 their evidence still applies to this task. Write what you established back
@@ -210,7 +215,8 @@ your code against these stand-ins rather than the real services, what still
 needs the real service before release, and where each mock came from,
 including when you skipped the owner's.
 
-Then write what you established back into `<name>.context.yaml`, so the next
+Then write what you established back into `<name>.context.yaml`, creating it
+from the schema if the simulation has none, so the next
 session starts where this one ended. Add or update claims that help a later
 session reuse the findings. For each claim the run settled or contradicted,
 update its `status`, the `verification` that was done and the `source` to
