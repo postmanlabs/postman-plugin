@@ -15,7 +15,7 @@ exception is `agent-plugin/`, whose copy `scripts/build-manifest.js` generates:
 | Claude Code plugin | `/plugin marketplace add postmanlabs/postman-plugin` clones this repo | `mcp.claude-code.json` | `postman-claude-code-plugin` |
 | Cursor plugin | `.cursor-plugin/plugin.json` points at this repo's `skills/` dir | `mcp.cursor.json` | `postman-cursor-plugin` |
 | GitHub Copilot CLI plugin | `copilot plugin marketplace add postmanlabs/postman-plugin` reads `.github/plugin/marketplace.json`, which installs `agent-plugin/`: an [Agent Plugins](https://agent-plugins.org) plugin with generated copies of `skills/` and the hook scripts, and its hook in `com.github.copilot/hooks/hooks.json` | `agent-plugin/mcp.json` | `postman-agent-plugin` |
-| GitHub Copilot CLI plugin, legacy | a direct install of the repo root, or a marketplace read without `.github/plugin/marketplace.json`: `.github/plugin/plugin.json` points at `skills/` and `hooks/copilot-hooks.json`. Kept until awesome-copilot lists `agent-plugin/` | `mcp.copilot.json` | `postman-copilot-plugin` |
+| GitHub Copilot CLI plugin, legacy (deprecated) | a direct install of the repo root, or a marketplace read without `.github/plugin/marketplace.json`: `.github/plugin/plugin.json` points at `skills/` and `hooks/copilot-hooks.json`. Frozen at 0.2.0 and gets no new features; removed once awesome-copilot lists `agent-plugin/` and existing installs have had a release to move over | `mcp.copilot.json` | `postman-copilot-plugin` |
 | Kimi Code plugin | `.kimi-plugin/plugin.json` points at the same `skills/` dir | `mcpServers` in `.kimi-plugin/plugin.json` | `postman-kimi-plugin` |
 | Antigravity plugin | `agy plugin install https://github.com/postmanlabs/postman-plugin` clones this repo; `.antigravity-plugin/plugin.json` points at the same `skills/` dir | `mcp_config.json` | `postman-antigravity-plugin` |
 | Codex plugin | `.codex-plugin/plugin.json` points at the same `skills/` dir | `mcp.codex.json` | `postman-codex-plugin` |
@@ -93,7 +93,7 @@ it lands.
 .claude-plugin/plugin.json        the Claude Code plugin manifest
 .cursor-plugin/plugin.json        the Cursor plugin manifest
 .github/plugin/marketplace.json   the marketplace Copilot CLI adds; Copilot reads it before .claude-plugin/marketplace.json, and it installs agent-plugin/
-.github/plugin/plugin.json        the legacy GitHub Copilot CLI plugin manifest — never a root `plugin.json`, which would send Codex down its Agent Plugins loader
+.github/plugin/plugin.json        the deprecated GitHub Copilot CLI plugin manifest, frozen at 0.2.0 — never a root `plugin.json`, which would send Codex down its Agent Plugins loader
 agent-plugin/                     GitHub Copilot CLI's Agent Plugins plugin; plugin.json and mcp.json are hand-written, everything else is generated
 agent-plugin/com.github.copilot/  Copilot-only files; Copilot reads an Agent Plugins plugin's hooks only from com.github.copilot/hooks/hooks.json
 .kimi-plugin/plugin.json          the Kimi Code plugin manifest — carries its MCP block inline, and names Kimi's generated copy of the mandate
@@ -152,10 +152,8 @@ all:
   route the manifest `version` and both header strings must agree, and nothing
   enforces that either — a mismatch is accepted at runtime and the traffic is
   filed under a version that was never cut.
-  The one exception is GitHub Copilot CLI's two routes, which ship the same
-  skills: while both ship, a Copilot release bumps `agent-plugin/plugin.json`,
-  `agent-plugin/mcp.json`, `.github/plugin/plugin.json` and `mcp.copilot.json`
-  together, and the pre-commit guard fails if the two manifests disagree.
+  GitHub Copilot CLI's legacy route is deprecated and frozen at 0.2.0: a
+  Copilot release bumps only `agent-plugin/plugin.json` and `agent-plugin/mcp.json`.
 - **The URL's mode segment** (`/mcp` vs `/minimal`) selects a different tool
   surface. Unifying it changes which tools the `/minimal` routes (Kimi Code,
   opencode) get — a product decision, not a tidy-up.

@@ -18,8 +18,9 @@ const MANIFEST_ROUTES = {
         // agy 1.3.5 ignores the manifest's `mcpServers` path and reads only its
         // default, mcp_config.json; the manifest names that file too.
         '.antigravity-plugin': { mcpConfig: 'mcp_config.json' },
-        // GitHub Copilot CLI's legacy manifest, for a direct install of this repo. The installer and
-        // `.github/plugin/marketplace.json` install agent-plugin/ instead, so no adapter names it.
+        // GitHub Copilot CLI's legacy manifest, for a direct install of this repo. Deprecated and frozen at
+        // 0.2.0 until it is removed. The installer and `.github/plugin/marketplace.json` install
+        // agent-plugin/ instead, so no adapter names it.
         '.github/plugin': { supersededBy: 'agent-plugin' },
         // GitHub Copilot CLI's Agent Plugins (agent-plugins.org) plugin. The spec reads MCP servers
         // only from the plugin root's mcp.json, which the manifest cannot point at.
