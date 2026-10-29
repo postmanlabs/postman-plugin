@@ -263,8 +263,8 @@
         {
           "target": "references/injection.md",
           "source": "skills/gatling-to-postman/references/injection.md",
-          "bytes": 8136,
-          "sha256": "a2359b865f5f5ce8d1ac30357b9938a4eccce2adb2f562b73ba99581489a1f54"
+          "bytes": 9472,
+          "sha256": "9f9492dd1a8dfc18471b9e0cabcf2d3e1679649fc3d7f6e62a55e1f21f0a8342"
         },
         {
           "target": "references/mapping.md",

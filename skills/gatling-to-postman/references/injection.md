@@ -19,6 +19,7 @@
 
 > **VUs ≈ arrival rate (users/s) × journey time (s)**
 
+- **Know whether the injector's number is a count or a rate — this is the most common mistake.** `constantUsersPerSec(r)` and `rampUsersPerSec(a).to(b)` are **rates** (users **per second**) — use them directly. `rampUsers(n).during(d)` and `atOnceUsers(n)` are a **total count** of users, not a rate: `rampUsers(50).during(60s)` is 50 users spread over 60 s = an arrival rate of `50/60 ≈ 0.83 users/s`, **not** 50/s. Convert a count to a rate (`n/d`) *before* Little's law. Skipping this step inflates `--vu-count` by the factor `d`.
 - **Journey time** = the sum of pauses (use the mean for ranges, e.g. `pause(1,3)` → 2 s) + the expected response times. Use `0.3 s` per request if unknown, and say so — **but** if a path makes the latency evident (e.g. `/delay/1` ≈ 1 s, a Gatling request literally named "slow …"), use that value instead and note it. Pick one rule per conversion and state it, so two runs don't diverge.
 - **Cloud VU floor.** If the computed `--vu-count` is below 10 and the user will run on **cloud**, keep the computed value but add a one-line note that cloud requires ≥ 10 (so they raise it deliberately, knowing it increases load). For **local** runs any value ≥ 1 is fine. Never silently inflate the count to clear the floor.
 - **`pace(d)` is a floor, not an addend.** `pace` forces each iteration to take *at least* `d`; it does **not** add to the request/pause time, it subsumes it. So when a scenario has `pace(d)`, the journey time is `J = max(d, pauses + response times)`, **not** `pauses + response times + d`. Adding `pace` as a term overstates `J` and inflates `--vu-count`. Show the `max(...)` in MIGRATION.md.
@@ -30,7 +31,7 @@
 | `constantUsersPerSec(r).during(d)` | `--vu-count ceil(r × J) --load-profile fixed --duration ceil(d)` |
 | `rampUsersPerSec(a).to(b).during(d)` (then `constantUsersPerSec(b)…`) | `--vu-count ceil(b × J) --load-profile ramp-up`, with duration the sum of all steps |
 | `atOnceUsers(n)` | a burst: `--load-profile spike --vu-count n` if it's the main (only sustained) step. **When it coexists with a ramp/constant step, the sustained step is the dominant shape** — use that profile and its Little's-law VU count; fold the burst in as the initial spike and note it. Only when the burst's `n` exceeds the sustained VU count does it set the peak (use the larger, and say so) |
-| `rampUsers(n).during(d)` | n users arriving evenly over d, so the rate is n/d: `--vu-count ceil((n/d) × J)`, ramp-up |
+| `rampUsers(n).during(d)` | **`n` is a total count, not a rate.** `n` users arrive evenly over `d`, so first convert to a rate `n/d` users/s, then `--vu-count ceil((n/d) × J)`, ramp-up. E.g. `rampUsers(50).during(60s)` → `50/60 ≈ 0.83/s`, **not** 50/s |
 | `stressPeakUsers(n).during(d)` | `--load-profile peak --vu-count ceil(peak rate × J)` |
 | `nothingFor(d)` | none. Add d to the explanation. Gap if it's the only step, otherwise approximated |
 | `.randomized()` | none: gap (arrivals aren't randomised) |
@@ -45,6 +46,17 @@ Peak VUs: 10 users/s × 2.1 s = 21 → --vu-count 21
 Duration: 60 + 120 = 180 s = 3 min → --duration 3
 Profile: ramp-up (one ramp then a hold; the ramp/hold split is fixed by the profile, not 1:2)
 ```
+
+Count-based injectors — convert the count to a rate FIRST (this is the step that most often goes wrong):
+```
+Source: atOnceUsers(5), then rampUsers(50).during(60s)
+Rate:    rampUsers(50).during(60s) = 50 users over 60 s = 50/60 ≈ 0.83 users/s   ← NOT 50/s
+Journey: 3 requests × 0.3 s (assumed) + pause 0.5 s × 3 + /delay/1 ≈ 1 s = ~3.7 s
+Sustained VUs: 0.83 users/s × 3.7 s ≈ 3.08 → 4
+Burst:   atOnceUsers(5) = 5 users at once; 5 > 4, so the burst sets the peak → --vu-count 5
+Duration: 60 s = 1 min → --duration 1 ; Profile: ramp-up
+```
+(Reading `rampUsers(50)` as 50 users/s here would give `50 × 3.7 ≈ 185` VUs — ~40× too high.)
 
 ## Throttle (`throttle:*`) and max duration
 - `throttle(reachRps(r).in(t), holdFor(h))`: there's no RPS cap. **Gap**, and say that Postman won't hold throughput at r. The user can lower `--vu-count` to get near it.
