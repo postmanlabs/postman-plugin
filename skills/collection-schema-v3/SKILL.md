@@ -1,6 +1,6 @@
 ---
 name: collection-schema-v3
-description: Use when writing or debugging local Postman v3 collection, environment, globals or spec files, including collection lint failures. Preserves the per-entity files, inherited context, and schema shapes that make API changes reusable and reviewable in Git. Use for requests such as "fix this request YAML".
+description: Use when writing or debugging local Postman v3 collection, environment or globals files, including collection lint failures. Preserves the per-entity files, inherited context, and schema shapes that make API changes reusable and reviewable in Git. Use for requests such as "fix this request YAML".
 ---
 
 # Collection Schema (v3, Git-Native)
@@ -25,8 +25,7 @@ checks, without regenerating a single large collection export.
    [other protocols](reference/other_protocols.md).
    Protocols have different URL, body, script, and settings shapes; an HTTP
    field is not necessarily valid on another request kind.
-   For other entity files, use the [globals](reference/globals.md),
-   [spec](reference/spec.md), or [SDK](reference/sdk.md) reference.
+   For globals files, use the [globals reference](reference/globals.md).
    Dataset YAML belongs to **datasets**; mocks belong to **api-mocking**.
 4. Preserve types at the YAML boundary. Quote `{{variables}}` and strings that
    resemble booleans or numbers; JSON bodies are string content, best expressed

@@ -177,13 +177,13 @@
     {
       "name": "collection-schema-v3",
       "plugin": "postman",
-      "description": "Use when writing or debugging local Postman v3 collection, environment, globals or spec files, including collection lint failures. Preserves the per-entity files, inherited context, and schema shapes that make API changes reusable and reviewable in Git. Use for requests such as \"fix this request YAML\".",
+      "description": "Use when writing or debugging local Postman v3 collection, environment or globals files, including collection lint failures. Preserves the per-entity files, inherited context, and schema shapes that make API changes reusable and reviewable in Git. Use for requests such as \"fix this request YAML\".",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/collection-schema-v3/SKILL.md",
-          "bytes": 3745,
-          "sha256": "f89cf5ffc3114cdf855cf2f72f273a82d4e25bfaf5bdeca4cd68800691848fd3"
+          "bytes": 3676,
+          "sha256": "0a9c241db87b59d43c9674c920d69b4e9530f61d39ee73ada84d44b48a5f6201"
         },
         {
           "target": "reference/environment.md",
@@ -208,18 +208,6 @@
           "source": "skills/collection-schema-v3/reference/other_protocols.md",
           "bytes": 7236,
           "sha256": "9f9d6e8e3c5a5bdf0efcdbd6b5cca8c55e1fa637e89d42cf9e579276da5a0e9f"
-        },
-        {
-          "target": "reference/sdk.md",
-          "source": "skills/collection-schema-v3/reference/sdk.md",
-          "bytes": 283,
-          "sha256": "50ccd3387332888fbc6e066c97a05a34c06805237a365646f8cdc637ed25ba3a"
-        },
-        {
-          "target": "reference/spec.md",
-          "source": "skills/collection-schema-v3/reference/spec.md",
-          "bytes": 996,
-          "sha256": "87dd80e8341df2672fd416bfa673bd6b6390057070478408f535823b55394a30"
         }
       ]
     },
