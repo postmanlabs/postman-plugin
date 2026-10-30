@@ -90,12 +90,14 @@ Copy feeder files that the simulation uses. Convert JSON array feeders to CSV if
 #!/usr/bin/env bash
 # Converted from <Simulation>. Replace <collection-uid> after pushing the collection to a workspace.
 postman performance run "<collection-uid>" \
+  --environment "<environment-uid>" \
   --vu-count 20 --duration 5 --load-profile ramp-up \
   --data-file data/users.csv \
   --pass-if "less_than(error_rate, 1)"
 ```
 Only flags that exist in `postman performance run --help` (check the user's installed
 version; don't assume a flag from a newer CLI). Duration is in whole minutes, rounded up.
+- `--environment` — include it whenever `environment.json` has any values (the secrets/config requests depend on). Requests using `{{secret}}`/config resolve to nothing without it. Tell the user to import and **populate** `environment.json`, then replace `<environment-uid>` with its UID. Omit the flag only when the environment is empty (`values: []`).
 - `--data-file` only if the simulation has a feeder; **omit the line entirely** when there is none (don't invent a data file).
 - `--pass-if`: **at most one**, chosen by the strict priority in `injection.md` (error-rate, then latency percentile, then mean/rps) — this overrides source order. If **no** source assertion matches any category, **omit `--pass-if` entirely**. Every non-chosen assertion goes to the gap report.
 

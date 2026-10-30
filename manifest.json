@@ -251,26 +251,26 @@
         {
           "target": "SKILL.md",
           "source": "skills/gatling-to-postman/SKILL.md",
-          "bytes": 12449,
-          "sha256": "516bae6b07ed86145b777fab7982326e87a3a533c537103d99ef8f87e64e7c16"
+          "bytes": 12843,
+          "sha256": "88343749a3a9f731296daa2f6d1867fd8fc693d8caa1e63004b6bda5de4f0e47"
         },
         {
           "target": "references/feeders.md",
           "source": "skills/gatling-to-postman/references/feeders.md",
-          "bytes": 2819,
-          "sha256": "bbd998634705a7c605a1720e149cc65aedb6a99084e05566cf9f64f719ceb828"
+          "bytes": 3498,
+          "sha256": "036465bcbfd648bc07ab18de2346aa1915e07e7254f67b598c9837bb4718cc4e"
         },
         {
           "target": "references/injection.md",
           "source": "skills/gatling-to-postman/references/injection.md",
-          "bytes": 9472,
-          "sha256": "9f9492dd1a8dfc18471b9e0cabcf2d3e1679649fc3d7f6e62a55e1f21f0a8342"
+          "bytes": 10523,
+          "sha256": "8504c8df5f16807225efd58cc364fd32230a53776b543eb85859c20af36f9b8b"
         },
         {
           "target": "references/mapping.md",
           "source": "skills/gatling-to-postman/references/mapping.md",
-          "bytes": 9504,
-          "sha256": "fdf62bff6180e8d84b2486dba131a03a0c5aba462f432dccccc624f874aaed23"
+          "bytes": 11150,
+          "sha256": "cf8db5e4e1aadb23699667b2059b14b3f3100e35ec9b648a3407b048ea34b365"
         },
         {
           "target": "references/unsupported.md",

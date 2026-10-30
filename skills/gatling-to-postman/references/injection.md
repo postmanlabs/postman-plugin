@@ -24,7 +24,7 @@
 - **Cloud VU floor.** If the computed `--vu-count` is below 10 and the user will run on **cloud**, keep the computed value but add a one-line note that cloud requires ≥ 10 (so they raise it deliberately, knowing it increases load). For **local** runs any value ≥ 1 is fine. Never silently inflate the count to clear the floor.
 - **`pace(d)` is a floor, not an addend.** `pace` forces each iteration to take *at least* `d`; it does **not** add to the request/pause time, it subsumes it. So when a scenario has `pace(d)`, the journey time is `J = max(d, pauses + response times)`, **not** `pauses + response times + d`. Adding `pace` as a term overstates `J` and inflates `--vu-count`. Show the `max(...)` in MIGRATION.md.
 - **A loop inside the per-user journey changes what `J` is.** If the open-model journey wraps a `during(t) { … }` / `forever { … }` loop (often with `pace`), each arriving user stays busy for the **whole loop duration**, so `J` is that duration, not one pass. Example: `constantUsersPerSec(20)` over a journey of `during(5.minutes){ pace(5s).exec(...) }` → `J = 300 s`, so `VUs ≈ 20 × 300 = 6000`, not `20 × (one 5 s iteration)`. This is usually a very large number — **do not silently pick the one-iteration reading**; compute both, put the arithmetic and the chosen reading in MIGRATION.md → Load model, and tell the user to confirm, because it swings `--vu-count` by orders of magnitude. A finite closed cap (`maxDuration`, cloud VU limits) may force you lower; say so.
-- Round up. Use `--vu-count` ≥ 1 (≥ 10 if the user will run it on cloud).
+- Round up to `--vu-count` ≥ 1. **Do not bump a sub-10 result up to 10 for cloud here** — the **Cloud VU floor** rule above governs that: keep the computed value and warn the user cloud needs ≥ 10, so load is never silently increased without their decision.
 
 | Gatling | Flags |
 |---|---|
@@ -75,12 +75,14 @@ All non-chosen assertions are **gap**, reason "the CLI takes one pass condition"
 **If no source assertion matches any category** (e.g. only `forAll`/`details(...)` per-request assertions, or only `responseTime().max()` which has no CLI metric), emit **no `--pass-if` flag at all** — this is correct and expected, not a defect. Record every assertion as a gap and tell the user to add run criteria in the app. A `run.sh` with zero `--pass-if` is valid.
 | Gatling | `--pass-if` | Notes |
 |---|---|---|
-| `global().failedRequests().percent().lt(x)` | `less_than(error_rate, x)` | mapped |
-| `global().failedRequests().count().is(0)` | `less_than_eq(error_rate, 0)` | approximated (percentage instead of count) |
-| `global().successfulRequests().percent().gt(x)` | `less_than(error_rate, 100 - x)` | mapped |
+| `global().failedRequests().percent().lt(x)` | `less_than(error_rate, x)` | approximated (see error-rate note below) |
+| `global().failedRequests().count().is(0)` | `less_than_eq(error_rate, 0)` | approximated (percentage instead of count; + error-rate note) |
+| `global().successfulRequests().percent().gt(x)` | `less_than(error_rate, 100 - x)` | approximated (see error-rate note below) |
 | `global().responseTime().percentile(95).lt(ms)` (Scala `percentile3`) | `less_than(p95, ms)` | mapped (also p90, p99. Other percentiles → the nearest, approximated) |
 | `global().responseTime().mean().lt(ms)` | `less_than(avg, ms)` | mapped |
 | `global().responseTime().max()` / `min()` / `stdDev()` | none | gap |
 | `global().requestsPerSec().gt(r)` | `greater_than(rps, r)` | mapped |
 | `forAll…` / `details("group", "req")…` | none (no per-request criteria) | gap |
 | `lte` / `gte` | `less_than_eq` / `greater_than_eq` | — |
+
+**Error-rate note (why failed/successful-request mappings are approximated).** Gatling's `failedRequests` counts a request as failed when a **check** fails, even on an HTTP 200. Postman's `error_rate` counts transport/runtime errors and may **not** count a request that returned a response but failed a translated `pm.test` (behaviour differs by runner). So a batch of 200s that all fail a JSON check would fail Gatling's gate but can **pass** `less_than(error_rate, …)`. Map `failedRequests`/`successfulRequests` → `error_rate` as **approximated**, say so in MIGRATION.md, and note it's a weaker gate than Gatling's (plus any hosted-runner limitation). If the failure the user cares about is a check, a latency percentile or `rps` criterion may be the more faithful gate.
