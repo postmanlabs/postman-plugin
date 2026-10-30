@@ -177,50 +177,50 @@
     {
       "name": "collection-schema-v3",
       "plugin": "postman",
-      "description": "Use when writing or debugging local Postman v3 collection, environment, dataset, mock, globals, spec or document files, including collection lint failures. Preserves the per-entity files, inherited context, and schema shapes that make API changes reusable and reviewable in Git. Use for requests such as \"fix this request YAML\".",
+      "description": "Use when writing or debugging local Postman v3 collection, environment, mock, globals, spec or document files, including collection lint failures. Preserves the per-entity files, inherited context, and schema shapes that make API changes reusable and reviewable in Git. Use for requests such as \"fix this request YAML\".",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/collection-schema-v3/SKILL.md",
-          "bytes": 4333,
-          "sha256": "2844969f5ba461c8eda263c5b3cf7a0842b4fc6f8a6e2fcd35eac6c6efa78a99"
-        },
-        {
-          "target": "reference/authoring-pitfalls.md",
-          "source": "skills/collection-schema-v3/reference/authoring-pitfalls.md",
-          "bytes": 16629,
-          "sha256": "3ac6854ef6b374ce402c08e9a2ad50746ab88ffd1b3b0c1d021a7926977379ea"
+          "bytes": 3673,
+          "sha256": "9dc002b0830c4fee3bf1e40615757c5019d1402855ab6c854782b44528446498"
         },
         {
           "target": "reference/environment.md",
           "source": "skills/collection-schema-v3/reference/environment.md",
-          "bytes": 2109,
-          "sha256": "9b9fc2fe582596a9d2873476be63190a89042de2da30609cabb2c8ad0473f693"
+          "bytes": 2232,
+          "sha256": "b2a34943987af5345d97cd01acbe1eeed56ce27ab905055291d626c530fbff50"
         },
         {
           "target": "reference/http.md",
           "source": "skills/collection-schema-v3/reference/http.md",
-          "bytes": 5596,
-          "sha256": "f7158be6a6937f9d026c47a85bd78ccd3b958b29ee497bad72029566a42e49f8"
+          "bytes": 6522,
+          "sha256": "b1cb68e6f69f7a6964bf0c16265805a3ba0745d865d1642a839325da46e98ffd"
         },
         {
           "target": "reference/other_entities.md",
           "source": "skills/collection-schema-v3/reference/other_entities.md",
-          "bytes": 17460,
-          "sha256": "2ef1f0487193232e27cc1520442d21acebbb07a7221261365112d70b264093ba"
+          "bytes": 16587,
+          "sha256": "c997efbe2945b77a742c053e3749af67b7e9ca2716db5f43011c7d7173f8366e"
         }
       ]
     },
     {
       "name": "datasets",
       "plugin": "postman",
-      "description": "Use when a collection needs queried or joined test inputs, a reusable named view, spreadsheet worksheet data, live database rows, or script access through pm.datasets(). Chooses between a simple iteration file and a dataset while preserving query semantics, portability, and credential boundaries. Use for requests such as \"run this collection over database rows\".",
+      "description": "Use when creating or repairing dataset manifests, or when a collection needs queried or joined test inputs, a reusable named view, spreadsheet worksheet data, live database rows, or script access through pm.datasets(). Chooses between a simple iteration file and a dataset while preserving query semantics, portability, and credential boundaries. Use for requests such as \"run this collection over database rows\".",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/datasets/SKILL.md",
-          "bytes": 5859,
-          "sha256": "0845b92bc9149af595ad16b7a1ca3f004295da893a9ecea16a8a7ee30177bac7"
+          "bytes": 5999,
+          "sha256": "bd4178fc094e925eb5ff22ca07354c3f615c0fc1443f5a00e58da070bc6d7f03"
+        },
+        {
+          "target": "reference/schema.md",
+          "source": "skills/datasets/reference/schema.md",
+          "bytes": 1868,
+          "sha256": "69daa658202bed710004c2864e79d914b331ac7ce77d86241ea897f72947127e"
         },
         {
           "target": "reference/spreadsheets.md",

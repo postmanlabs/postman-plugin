@@ -1,6 +1,6 @@
 ---
 name: datasets
-description: Use when a collection needs queried or joined test inputs, a reusable named view, spreadsheet worksheet data, live database rows, or script access through pm.datasets(). Chooses between a simple iteration file and a dataset while preserving query semantics, portability, and credential boundaries. Use for requests such as "run this collection over database rows".
+description: Use when creating or repairing dataset manifests, or when a collection needs queried or joined test inputs, a reusable named view, spreadsheet worksheet data, live database rows, or script access through pm.datasets(). Chooses between a simple iteration file and a dataset while preserving query semantics, portability, and credential boundaries. Use for requests such as "run this collection over database rows".
 ---
 
 # Datasets
@@ -43,8 +43,9 @@ stay with `collection run -d`; a dataset should earn its extra configuration.
 
 Create a local manifest with `postman dataset create <path.dataset.yaml>
 --name <name>`, then attach sources with `dataset source add`. Source commands
-supply IDs and validation that hand-written entries can miss. Existing-dataset
-commands accept a local path or workspace ID; `list` needs a local path for
+supply IDs and validation that hand-written entries can miss. When inspecting
+or repairing manifest fields, consult [Dataset YAML](reference/schema.md).
+Existing-dataset commands accept a local path or workspace ID; `list` needs a local path for
 local discovery, while workspace create/list use `--workspace`.
 
 File sources are copied into `data_dir` unless `--ref-only` is used. That option

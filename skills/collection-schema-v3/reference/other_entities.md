@@ -1,8 +1,14 @@
-# Field reference: every v3 entity and request kind
+# Field reference: request kinds and other entity formats
 
-Read this when authoring something the main guidance only names. Every field list here
-is complete for its kind — a key not listed is not recognised, and the linter will
-**strip it in silence** rather than report it.
+Consult the section for the entity being changed. These shapes help distinguish
+format errors from valid configuration that does not produce the intended behavior.
+Schema checks cannot establish credentials, provider availability, or contract fidelity.
+
+- [Auth](#auth), [request bodies](#request-body), and [scripts](#scripts)
+- [Request kinds](#request-kinds), [messages](#messages), and [examples](#examples)
+- [Datasets](#datasets), [mocks](#mocks), and [environments and globals](#environments-and-globals)
+- [Specs](#specs), [documents](#documents), and [SDKs](#sdks)
+- [Workspace manifest](#the-workspace-manifest) and [validation](#validating-each-entity)
 
 ## Auth
 
@@ -30,10 +36,10 @@ does the same thing.
 
 `credentials` keys are the same names the Postman app shows for that auth type —
 `username`/`password` for `basic`, `token` for `bearer`, `key`/`value`/`in` for
-`apikey`, `accessKey`/`secretKey`/`region`/`service` for `awsv4`. They are not
-validated against the auth type, so a wrong key name is dropped and the request goes
-out unauthenticated. `credentials` accepts a map or an array of `{key, value}`; prefer
-the map.
+`apikey`, `accessKey`/`secretKey`/`region`/`service` for `awsv4`. A structurally
+valid credential entry does not establish that the server will authenticate it.
+`credentials` accepts a map or an array of `{key, value}`. See the
+[HTTP reference's key-list guidance](http.md#key-lists) for choosing a representation.
 
 ## Request body
 
@@ -73,8 +79,9 @@ body:
     src: ./upload.bin       # an object with src, not a bare path
 ```
 
-`type: json` is the one to reach for — it does not reformat the content, so write the
-JSON as a block scalar. A *response* body inside an example has a narrower type list:
+Choose `body.type` to match the payload and contract. JSON `content` is a string;
+a block scalar keeps it readable without turning it into a YAML object.
+A *response* body inside an example has a narrower type list:
 see Examples below.
 
 ## Scripts
@@ -93,14 +100,19 @@ collection or folder (`http:beforeRequest`, `http:afterResponse`,
 **`text/javascript`** — `language: javascript` is a hard error,
 `Invalid input: expected "text/javascript"`. Omitting it is fine.
 
-Writing `event:` instead of `scripts:` — the v2.1 spelling — lints clean and is
-dropped, leaving the request with no scripts and a run with 0 assertions.
+The v2.1 `event:` field is not the v3 `scripts:` field. A script's `type` also
+depends on its scope; moving it between a request and a definition requires checking
+the type as well as the code. See the main skill's verification guidance for
+checking that the intended script behavior survives the edit.
 
 ## Request kinds
 
 `$kind` is required on all of these, and it is the *only* required field except on
 `mcp-request`, which also requires `transport`. So for every other kind a half-written
-request lints clean. Fields are listed complete; `id`, `name`, `description` and `order`
+request can pass structural checks without being executable. Only `*.request.yaml`
+files are discovered as requests; the right fields in a differently named file
+do not make it runnable. Each kind has its own settings; HTTP settings do not
+apply to every protocol. Common metadata fields `id`, `name`, `description` and `order`
 are available on all of them and omitted below.
 
 ### `http-request`
@@ -223,30 +235,74 @@ Requires `$kind` **and** `transport`, which selects the legal keys. Common to bo
 There are no other transports. `message` is a JSON-RPC envelope as a **string**;
 `{{variables}}` interpolate inside it.
 
+```yaml
+$kind: mcp-request
+transport: stdio           # command + env; no url
+command: uvx some-mcp-server
+env:
+  API_KEY: '{{KEY}}'
+message: |-
+  {"method": "tools/call", "params": {"name": "do_thing", "arguments": {}}}
+order: 1000
+```
+
+```yaml
+$kind: mcp-request
+transport: sse             # url + headers; no command
+url: https://mcp.example.com/sse
+headers:
+  Authorization: 'Bearer {{KEY}}'
+message: |-
+  {"method": "tools/list"}
+```
+
 ### `llm-request`
 
 `url`, `config`, `userPrompts`, `systemPrompts`, `mcpConfig`, `enabledTools`,
 `clientTools`, `auth`, `settings`.
 
-`config` takes `model` and `provider`, both free-form strings with no fixed list, so a
-typo lints clean and fails at run time.
+`config` takes `model` and `provider`, both free-form strings. Schema validation
+does not establish that the configured provider or model is available at run time.
 
-Prompt entries are `{id, value, timestamp, active, contentType}`. **`contentType`, not
-`type`** — `type` lints clean and is stripped, losing the content type.
+Prompt entries are `{id, value, timestamp, active, contentType}`. The content
+format is expressed by `contentType`; `type` is not a prompt-entry field.
+`timestamp` is numeric, and `active` is boolean.
 
 `mcpConfig` is a **string containing a JSON array**, not nested YAML and not
 `mcp.json`'s `mcpServers` object. `clientTools`, for tools the model may call with no
 MCP server behind them, is `[{id, tools: [{id}]}]`.
 
+For example, a prompt and a stdio MCP tool configuration use different scalar
+shapes within the same request:
+
+```yaml
+userPrompts:
+  - id: '1'
+    value: Summarise the last 10 orders
+    timestamp: 1758412800000
+    active: true
+    contentType: text
+mcpConfig: |-
+  [
+    {
+      "name": "orders",
+      "config": {"command": "uvx", "args": ["orders-mcp-server"]},
+      "enabled": true,
+      "disabledTools": []
+    }
+  ]
+```
+
 `settings`: `temperature`, `maxToken`, `maxSteps`, `topP`, `topK`, `seed`,
 `presencePenalty`, `frequencyPenalty`, `repetitionPenalty`, `contextWindow`,
-`streamResponse`, `streamTools`, `responseFormatJSON`. Raise `maxSteps` when a long tool
-chain has to run to completion.
+`streamResponse`, `streamTools`, `responseFormatJSON`. If a tool chain stops early,
+distinguish a step limit from a tool or provider failure before changing `maxSteps`;
+the limit also bounds execution cost and duration.
 
 ## Messages
 
 A `messages` directory holds `*.message.yaml` files. Each kind has different required
-fields — this is the most common mistake in this area.
+fields; a valid WebSocket message is not automatically a valid MQTT message.
 
 ```yaml
 $kind: websocket-message      # requires content + contentType
@@ -304,55 +360,15 @@ response:
 order: 1000
 ```
 
-A 204 still needs a body — `body: {type: text, content: ''}`. Response `body.type`
-accepts only `text`, `json`, `xml`, `html`, `javascript` and `yaml`; there is **no
+[HTTP examples](http.md#http-example-exampleyaml) describe the required response
+body, including empty responses. Response `body.type` accepts only `text`, `json`, `xml`, `html`, `javascript` and `yaml`; there is **no
 `urlencoded` on a response**, so carry a form-encoded payload as `type: text` with a
 matching `Content-Type` header. Request bodies do have `urlencoded`.
 
 ## Datasets
 
-```
-postman/datasets/users/
-├── users.dataset.yaml
-└── .resources/
-    └── rows.json
-```
-
-```yaml
-type: dataset                 # not $kind
-name: "Users"
-id: 3f2b6c1e-9d4a-4f81-bc37-5e0a71d9c402     # uuid4
-data_dir: .resources
-sources:
-  - from: embedded_datasource
-    datasource:
-      name: Records
-      id: 8a1d0e77-5c62-4b19-9f03-2d6e4a8b7c15
-      format: json            # json | csv | xlsx | mysql
-      source_type: static     # static for files, dynamic for databases
-      location:
-        type: local_filesystem
-        value: rows.json      # relative to data_dir
-views:
-  - from: embedded_view
-    view:
-      name: Records_default_view
-      id: c94e5b20-71af-4d36-8e52-0b7c6d1934fa
-      query: SELECT id, name FROM Records ORDER BY id
-```
-
-`sources` and `views` are optional — `type`, `name`, `id` and `data_dir` alone is a
-valid dataset, and is what `postman dataset create <path> --name X` writes.
-
-A database source instead sets `format: mysql`, `source_type: dynamic`,
-`ingest: false`, a `dsKey` and a `slug`, with `location.type: mysql`, `location.value`
-a DSN and `location.table` the table name.
-
-A view's `query` is SQL over the source `name`, not over the file name.
-
-There is no `dataset lint`. `postman dataset get <path>` checks the structure offline.
-`postman dataset query <path> -q "<sql>"` runs SQL against the source, which also proves
-the data parses and the query resolves — note the `-q` flag is required.
+See **datasets** for dataset YAML, source and view configuration, and query
+verification. Dataset files have a separate schema from collection entities.
 
 ## Mocks
 
@@ -375,74 +391,33 @@ scenarios:
     default: true             # only on the default one; elsewhere omit it
 ```
 
-Scenario `id` is optional. Nothing validates the `.js`, so match the shape
-`postman mock generate --name X` emits — a plain Node server reading `PORT` from the
-environment, one `// @endpoint METHOD /path` marker per route:
-
-```js
-const http = require('http');
-const PORT = process.env.PORT || 4500;
-
-const server = http.createServer((req, res) => {
-  const url = new URL(req.url || '', 'http://localhost');
-  const pathname = url.pathname;
-
-  // @endpoint GET /health
-  if (req.method === 'GET' && pathname === '/health') {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    return res.end(JSON.stringify({ status: 'ok' }));
-  }
-
-  res.writeHead(404, { 'Content-Type': 'application/json' });
-  res.end(JSON.stringify({ error: 'Endpoint not defined' }));
-});
-
-server.listen(PORT);
-```
-
-Branch on `req.headers['x-mock-response-code']` to let a caller pick an error path out
-of one scenario. Run it with `postman mock run <config.yaml>`, or drive it from a
-collection with `postman collection run <dir> --mock <config.yaml>`.
+Scenario `id` is optional. The YAML identifies handlers; it does not establish
+that their responses match the API contract. See **api-mocking** for handler
+implementation, reproducible error paths, state, and verification through callers.
 
 ## Environments and globals
 
-```yaml
-name: Dev
-values:
-  - key: base_url
-    value: https://api.example.com     # always a string
-    enabled: true
-    type: default                      # or secret
-```
+The [environment reference](environment.md#file-and-fields) owns the shared
+`name` and `values` schema and secret handling. Globals use the same shape,
+conventionally `name: Globals`, with a `*.globals.yaml` filename under
+`postman/globals/`. An empty `values: []` is valid.
 
-Globals are identical, conventionally `name: Globals`. `values: []` is valid.
-
-A secret value can be marked as `type: secret`, or as `secret: true` alongside
-`type: default` — both are recognised fields.
-
-Unlike `collection lint`, `environment lint` and `globals lint` **do** report an
-unrecognised key, as `warning [ENV007] Unrecognized field "values.0.<key>"`. So a clean
-environment lint is stronger evidence than a clean collection lint.
-
-The **filename suffix is enforced**: `*.environment.yaml` under
-`postman/environments/` and `*.globals.yaml` under `postman/globals/`.
-`postman/environments/Staging.yaml` is rejected outright — *"Not an environment file.
-Expected a file ending in .environment.yaml, .environment.yml, .environment.json"*.
-
-Validate with `postman environment lint <file>` and `postman globals lint <file>`.
-Both take `-o/--output` for the report format, where `collection lint` takes
-`-r/--reporter`.
+The filename suffix identifies the entity: environment files use
+`*.environment.yaml`, globals use `*.globals.yaml`; neither uses `$kind`.
+Use `postman globals lint <file>` for globals. Environment and globals lint
+both accept `-o/--output`, where collection lint accepts `-r/--reporter`.
 
 ## Specs
 
 `postman/specs/<name>.yaml`, or `postman/specs/<name>/` as a directory — both are
 accepted on disk. The content is plain OpenAPI or AsyncAPI with no Postman wrapper.
 
-**`$ref` does not resolve across documents.** Splitting `index.yaml` and
-`components.yaml` fails whichever spelling you use —
-`'#/components/schemas/X'`, `'./components.yaml#/components/schemas/X'` and
-`'components.yaml#/components/schemas/X'` all report *"does not exist"*. Keep
-`components` inline in the same document as the paths that reference it.
+When lint reports an unresolved `$ref` in a spec split across documents,
+distinguish a missing target from a CLI resolution limitation. Preserve the
+source organization while checking the referenced file and fragment. If a
+consumer needs a single document, a bundled validation copy can test that path
+without restructuring the maintained contract. Report any resolution limitation
+separately from contract validity.
 
 `postman spec lint` reports governance findings next to validity ones, at **ERROR**
 severity. A valid spec with no `security` block still reports *"Security field is not
@@ -500,17 +475,14 @@ leaves the workspace copy stale. A mapping whose path no longer exists raises `W
 | collection | `postman collection lint <dir> -r json` |
 | environment / globals | `postman environment lint <file>` / `postman globals lint <file>` |
 | spec | `postman spec lint <path>` |
-| dataset | `postman dataset get <path>`, then `postman dataset query <path> -q "<sql>"` |
+| dataset | see **datasets** for structure and query checks |
 | mock | `postman mock run <config.yaml>` |
 | sdk | `postman sdk generate` |
 | document | none |
 | everything, plus the manifest | `postman workspace lint` |
 
-`postman workspace lint` is the broadest check, the only one with `--fix` and
-`info`/`hint` severities, and the only one that reports unrecognised fields in a
-*collection* (`FMT206` in a request, `FMT208` in `definition.yaml`). `collection lint`
-stays silent about those, so run `workspace lint` before you call anything done.
-Environment and globals lint do report their own unknown fields (`ENV007`). `postman collection run <dir> --no-report-events` is
-the only way to prove scripts survived. The run needs no login; the flag suppresses the
-post-run report upload, which is the only part that reaches the cloud and the only reason
-a local run would fail on authentication.
+Choose checks for the entity and intended outcome. Workspace lint is useful for
+relationships across entities and manifest mappings; it need not follow every
+entity-specific lint. Review warnings as well as errors, and distinguish format
+findings from runtime failures. A successful mock start or SDK generation does
+not establish contract fidelity or correct consumer behavior.

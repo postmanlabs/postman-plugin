@@ -36,6 +36,8 @@ An environment is one YAML file named `<name>.environment.yaml` under
   - `enabled` — boolean. The CLI writes `true` for a newly set variable.
   - `type` — optional string. Use `default` for ordinary values and `secret`
     for sensitive values.
+  - `secret` — optional boolean; `secret: true` alongside `type: default` is
+    also a recognised way to mark a secret.
   - `description` — optional string.
 
 Do not add collection-only fields such as `$kind`, `scripts`, `auth`, or

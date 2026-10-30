@@ -22,6 +22,14 @@ Optional metadata for a collection or folder:
   `grpc:onIncomingMessage`, `grpc:afterResponse`.
 - `order` — number, used for folder ordering.
 
+## Key lists
+
+`headers`, collection `variables`, and `auth.credentials` accept maps as well
+as arrays. The app writes maps when round-tripping collections, so maps can
+avoid representation-only diffs. Preserve entry metadata when choosing a form:
+arrays can carry fields such as `description` or `disabled` that a map cannot.
+Quote numeric- or boolean-looking values where the field requires a string.
+
 ## HTTP request (`*.request.yaml`)
 
 - `$kind: "http-request"` — required.
@@ -50,6 +58,19 @@ Optional metadata for a collection or folder:
 - `examples` — optional, a relative path to the examples directory, e.g.
   `./.resources/<request-name>.resources/examples/`.
 
+Keep `queryParams` and the URL query string consistent so consumers see the
+same parameters in either representation (`FMT209`). Review lint warnings,
+not just the error count. For example:
+
+```yaml
+url: '{{base_url}}/search?q=shoes&page=2'
+queryParams:
+  - key: q
+    value: shoes
+  - key: page
+    value: '2'
+```
+
 ## HTTP example (`*.example.yaml`)
 
 - `$kind: "http-example"` — required.
@@ -57,6 +78,10 @@ Optional metadata for a collection or folder:
 - `request: {url, method}`.
 - `response: {statusCode, statusText, headers: [{key, value}], body: {type, content}}`.
 - `order` — optional.
+
+An example response requires `body`, even for a 204:
+`body: {type: text, content: ''}`. See
+[response body types](other_entities.md#examples) when the payload is not JSON.
 
 Saved examples are what `collection ai-readiness` checks for — a request
 with no examples scores worse for agent consumption even if perfectly
@@ -71,8 +96,8 @@ handling, CLI-first edit commands, and a linted example.
 
 ## YAML rules
 
-Invalid YAML breaks parsing silently in confusing ways — when in doubt,
-single-quote it:
+YAML parsing and scalar coercion can change a field's meaning before schema
+validation. Preserve the type the field expects:
 
 1. Single-quote any value containing `{{variables}}`:
    `url: '{{base_url}}/users'` — never leave it unquoted.
