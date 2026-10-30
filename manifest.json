@@ -244,6 +244,43 @@
       ]
     },
     {
+      "name": "gatling-to-postman",
+      "plugin": "postman",
+      "description": "Convert an existing Gatling load-test project (Java, Kotlin, Scala or JS/TS simulations) into a Postman collection plus a `postman performance run` configuration, with a gap report listing everything that could not be carried over exactly. Use when the user wants to \"migrate from Gatling,\" \"import a Gatling simulation,\" \"convert Gatling to Postman,\" or move Gatling load tests into Postman Performance Testing. Verifying the result runs one iteration of real requests against the target, so confirm the target first — the same way any action with effects outside this session gets confirmed.",
+      "files": [
+        {
+          "target": "SKILL.md",
+          "source": "skills/gatling-to-postman/SKILL.md",
+          "bytes": 12843,
+          "sha256": "88343749a3a9f731296daa2f6d1867fd8fc693d8caa1e63004b6bda5de4f0e47"
+        },
+        {
+          "target": "references/feeders.md",
+          "source": "skills/gatling-to-postman/references/feeders.md",
+          "bytes": 3498,
+          "sha256": "036465bcbfd648bc07ab18de2346aa1915e07e7254f67b598c9837bb4718cc4e"
+        },
+        {
+          "target": "references/injection.md",
+          "source": "skills/gatling-to-postman/references/injection.md",
+          "bytes": 10523,
+          "sha256": "8504c8df5f16807225efd58cc364fd32230a53776b543eb85859c20af36f9b8b"
+        },
+        {
+          "target": "references/mapping.md",
+          "source": "skills/gatling-to-postman/references/mapping.md",
+          "bytes": 11150,
+          "sha256": "cf8db5e4e1aadb23699667b2059b14b3f3100e35ec9b648a3407b048ea34b365"
+        },
+        {
+          "target": "references/unsupported.md",
+          "source": "skills/gatling-to-postman/references/unsupported.md",
+          "bytes": 3222,
+          "sha256": "d45d48d27c16b378c91ba0d020169a0d4502c8c2c25e55597925e2a143094104"
+        }
+      ]
+    },
+    {
       "name": "performance-testing",
       "plugin": "postman",
       "description": "Use when load-testing or benchmarking an API with concurrent virtual users and latency or error thresholds. Reuses a collection to probe a chosen failure mode and distinguishes target limits from load-generator limits. Use for requests such as \"load test this API\".",
