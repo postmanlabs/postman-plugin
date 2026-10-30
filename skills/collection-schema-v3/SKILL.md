@@ -22,11 +22,14 @@ checks, without regenerating a single large collection export.
 3. Consult the reference section for the entity being changed:
    [HTTP requests, examples, and definitions](reference/http.md),
    [environment files](reference/environment.md), or
-   [other protocols and entity formats](reference/other_entities.md).
+   [other protocols](reference/other_protocols.md).
    Protocols have different URL, body, script, and settings shapes; an HTTP
-   field is not necessarily valid on another request kind. Dataset YAML
-   belongs to **datasets**; mock implementation and behavior belong to
-   **api-mocking**.
+   field is not necessarily valid on another request kind.
+   For other entity files, use the [globals](reference/globals.md),
+   [spec](reference/spec.md), [document](reference/document.md),
+   [SDK](reference/sdk.md), or [workspace manifest](reference/workspace-manifest.md)
+   reference. Dataset YAML belongs to **datasets**; mock configuration and
+   behavior belong to **api-mocking**.
 4. Preserve types at the YAML boundary. Quote `{{variables}}` and strings that
    resemble booleans or numbers; JSON bodies are string content, best expressed
    with block scalars. A syntactically valid YAML object can still be the wrong

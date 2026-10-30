@@ -43,6 +43,9 @@ owner search was skipped.
 
 ## Or build one that behaves like the real API
 
+For configuration-file edits, see [Mock configuration YAML](reference/schema.md).
+
+
 Callers shouldn't be able to tell the difference on the paths they use. A
 mock that returns invented JSON passes your tests and fails against the
 real service.

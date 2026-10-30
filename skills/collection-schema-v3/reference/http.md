@@ -58,6 +58,12 @@ Quote numeric- or boolean-looking values where the field requires a string.
 - `examples` — optional, a relative path to the examples directory, e.g.
   `./.resources/<request-name>.resources/examples/`.
 
+## HTTP settings
+
+`disabledSystemHeaders` is a closed list of **lowercase** header names, not free text:
+`cache-control`, `postman-token`, `content-type`, `content-length`, `accept-encoding`, `user-agent`, `connection`, `accept`, `host`. `User-Agent` is rejected —
+`Invalid option: expected one of "cache-control"|…|"host"`.
+
 Keep `queryParams` and the URL query string consistent so consumers see the
 same parameters in either representation (`FMT209`). Review lint warnings,
 not just the error count. For example:
@@ -73,19 +79,38 @@ queryParams:
 
 ## HTTP example (`*.example.yaml`)
 
-- `$kind: "http-example"` — required.
-- `name` — optional.
-- `request: {url, method}`.
-- `response: {statusCode, statusText, headers: [{key, value}], body: {type, content}}`.
-- `order` — optional.
+`http-example` requires `$kind` and `response`, and `response` requires `body`:
 
-An example response requires `body`, even for a 204:
-`body: {type: text, content: ''}`. See
-[response body types](other_entities.md#examples) when the payload is not JSON.
+```yaml
+$kind: http-example
+name: 200 OK
+request:
+  method: POST
+  url: https://api.example.com/orders
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: '{"sku":"A1"}'
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: '{"id":"o_1"}'
+order: 1000
+```
 
-Saved examples are what `collection ai-readiness` checks for — a request
-with no examples scores worse for agent consumption even if perfectly
-valid structurally.
+A 204 still requires an empty body: `body: {type: text, content: ''}`.
+Response `body.type` accepts only `text`, `json`, `xml`, `html`, `javascript`
+and `yaml`; there is **no
+`urlencoded` on a response**, so carry a form-encoded payload as `type: text` with a
+matching `Content-Type` header. Request bodies do have `urlencoded`.
+
+Saved examples feed **ai-readiness**, documentation, and mocks; a structurally
+valid example still needs to agree with the contract.
 
 ## Environments (`postman/environments/*.environment.yaml`)
 
@@ -93,6 +118,101 @@ Environment files are v3 YAML but are not collection entities: they do not use
 `$kind`. Before creating or editing one by hand, read
 [reference/environment.md](environment.md) for the schema, secret
 handling, CLI-first edit commands, and a linted example.
+
+## Auth
+
+`auth` is available on a collection, a folder, a request and an example. It has two
+shapes. No auth:
+
+```yaml
+auth:
+  type: noauth
+```
+
+Anything else takes `type` plus `credentials`:
+
+```yaml
+auth:
+  type: bearer
+  credentials:
+    token: '{{TOKEN}}'
+```
+
+`type` is one of `basic`, `bearer`, `apikey`, `digest`, `oauth1`, `oauth2`, `jwt`,
+`awsv4`, `hawk`, `ntlm`, `asap`, `edgegrid`, `azure`, `sasl`, `inherit`. Use `inherit`
+to take the parent folder's or collection's auth explicitly; omitting `auth` entirely
+does the same thing.
+
+`credentials` keys are the same names the Postman app shows for that auth type —
+`username`/`password` for `basic`, `token` for `bearer`, `key`/`value`/`in` for
+`apikey`, `accessKey`/`secretKey`/`region`/`service` for `awsv4`. A structurally
+valid credential entry does not establish that the server will authenticate it.
+`credentials` accepts a map or an array of `{key, value}`. See the
+[key-list guidance](#key-lists) for choosing a representation.
+
+## Request body
+
+`body` is one shape chosen by `type` — write that branch's keys and nothing else.
+
+```yaml
+body: {type: none}
+```
+```yaml
+body:
+  type: json          # or text, xml, html, javascript
+  content: |-
+    {"id": 1}
+```
+```yaml
+body:
+  type: urlencoded
+  content:
+    grant_type: client_credentials     # map, or array of {key, value, disabled?}
+```
+```yaml
+body:
+  type: formdata
+  content:
+    - key: file
+      type: file
+      src: ./payload.bin
+    - key: note
+      type: text
+      value: hello
+      contentType: text/plain
+```
+```yaml
+body:
+  type: file
+  content:
+    src: ./upload.bin       # an object with src, not a bare path
+```
+
+Choose `body.type` to match the payload and contract. JSON `content` is a string;
+a block scalar keeps it readable without turning it into a YAML object.
+A *response* body inside an example has a narrower type list:
+see [HTTP examples](#http-example-exampleyaml).
+
+## Scripts
+
+```yaml
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('ok', () => pm.response.to.have.status(200));
+```
+
+`type` is `beforeRequest` or `afterResponse` on a request, and protocol-prefixed on a
+collection or folder (`http:beforeRequest`, `http:afterResponse`,
+`graphql:beforeQuery`, `grpc:beforeInvoke`, …). A script entry may also carry
+`language`, `packages`, and `requests`. `language` takes exactly one value,
+**`text/javascript`** — `language: javascript` is a hard error,
+`Invalid input: expected "text/javascript"`. Omitting it is fine.
+
+The v2.1 `event:` field is not the v3 `scripts:` field. A script's `type` also
+depends on its scope; moving it between a request and a definition requires checking
+the type as well as the code. See the main skill's verification guidance for
+checking that the intended script behavior survives the edit.
 
 ## YAML rules
 

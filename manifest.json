@@ -73,8 +73,14 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-mocking/SKILL.md",
-          "bytes": 7262,
-          "sha256": "39a04d60e23863eafe7893a8b6bd380d32263d22ac0ca7979074ba91fc222409"
+          "bytes": 7346,
+          "sha256": "036ac79578967b5aa43643ae5426296c8e5b0554d59f83294ae6926b11565611"
+        },
+        {
+          "target": "reference/schema.md",
+          "source": "skills/api-mocking/reference/schema.md",
+          "bytes": 625,
+          "sha256": "21830fed3404c2b8562d73ee068ccdf5b6c83434a55593cc8f69bcc90e85eb32"
         }
       ]
     },
@@ -182,8 +188,14 @@
         {
           "target": "SKILL.md",
           "source": "skills/collection-schema-v3/SKILL.md",
-          "bytes": 3673,
-          "sha256": "9dc002b0830c4fee3bf1e40615757c5019d1402855ab6c854782b44528446498"
+          "bytes": 3883,
+          "sha256": "b6b7d32461859421627ccbf326ff5efbd5cc4944254d90da1493f78402a00194"
+        },
+        {
+          "target": "reference/document.md",
+          "source": "skills/collection-schema-v3/reference/document.md",
+          "bytes": 153,
+          "sha256": "8dd25ddf4b1f2c48accd962ce522cb0391b1c460d1938345d0bce2f9ee11e1d1"
         },
         {
           "target": "reference/environment.md",
@@ -192,16 +204,40 @@
           "sha256": "b2a34943987af5345d97cd01acbe1eeed56ce27ab905055291d626c530fbff50"
         },
         {
-          "target": "reference/http.md",
-          "source": "skills/collection-schema-v3/reference/http.md",
-          "bytes": 6522,
-          "sha256": "b1cb68e6f69f7a6964bf0c16265805a3ba0745d865d1642a839325da46e98ffd"
+          "target": "reference/globals.md",
+          "source": "skills/collection-schema-v3/reference/globals.md",
+          "bytes": 672,
+          "sha256": "35ef089086948178d0e5a0feb850b9d15824122d5f9e5932e61cc8eb641e2e18"
         },
         {
-          "target": "reference/other_entities.md",
-          "source": "skills/collection-schema-v3/reference/other_entities.md",
-          "bytes": 16587,
-          "sha256": "c997efbe2945b77a742c053e3749af67b7e9ca2716db5f43011c7d7173f8366e"
+          "target": "reference/http.md",
+          "source": "skills/collection-schema-v3/reference/http.md",
+          "bytes": 10011,
+          "sha256": "8b28efdafe92b612c7ff37bf888f69bfa6b3220b7ae94af629722eb6406d97d6"
+        },
+        {
+          "target": "reference/other_protocols.md",
+          "source": "skills/collection-schema-v3/reference/other_protocols.md",
+          "bytes": 7243,
+          "sha256": "3d4dd32c3963bedd11247b75f79c784d8553764d3af7f683f2ffd420d4e59648"
+        },
+        {
+          "target": "reference/sdk.md",
+          "source": "skills/collection-schema-v3/reference/sdk.md",
+          "bytes": 283,
+          "sha256": "50ccd3387332888fbc6e066c97a05a34c06805237a365646f8cdc637ed25ba3a"
+        },
+        {
+          "target": "reference/spec.md",
+          "source": "skills/collection-schema-v3/reference/spec.md",
+          "bytes": 996,
+          "sha256": "87dd80e8341df2672fd416bfa673bd6b6390057070478408f535823b55394a30"
+        },
+        {
+          "target": "reference/workspace-manifest.md",
+          "source": "skills/collection-schema-v3/reference/workspace-manifest.md",
+          "bytes": 1496,
+          "sha256": "d502a90baf828335b1dce3c6a3bdbd59ce35d75ebf776968a17c040c47f9c5d0"
         }
       ]
     },
