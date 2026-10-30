@@ -12,23 +12,14 @@ Optional metadata for a collection or folder:
 - `name` — optional, defaults to the filesystem folder name.
 - `description` — optional.
 - `variables` — array of `{key, value, description?, disabled?}`. `value`
-  must be a string; `disabled` a boolean. A map of name to value is also
-  accepted when no entry needs `description` or `disabled`.
+  must be a string; `disabled` a boolean.
 - `auth` — a single auth object `{type, credentials: [{key, value}, ...]}`
-  (`credentials` may also be a map of name to value), or an array for multiAuth: `[{id, name, type, credentials, rules?}, ...]`.
+  or an array for multiAuth: `[{id, name, type, credentials, rules?}, ...]`.
 - `scripts` — array of `{type, code, language: "text/javascript"}`. `type`
   is one of `http:beforeRequest`, `http:afterResponse`,
   `graphql:beforeQuery`, `graphql:afterResponse`, `grpc:beforeInvoke`,
   `grpc:onIncomingMessage`, `grpc:afterResponse`.
 - `order` — number, used for folder ordering.
-
-## Key lists
-
-`headers`, collection `variables`, and `auth.credentials` accept maps as well
-as arrays. The app writes maps when round-tripping collections, so maps can
-avoid representation-only diffs. Preserve entry metadata when choosing a form:
-arrays can carry fields such as `description` or `disabled` that a map cannot.
-Quote numeric- or boolean-looking values where the field requires a string.
 
 ## HTTP request (`*.request.yaml`)
 
@@ -39,9 +30,7 @@ Quote numeric- or boolean-looking values where the field requires a string.
   insertion between two requests shouldn't force renumbering every sibling.
 - `url` — string, with `{{varName}}` variable syntax.
 - `method` — `GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS`.
-- `headers` — array of `{key, value, description?, disabled?}`. A map of
-  header name to value is also accepted when no entry needs `description` or
-  `disabled`.
+- `headers` — array of `{key, value, description?, disabled?}`.
 - `queryParams` — array of `{key, value, description?, disabled?}`.
 - `pathVariables` — array of `{key, value, description?}`.
 - `body` — `{type, content}`; `type` required whenever `body` is present.
@@ -58,15 +47,10 @@ Quote numeric- or boolean-looking values where the field requires a string.
 - `examples` — optional, a relative path to the examples directory, e.g.
   `./.resources/<request-name>.resources/examples/`.
 
-## HTTP settings
-
-`disabledSystemHeaders` is a closed list of **lowercase** header names, not free text:
-`cache-control`, `postman-token`, `content-type`, `content-length`, `accept-encoding`, `user-agent`, `connection`, `accept`, `host`. `User-Agent` is rejected —
-`Invalid option: expected one of "cache-control"|…|"host"`.
-
-Keep `queryParams` and the URL query string consistent so consumers see the
-same parameters in either representation (`FMT209`). Review lint warnings,
-not just the error count. For example:
+When editing query parameters, update both places they are recorded: the
+query string in `url` and the entries in `queryParams`. Their names and values
+must match; lint reports a mismatch as `FMT209`. For example, `q=shoes&page=2`
+is represented as:
 
 ```yaml
 url: '{{base_url}}/search?q=shoes&page=2'
@@ -88,7 +72,8 @@ request:
   method: POST
   url: https://api.example.com/orders
   headers:
-    Content-Type: application/json
+    - key: Content-Type
+      value: application/json
   body:
     type: json
     content: '{"sku":"A1"}'
@@ -96,17 +81,21 @@ response:
   statusCode: 200
   statusText: OK
   headers:
-    Content-Type: application/json
+    - key: Content-Type
+      value: application/json
   body:
     type: json
     content: '{"id":"o_1"}'
 order: 1000
 ```
 
-A 204 still requires an empty body: `body: {type: text, content: ''}`.
+For a saved `204 No Content` example, the YAML schema still requires a
+`response.body` object. Represent the absence of response content with
+`body: {type: text, content: ''}`. This describes the saved example file;
+it does not add content to the HTTP response.
+
 Response `body.type` accepts only `text`, `json`, `xml`, `html`, `javascript`
-and `yaml`; there is **no
-`urlencoded` on a response**, so carry a form-encoded payload as `type: text` with a
+and `yaml`. For a form-encoded response, use `type: text` with a
 matching `Content-Type` header. Request bodies do have `urlencoded`.
 
 Saved examples feed **ai-readiness**, documentation, and mocks; a structurally
@@ -135,7 +124,8 @@ Anything else takes `type` plus `credentials`:
 auth:
   type: bearer
   credentials:
-    token: '{{TOKEN}}'
+    - key: token
+      value: '{{TOKEN}}'
 ```
 
 `type` is one of `basic`, `bearer`, `apikey`, `digest`, `oauth1`, `oauth2`, `jwt`,
@@ -147,8 +137,7 @@ does the same thing.
 `username`/`password` for `basic`, `token` for `bearer`, `key`/`value`/`in` for
 `apikey`, `accessKey`/`secretKey`/`region`/`service` for `awsv4`. A structurally
 valid credential entry does not establish that the server will authenticate it.
-`credentials` accepts a map or an array of `{key, value}`. See the
-[key-list guidance](#key-lists) for choosing a representation.
+`credentials` is an array of `{key, value}` entries.
 
 ## Request body
 
@@ -167,7 +156,8 @@ body:
 body:
   type: urlencoded
   content:
-    grant_type: client_credentials     # map, or array of {key, value, disabled?}
+    - key: grant_type
+      value: client_credentials
 ```
 ```yaml
 body:

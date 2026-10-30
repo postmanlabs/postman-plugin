@@ -27,7 +27,7 @@ are available on all of them and omitted below.
 
 There is **no `queryParams`** — put query-string parameters in the `url`.
 
-`settings`: `disabledSystemHeaders` only (see [HTTP settings](http.md#http-settings) for allowed header names).
+`settings`: `disabledSystemHeaders`.
 
 `schema` is one shape chosen by `source`:
 
@@ -57,8 +57,8 @@ schema:
 ### `grpc-request`
 
 `url`, `methodPath` (e.g. `helloworld.Greeter/SayHello`), `methodDescriptor` (an inline
-proto definition), `message` (`{content}`), `metadata` (per-call headers; map or
-array), `auth`, `schema`, `scripts`, `examples`, `settings`.
+proto definition), `message` (`{content}`), `metadata` (per-call headers as
+`{key, value}` array entries), `auth`, `schema`, `scripts`, `examples`, `settings`.
 
 `settings`: `secureConnection`, `strictSSL`, `serverNameOverride`,
 `maxResponseMessageSize`, `includeDefaultFields`, `connectionTimeout`.
@@ -122,7 +122,7 @@ Requires `$kind` **and** `transport`, which selects the legal keys. Common to bo
 
 | `transport` | Its keys | `settings` |
 |---|---|---|
-| `stdio` | `command`, `env` (map or array) | `version`, `requestTimeout` |
+| `stdio` | `command`, `env` (`{key, value}` array entries) | `version`, `requestTimeout` |
 | `sse` | `url`, `headers` | `version`, `requestTimeout`, `strictSSL`, `sessionTimeout` |
 
 There are no other transports. `message` is a JSON-RPC envelope as a **string**;
@@ -133,7 +133,8 @@ $kind: mcp-request
 transport: stdio           # command + env; no url
 command: uvx some-mcp-server
 env:
-  API_KEY: '{{KEY}}'
+  - key: API_KEY
+    value: '{{KEY}}'
 message: |-
   {"method": "tools/call", "params": {"name": "do_thing", "arguments": {}}}
 order: 1000
@@ -144,7 +145,8 @@ $kind: mcp-request
 transport: sse             # url + headers; no command
 url: https://mcp.example.com/sse
 headers:
-  Authorization: 'Bearer {{KEY}}'
+  - key: Authorization
+    value: 'Bearer {{KEY}}'
 message: |-
   {"method": "tools/list"}
 ```
