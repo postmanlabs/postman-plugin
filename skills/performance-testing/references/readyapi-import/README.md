@@ -41,7 +41,9 @@ Confirm the collection is valid v2.1 and **every `event` script parses as JavaSc
 
 ### 4. Performance config (LoadTest → perf run)
 
-The CLI importer converts structure; it does **not** build the perf config. Derive it from the project's `<con:loadTest>` definitions using **`loadtest-to-perf.md`**: thread count → `--vu-count`, time limit → `--duration`, strategy → one of `fixed`/`ramp-up`/`spike`/`peak`, and the tightest LoadTest assertion → the single `--pass-if`. Write the `postman performance run` command.
+The CLI importer converts structure; it does **not** build the perf config. Derive it from the project's `<con:loadTest>` definitions using **`loadtest-to-perf.md`**: thread count → `--vu-count`, time limit → `--duration`, strategy → one of `fixed`/`ramp-up`/`spike`/`peak`, and the tightest LoadTest assertion → the single `--pass-if` (operator-first syntax, e.g. `less_than(p95, 500)`). Write the `postman performance run` command.
+
+Each LoadTest targets exactly its parent TestCase, so **scope the run to that case** — publish a per-case collection (or a verified folder), never the whole imported collection, which also holds `APIs/` examples and unrelated cases (see `loadtest-to-perf.md`). And **keep placeholder requests out of the measured workload**: the Groovy/JDBC/DataSource/delay requests are sendable so a functional run won't break, but in a perf run each fires a real HTTP sample — fold their scripts into the following real request's `prerequest` and drop the placeholders (see `mapping-table.md`).
 
 ### 5. Report
 
@@ -49,7 +51,7 @@ Fill in `import-report.md`'s sections and counts so the report matches the colle
 
 ### 6. Hand off the perf config
 
-The command needs a collection UID, so the collection must be in a workspace first. The `--pass-if` value is a suggestion; surface the VU/duration/profile/pass-if choices for the user to adjust.
+The command needs a collection UID, so the collection must be in a workspace first — and it must be the **per-case** collection (or verified folder) from step 4, not the whole import. The `--pass-if` value is a suggestion, and where it came from a per-step ReadyAPI gate it is an approximation of an aggregate — say so. Surface the VU/duration/profile/pass-if choices for the user to adjust.
 
 ### 7. (optional) Publish to a Postman workspace
 

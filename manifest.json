@@ -287,8 +287,8 @@
         {
           "target": "references/readyapi-import/README.md",
           "source": "skills/performance-testing/references/readyapi-import/README.md",
-          "bytes": 7239,
-          "sha256": "a35d5656ee61943ad50f53de4ff72ec8973971d990870cb1e8d3a6d4de230970"
+          "bytes": 8078,
+          "sha256": "6bf4a656870168f2e205a2384671a1b2bfe3f1537cf9937cd11fa58c11b625e2"
         },
         {
           "target": "references/readyapi-import/import-report.md",
@@ -299,26 +299,26 @@
         {
           "target": "references/readyapi-import/loadtest-to-perf.md",
           "source": "skills/performance-testing/references/readyapi-import/loadtest-to-perf.md",
-          "bytes": 3094,
-          "sha256": "6d6c0c4b536fe5d9db872b9c6ced9abf782f864dfa2b2f618a480415ef8103e3"
+          "bytes": 5226,
+          "sha256": "60053ca80f1027d5920262928419666efa73f137202bf1b23814cc933b814160"
         },
         {
           "target": "references/readyapi-import/mapping-table.md",
           "source": "skills/performance-testing/references/readyapi-import/mapping-table.md",
-          "bytes": 6797,
-          "sha256": "ff2d2b1ca709342067840af3c4e3a5d9b5c05317c9cf4d020670ed80752ddf3d"
+          "bytes": 8849,
+          "sha256": "c66c31533cd34b3ac3f45d38b01485ba482dfab87ded9a79a837cf188b733a7b"
         },
         {
           "target": "references/readyapi-import/postman-perf-capabilities.md",
           "source": "skills/performance-testing/references/readyapi-import/postman-perf-capabilities.md",
-          "bytes": 3858,
-          "sha256": "20a18b40d8ec00dda6d62ce8584e9448d0ceb3f7e0424f4355f97ac23f30c4f3"
+          "bytes": 4179,
+          "sha256": "da9d7d05fe7dcf5df257fef2da430210b2386997b21267471c9449a5dd6a9442"
         },
         {
           "target": "references/readyapi-import/script-translation.md",
           "source": "skills/performance-testing/references/readyapi-import/script-translation.md",
-          "bytes": 4738,
-          "sha256": "b353e08b46553229aaeb8f11eae71d9a7f00aa265262597c4185f48ff77908ac"
+          "bytes": 5689,
+          "sha256": "cf393186850e14905a59f411ba22771125f7bed12122949a97fbb570d5383489"
         }
       ]
     },

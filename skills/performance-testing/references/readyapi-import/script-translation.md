@@ -45,16 +45,17 @@ let xmlAsJson;
 xml2js.parseString(pm.response.text(), { explicitArray: false, mergeAttrs: true, ignoreAttrs: false }, (err, result) => { if (err) throw err; xmlAsJson = result; });
 ```
 
-Translating `XmlHolder` access:
+Translating `XmlHolder` access — **verify each path against a real response; this is not a mechanical rewrite:**
 - `new XmlHolder(messageExchange.responseContentAsXml)` → parse `pm.response.text()` as above.
-- `holder.namespaces["ns"] = context.expand("...")` → **delete** it (xml2js keeps prefixes on element keys; access via bracket notation).
-- `holder.getNodeValue("//ns:A/ns:B[1]/@ID")` → `xmlAsJson['ns:A']['ns:B'].ID` (`mergeAttrs:true` drops the `@`; XPath `[1]` → JS index `0`; guard repeated elements with `Array.isArray`).
+- `holder.namespaces["ns"] = context.expand("...")` → drop the alias *declaration*, but do **not** assume the response uses the prefix `ns`. xml2js keeps the **source document's own prefixes** on the element keys (whatever the server actually sent — e.g. `m:`, `soap:`), which need not match the XmlHolder alias.
+- `holder.getNodeValue("//ns:A/ns:B[1]/@ID")` → XPath `//A` is a **descendant** search, not a root match, so walk the real envelope path rather than indexing from the top. For a SOAP response that is typically `result['soap:Envelope']['soap:Body'][<bodyPrefix>'A'][...]`. `mergeAttrs:true` surfaces `@ID` as `.ID`; XPath `[1]` → JS index `0`; guard repeated elements with `Array.isArray`.
+- If you can't confirm the real prefixes and nesting from a sample response, **leave a `// REVIEW` marker** instead of a guessed path: a wrong path returns `undefined` silently even though the original XPath matched.
 
 ## Scope rules that prevent runtime errors
 
-- **Every `const`/`let` must be declared INSIDE its `pm.test()` block.** Each `pm.test()` is a separate scope; a variable declared outside causes scope errors.
-  - WRONG: `const d = pm.response.json(); pm.test("t", () => pm.expect(d).to.exist);`
-  - RIGHT: `pm.test("t", () => { const d = pm.response.json(); pm.expect(d).to.exist; });`
+- **Normal lexical scope applies — a `pm.test()` callback closes over the enclosing script.** Parse a response once at the top of the script and use it inside several `pm.test()` callbacks; that is correct and preferred (and consistent with keeping non-assertion setup *outside* `pm.test()`, above).
+  - FINE: `const d = pm.response.json(); pm.test("t", () => pm.expect(d).to.exist);`
+  - The only real constraint: a variable declared **inside one callback** is not visible to a sibling callback — don't declare in callback A and read in callback B. Share state by declaring in the enclosing script scope.
 - **Matching quotes only.** `pm.expect(x, `message").to.be.true` mixes a backtick and a double-quote → syntax error. Use `"…"`, `'…'`, or `` `…` `` consistently.
 
 ## Forbidden in the Postman sandbox

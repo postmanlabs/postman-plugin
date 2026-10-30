@@ -18,11 +18,13 @@ Fidelity legend: **exact** (deterministic, lossless) · **approximate** (determi
 | ReadyAPI | Postman | Fidelity | Notes |
 |---|---|---|---|
 | REST Request step (`RestRequestStep`) | request item | exact | verb resolved from the `<con:interface>` resource/method by `methodName` |
-| SOAP/WSDL Request step (`WsdlRequestStep`) | request item, POST, `Content-Type: text/xml` | exact | `SOAPAction` header added when present; body is the raw envelope |
+| SOAP/WSDL Request step (`WsdlRequestStep`) | request item, POST | **approximate** | branch on the interface's SOAP version: **1.1** → `Content-Type: text/xml` + `SOAPAction` header; **1.2** → `Content-Type: application/soap+xml` with the action as a Content-Type parameter (`;action="…"`) and **no** separate `SOAPAction`. Forcing `text/xml` on a 1.2 interface fails with HTTP 415. Body is the raw envelope |
 | HTTP Request step (`HttpRequestTestStep`) | request item | exact | method + endpoint read from config |
 | `<con:endpoint>` + `resourcePath` | `url.raw` / `url.host` / `url.path` | exact | concatenated; also parsed into structured `url` |
-| REST `<con:parameters><con:entry>` in path (`{id}`) | `url` path variable | exact | path templating preserved |
-| REST `<con:parameters>` not in path | `url.query` | exact | |
+| REST `<con:parameters>` (`style=TEMPLATE`, in path `{id}`) | `url` path variable | exact | path templating preserved |
+| REST `<con:parameters>` (`style=QUERY`) | `url.query` | exact | resolve each parameter's declared `style` first |
+| REST `<con:parameters>` (`style=HEADER`) | request **header** | exact | **never** fold a HEADER parameter into `url.query` — it changes request semantics and leaks the value (often a credential) into URL logs |
+| REST `<con:parameters>` (`style=MATRIX`) | matrix path segment | exact | |
 | `<con:request>` body | `body.raw` (json/xml by `mediaType`) | exact | |
 | ReadyAPI vars `${#Scope#name}` | `{{name}}` | exact | scope prefix stripped (`#Project#`/`#TestCase#`/`#TestSuite#`/`#Global#`/step refs) |
 
@@ -70,11 +72,15 @@ Fidelity legend: **exact** (deterministic, lossless) · **approximate** (determi
 | Groovy Script step (no HTTP) | a **sendable** `[Groovy] <name>` request pointed at Postman Echo (`https://postman-echo.com/get?groovyStep=true`, always 200 OK) with the JS in its `prerequest` event — never an empty URL | model-assisted |
 | HTTP Request step (`con:HttpRequest`) | request — the `<con:endpoint>` child holds the full URL, body from `<con:request>` CDATA | exact |
 | JDBC step | `<name> [JDBC - To Do]` placeholder POST to a sentinel URL, SQL in the body | manual |
-| Test Case setup / teardown script | folder-level `prerequest` / `test` event | model-assisted |
-| Test Suite setup / teardown script | folder-level event | model-assisted |
+| Test Case setup / teardown script | folder-level `prerequest` / `test` event — lifecycle differs, see note | model-assisted |
+| Test Suite setup / teardown script | folder-level event — lifecycle differs, see note | model-assisted |
 | `testRunner` / `context` / `messageExchange` accessors | `pm.*` where a rule exists; else flagged | model-assisted |
 
-Every no-HTTP step (Groovy, JDBC, DataSource, delay) becomes a **sendable** request — a Postman-Echo no-op or a clearly-labelled sentinel URL — so a collection run never breaks on an empty URL. This mirrors the hosted ReadyAPI migration engine.
+**Folder events run per-request, not per-boundary.** A Postman folder-level `prerequest`/`test` fires around *every* request in the folder, whereas a ReadyAPI case/suite setup runs *once* at the boundary and teardown runs *once* after. Translating setup → folder `prerequest` and teardown → folder `test` verbatim re-runs setup before each request and runs teardown before later requests consume its data. Preserve the source lifecycle instead: put boundary logic on the first/last request of the case, or guard it with a run-once sentinel (e.g. a `pm.collectionVariables` flag), and flag in the report any case whose lifecycle cannot be represented faithfully rather than emitting unguarded folder events.
+
+Every no-HTTP step (Groovy, JDBC, DataSource, delay) becomes a **sendable** request — a Postman-Echo no-op or a clearly-labelled sentinel URL — so a *functional* collection run never breaks on an empty URL. This mirrors the hosted ReadyAPI migration engine.
+
+**Before a performance run, placeholder requests must leave the measured workload.** In a perf run a sendable placeholder is not a no-op: each one fires a real HTTP sample (against Postman Echo, or the JDBC/sentinel URL), so its latency and failures pollute the run's metrics and pacing and it generates load against an unrelated service. When preparing the perf collection, preserve script execution order *without* sending these requests — fold each placeholder's script into the following real request's `prerequest` and remove the placeholder, or exclude it from the run. Unresolved JDBC / sentinel requests must likewise stay out of the measured sequence.
 
 See `references/script-translation.md` for the Groovy→JS rule set and the accessors that have no `pm.*` equivalent.
 

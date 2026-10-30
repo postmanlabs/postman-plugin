@@ -33,7 +33,7 @@ JMeter custom ramp curves, stepping schedules, and arrival-rate shapes **cannot 
 - Functions (operators): `less_than`, `greater_than`, `less_than_eq`, `greater_than_eq`.
 - Metrics (CLI): `avg`, `p90`, `p95`, `p99` (ms); `error_rate`, `failure_rate` (%); `rps`.
 - **Server-side (cloud) accepts a narrower set**: `responseTime.average/p90/p95/p99`, `throughput`, `errorRate`. `failure_rate` is local-only — if you emit it, note it won't gate a cloud run.
-- Only one condition per run. A JMeter Duration Assertion is the only clean source (→ `p95(less_than, <ms>)`); otherwise suggest `error_rate(less_than, 5)` and tell the user it's a default.
+- Only one condition per run. A ReadyAPI LoadTest response-time assertion (Step Average / Step Maximum) is the cleanest source (→ `less_than(avg, <ms>)` / `less_than(p99, <ms>)`); otherwise suggest `less_than(error_rate, 5)` and tell the user it's a default. Syntax is operator-first: `<fn>(<metric>, <value>)`.
 
 ## Scripts under load
 
@@ -52,5 +52,5 @@ JMeter custom ramp curves, stepping schedules, and arrival-rate shapes **cannot 
 1. One collection, repeated across VUs. **No concurrent thread groups.**
 2. Time-based, not iteration-based. **Loop counts → duration.**
 3. One `--pass-if`.
-4. **No native think time** — timers are approximated (`--delay-request` for group scope, a pre-request pause for per-request), not reproduced exactly.
+4. **No native think time.** `postman performance run` has no think-time flag (see the flags table above — there is no `--delay-request` on the perf command). ReadyAPI `testDelay` / think-time is **reported, not reproduced**: record the omitted delay in the import report; do not add `--delay-request` or any pause flag to the generated perf command.
 5. **HTTP(S) only.**
