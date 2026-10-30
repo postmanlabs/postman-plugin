@@ -3,6 +3,9 @@
 // `postman` marketplace, as the installer does, under a throwaway home, and runs one `copilot -p`
 // offline against a local stand-in for both a BYOK OpenAI-compatible model and Postman's MCP server.
 // It then checks what Copilot sent each of them. No GitHub account is used.
+// Copilot reads .github/plugin/marketplace.json, which installs agent-plugin/. With COPILOT_ROUTE=legacy
+// that file is left out of the copy, so Copilot reads .claude-plugin/marketplace.json and installs the
+// repo root, where it loads .github/plugin/plugin.json.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -12,11 +15,16 @@ import {
 } from './lib/harness.js';
 
 const copilot = process.env.COPILOT_BIN || 'copilot',
+    legacy = process.env.COPILOT_ROUTE === 'legacy',
+    COPILOT_MARKETPLACE = path.join('.github', 'plugin', 'marketplace.json'),
+    [manifestFile, mcpFile] = legacy ?
+        [path.join('.github', 'plugin', 'plugin.json'), 'mcp.copilot.json'] :
+        [path.join('agent-plugin', 'plugin.json'), path.join('agent-plugin', 'mcp.json')],
     { root, home, project, remove } = workspace('copilot'),
     marketplace = path.join(root, 'postman-plugin'),
-    MARKETPLACE = readJson(path.join(repoRoot, '.claude-plugin', 'marketplace.json')).name,
+    MARKETPLACE = readJson(path.join(repoRoot, legacy ? path.join('.claude-plugin', 'marketplace.json') : COPILOT_MARKETPLACE)).name,
     PLUGIN_ID = `postman@${MARKETPLACE}`,
-    { headers } = readJson(path.join(repoRoot, 'mcp.copilot.json')).mcpServers.postman,
+    { headers } = readJson(path.join(repoRoot, mcpFile)).mcpServers.postman,
     env = Object.fromEntries(Object.entries(process.env).filter(([name]) => !/^(CLAUDE|ANTHROPIC_|COPILOT_|GH_TOKEN$|GITHUB_TOKEN$)/.test(name)));
 
 const isConversation = (body) => body.tools?.some((tool) => tool.function?.name === 'skill');
@@ -46,7 +54,10 @@ let standIn;
 try {
     standIn = await startStandIn(answer);
     copyCheckout(marketplace);
-    pointMcpAt(path.join(marketplace, 'mcp.copilot.json'), standIn.mcpUrl);
+    if (legacy) {
+        fs.rmSync(path.join(marketplace, COPILOT_MARKETPLACE));
+    }
+    pointMcpAt(path.join(marketplace, mcpFile), standIn.mcpUrl);
 
     Object.assign(env, {
         HOME: home,
@@ -67,7 +78,7 @@ try {
     assert.ok(installed, 'copilot plugin list --json has no postman plugin after the install');
     assert.equal(installed.marketplace, MARKETPLACE, `postman was not installed from the ${MARKETPLACE} marketplace`);
     assert.equal(installed.enabled, true, 'postman installed disabled');
-    assert.equal(installed.version, readJson(path.join(repoRoot, '.github', 'plugin', 'plugin.json')).version, 'copilot read a version other than .github/plugin/plugin.json\'s, so it loaded another route\'s manifest');
+    assert.equal(installed.version, readJson(path.join(repoRoot, manifestFile)).version, `copilot read a version other than ${manifestFile}'s, so it loaded another route's manifest`);
 
     const session = await runAgent(copilot, ['-p', 'Say ok.', '--allow-all-tools', '--output-format', 'json'], { env, cwd: project }),
         turns = standIn.modelRequests.filter(({ body }) => isConversation(body));
@@ -89,7 +100,7 @@ try {
     assert.ok(second.includes(skillExcerpt(ENTRY_SKILL)), `the mandated skill did not load:\n${second.slice(-800)}`);
     assertMcpHeaders('Copilot CLI', standIn.mcpRequests, headers);
 
-    console.log(`${run(copilot, ['--version'], { env }).split('\n')[0].trim()} loaded ${skills.length} skills, the mandate and the postman MCP server from ${PLUGIN_ID}`);
+    console.log(`${run(copilot, ['--version'], { env }).split('\n')[0].trim()} loaded ${skills.length} skills, the mandate and the postman MCP server from ${PLUGIN_ID} (${path.dirname(manifestFile)})`);
 }
 finally {
     standIn?.server.close();
