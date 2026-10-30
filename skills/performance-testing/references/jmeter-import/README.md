@@ -8,7 +8,15 @@ Turn a JMeter test plan into three artifacts:
 2. **Performance config** — VU count, duration, load profile, data file, `--pass-if`, and the exact `postman performance run` command.
 3. **Import report** — what imported exactly, what was approximated, what needs manual work, what is unsupported.
 
-There is no importer to run: you read the `.jmx` and build these yourself. The files next to this one are the algorithm:
+**Preferred — run the CLI importer** (deterministic, same result on any model):
+
+```bash
+postman collection import --type jmeter <plan>.jmx
+```
+
+It writes the Postman collection and prints the suggested `postman performance run` settings plus the import report. Use it whenever the installed CLI has the command — `postman collection import -h` lists `jmeter` under `--type`.
+
+**Fallback — build it by hand.** If the CLI doesn't have the importer yet (older version) or there's no shell to run it, do the import yourself: read the `.jmx` and build the three artifacts, using the files next to this one as the algorithm. The hand path is lower-fidelity (it depends on the model getting the exact CLI flags and edge rules right), so prefer the command when it's available.
 
 - `mapping-table.md` — what each JMeter element becomes, and how faithfully.
 - `postman-perf-capabilities.md` — the hard limits of the import target.
@@ -29,7 +37,7 @@ JMX has one structural rule: every element is followed by a sibling `<hashTree>`
 
 These are easy to get subtly wrong:
 
-- **Implicit HTTP success** — JMeter fails a sample on HTTP ≥ 400 even with no assertion. Every request gets the default 200–399 `pm.test` from `script-translation.md`, **unless** it has a Response Assertion whose `test_field` is `response_code` or `response_message`, or any assertion with `assume_success=true` (Ignore Status). An assertion on the body (`response_data`) does not suppress it.
+- **Implicit HTTP success** — JMeter fails a sample on HTTP ≥ 400 even with no assertion. Every request gets the default 200–399 `pm.test` from `script-translation.md`, **unless** an assertion sets `assume_success=true` (Ignore Status). A `response_code`/`response_message` or body assertion does **not** suppress it — JMeter still fails the sample on a bad status, so the implicit check and the assertion are both emitted (e.g. a `code==404` assertion with `assume_success=false` still fails the request).
 - **Port 0 / -1** → "use protocol default" → omit from the URL.
 - **Full-URL path** — if `HTTPSampler.path` starts with `http://` or `https://`, use it verbatim and ignore domain/port.
 - **HEAD / TRACE arguments** — JMeter doesn't send separate parameters as a query for these; drop them and note it.
