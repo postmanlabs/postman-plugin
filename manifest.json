@@ -177,44 +177,56 @@
     {
       "name": "collection-schema-v3",
       "plugin": "postman",
-      "description": "Use when writing or debugging local Postman v3 collection and environment YAML, including collection lint failures. Preserves the per-entity files, inherited context, and schema shapes that make API changes reusable and reviewable in Git. Use for requests such as \"fix this request YAML\".",
+      "description": "Use when writing or debugging local Postman v3 collection, environment or globals files, including collection lint failures. Preserves the per-entity files, inherited context, and schema shapes that make API changes reusable and reviewable in Git. Use for requests such as \"fix this request YAML\".",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/collection-schema-v3/SKILL.md",
-          "bytes": 3093,
-          "sha256": "95f2349ba42f46e8ea6fdb3b8f01297ddfea63817883fe859f9d213e23a10370"
+          "bytes": 3676,
+          "sha256": "0a9c241db87b59d43c9674c920d69b4e9530f61d39ee73ada84d44b48a5f6201"
         },
         {
           "target": "reference/environment.md",
           "source": "skills/collection-schema-v3/reference/environment.md",
-          "bytes": 2109,
-          "sha256": "9b9fc2fe582596a9d2873476be63190a89042de2da30609cabb2c8ad0473f693"
+          "bytes": 2232,
+          "sha256": "b2a34943987af5345d97cd01acbe1eeed56ce27ab905055291d626c530fbff50"
+        },
+        {
+          "target": "reference/globals.md",
+          "source": "skills/collection-schema-v3/reference/globals.md",
+          "bytes": 1213,
+          "sha256": "0d5f8526e88521ae111733eecd1aa55e1dfbad40e6ddf7a263a08220f2ac8919"
         },
         {
           "target": "reference/http.md",
           "source": "skills/collection-schema-v3/reference/http.md",
-          "bytes": 5354,
-          "sha256": "9db348b1ca9c0e6eba70f3864210df92de5aba5d1c8a4e9a8cc794fb73997787"
+          "bytes": 9193,
+          "sha256": "8079ddfdb443d90bbed094e4d1719f3c5badd9bb5f8219fa5d7d1b4f8fea34c2"
         },
         {
           "target": "reference/other_protocols.md",
           "source": "skills/collection-schema-v3/reference/other_protocols.md",
-          "bytes": 3454,
-          "sha256": "c27c63240d8608016c1c54a9200e63ca6bac9d77acc71712c9697189e2f62d6a"
+          "bytes": 7236,
+          "sha256": "9f9d6e8e3c5a5bdf0efcdbd6b5cca8c55e1fa637e89d42cf9e579276da5a0e9f"
         }
       ]
     },
     {
       "name": "datasets",
       "plugin": "postman",
-      "description": "Use when a collection needs queried or joined test inputs, a reusable named view, spreadsheet worksheet data, live database rows, or script access through pm.datasets(). Chooses between a simple iteration file and a dataset while preserving query semantics, portability, and credential boundaries. Use for requests such as \"run this collection over database rows\".",
+      "description": "Use when creating or repairing dataset manifests, or when a collection needs queried or joined test inputs, a reusable named view, spreadsheet worksheet data, live database rows, or script access through pm.datasets(). Chooses between a simple iteration file and a dataset while preserving query semantics, portability, and credential boundaries. Use for requests such as \"run this collection over database rows\".",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/datasets/SKILL.md",
-          "bytes": 5859,
-          "sha256": "0845b92bc9149af595ad16b7a1ca3f004295da893a9ecea16a8a7ee30177bac7"
+          "bytes": 5999,
+          "sha256": "bd4178fc094e925eb5ff22ca07354c3f615c0fc1443f5a00e58da070bc6d7f03"
+        },
+        {
+          "target": "reference/schema.md",
+          "source": "skills/datasets/reference/schema.md",
+          "bytes": 1868,
+          "sha256": "69daa658202bed710004c2864e79d914b331ac7ce77d86241ea897f72947127e"
         },
         {
           "target": "reference/spreadsheets.md",
