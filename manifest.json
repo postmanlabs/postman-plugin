@@ -251,8 +251,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/performance-testing/SKILL.md",
-          "bytes": 3280,
-          "sha256": "7f76f94adcd2df847f59e8ad2a7e5bb71e3ad5772b928d6344e1c72a9a58b36a"
+          "bytes": 4101,
+          "sha256": "584177eb9c45c340445671c75449be4e89b7bf4ed511a0e1fd69c35596604f55"
         },
         {
           "target": "references/jmeter-import/README.md",
@@ -283,6 +283,42 @@
           "source": "skills/performance-testing/references/jmeter-import/script-translation.md",
           "bytes": 5709,
           "sha256": "0d3e4a91aabb136808c01d94fe8919d28286a3683d4a0b16ec5f2e1c413c81fc"
+        },
+        {
+          "target": "references/readyapi-import/README.md",
+          "source": "skills/performance-testing/references/readyapi-import/README.md",
+          "bytes": 7239,
+          "sha256": "a35d5656ee61943ad50f53de4ff72ec8973971d990870cb1e8d3a6d4de230970"
+        },
+        {
+          "target": "references/readyapi-import/import-report.md",
+          "source": "skills/performance-testing/references/readyapi-import/import-report.md",
+          "bytes": 1616,
+          "sha256": "b15dca0f05aa4e93a41e2c25eed72700eea9d7946493a1a27d2cc122b32752a0"
+        },
+        {
+          "target": "references/readyapi-import/loadtest-to-perf.md",
+          "source": "skills/performance-testing/references/readyapi-import/loadtest-to-perf.md",
+          "bytes": 3094,
+          "sha256": "6d6c0c4b536fe5d9db872b9c6ced9abf782f864dfa2b2f618a480415ef8103e3"
+        },
+        {
+          "target": "references/readyapi-import/mapping-table.md",
+          "source": "skills/performance-testing/references/readyapi-import/mapping-table.md",
+          "bytes": 6797,
+          "sha256": "ff2d2b1ca709342067840af3c4e3a5d9b5c05317c9cf4d020670ed80752ddf3d"
+        },
+        {
+          "target": "references/readyapi-import/postman-perf-capabilities.md",
+          "source": "skills/performance-testing/references/readyapi-import/postman-perf-capabilities.md",
+          "bytes": 3858,
+          "sha256": "20a18b40d8ec00dda6d62ce8584e9448d0ceb3f7e0424f4355f97ac23f30c4f3"
+        },
+        {
+          "target": "references/readyapi-import/script-translation.md",
+          "source": "skills/performance-testing/references/readyapi-import/script-translation.md",
+          "bytes": 4738,
+          "sha256": "b353e08b46553229aaeb8f11eae71d9a7f00aa265262597c4185f48ff77908ac"
         }
       ]
     },
