@@ -1,76 +1,71 @@
 ---
 name: api-engineer
-description: Use when designing, implementing, mocking, testing, monitoring, documenting, or deploying an API. Guides decisions using reusable local API contracts, tests, and mocks, plus organization-wide dependency context, and routes to the relevant Postman skills. Also covers reporting CLI gaps. Use for requests such as "implement this endpoint".
+description: Use when designing, implementing, mocking, testing, monitoring, documenting, or deploying an API. Guides the work toward a verified outcome using the workspace's existing context, independently maintained contracts, simulation before real side effects, and evidence tied to what was checked, and routes to the relevant Postman skills. Also covers reporting CLI gaps. Use for requests such as "implement this endpoint".
 ---
 
 # API Engineer
 
-Postman makes API knowledge reusable across implementation, tests, mocks, and
-teammates. Local files let you inspect, edit, and review that knowledge alongside
-code; the Context Graph can reveal consumers, ownership, and runtime relationships
-beyond the current repository. Reusing those inputs reduces reconstruction and
-guesswork each time work resumes.
+API work isn't done when a file is edited or a collection runs. It is done when
+the change meets agreed conditions, with evidence tied to the version and
+environment that were checked, so another agent or teammate can pick it up
+without reconstructing its meaning. Postman supplies what a more capable model
+still can't supply for itself: the real state of the services involved, context
+that carries across sessions, contracts to answer to, a place to experiment
+without side effects, and the authority to act.
 
-1. When changing API behavior or an interface, establish the intended contract
-   before implementation so you can distinguish an intended change from a
-   regression. Reuse the existing contract; update it where behavior changes.
-   Flag design choices that make callers harder to implement or future changes
-   harder to adopt, and explain the tradeoff. See **api-documentation**.
-2. A Postman collection is a strong way to record the contract: its requests,
-   examples, and assertions describe the API and run against it. From that one
-   source, the CLI's deterministic tools cheaply produce an OpenAPI spec, a
-   stand-in mock, an SDK, a performance test suite, or another format, so the
-   contract is written once and reused everywhere. Reuse what exists. See
-   **api-documentation**.
-3. Match verification to the behavior at risk. A saved collection can reuse auth,
-   variables, payloads, and assertions without reconstructing requests; a one-off
-   endpoint check can be smaller. Check the changed behavior and relevant existing
-   guarantees, and report what the results establish. See **api-testing**.
-4. When you need an API, its owner, or the impact of a change, use **api-discovery**.
-   For public API integrations, Orbit provides current endpoint, authentication,
-   required-field, and capability-limit details in a compact task brief. Use it
-   even when the provider is already chosen: those details help you assess fit and
-   implement reliably without relying on remembered API behavior or loading a
-   full vendor specification.
-   Context Graph can identify consumers and dependencies outside the current repo,
-   helping you focus investigation before traversing more repositories.
-5. When you run or test code that calls other services, or are asked how it
-   behaves when one of them fails, use **api-simulation**, which runs that code
-   for real against mocks of those services instead of stubs or the real
-   services. Looking something up, choosing an API or comparing code with a
-   contract runs nothing and needs none. When other teams will build against
-   your API, publish a mock of it in your service's own workspace, where their
-   simulations look first; see **api-mocking**.
-6. Keep specs, collections, environments, and mocks in local files so changes can
-   be diffed, reviewed, and reused in Git and CI. `postman status` shows the
-   project's state: the CLI version, whether the project is initialized,
-   whether the CLI is signed in, and whether its skills are current. For each
-   gap it names the command that closes it, such as `postman init`,
-   `postman login`, or `postman skills update`. Check it before setup work
-   instead of guessing.
-7. `postman init` gives API engineering work a ready state. It scaffolds local structure: `postman/`
-   directories for API artifacts. It installs skills in `postman/skills` folder with guidance on  designing, implementing, and validating APIs.
-   The command is idempotent and safe to rerun in an initialized project.
-   It creates an agent-scoped session that lets you record work without signing
-   in. You can claim that work later if you create an account. If `postman`
-   is missing, see **cli-install**.
-8. Another service's collection, environment, or mock can be added as a dependency
-   without replacing this repository's owning workspace binding. Use
-   **api-discovery** to bring in the relevant resource and preserve that separation.
-9. Publishing local changes to the bound workspace makes changes available
-   for other agent sessions and teammates. Always add a commit message along with workspace push to help the next agent session or teammate with relevant context.
-10. A Postman workspace is a place to capture context. Use this information as prior
-    knowledge of work done before. For example,
-    `postman workspace context --type workspacePush --limit 5 --brief` lists the
-    last five workspace push messages and log.
-11. When requests need credentials, Postman secret variables let them resolve the
-   credentials without exposing their values to the agent or committed files.
-   See **variables**.
-12. When implementing or debugging webhooks, use **webhook-testing** to
-   capture what the sender actually delivers.
-   Can also be used when the need is to forward incoming events
-   to a local handler and replay captured requests after fixes;
-   use the capture URL as a subscriber to inspect events your API sends.
+1. Start from the context earlier work left behind. The workspace records what
+   exists, what was run, and why; reading it first is cheaper and more reliable
+   than re-deriving it. For example,
+   `postman workspace context --type workspacePush --limit 5 --brief` lists the
+   last five shares and their messages. `postman status` shows what setup is
+   in place: the CLI version, whether the project is initialized, whether the
+   CLI is signed in, and whether its skills are current. For each gap it names
+   the command that closes it, such as `postman init`, `postman login`, or
+   `postman skills update`. `postman init` gives a repository its place of
+   work: it scaffolds `postman/` beside the code, installs these skills in
+   `postman/skills`, and is safe to rerun. Work can begin in a guest session
+   and be claimed by the user later. If `postman` is missing, see
+   **cli-install**.
+2. State the intent as a contract before implementing, so an intended change
+   can be told apart from a regression. A Postman collection is a strong way to
+   record it: its requests, examples, and assertions describe the API and run
+   against it. From that one source, the CLI's deterministic tools cheaply
+   produce an OpenAPI spec, a stand-in mock, an SDK, a performance test suite,
+   or another format, so the contract is written once and reused everywhere.
+   Reuse the existing contract and update it where behavior changes. Flag
+   design choices that make callers harder to implement or future changes
+   harder to adopt. See **api-documentation**.
+3. Know how the real world behaves, not how it should. Knowing how an API is
+   meant to work says little about how a given deployment or provider behaves.
+   **api-discovery** finds an API, its owner, and the impact of a change: Orbit
+   gives current endpoint, auth, required-field, and limit details for public
+   APIs even when the provider is chosen, and the Context Graph shows consumers
+   and dependencies beyond this repository. Another service's resources come in
+   as dependencies without replacing this repository's own workspace.
+4. Experiment before touching the real world. Real calls mutate data, cost
+   money, and notify users, and faster reasoning doesn't make that cheaper.
+   **api-simulation** runs the code against mocks of the services it calls, so
+   you can test the assumptions it depends on and its failure paths, then
+   change the code, then confirm against the real service. Looking something
+   up or comparing code with a contract runs nothing and needs none. When other
+   teams build against your API, a mock of it in your service's workspace is
+   where their simulations look first; see **api-mocking**.
+5. Verify the behavior at risk and keep the evidence. A saved collection reuses
+   auth, variables, payloads, and assertions; a one-off check can be smaller.
+   A result holds for the build, contract, environment, and permissions it ran
+   against, and stops holding when one of them changes. Run results are memory
+   to cite and re-read instead of re-deriving. See **api-testing**.
+6. Act within the authority you were given. Secret variables let requests
+   resolve credentials without the agent or a committed file ever holding the
+   value; see **variables**. Changes to shared context, such as a mirroring
+   share that can delete others' work, need the user's approval.
+7. For webhooks, **webhook-testing** captures what the sender actually
+   delivers, forwards events to a local handler, and replays captured requests
+   after a fix. Its capture URL also works as a subscriber for events your API
+   sends.
+8. Save the finished, checked work as context. Sharing it makes the work and
+   its evidence available to other sessions and teammates; a message saying
+   why it changed is what the next reader needs.
 
 Proceed with reversible work within the user's task and present concrete results
 for course correction. Recommend additional work only when it closes a material
@@ -84,9 +79,11 @@ plan to continue.
 
 ## Verification
 
-Report the changed contract or implementation, the checks actually run, and
-the guarantees their results support. Separate local, mocked, and live evidence;
-state any relevant consumer or upstream interaction still unverified.
+Report the outcome against the agreed conditions: what changed, which checks
+ran, and the version, contract, and environment they ran against. Separate
+local, simulated, and live evidence. State what was not checked, including any
+consumer or upstream interaction, and which later change would invalidate the
+result.
 
 ## Reporting CLI and skill gaps
 
