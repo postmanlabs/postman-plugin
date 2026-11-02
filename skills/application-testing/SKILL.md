@@ -106,7 +106,7 @@ A **target** is a named set of collections + optional environment. The `default`
 ```bash
 postman --version
 ```
-This skill targets the latest CLI release. If the version is outdated, see the `cli-install` skill for installation and update steps, then re-run. The `--help` output for each command shows the flags actually available in the installed version.
+This skill targets the latest CLI release. If the version is outdated, update the CLI, then re-run. The `--help` output for each command shows the flags actually available in the installed version.
 
 Read the CLI error output first — it names the specific failure and what to fix.
 

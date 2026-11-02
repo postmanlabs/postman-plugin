@@ -137,8 +137,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/application-testing/SKILL.md",
-          "bytes": 11631,
-          "sha256": "dd77793faee57e42c11085a592dc07cba1e86fbeec0b745b39cd160f2043fa91"
+          "bytes": 11584,
+          "sha256": "7188c4b5811908f3f4560bcb78710261171fb66e66050d0b0a4bc76ee5001b1f"
         }
       ]
     },
@@ -158,13 +158,13 @@
     {
       "name": "cli-install",
       "plugin": "postman",
-      "description": "Use when the Postman CLI is missing, outdated, installed twice, or can't be installed, when `postman` is \"command not found\", or when a command or flag the skills expect doesn't exist in the installed version. Installs or updates the CLI through the route that put it there and finds the flags the installed version actually supports. Use for requests such as \"install the Postman CLI\" or \"update postman\".",
+      "description": "Use when the Postman CLI is missing or can't be installed, or when `postman` is \"command not found\". Installs the CLI globally so `postman` is on `PATH`, with a fallback to the hosted MCP server when installing is blocked. Use for requests such as \"install the Postman CLI\".",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/cli-install/SKILL.md",
-          "bytes": 2043,
-          "sha256": "731be94c00a1bd13b52788d25ceca6b61683d2fcf1272225f401209a38166baf"
+          "bytes": 1321,
+          "sha256": "2a247c55373e2788b0e5bdaa166c1763cc3f5a3fdb23ce37c1bf07aff932e7fd"
         }
       ]
     },
@@ -411,8 +411,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/workspaces/SKILL.md",
-          "bytes": 3641,
-          "sha256": "4a22fce7428e44ab8a4a71267236528926d80f65527621c9dd11eaf1b17586ab"
+          "bytes": 3578,
+          "sha256": "f4dbc6d83482da1e077efddf857bda72ff42a23277d8c0d8b502208a66a53973"
         }
       ]
     }

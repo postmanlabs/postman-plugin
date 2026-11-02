@@ -33,9 +33,6 @@ what result. Agents use it to read verified work instead of re-deriving it.
    context graph links the two, which is how a change on one side reaches work
    on the other.
 
-**cli-install** covers finding the command for
-each of these.
-
 ## Claiming the work
 
 An agent can start in a guest session, and the work it does there is kept.
