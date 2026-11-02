@@ -78,7 +78,8 @@ lifts it.
 
 Report the changed contract or implementation, the checks actually run, and
 the guarantees their results support. Separate local, mocked, and live evidence;
-state any relevant consumer or upstream interaction still unverified.
+state any relevant consumer or upstream interaction still unverified. Run
+`postman status` last to confirm the setup the work relied on is still in place.
 
 If actual use exposes a CLI gap or misleading skill, report it through the
 CLI's feedback channel after finishing the user's task, with a sanitized

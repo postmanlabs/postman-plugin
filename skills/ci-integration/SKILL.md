@@ -38,8 +38,10 @@ the author's own passing tests do not establish cross-service compatibility.
    not make the command read-only.
 4. Authenticate only jobs that need workspace resources. Use the CI secret
    store to supply `POSTMAN_API_KEY`, then
-   `postman login --with-api-key "$POSTMAN_API_KEY"`. A local-only gate need
-   not log in. Command-specific API-key flags are not a general replacement
+   `postman login --with-api-key "$POSTMAN_API_KEY"`. A local-only gate can
+   run without it, but its run results are then lost: they stay in that job's
+   log instead of reaching the workspace, where teammates and later agent
+   sessions read them as evidence. Command-specific API-key flags are not a general replacement
    for login across lint and push operations. Use **workspaces** for
    unresolved bindings, and **variables** for request credentials.
 5. Publish only the reviewed branch after its merge checks pass.
