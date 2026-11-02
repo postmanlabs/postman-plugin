@@ -4,13 +4,13 @@
     {
       "name": "api-engineer",
       "plugin": "postman",
-      "description": "Use when designing, implementing, mocking, testing, monitoring, documenting, or deploying an API. Guides decisions using reusable local API contracts, tests, and mocks, plus organization-wide dependency context, and routes to the relevant Postman skills. Also covers reporting CLI gaps. Use for requests such as \"implement this endpoint\".",
+      "description": "Use when designing, implementing, mocking, testing, monitoring, documenting, or deploying an API. Guides decisions using reusable local API contracts, tests, and mocks, plus organization-wide dependency context, and routes to the relevant Postman skills. Use for requests such as \"implement this endpoint\".",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/api-engineer/SKILL.md",
-          "bytes": 3577,
-          "sha256": "d9aca6024a1c861d25a90c4d475a07a07ad9f39ccdf260c920251332ebcaa3e1"
+          "bytes": 5689,
+          "sha256": "9b87aee8207c7478e857df081dacb6ae00444f186c2f73e717250ac9946ec137"
         }
       ]
     },
