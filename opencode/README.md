@@ -88,7 +88,7 @@ wins is not guaranteed, so rename one of the two.
 
 Local work, such as setting up a repository with `postman init` or running a
 mock on your machine, needs no Postman account. When a task reaches your
-Postman workspace, the `api-engineer` skill signs the CLI in. To sign in yourself:
+Postman workspace, your agent signs the CLI in. To sign in yourself:
 
 ```bash
 postman login

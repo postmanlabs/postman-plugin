@@ -51,8 +51,7 @@ the author's own passing tests do not establish cross-service compatibility.
 6. Use the default create/update strategy unless exact mirroring is the
    explicit requirement. `--push-strategy force-sync` can delete workspace
    entities absent from the checkout, including resources managed elsewhere.
-   Follow **workspaces**'s push preview and consent
-   guidance for that branch.
+   Preview that push's diff and get its deletions approved before enabling it.
 
 ## Verification
 

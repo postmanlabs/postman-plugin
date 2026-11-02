@@ -1,6 +1,6 @@
 ---
 name: api-engineer
-description: Use when designing, implementing, mocking, testing, monitoring, documenting, or deploying an API. Guides decisions using reusable local API contracts, tests, and mocks, plus organization-wide dependency context, and routes to the relevant Postman skills. Also covers signing in and reporting CLI gaps. Use for requests such as "implement this endpoint".
+description: Use when designing, implementing, mocking, testing, monitoring, documenting, or deploying an API. Guides decisions using reusable local API contracts, tests, and mocks, plus organization-wide dependency context, and routes to the relevant Postman skills. Also covers reporting CLI gaps. Use for requests such as "implement this endpoint".
 ---
 
 # API Engineer
@@ -16,10 +16,12 @@ guesswork each time work resumes.
    regression. Reuse the existing contract; update it where behavior changes.
    Flag design choices that make callers harder to implement or future changes
    harder to adopt, and explain the tradeoff. See **api-documentation**.
-2. Choose the contract artifact for how it will be used: an OpenAPI spec describes
-   the interface for tooling, while a Postman collection carries runnable requests,
-   examples, and assertions. Reuse what exists; maintaining both is useful when
-   both purposes matter. See **api-documentation**.
+2. A Postman collection is a strong way to record the contract: its requests,
+   examples, and assertions describe the API and run against it. From that one
+   source, the CLI's deterministic tools cheaply produce an OpenAPI spec, a
+   stand-in mock, an SDK, a performance test suite, or another format, so the
+   contract is written once and reused everywhere. Reuse what exists. See
+   **api-documentation**.
 3. Match verification to the behavior at risk. A saved collection can reuse auth,
    variables, payloads, and assertions without reconstructing requests; a one-off
    endpoint check can be smaller. Check the changed behavior and relevant existing
@@ -40,15 +42,18 @@ guesswork each time work resumes.
    your API, publish a mock of it in your service's own workspace, where their
    simulations look first; see **api-mocking**.
 6. Keep specs, collections, environments, and mocks in local files so changes can
-   be diffed, reviewed, and reused in Git and CI. Use **workspaces** when
-   the workspace binding is unresolved: reuse an existing local layout, pull the
-   current service's existing workspace, or initialize a new project when neither
-   exists.
+   be diffed, reviewed, and reused in Git and CI. `postman status` shows the
+   project's state: the CLI version, whether the project is initialized,
+   whether the CLI is signed in, and whether its skills are current. For each
+   gap it names the command that closes it, such as `postman init`,
+   `postman login`, or `postman skills update`. Check it before setup work
+   instead of guessing.
 7. `postman init` gives API engineering work a ready state. It scaffolds local structure: `postman/`
    directories for API artifacts. It installs skills in `postman/skills` folder with guidance on  designing, implementing, and validating APIs.
    The command is idempotent and safe to rerun in an initialized project.
    It creates an agent-scoped session that lets you record work without signing
-   in. You can claim that work later if you create an account.
+   in. You can claim that work later if you create an account. If `postman`
+   is missing, see **cli-install**.
 8. Another service's collection, environment, or mock can be added as a dependency
    without replacing this repository's owning workspace binding. Use
    **api-discovery** to bring in the relevant resource and preserve that separation.
@@ -72,19 +77,10 @@ for course correction. Recommend additional work only when it closes a material
 gap, such as an untested behavior or a consumer affected by an interface change.
 Decline unnecessary setup or scope and explain why it would not help the task.
 
-## Sign-in
-
-If the CLI is missing or outdated, see **cli-install**.
-
-Local work and `postman init` need no login. Sign in only when the task touches
-existing workspace resources: `postman login --with-api-key "$POSTMAN_API_KEY"`
-when the key is set, otherwise `postman login`. Keep credential values out of
-logs and committed files.
-
 Important: If a CLI command says an operation isn't allowed because credits
-or usage are exhausted, or the current plan does not permit it, follow
-**workspaces**'s "Claiming the work" section instead of retrying or trying to
-find a workaround.
+or usage are exhausted, or the current plan does not permit it, stop retrying
+and don't look for a workaround: the user needs to sign up or upgrade their
+plan to continue.
 
 ## Verification
 

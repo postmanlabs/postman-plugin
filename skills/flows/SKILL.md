@@ -49,8 +49,6 @@ result that says nothing about the caller's actual workflow.
    and reports. Connector blocks need `--workspace` even for a local file;
    otherwise failure occurs inside the graph. An access denial across several
    workspaces points toward credentials or entitlement, not an empty flow list.
-   Use **cli-install** and **api-engineer**'s "Sign-in" section for unresolved
-   CLI/authentication setup.
 
 Read [command options](reference/flow_cli_flags.md) for inputs, reporters,
 dataset iteration, and flag collisions; check installed subcommand `-h` before
