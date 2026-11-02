@@ -119,7 +119,7 @@ Check every `SKILL.md` you write or review for these.
 3. **Don't restate the same paragraph across two skills.** If two skills
    need the same guidance (e.g., when and how to file `postman feedback`),
    write it once in the skill that owns that concern and have every other
-   skill point to it by name (`see **bootstrap**'s "..." section`) instead
+   skill point to it by name (`see **api-engineer**'s "..." section`) instead
    of copying the paragraph. A duplicated paragraph drifts the next time
    only one copy gets edited.
 4. **Don't make a step mandatory up front when only some branches need it.**

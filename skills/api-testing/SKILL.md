@@ -45,8 +45,8 @@ guarantee; a successful HTTP exchange alone does not establish correctness.
    without validating it. Results are recorded in the connected workspace by
    default; `--report-events=false` keeps the run local when required.
 
-Use command-specific `-h` for supported options and **bootstrap** for unresolved
-CLI setup or authentication when using workspace resources. A bare URL or
+Use command-specific `-h` for supported options and **cli-install** or **api-engineer**'s "Sign-in" section for
+unresolved CLI setup or authentication when using workspace resources. A bare URL or
 local collection does not require a workspace binding.
 
 ## Verification

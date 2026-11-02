@@ -62,7 +62,7 @@ Runner activity is reported by default; `--no-report-events` disables that
 reporting when the task requires it. Pass the runner key at runtime, from the
 user or a secret store (for example `--key "$RUNNER_KEY"`), and keep it out of
 files in the repository. If a `monitor` or `runner list` command fails on
-authentication, use **bootstrap**.
+authentication, see **api-engineer**'s "Sign-in" section.
 
 ## Verification
 

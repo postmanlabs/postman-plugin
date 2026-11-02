@@ -1,6 +1,6 @@
 ---
 name: api-engineer
-description: Use when designing, implementing, mocking, testing, monitoring, documenting, or deploying an API. Guides decisions using reusable local API contracts, tests, and mocks, plus organization-wide dependency context, and routes to the relevant Postman skills. Use for requests such as "implement this endpoint".
+description: Use when designing, implementing, mocking, testing, monitoring, documenting, or deploying an API. Guides decisions using reusable local API contracts, tests, and mocks, plus organization-wide dependency context, and routes to the relevant Postman skills. Also covers signing in and reporting CLI gaps. Use for requests such as "implement this endpoint".
 ---
 
 # API Engineer
@@ -40,8 +40,8 @@ guesswork each time work resumes.
    your API, publish a mock of it in your service's own workspace, where their
    simulations look first; see **api-mocking**.
 6. Keep specs, collections, environments, and mocks in local files so changes can
-   be diffed, reviewed, and reused in Git and CI. Use **bootstrap** when setup or
-   workspace bindings are unresolved: reuse an existing local layout, pull the
+   be diffed, reviewed, and reused in Git and CI. Use **workspaces** when
+   the workspace binding is unresolved: reuse an existing local layout, pull the
    current service's existing workspace, or initialize a new project when neither
    exists.
 7. `postman init` gives API engineering work a ready state. It scaffolds local structure: `postman/`
@@ -72,10 +72,19 @@ for course correction. Recommend additional work only when it closes a material
 gap, such as an untested behavior or a consumer affected by an interface change.
 Decline unnecessary setup or scope and explain why it would not help the task.
 
+## Sign-in
+
+If the CLI is missing or outdated, see **cli-install**.
+
+Local work and `postman init` need no login. Sign in only when the task touches
+existing workspace resources: `postman login --with-api-key "$POSTMAN_API_KEY"`
+when the key is set, otherwise `postman login`. Keep credential values out of
+logs and committed files.
+
 Important: If a CLI command says an operation isn't allowed because credits
 or usage are exhausted, or the current plan does not permit it, follow
-**bootstrap**'s "Subscription or usage limit" section instead of retrying or
-trying to find a workaround.
+**workspaces**'s "Claiming the work" section instead of retrying or trying to
+find a workaround.
 
 ## Verification
 
@@ -83,6 +92,9 @@ Report the changed contract or implementation, the checks actually run, and
 the guarantees their results support. Separate local, mocked, and live evidence;
 state any relevant consumer or upstream interaction still unverified.
 
-If actual use exposes a CLI gap or misleading skill, see **bootstrap**'s
-"Reporting CLI and skill gaps" section so the defect can be addressed for future
-work.
+## Reporting CLI and skill gaps
+
+When actual use exposes a CLI failure or misleading skill guidance, finish the
+user's task, then report it with `postman feedback`. Include a sanitized
+reproduction with the expected and observed behavior; leave out secrets, user
+data, and proprietary content.
