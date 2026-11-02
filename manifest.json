@@ -163,8 +163,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/cli-install/SKILL.md",
-          "bytes": 1321,
-          "sha256": "2a247c55373e2788b0e5bdaa166c1763cc3f5a3fdb23ce37c1bf07aff932e7fd"
+          "bytes": 1097,
+          "sha256": "41a2036b49bfca591d8a96b8f617d1cdc714439a016025cd2c0f57f1b2967adc"
         }
       ]
     },
@@ -406,13 +406,13 @@
     {
       "name": "workspaces",
       "plugin": "postman",
-      "description": "Use when initializing Postman in a repository, binding it to a Postman workspace, reading what earlier work in a workspace established, interpreting what initialization did, or when a CLI command fails because the plan, credits, or usage quota don't allow the operation. Treats the workspace as the place where a service's API work and its evidence live, kept separate from the services it depends on. Use for requests such as \"set up Postman in this repo\", \"connect this repo to our workspace\", or \"what was done here before\".",
+      "description": "Use when initializing Postman in a repository, binding it to a Postman workspace, interpreting what `postman init` did, or when a CLI command fails because the plan, credits, or usage quota don't allow the operation. Treats the workspace as the place where a service's API work and its evidence live, kept separate from the services it depends on. Use for requests such as \"set up Postman in this repo\" or \"connect this repo to our workspace\".",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/workspaces/SKILL.md",
-          "bytes": 3578,
-          "sha256": "f4dbc6d83482da1e077efddf857bda72ff42a23277d8c0d8b502208a66a53973"
+          "bytes": 3261,
+          "sha256": "9f9c500e1123cae35e9f6baa3d8cf74af700a23232ddaa4f7a1e49ba873d97cf"
         }
       ]
     }

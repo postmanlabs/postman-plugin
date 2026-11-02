@@ -21,12 +21,6 @@ curl -o- "https://dl-cli.pstmn.io/install/unix.sh" | sh
 powershell.exe -NoProfile -InputFormat None -ExecutionPolicy AllSigned -Command "[System.Net.ServicePointManager]::SecurityProtocol = 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://dl-cli.pstmn.io/install/win64.ps1'))"
 ```
 
-## Uninstall
-
-`npm uninstall -g postman-cli` for an npm install. Otherwise delete the
-`postman` binary from `/usr/local/bin` on macOS, Linux, and WSL, or from
-`%USERPROFILE%\AppData\Local\Microsoft\WindowsApps` on Windows.
-
 ## Verification
 
 Report the installed version and the route it came from, and confirm `postman`
