@@ -263,14 +263,14 @@
         {
           "target": "SKILL.md",
           "source": "skills/performance-testing/SKILL.md",
-          "bytes": 3280,
-          "sha256": "7f76f94adcd2df847f59e8ad2a7e5bb71e3ad5772b928d6344e1c72a9a58b36a"
+          "bytes": 3554,
+          "sha256": "37e18f75b9fa91657b7bd2e924cff1aa47a37cee4c36fa77b012528c99710d6e"
         },
         {
           "target": "references/jmeter-import/README.md",
           "source": "skills/performance-testing/references/jmeter-import/README.md",
-          "bytes": 7579,
-          "sha256": "7990ff904b234e40078d9ed29609f29b3c7df7340b77ef10618fd2fbc3aed3fd"
+          "bytes": 8349,
+          "sha256": "e78e4c0f6dbe2c2d7515eea72bb494891912df900d52246909099e468903cc76"
         },
         {
           "target": "references/jmeter-import/import-report.md",
@@ -293,8 +293,8 @@
         {
           "target": "references/jmeter-import/script-translation.md",
           "source": "skills/performance-testing/references/jmeter-import/script-translation.md",
-          "bytes": 5709,
-          "sha256": "0d3e4a91aabb136808c01d94fe8919d28286a3683d4a0b16ec5f2e1c413c81fc"
+          "bytes": 5903,
+          "sha256": "e2a4a7b197c781f29445177bdd3bf98a39011a775d27b72c4b318221be5c9381"
         }
       ]
     },

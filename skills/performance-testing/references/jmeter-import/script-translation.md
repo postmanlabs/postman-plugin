@@ -76,7 +76,7 @@ try { pm.collectionVariables.set("<ref>", pm.response.json().a.b[0]); } catch (e
 ```
 Wildcards / filters / recursive descent (`*`, `..`, `?`, `@`) → do NOT import; emit `// [manual] JSONPath "<expr>" too complex` and add a manual task.
 
-**Implicit HTTP success** (first test on every request unless a `response_code`/`response_message` assertion or `assume_success` exists):
+**Implicit HTTP success** (first test on every request **unless** an assertion sets `assume_success=true`, i.e. Ignore Status). A plain `response_code`/`response_message` assertion does **not** suppress it — JMeter still fails the sample on HTTP ≥ 400, so both the implicit 200–399 check and the status assertion are emitted:
 ```javascript
 pm.test('JMeter default success (HTTP 200-399)', function () {
     pm.expect(pm.response.code).to.be.within(200, 399);
