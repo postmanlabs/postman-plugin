@@ -258,13 +258,43 @@
     {
       "name": "performance-testing",
       "plugin": "postman",
-      "description": "Use when load-testing or benchmarking an API with concurrent virtual users and latency or error thresholds. Reuses a collection to probe a chosen failure mode and distinguishes target limits from load-generator limits. Use for requests such as \"load test this API\".",
+      "description": "Use when load-testing or benchmarking an API with concurrent virtual users and latency or error thresholds, or when importing or migrating a JMeter `.jmx` plan or a Gatling simulation (Java/Kotlin/Scala/JS/TS) into a Postman collection plus a `postman performance run` configuration. Reuses a collection to probe a chosen failure mode and distinguishes target limits from load-generator limits. Use for requests such as \"load test this API\", \"import my JMeter plan\", or \"convert my Gatling project to Postman\".",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/performance-testing/SKILL.md",
-          "bytes": 3280,
-          "sha256": "7f76f94adcd2df847f59e8ad2a7e5bb71e3ad5772b928d6344e1c72a9a58b36a"
+          "bytes": 4325,
+          "sha256": "3d80d9a6097e449be988951ac37b297c30b02c0bb98f69cd9edda01202dd1fc2"
+        },
+        {
+          "target": "references/gatling-import/README.md",
+          "source": "skills/performance-testing/references/gatling-import/README.md",
+          "bytes": 12510,
+          "sha256": "366f80efde1beba5c32a93ffeb881256163d586c6bbc7dfeaddd37147353378c"
+        },
+        {
+          "target": "references/gatling-import/feeders.md",
+          "source": "skills/performance-testing/references/gatling-import/feeders.md",
+          "bytes": 3498,
+          "sha256": "036465bcbfd648bc07ab18de2346aa1915e07e7254f67b598c9837bb4718cc4e"
+        },
+        {
+          "target": "references/gatling-import/injection.md",
+          "source": "skills/performance-testing/references/gatling-import/injection.md",
+          "bytes": 10523,
+          "sha256": "8504c8df5f16807225efd58cc364fd32230a53776b543eb85859c20af36f9b8b"
+        },
+        {
+          "target": "references/gatling-import/mapping.md",
+          "source": "skills/performance-testing/references/gatling-import/mapping.md",
+          "bytes": 11150,
+          "sha256": "cf8db5e4e1aadb23699667b2059b14b3f3100e35ec9b648a3407b048ea34b365"
+        },
+        {
+          "target": "references/gatling-import/unsupported.md",
+          "source": "skills/performance-testing/references/gatling-import/unsupported.md",
+          "bytes": 3222,
+          "sha256": "d45d48d27c16b378c91ba0d020169a0d4502c8c2c25e55597925e2a143094104"
         },
         {
           "target": "references/jmeter-import/README.md",
