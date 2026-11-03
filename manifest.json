@@ -317,8 +317,8 @@
         {
           "target": "references/readyapi-import/script-translation.md",
           "source": "skills/performance-testing/references/readyapi-import/script-translation.md",
-          "bytes": 5689,
-          "sha256": "cf393186850e14905a59f411ba22771125f7bed12122949a97fbb570d5383489"
+          "bytes": 6111,
+          "sha256": "1fb584828f4cdc6fdefc1aab2ad147cfb4a4de0e873bad0b921a0a412aec80c5"
         }
       ]
     },
