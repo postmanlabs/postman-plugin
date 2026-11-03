@@ -14,10 +14,10 @@ permissions:
   contents: write
   actions: write
 
-# A group holds one pending run, so a newer push replaces a waiting one; the run in progress finishes.
+# A newer push cancels the run in progress and any waiting one, so only the latest main gets a candidate.
 concurrency:
   group: release-candidate
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   candidate:
