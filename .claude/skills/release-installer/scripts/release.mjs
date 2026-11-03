@@ -222,12 +222,18 @@ function nextRc () {
     const { latest, next } = distTags(),
         { major } = parse(latest),
         target = increment(latest, levelSince(tagOf(latest), major)),
-        line = parse(next),
-        // An open rc line, one whose base is already above `target`, carries on rather than being undercut.
-        lineBase = line && line.rc !== null && compareBase(base(line), target) > 0 ? base(line) : target,
-        claimed = claimedVersions().map(parse).filter((entry) => entry && entry.rc !== null && base(entry) === lineBase);
+        // `next` may hold any prerelease release.yml accepts (-next.N, -N), so only its base is read.
+        line = next.match(/^\d+\.\d+\.\d+/)?.[0],
+        // An open line, one whose base is already above `target`, carries on rather than being undercut.
+        lineBase = line && compareBase(line, target) > 0 ? line : target,
+        claimed = claimedVersions().map(parse).filter((entry) => entry && entry.rc !== null && base(entry) === lineBase),
+        candidate = `${lineBase}-rc.${claimed.reduce((highest, entry) => Math.max(highest, entry.rc + 1), 0)}`;
 
-    console.log(`${lineBase}-rc.${claimed.reduce((highest, entry) => Math.max(highest, entry.rc + 1), 0)}`);
+    if (!newer(candidate, next)) {
+        throw new Error(`${candidate} would move the 'next' dist-tag back from ${next}`);
+    }
+
+    console.log(candidate);
 }
 
 /** The problems with `commit` as the release commit for `version`: it must carry the version in all three files. */
