@@ -21,8 +21,10 @@ Several APIs at once, for a service, a frontend or a test suite? Use
 
 When the API belongs to another team, look for their published mock before
 writing one: theirs encodes their contract and their service's state; yours
-encodes a guess. It needs `postman login`; signed out, build one and say the
-owner search was skipped.
+encodes a guess.
+
+Every step below needs a signed-in CLI. Check `postman status` first; signed
+out, skip to building one and say the owner search was skipped.
 
 1. Find the owner's workspace with `postman search workspaces "<service>" -o json`.
    Name the service plainly, as your code does, not by what it returns: a

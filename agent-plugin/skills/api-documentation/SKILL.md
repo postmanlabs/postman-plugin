@@ -14,8 +14,7 @@ with changes reviewable alongside code.
    interface for tooling; a Postman collection adds runnable requests,
    examples, and assertions. Maintain both when both uses matter, with an
    explicit direction of generation or synchronization so they do not become
-   competing definitions. Local edits need **bootstrap** only when setup or
-   bindings are unresolved.
+   competing definitions.
 2. When the spec is authoritative, reuse its operations with
    `postman spec generate collection <spec-path-or-id> -n "<collection-name>"`.
    Inspect the generated result before replacing an existing collection:
@@ -34,7 +33,7 @@ with changes reviewable alongside code.
    to keep credentials out of reusable requests and examples.
 5. Choose delivery by audience. Local artifacts support Git review;
    publishing to the bound workspace makes them available to teammates with
-   access (see **bootstrap**). A workspace push does not itself publish a
+   access. A workspace push does not itself publish a
    public docs page or change permissions. For a public documentation link,
    use **postman-mcp-server**'s documentation workflow and the available
    publishing tool; establish the intended audience before public exposure.

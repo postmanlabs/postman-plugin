@@ -10,6 +10,11 @@ must invent. Relationship context broadens investigation beyond the checkout:
 passing this service's own tests does not establish that its consumers can
 still use a changed interface.
 
+Postman search, the Context Graph and dependency downloads work only for a
+signed-in CLI. Check `postman status` before the first of them and sign in if
+it reports signed out. If signing in isn't possible, don't run them; say which
+sources were skipped.
+
 1. Choose the source by the question:
 
    | Need | Use |
@@ -47,8 +52,8 @@ still use a changed interface.
    not be present yet. The query uses the authenticated API key's team, not
    the repository's workspace binding; changing that binding cannot fix a
    query against the wrong organization's context.
-5. Use **bootstrap**'s "Owning workspace versus dependency" distinction
-   before importing. For a dependency, `postman dependency add
+5. Before importing, tell this repository's owning workspace from a
+   dependency. For a dependency, `postman dependency add
    <collection|environment|mock> <name-or-id>` declares and downloads the
    selected resource without rebinding the repository. Prefer the discovered
    ID; `--workspace <id>` disambiguates names. If the graph only identified a
