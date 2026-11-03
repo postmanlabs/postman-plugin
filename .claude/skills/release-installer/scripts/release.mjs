@@ -222,14 +222,14 @@ function nextRc () {
     const { latest, next } = distTags(),
         { major } = parse(latest),
         target = increment(latest, levelSince(tagOf(latest), major)),
-        // `next` may hold any prerelease release.yml accepts (-next.N, -N), so only its base is read.
-        line = next.match(/^\d+\.\d+\.\d+/)?.[0],
+        // `next` may be absent, or hold any prerelease release.yml accepts (-next.N, -N), so only its base is read.
+        line = next?.match(/^\d+\.\d+\.\d+/)?.[0],
         // An open line, one whose base is already above `target`, carries on rather than being undercut.
         lineBase = line && compareBase(line, target) > 0 ? line : target,
         claimed = claimedVersions().map(parse).filter((entry) => entry && entry.rc !== null && base(entry) === lineBase),
         candidate = `${lineBase}-rc.${claimed.reduce((highest, entry) => Math.max(highest, entry.rc + 1), 0)}`;
 
-    if (!newer(candidate, next)) {
+    if (next && !newer(candidate, next)) {
         throw new Error(`${candidate} would move the 'next' dist-tag back from ${next}`);
     }
 
