@@ -3,7 +3,7 @@ name: release-installer
 description: Release @postman/postman-plugin, the npx installer and Pi package, to npm - a release candidate on the `next` dist-tag or a plain version on `latest`, plus the plugin route version bumps a `latest` release carries. Use when asked to cut, publish, tag or ship an installer release or rc, promote an rc to latest, resume a release in progress, or retry one that failed.
 argument-hint: rc | latest | <version>
 disable-model-invocation: true
-allowed-tools: Bash(node .claude/skills/release-installer/scripts/release.mjs:*), Bash(git fetch:*), Bash(git status:*), Bash(git ls-remote:*), Bash(git show:*), Bash(git log:*), Bash(git worktree list:*), Bash(git worktree add:*), Bash(npm ci:*), Bash(npm test:*), Bash(npm audit:*), Bash(npm pack:*), Bash(npm run test:pi-harness:*), Bash(gh run list:*), Bash(gh run view:*), Bash(git push -u origin release/*), Bash(gh pr create:*), Bash(gh pr view:*)
+allowed-tools: Bash(node .claude/skills/release-installer/scripts/release.mjs:*), Bash(git fetch:*), Bash(git status:*), Bash(git ls-remote:*), Bash(git show:*), Bash(node scripts/route-versions.js:*), Bash(git worktree list:*), Bash(git worktree add:*), Bash(npm ci:*), Bash(npm test:*), Bash(npm audit:*), Bash(npm pack:*), Bash(npm run test:pi-harness:*), Bash(gh run list:*), Bash(gh run view:*), Bash(git push -u origin release/*), Bash(gh pr create:*), Bash(gh pr view:*)
 ---
 
 # Release @postman/postman-plugin
@@ -58,38 +58,31 @@ route but Pi installs from GitHub, so a route bump merged to `main` is already
 that route's release. Routes have no rc stage, and an rc branch never carries a
 route bump.
 
-Bump a route when what it delivers changes **and** its agent uses the version
-string to decide whether to update:
+Each route's `updatesBy` in `scripts/routes.js` says what its agent compares to
+update an install. `version` means a release that doesn't bump delivers
+nothing: Claude Code's `claude plugin update`, for one, skips an unchanged
+version. `commit` means the agent tracks `main` and the version is only
+`X-Plugin-Version` telemetry. Pi is `installer`: `bump` sets it.
 
-| Route | Its version string |
-| --- | --- |
-| Claude Code | gates delivery: `claude plugin update` skips a release whose version is unchanged |
-| Pi | gates delivery, and is the installer's version: `bump` sets it |
-| Codex, GitHub Copilot CLI, Kimi Code, Cursor | unverified; treat as gating delivery |
-| Factory Droid, OpenCode, Antigravity | telemetry only (`X-Plugin-Version`); the agent tracks `main` |
-
-1. **Shared content changed** (`skills/`, `hooks/`, the session-start mandate):
-   bump every route that gates delivery, each to its own next number, using
-   CONTRIBUTING's semver for skills (major for a broken or removed skill, minor
-   for a new skill, patch for wording or a fix).
-2. **One route's own files changed** (its manifest, MCP config, or how it
-   delivers the hook or mandate): bump only that route, telemetry-only routes
-   included.
+1. **Shared content changed** (`skills/`, `hooks/`, `manifest.json`): bump
+   every `version` route, each to its own next number, using CONTRIBUTING's
+   semver for skills (major for a broken or removed skill, minor for a new
+   skill, patch for wording or a fix).
+2. **One route's own files changed** (its directory, MCP config, or `owns`):
+   bump only that route, `commit` routes included.
 3. **The installer** follows Step 1's levels, plus every content change, since
    it is Pi's content. It never forces a route bump.
 
-A `latest` release checks which routes are stale and puts their bumps in the
-same PR as a separate decision: list each route, its current and proposed
-version, and why, and wait for the user's confirmation. A route is stale when
-shared content or its own files changed since its manifest's last version
-change:
+`node scripts/route-versions.js` applies these rules: it lists each stale route,
+the commits since its last version change, and a version proposed from their
+conventional-commit prefixes. `--write` sets every stale route's strings, and
+`--write <id>=<x.y.z>` overrides one. The prefixes don't mark a removed skill as
+breaking, so read the commits before you accept a proposal.
 
-```bash
-git log --oneline "$(git log -1 --format=%H -- <route manifest>)"..origin/main -- skills/ hooks/ <route's files>
-```
-
-CONTRIBUTING's "Changing a skill" lists the strings each route's bump moves.
-Check them against each other before you commit; nothing else does.
+A `latest` release puts the route bumps in the same PR as a separate decision:
+show the user the script's list, with any version you'd change, and wait for
+their confirmation. CI's `Route versions` job fails any pull request that moves
+a version while a route is stale, and prints the fix.
 
 ## Resume first
 
@@ -172,7 +165,7 @@ PI_PREFIX=$(mktemp -d) && npm install --no-save --prefix "$PI_PREFIX" @earendil-
 ```
 
 For `latest`, also apply the route bumps the user confirmed in
-[Route versions](#route-versions).
+[Route versions](#route-versions) with `node scripts/route-versions.js --write`.
 
 `git status --short` must show only the three version files, plus those route
 strings for `latest`. Commit them as `release: @postman/postman-plugin <version>`,
