@@ -163,6 +163,19 @@ test('--write refuses a version that does not move a route forward, and writes n
     assert.equal(repo.git('status', '--porcelain'), '');
 });
 
+test('--base fails a release that moves a route\'s version back', (t) => {
+    const repo = fixture(t),
+        base = repo.git('rev-parse', 'HEAD'),
+        manifest = repo.json('.claude-plugin/plugin.json');
+
+    repo.commit('.claude-plugin/plugin.json', `${JSON.stringify({ ...manifest, version: '0.0.1' }, null, 2)}\n`, 'release: downgrade');
+
+    const result = repo.run('--check', '--base', base);
+
+    assert.equal(result.status, 1, result.stdout);
+    assert.match(result.stdout, /FAIL claude-code moves back/);
+});
+
 test('--base checks only a change that moves a version, which makes it a release', (t) => {
     const repo = fixture(t),
         base = repo.git('rev-parse', 'HEAD');

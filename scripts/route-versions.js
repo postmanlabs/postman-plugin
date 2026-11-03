@@ -238,10 +238,25 @@ function check (base) {
         return;
     }
 
-    const stale = routes().filter((route) => route.commits.length);
+    const all = routes(),
+        stale = all.filter((route) => route.commits.length),
+        // A version moved back is read as a bump, so it must fail here as --write refuses it.
+        lowered = base ? all.filter((route) => {
+            const before = versionAt(base, route.manifest);
+
+            return before && route.version !== before && compare(route.version, before) < 0;
+        }) : [];
+
+    for (const route of lowered) {
+        console.log(`FAIL ${route.id} moves back from ${versionAt(base, route.manifest)} to ${route.version}; a bump must move it forward`);
+    }
 
     for (const route of stale) {
         console.log(`FAIL ${describe(route)}`);
+    }
+
+    if (lowered.length) {
+        process.exitCode = 1;
     }
 
     if (stale.length) {
@@ -252,7 +267,9 @@ function check (base) {
         return;
     }
 
-    console.log('every route is current');
+    if (!lowered.length) {
+        console.log('every route is current');
+    }
 }
 
 const [command, ...args] = process.argv.slice(2);
