@@ -194,17 +194,25 @@ function levelSince (baseline, major) {
     return feature ? 'minor' : 'patch';
 }
 
-/** Every version of the package on npm or tagged on origin: a tag whose publish still awaits approval counts. */
+const RELEASE_BRANCH = 'release/postman-plugin-';
+
+/** Every version of the package on npm, tagged on origin or holding a release branch there: a candidate whose smoke or publish is still pending counts. */
 function claimedVersions () {
-    const { code, out, err } = sh('npm', ['view', NAME, 'versions', '--json']);
+    const { code, out, err } = sh('npm', ['view', NAME, 'versions', '--json']),
+        branches = sh('git', ['ls-remote', '--heads', 'origin', `${RELEASE_BRANCH}*`]);
 
     if (code !== 0 || !out) {
         throw new Error(`could not read ${NAME}'s versions from npm: ${firstLine(err)}`);
     }
 
-    const tagged = sh('git', ['tag', '--list', `${NAME}@*`]).out.split('\n').map((tag) => tag.slice(NAME.length + 1));
+    if (branches.code !== 0) {
+        throw new Error(`could not list origin's release branches: ${firstLine(branches.err)}`);
+    }
 
-    return [...JSON.parse(out), ...tagged];
+    const tagged = sh('git', ['tag', '--list', `${NAME}@*`]).out.split('\n').map((tag) => tag.slice(NAME.length + 1)),
+        branched = branches.out.split('\n').filter(Boolean).map((line) => line.slice(line.indexOf(RELEASE_BRANCH) + RELEASE_BRANCH.length));
+
+    return [...JSON.parse(out), ...tagged, ...branched];
 }
 
 /** The next release candidate for HEAD: the version its commits call for, with the first rc number nobody has claimed. */
