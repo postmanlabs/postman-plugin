@@ -146,6 +146,23 @@ test('--write takes a version for a route, and moves every OpenCode string with 
     assert.equal(repo.run('--write', 'nope=1.0.0').status, 2);
 });
 
+test('--write refuses a version that does not move a route forward, and writes nothing', (t) => {
+    const repo = fixture(t),
+        current = versionOf(repo, '.claude-plugin/plugin.json'),
+        [major] = current.split('.').map(Number);
+
+    repo.commit('skills/demo/SKILL.md', 'changed\n', 'fix(demo): wording');
+
+    for (const version of [current, `${Math.max(major - 1, 0)}.0.0`]) {
+        const result = repo.run('--write', `claude-code=${version}`);
+
+        assert.equal(result.status, 2, result.stdout);
+        assert.match(result.stderr, /must move it forward/);
+    }
+
+    assert.equal(repo.git('status', '--porcelain'), '');
+});
+
 test('--base checks only a change that moves a version, which makes it a release', (t) => {
     const repo = fixture(t),
         base = repo.git('rev-parse', 'HEAD');

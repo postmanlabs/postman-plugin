@@ -111,6 +111,12 @@ function increment (version, level) {
     return { major: `${major + 1}.0.0`, minor: `${major}.${minor + 1}.0`, patch: `${major}.${minor}.${patch + 1}` }[level];
 }
 
+function compare (a, b) {
+    const [x, y] = [a, b].map((version) => version.match(VERSION).slice(1).map(Number));
+
+    return x[0] - y[0] || x[1] - y[1] || x[2] - y[2];
+}
+
 function withState (route) {
     const manifest = readJson(route.manifest),
         { servers } = serversOf(route, manifest),
@@ -194,6 +200,11 @@ function write (overrides) {
 
         if (!route || !VERSION.test(version || '')) {
             throw new Error(`${override}: expected <id>=<x.y.z>, with an id of ${all.map((entry) => entry.id).join(', ')}`);
+        }
+
+        // An agent may still hold an older payload cached under a version that is reused.
+        if (compare(version, route.version) <= 0) {
+            throw new Error(`${override}: ${route.id} is at ${route.version}, and a bump must move it forward`);
         }
 
         chosen.set(route, version);

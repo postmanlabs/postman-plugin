@@ -166,7 +166,9 @@ PI_PREFIX=$(mktemp -d) && npm install --no-save --prefix "$PI_PREFIX" @earendil-
 ```
 
 For `latest`, also apply the route bumps the user confirmed in
-[Route versions](#route-versions) with `node scripts/route-versions.js --write`.
+[Route versions](#route-versions) with
+`node scripts/route-versions.js --write <id>=<x.y.z>...`, one pair for every
+route the user confirmed. Without the pairs, `--write` uses its own proposals.
 
 `git status --short` must show only the three version files, plus those route
 strings for `latest`. Commit them as `release: @postman/postman-plugin <version>`,
