@@ -93,9 +93,11 @@ Don't bump `version` in `.claude-plugin/plugin.json` (or the matching
 version fields in `.codex-plugin/plugin.json`, `.cursor-plugin/plugin.json`,
 `.kimi-plugin/plugin.json`, `.factory-plugin/plugin.json`, and the
 `X-Plugin-Version`/`User-Agent` headers in `mcp.*.json` and `mcp.json`) as
-part of a content change. A route's strings bump together, and only in
-that route's own release commit/PR. Routes version independently, so a
-release leaves every other route's strings alone. Bundling a version bump
+part of a content change. A route's strings bump together, and only in a
+release commit/PR. Routes version independently: each keeps its own number,
+and a release bumps only the routes whose delivered content changed, by the
+rule in `.claude/skills/release-installer/SKILL.md`'s "Route versions".
+Bundling a version bump
 into an unrelated fix makes the diff harder to review and conflates "what
 changed" with "what shipped."
 

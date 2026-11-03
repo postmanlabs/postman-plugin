@@ -1,9 +1,9 @@
 ---
 name: release-installer
-description: Release @postman/postman-plugin, the npx installer and Pi package, to npm - a release candidate on the `next` dist-tag or a plain version on `latest`. Use when asked to cut, publish, tag or ship an installer release or rc, promote an rc to latest, resume a release in progress, or retry one that failed.
+description: Release @postman/postman-plugin, the npx installer and Pi package, to npm - a release candidate on the `next` dist-tag or a plain version on `latest`, plus the plugin route version bumps a `latest` release carries. Use when asked to cut, publish, tag or ship an installer release or rc, promote an rc to latest, resume a release in progress, or retry one that failed.
 argument-hint: rc | latest | <version>
 disable-model-invocation: true
-allowed-tools: Bash(node .claude/skills/release-installer/scripts/release.mjs:*), Bash(git fetch:*), Bash(git status:*), Bash(git ls-remote:*), Bash(git show:*), Bash(git worktree list:*), Bash(git worktree add:*), Bash(npm ci:*), Bash(npm test:*), Bash(npm audit:*), Bash(npm pack:*), Bash(npm run test:pi-harness:*), Bash(gh run list:*), Bash(gh run view:*), Bash(git push -u origin release/*), Bash(gh pr create:*), Bash(gh pr view:*)
+allowed-tools: Bash(node .claude/skills/release-installer/scripts/release.mjs:*), Bash(git fetch:*), Bash(git status:*), Bash(git ls-remote:*), Bash(git show:*), Bash(git log:*), Bash(git worktree list:*), Bash(git worktree add:*), Bash(npm ci:*), Bash(npm test:*), Bash(npm audit:*), Bash(npm pack:*), Bash(npm run test:pi-harness:*), Bash(gh run list:*), Bash(gh run view:*), Bash(git push -u origin release/*), Bash(gh pr create:*), Bash(gh pr view:*)
 ---
 
 # Release @postman/postman-plugin
@@ -50,6 +50,46 @@ Below, `release.mjs <command>` means that line.
   all three, and `npm test` fails when `mcp.pi.json` disagrees.
 - **Work in a worktree off `origin/main`**, never in a checkout with other work
   in it.
+
+## Route versions
+
+The installer's version and each route's version are separate numbers. Every
+route but Pi installs from GitHub, so a route bump merged to `main` is already
+that route's release. Routes have no rc stage, and an rc branch never carries a
+route bump.
+
+Bump a route when what it delivers changes **and** its agent uses the version
+string to decide whether to update:
+
+| Route | Its version string |
+| --- | --- |
+| Claude Code | gates delivery: `claude plugin update` skips a release whose version is unchanged |
+| Pi | gates delivery, and is the installer's version: `bump` sets it |
+| Codex, GitHub Copilot CLI, Kimi Code, Cursor | unverified; treat as gating delivery |
+| Factory Droid, OpenCode, Antigravity | telemetry only (`X-Plugin-Version`); the agent tracks `main` |
+
+1. **Shared content changed** (`skills/`, `hooks/`, the session-start mandate):
+   bump every route that gates delivery, each to its own next number, using
+   CONTRIBUTING's semver for skills (major for a broken or removed skill, minor
+   for a new skill, patch for wording or a fix).
+2. **One route's own files changed** (its manifest, MCP config, or how it
+   delivers the hook or mandate): bump only that route, telemetry-only routes
+   included.
+3. **The installer** follows Step 1's levels, plus every content change, since
+   it is Pi's content. It never forces a route bump.
+
+A `latest` release checks which routes are stale and puts their bumps in the
+same PR as a separate decision: list each route, its current and proposed
+version, and why, and wait for the user's confirmation. A route is stale when
+shared content or its own files changed since its manifest's last version
+change:
+
+```bash
+git log --oneline "$(git log -1 --format=%H -- <route manifest>)"..origin/main -- skills/ hooks/ <route's files>
+```
+
+CONTRIBUTING's "Changing a skill" lists the strings each route's bump moves.
+Check them against each other before you commit; nothing else does.
 
 ## Resume first
 
@@ -131,8 +171,12 @@ PI_PREFIX=$(mktemp -d) && npm install --no-save --prefix "$PI_PREFIX" @earendil-
 (cd installer && PI_BIN="$PI_PREFIX/node_modules/.bin/pi" npm run test:pi-harness)
 ```
 
-`git status --short` must show only the three version files. Commit them as
-`release: @postman/postman-plugin <version>`.
+For `latest`, also apply the route bumps the user confirmed in
+[Route versions](#route-versions).
+
+`git status --short` must show only the three version files, plus those route
+strings for `latest`. Commit them as `release: @postman/postman-plugin <version>`,
+naming each bumped route and its version in the body.
 
 ## Step 4a — Tag an rc
 
@@ -157,8 +201,8 @@ git push -u origin release/postman-plugin-<version>
 gh pr create --base main --title "release: @postman/postman-plugin <version>" --body-file <body>
 ```
 
-The body lists what ships (`status`'s changes since the last `latest`), the
-checks Step 3 ran, and that the merge commit gets tagged next. Then stop. The PR
+The body lists what ships (`status`'s changes since the last `latest`), each
+route bump and its reason, the checks Step 3 ran, and that the merge commit gets tagged next. Then stop. The PR
 needs an approval, so give the user the PR link and tell them to run
 `/release-installer <version>` again once it merges.
 
