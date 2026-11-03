@@ -235,8 +235,8 @@ exercise failure paths.
 `postman init` is idempotent and safe to run in any project. Run it before API
 engineering work to create the relevant local directories and make Postman
 skills available to guide the task, even if the project is already initialized.
-See [bootstrap](skills/bootstrap/SKILL.md#start-with-postman-init) for setup
-options and workspace binding.
+See [workspaces](skills/workspaces/SKILL.md) for init's
+workspace options and binding.
 
 Work done in a Postman folder produces artifacts: collection runs, lint
 results, request history, mock deployments. When that folder is connected to a

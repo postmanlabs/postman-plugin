@@ -9,7 +9,7 @@ MCP exposes workspace resources directly to an agent. Existing collections,
 specs, examples, and environments provide maintained API knowledge; fetching
 the relevant entity preserves that context when a local CLI workflow is not
 available. For repository edits and Git review, prefer the local workflows in
-**api-engineer** and **bootstrap** when available.
+**api-engineer** when available.
 
 Each tool definition exposed to the model consumes context whenever it is
 included in a request. Prefer the smallest available toolset that covers the

@@ -47,8 +47,8 @@ postman environment var set api_key --secret-id <secret-id> --vault-id <vault-id
 
 The environment then carries the vault/secret IDs rather than the value.
 Secret resolution and permission to view the secret are distinct; a teammate's
-ability to run a request need not expose the credential to them. Use
-**bootstrap** when the vault operation needs unresolved authentication.
+ability to run a request need not expose the credential to them. Vault
+operations require a signed-in CLI.
 
 ## Verification
 

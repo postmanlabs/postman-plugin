@@ -7,6 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnCliSync } from '../../scripts/lib/cli.js';
 import { registeredRef } from '../dist/hosts/codex.js';
+import { installedPlugins } from '../dist/hosts/factory.js';
 import { parseJsonc } from '../dist/hosts/opencode-config.js';
 import { BRANCH, OPENCODE_SHIM, OPENCODE_SPEC } from '../dist/source.js';
 import { checkCodexHookApproval } from './codex-hook-check.js';
@@ -56,9 +57,7 @@ const AGENTS = {
     },
     factory: {
         expected: ['postman@postman-plugin [user]'],
-        // A line ends in the installed commit: `postman@postman-plugin [user] 65e37b4`.
-        found: () => lines(output('droid', ['plugin', 'list', '--scope', 'user']), 'postman@')
-            .map((line) => line.match(/^(\S+ \[\w+\])/)?.[1] ?? line)
+        found: () => installedPlugins(output('droid', ['plugin', 'list', '--scope', 'user'])).filter((plugin) => plugin.startsWith('postman@'))
     },
     kimi: {
         expected: ['postman'],

@@ -1,6 +1,6 @@
 ---
 name: performance-testing
-description: Use when load-testing or benchmarking an API with concurrent virtual users and latency or error thresholds. Reuses a collection to probe a chosen failure mode and distinguishes target limits from load-generator limits. Use for requests such as "load test this API".
+description: Use when load-testing or benchmarking an API with concurrent virtual users and latency or error thresholds, or when importing or migrating a JMeter `.jmx` plan or a Gatling simulation (Java/Kotlin/Scala/JS/TS) into a Postman collection plus a `postman performance run` configuration. Reuses a collection to probe a chosen failure mode and distinguishes target limits from load-generator limits. Use for requests such as "load test this API", "import my JMeter plan", or "convert my Gatling project to Postman".
 ---
 
 # Performance Testing
@@ -46,6 +46,19 @@ wrong, and the import report marks what mapped exactly, what was approximated,
 and which JMeter features have no equivalent here — think-time timers,
 concurrent thread groups, and non-HTTP (JDBC/FTP/LDAP/Java) samplers are
 reported, never faked.
+
+## Importing from Gatling
+
+Have a Gatling project (a Java/Kotlin/Scala/JS/TS `Simulation`) instead of a
+collection? Convert it by following `references/gatling-import/README.md`, then
+treat the result as the collection above. There is no importer to run — you read
+the source and build the collection, environment, `run.sh` and gap report, using
+the files next to that README as the algorithm (`mapping.md`, `injection.md`,
+`feeders.md`, `unsupported.md`). The gap report marks what mapped exactly, what
+was approximated, and what has no equivalent — WebSocket/SSE and other non-HTTP
+steps, arrival-rate (open-model) injection, think-time pauses, throttling and
+retries are reported, never faked. Open-model injection is converted to VUs via
+Little's law with the arithmetic shown, not guessed.
 
 ## Verification
 

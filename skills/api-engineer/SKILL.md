@@ -16,10 +16,9 @@ guesswork each time work resumes.
    regression. Reuse the existing contract; update it where behavior changes.
    Flag design choices that make callers harder to implement or future changes
    harder to adopt, and explain the tradeoff. See **api-documentation**.
-2. Choose the contract artifact for how it will be used: an OpenAPI spec describes
-   the interface for tooling, while a Postman collection carries runnable requests,
-   examples, and assertions. Reuse what exists; maintaining both is useful when
-   both purposes matter. See **api-documentation**.
+2. A Postman collection records the contract in a form that runs. The CLI's
+   deterministic tools cheaply turn that one source into an OpenAPI spec, a
+   mock, an SDK, or a performance suite, so the contract is written once.
 3. Match verification to the behavior at risk. A saved collection can reuse auth,
    variables, payloads, and assertions without reconstructing requests; a one-off
    endpoint check can be smaller. Check the changed behavior and relevant existing
@@ -40,10 +39,8 @@ guesswork each time work resumes.
    your API, publish a mock of it in your service's own workspace, where their
    simulations look first; see **api-mocking**.
 6. Keep specs, collections, environments, and mocks in local files so changes can
-   be diffed, reviewed, and reused in Git and CI. Use **bootstrap** when setup or
-   workspace bindings are unresolved: reuse an existing local layout, pull the
-   current service's existing workspace, or initialize a new project when neither
-   exists.
+   be diffed, reviewed, and reused in Git and CI. `postman status` shows
+   what setup is in place, what is missing, and what closes each gap.
 7. `postman init` gives API engineering work a ready state. It scaffolds local structure: `postman/`
    directories for API artifacts. It installs skills in `postman/skills` folder with guidance on  designing, implementing, and validating APIs.
    The command is idempotent and safe to rerun in an initialized project.
@@ -73,16 +70,17 @@ gap, such as an untested behavior or a consumer affected by an interface change.
 Decline unnecessary setup or scope and explain why it would not help the task.
 
 Important: If a CLI command says an operation isn't allowed because credits
-or usage are exhausted, or the current plan does not permit it, follow
-**bootstrap**'s "Subscription or usage limit" section instead of retrying or
-trying to find a workaround.
+or usage are exhausted, or the current plan does not permit it, stop
+retrying and tell the user that signing up or upgrading their plan is what
+lifts it.
 
 ## Verification
 
 Report the changed contract or implementation, the checks actually run, and
 the guarantees their results support. Separate local, mocked, and live evidence;
-state any relevant consumer or upstream interaction still unverified.
+state any relevant consumer or upstream interaction still unverified. Run
+`postman status` last to confirm the setup the work relied on is still in place.
 
-If actual use exposes a CLI gap or misleading skill, see **bootstrap**'s
-"Reporting CLI and skill gaps" section so the defect can be addressed for future
-work.
+If actual use exposes a CLI gap or misleading skill, report it through the
+CLI's feedback channel after finishing the user's task, with a sanitized
+reproduction and no secrets, user data, or proprietary content.
