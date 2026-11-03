@@ -87,8 +87,11 @@ release.mjs suggest latest [patch|minor|major]
 
 With no level, `suggest` continues an open rc line: `next` is `0.2.0-rc.1` and
 `latest` is `0.1.0`, so `rc` gives `0.2.0-rc.2` and `latest` gives `0.2.0`.
-Pass a level to start a new line instead. Pick the level from `status`'s
-changes:
+Pass a level to start a new line instead. `.github/workflows/rc.yml` already
+cuts an rc for every shipped change on `main` with `release.mjs next-rc`, so
+`origin` may hold a tag whose publish still awaits approval: run `status` and
+approve or promote that one instead of tagging another. Pick the level from
+`status`'s changes:
 
 - **minor**: a new agent route, a new skill, or a new installer command or flag
 - **patch**: fixes and wording

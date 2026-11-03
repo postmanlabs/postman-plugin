@@ -13,7 +13,7 @@ const NAME = '@postman/postman-plugin',
     SEMVER = 'semver@7.8.5',
     // Everything the tarball ships or builds from; a change elsewhere reaches no user.
     SHIPPED = ['installer', 'skills', 'hooks/session-start-context.md', 'mcp.pi.json', 'README.md', 'LICENSE'],
-    USAGE = 'usage: release.mjs status | suggest <rc|latest> [patch|minor|major] | check <version> [commit]' +
+    USAGE = 'usage: release.mjs status | suggest <rc|latest> [patch|minor|major] | next-rc | check <version> [commit]' +
         ' | bump <version> | smoke <commit> [--minutes N] | watch <version> [--minutes N] [--new-run] | verify <version>',
     root = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim();
 
@@ -174,6 +174,52 @@ function suggest (kind, level) {
     }
 
     console.log(`${start}-rc.0`);
+}
+
+/** The bump the shipped commits since `baseline` call for; a 0.x package never reaches 1.0.0 by itself. */
+function levelSince (baseline, major) {
+    const log = sh('git', ['log', '--no-merges', '--format=%s%n%b%x00', `${baseline}..HEAD`, '--', ...SHIPPED]).out,
+        commits = log.split('\0').map((entry) => entry.trim()).filter((entry) => entry && !entry.startsWith('release:')),
+        breaking = commits.some((entry) => /^[a-z]+(\([^)]*\))?!:/.test(entry) || /^BREAKING CHANGE:/m.test(entry)),
+        feature = commits.some((entry) => /^feat(\([^)]*\))?!?:/.test(entry));
+
+    if (!commits.length) {
+        throw new Error(`no shipped change since ${baseline}, so there is nothing for a release candidate to carry`);
+    }
+
+    if (breaking) {
+        return major === 0 ? 'minor' : 'major';
+    }
+
+    return feature ? 'minor' : 'patch';
+}
+
+/** Every version of the package on npm or tagged on origin: a tag whose publish still awaits approval counts. */
+function claimedVersions () {
+    const { code, out, err } = sh('npm', ['view', NAME, 'versions', '--json']);
+
+    if (code !== 0 || !out) {
+        throw new Error(`could not read ${NAME}'s versions from npm: ${firstLine(err)}`);
+    }
+
+    const tagged = sh('git', ['tag', '--list', `${NAME}@*`]).out.split('\n').map((tag) => tag.slice(NAME.length + 1));
+
+    return [...JSON.parse(out), ...tagged];
+}
+
+/** The next release candidate for HEAD: the version its commits call for, with the first rc number nobody has claimed. */
+function nextRc () {
+    fetchOrigin();
+
+    const { latest, next } = distTags(),
+        { major } = parse(latest),
+        target = increment(latest, levelSince(tagOf(latest), major)),
+        line = parse(next),
+        // An open rc line, one whose base is already above `target`, carries on rather than being undercut.
+        lineBase = line && line.rc !== null && compareBase(base(line), target) > 0 ? base(line) : target,
+        claimed = claimedVersions().map(parse).filter((entry) => entry && entry.rc !== null && base(entry) === lineBase);
+
+    console.log(`${lineBase}-rc.${claimed.reduce((highest, entry) => Math.max(highest, entry.rc + 1), 0)}`);
 }
 
 /** The problems with `commit` as the release commit for `version`: it must carry the version in all three files. */
@@ -526,9 +572,9 @@ function report (problems) {
 }
 
 const [command, ...args] = process.argv.slice(2),
-    commands = { status, suggest, check, bump, smoke, watch, verify };
+    commands = { status, suggest, 'next-rc': nextRc, check, bump, smoke, watch, verify };
 
-if (!commands[command] || (command !== 'status' && !args[0])) {
+if (!commands[command] || (!['status', 'next-rc'].includes(command) && !args[0])) {
     console.error(USAGE);
     process.exit(2);
 }

@@ -446,6 +446,17 @@ already under way:
 Every run of `release.yml`, a dry run included, waits for a `headless-postman`
 member to approve it in the `npm-publish` environment before the publish job starts.
 
+Every push to `main` that changes a shipped file (`SHIPPED` in `release.mjs`)
+also cuts a release candidate by itself: `.github/workflows/rc.yml` runs
+`release.mjs next-rc`, commits the bump on a `release/postman-plugin-<version>`
+branch, smokes that commit, tags it and dispatches `release.yml`, which waits
+for the approval above and then publishes to `next`. `next-rc` takes the bump
+from the conventional-commit prefixes since npm's `latest` (`feat` is minor, `!`
+or `BREAKING CHANGE:` is major, anything else is patch; a 0.x package never
+reaches 1.0.0 this way) and the number from the first `-rc.N` that neither npm nor
+an origin tag has claimed. Approve the newest waiting run and reject the older ones:
+`release.yml` refuses a version below its dist-tag.
+
 Keep the workflow's filename: npm's trusted publisher for the package is
 pinned to `release.yml`.
 
