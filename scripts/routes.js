@@ -12,11 +12,11 @@
 // `defaultMcpConfig` is the file the vendor loads when the manifest names none.
 // `updatesBy` is what the agent compares to update an install: 'version' means a
 // release that doesn't bump delivers nothing. Codex, Copilot, Kimi and Cursor are
-// unverified and counted as 'version'. `owns` lists files beyond the route's
-// directory and MCP config that only this route ships.
+// unverified and counted as 'version'. A route owns its directory, its MCP config
+// and every other file its manifest names outside skills/ and hooks/.
 const MANIFEST_ROUTES = {
         '.claude-plugin': { updatesBy: 'version' },
-        '.codex-plugin': { headerKey: 'http_headers', updatesBy: 'version', owns: ['.app.json'] },
+        '.codex-plugin': { headerKey: 'http_headers', updatesBy: 'version' },
         '.cursor-plugin': { defaultMcpConfig: 'mcp.json', updatesBy: 'version' },
         '.factory-plugin': { mcpConfig: 'mcp.json', updatesBy: 'commit' },
         '.kimi-plugin': { updatesBy: 'version' },
@@ -34,7 +34,7 @@ const MANIFEST_ROUTES = {
 
     // Routes shipped as a registry package, so MANIFEST_DIR_PATTERN never matches
     // them. A route missing here is never checked, which looks exactly like passing.
-    // `mirrors` repeat the manifest's version.
+    // `owns` lists the files only that route ships; `mirrors` repeat its version.
     PACKAGE_ROUTES = [
         {
             manifest: 'opencode/package.json',

@@ -68,7 +68,8 @@ version. `commit` means the agent tracks `main` and the version is only
    every `version` route, each to its own next number, using CONTRIBUTING's
    semver for skills (major for a broken or removed skill, minor for a new
    skill, patch for wording or a fix).
-2. **One route's own files changed** (its directory, MCP config, or `owns`):
+2. **One route's own files changed** (its directory, MCP config, a file its
+   manifest names such as a logo, or its `owns`):
    bump only that route, `commit` routes included.
 3. **The installer** follows Step 1's levels, plus every content change, since
    it is Pi's content. It never forces a route bump.

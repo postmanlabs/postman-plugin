@@ -11,7 +11,7 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'
     ROUTE_FILES = ['.claude-plugin', '.codex-plugin', '.cursor-plugin', '.factory-plugin', '.kimi-plugin', '.antigravity-plugin',
         '.github/plugin', '.app.json', 'mcp.json', 'mcp_config.json', 'mcp.claude-code.json', 'mcp.codex.json', 'mcp.copilot.json',
         'mcp.cursor.json', 'mcp.opencode.json', 'mcp.pi.json', 'package.json', 'opencode/package.json', 'opencode/package-lock.json',
-        'installer/package.json'],
+        'installer/package.json', 'assets'],
     GIT_ENV = { GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' };
 
 /** A repository holding only this checkout's route files, committed once, so every route starts current. */
@@ -85,6 +85,27 @@ test('a change to one route\'s own files makes only that route stale', (t) => {
     const failed = repo.run('--check').stdout.split('\n').filter((line) => line.startsWith('FAIL')).map((line) => line.split(/\s+/)[1]);
 
     assert.deepEqual(failed, ['factory']);
+});
+
+test('a file the manifest names, such as a logo, belongs to that route', (t) => {
+    const repo = fixture(t);
+
+    repo.commit('assets/logo.svg', '<svg/>\n', 'fix: a new logo');
+
+    const failed = repo.run('--check').stdout.split('\n').filter((line) => line.startsWith('FAIL')).map((line) => line.split(/\s+/)[1]);
+
+    assert.ok(failed.includes('antigravity'), failed.join(', '));
+});
+
+test('reformatting a version line is not a version change, so earlier changes stay unreleased', (t) => {
+    const repo = fixture(t),
+        manifest = '.claude-plugin/plugin.json',
+        text = fs.readFileSync(path.join(repo.dir, manifest), 'utf8');
+
+    repo.commit('skills/demo/SKILL.md', 'changed\n', 'feat(demo): a new section');
+    repo.commit(manifest, text.replace(/"version": "/, '"version":  "'), 'style: spacing');
+
+    assert.match(repo.run('--check').stdout, /FAIL claude-code/);
 });
 
 test('--write bumps each stale route by its commits, keeps its strings in step, and leaves current routes alone', (t) => {

@@ -13,14 +13,12 @@
 
 const fs = require('fs'),
     path = require('path'),
-    { execFileSync } = require('child_process'),
+    { execFileSync, spawnSync } = require('child_process'),
     { MANIFEST_ROUTES, PACKAGE_ROUTES } = require('./routes.js');
 
 // What every route delivers: a change here is a release for each route whose agent updates by version.
 const SHARED = ['skills', 'hooks', 'manifest.json'],
     DEFAULT_KEYS = { serverKey: 'mcpServers', headerKey: 'headers' },
-    // A diff line that sets a manifest's `version`; `X-Plugin-Version` never matches it.
-    VERSION_LINE = '"version"',
     VERSION = /^(\d+)\.(\d+)\.(\d+)$/,
     ROOT = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim();
 
@@ -30,15 +28,53 @@ function git (...args) {
 
 const readJson = (file) => JSON.parse(fs.readFileSync(path.join(ROOT, file), 'utf8')),
     writeJson = (file, value) => fs.writeFileSync(path.join(ROOT, file), `${JSON.stringify(value, null, 2)}\n`),
-    lastVersionChange = (files) => git('log', '-1', '--format=%H', `-G${VERSION_LINE}`, '--', ...files);
+    isShared = (file) => SHARED.some((shared) => file === shared || file.startsWith(`${shared}/`));
+
+/** The manifest's `version` at `rev`, or undefined where the file is missing. */
+function versionAt (rev, file) {
+    const shown = spawnSync('git', ['show', `${rev}:${file}`], { cwd: ROOT, encoding: 'utf8' });
+
+    return shown.status === 0 ? JSON.parse(shown.stdout).version : undefined;
+}
+
+/** The newest commit that changed the manifest's `version` value; reformatting the line doesn't count. */
+function lastVersionChange (manifest) {
+    for (const line of git('log', '--format=%H %P', '--', manifest).split('\n').filter(Boolean)) {
+        const [sha, parent] = line.split(' ');
+
+        if (!parent || versionAt(sha, manifest) !== versionAt(parent, manifest)) {
+            return sha;
+        }
+    }
+
+    return '';
+}
+
+/** Every file the manifest names, such as a logo or an apps file, short of the content all routes share. */
+function referencedFiles (manifest) {
+    const found = [],
+        walk = (value) => {
+            if (typeof value === 'string' && value.startsWith('./')) {
+                found.push(path.posix.normalize(value).replace(/\/$/, ''));
+            }
+            else if (value && typeof value === 'object') {
+                Object.values(value).forEach(walk);
+            }
+        };
+
+    walk(readJson(manifest));
+
+    return found.filter((file) => !isShared(file));
+}
 
 function manifestRoute ([dir, route]) {
     const manifest = `${dir}/plugin.json`,
         keys = { ...DEFAULT_KEYS, ...route },
         declared = readJson(manifest)[keys.serverKey],
-        mcpConfig = route.mcpConfig || (typeof declared === 'string' ? declared.replace(/^\.\//, '') : null);
+        mcpConfig = route.mcpConfig || (typeof declared === 'string' ? declared.replace(/^\.\//, '') : null),
+        owns = [...new Set([dir, mcpConfig, ...referencedFiles(manifest), ...(route.owns || [])].filter(Boolean))];
 
-    return { manifest, mcpConfig, keys, updatesBy: route.updatesBy, owns: [dir, mcpConfig, ...(route.owns || [])], mirrors: [] };
+    return { manifest, mcpConfig, keys, updatesBy: route.updatesBy, owns, mirrors: [] };
 }
 
 function packageRoute (route) {
@@ -78,7 +114,7 @@ function increment (version, level) {
 function withState (route) {
     const manifest = readJson(route.manifest),
         { servers } = serversOf(route, manifest),
-        since = lastVersionChange([route.manifest]),
+        since = lastVersionChange(route.manifest),
         watched = route.updatesBy === 'version' ? [...SHARED, ...route.owns] : route.owns,
         log = git('log', '--no-merges', '--format=%h%x1f%s%x1f%b%x00', since ? `${since}..HEAD` : 'HEAD', '--', ...watched),
         commits = log.split('\0').map((entry) => entry.trim()).filter(Boolean)
@@ -181,7 +217,7 @@ function write (overrides) {
 function movesAVersion (base) {
     const manifests = [...Object.keys(MANIFEST_ROUTES).map((dir) => `${dir}/plugin.json`), ...PACKAGE_ROUTES.map((route) => route.manifest)];
 
-    return Boolean(git('log', '--format=%H', `-G${VERSION_LINE}`, `${base}..HEAD`, '--', ...manifests));
+    return manifests.some((manifest) => versionAt(base, manifest) !== versionAt('HEAD', manifest));
 }
 
 function check (base) {
