@@ -47,6 +47,19 @@ and which JMeter features have no equivalent here — think-time timers,
 concurrent thread groups, and non-HTTP (JDBC/FTP/LDAP/Java) samplers are
 reported, never faked.
 
+## Importing from ReadyAPI / SoapUI
+
+Have a ReadyAPI (SoapUI) project `.xml`? Import it by following
+`references/readyapi-import/README.md`. The deterministic conversion runs in the
+CLI (`postman collection import --type readyapi`) — the same validated converter
+the hosted ReadyAPI migration service uses, so REST/SOAP/HTTP requests, auth,
+DataSource loops, environment conversion and large projects convert with no
+tokens. Each Groovy script comes out as a `[MANUAL TRANSLATION REQUIRED]`
+placeholder (original Groovy preserved inline); you translate those to `pm.*`
+JavaScript with `references/readyapi-import/script-translation.md`, derive the
+perf run from the project's LoadTests with `loadtest-to-perf.md`, and the import
+report marks what needs manual work (XPath/XQuery, complex JSONPath, JDBC, WS-Security).
+
 ## Verification
 
 Report the workload, runner, achieved traffic, latency and error metrics,
