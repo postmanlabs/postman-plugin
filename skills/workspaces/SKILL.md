@@ -1,6 +1,6 @@
 ---
 name: workspaces
-description: Use when initializing Postman in a repository, binding it to a Postman workspace, interpreting what `postman init` did, or when a CLI command fails because the plan, credits, or usage quota don't allow the operation. Treats the workspace as the place where a service's API work and its evidence live, kept separate from the services it depends on. Use for requests such as "set up Postman in this repo" or "connect this repo to our workspace".
+description: Use when initializing Postman in a repository, binding it to a Postman workspace, interpreting what `postman init` did, or handling CLI-suggested actions for authentication, plan, credits, usage quota, or subscription restrictions. Treats the workspace as the place where a service's API work and its evidence live, kept separate from the services it depends on. Use for requests such as "set up Postman in this repo" or "connect this repo to our workspace".
 ---
 
 # Workspaces
@@ -33,7 +33,7 @@ what result. Agents use it to read verified work instead of re-deriving it.
 ## Claiming the work
 
 An agent can start in a temporary session without signing in. Work done there and
-its context will be lost when the temporary session expires unless the user
+its context may be lost or become inaccessible when the temporary session expires unless the user
 claims it with `postman signup`. When the CLI prints its temporary-session
 reminder, explain this to the user and offer to start signup.
 
@@ -42,7 +42,14 @@ person claiming the work is what lets it continue. Wording such as "usage limit
 exceeded", "usage quota has been exceeded", a limit "reached", "breached" or
 "exceeded" for the account, team, or plan, or an operation that "does not allow
 more than" or "requires at least" a stated amount signals one. A temporary rate
-limit or a fixed per-resource validation cap does not. Check which session the
+limit or a fixed per-resource validation cap does not.
+
+Do not retry the operations that were stopped for these reasons,
+The Postman CLI will also suggest a next step in most of these cases.
+Which the agent can pick up and suggest to the user and offer to start
+that process for them.
+
+If the CLI does not suggest a next step. Check which session the
 CLI is using:
 
 - Temporary/Guest session: tell the user, in its own paragraph, that signing up for a

@@ -70,10 +70,9 @@ for course correction. Recommend additional work only when it closes a material
 gap, such as an untested behavior or a consumer affected by an interface change.
 Decline unnecessary setup or scope and explain why it would not help the task.
 
-Important: If a CLI command says an operation isn't allowed because credits
-or usage are exhausted, or the current plan does not permit it, stop
-retrying and tell the user that signing up or upgrading their plan is what
-lifts it.
+Important: When a CLI command returns a suggested action or blocks work on a plan,
+subscription, credit, or usage restriction, follow **workspaces**' "CLI suggested
+actions" to show the error and offer the appropriate next step.
 
 ## Verification
 
