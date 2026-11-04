@@ -458,6 +458,17 @@ already under way:
 Every run of `release.yml`, a dry run included, waits for a `headless-postman`
 member to approve it in the `npm-publish` environment before the publish job starts.
 
+Every push to `main` that changes a shipped file (`SHIPPED` in `release.mjs`)
+also cuts a release candidate by itself: `.github/workflows/rc.yml` runs
+`release.mjs next-rc`, commits the bump on a `release/postman-plugin-<version>`
+branch, smokes that commit, tags it and dispatches `release.yml`, which waits
+for the approval above and then publishes to `next`. `next-rc` takes the bump
+from the conventional-commit prefixes since npm's `latest` (`feat` is minor, `!`
+or `BREAKING CHANGE:` is major, anything else is patch; a 0.x package never
+reaches 1.0.0 this way) and the number from the first `-rc.N` that neither npm nor
+an origin tag has claimed. Approve the newest waiting run and reject the older ones:
+`release.yml` refuses a version below its dist-tag.
+
 Keep the workflow's filename: npm's trusted publisher for the package is
 pinned to `release.yml`.
 
@@ -473,8 +484,11 @@ or `hooks/`, and pushes the result to the pull request's branch, so pull before 
 a push made with `GITHUB_TOKEN` starts no workflow and `Validate` would never run on the new commit. Without
 the secret it does nothing, and `Manifest` fails as before. A fork's pull request is never synced.
 
-Don't bump a version in the change itself; each route's own release PR does
-that (see `AGENTS.md`). Routes version independently — differing versions
+Don't bump a version in the change itself; a release PR does that (see
+`AGENTS.md`). `node scripts/route-versions.js` lists the routes a release must
+bump and why, and `--write` bumps them; CI's `Route versions` job fails a
+release PR that leaves one stale. The release-installer skill's "Route
+versions" has the rule. Routes version independently — differing versions
 across routes are correct, not drift — so a release bumps the strings that
 one route owns, three for every route but OpenCode: `version` in its manifest, plus `X-Plugin-Version` and
 `User-Agent` in its MCP config (for Kimi all three live in the manifest; for
@@ -482,8 +496,8 @@ Codex the two headers sit under `http_headers`, not `headers`; for OpenCode
 the manifest is `opencode/package.json`, and the root `package.json` repeats its
 version as a fourth string; for Pi it is
 `installer/package.json`, so Pi's bump is an installer release; for Factory
-Droid the MCP config is the root `mcp.json`). Nothing verifies this, so check
-the route's strings against each other before you commit the release. Don't
+Droid the MCP config is the root `mcp.json`). `--write` moves all of them; by
+hand, check the route's strings against each other before you commit. Don't
 skip the release's bump either: `claude plugin update` compares only that
 string against a version-keyed cache, so a release that changes files
 without bumping it reports "already at the latest version" and delivers

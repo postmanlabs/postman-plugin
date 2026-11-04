@@ -1,14 +1,15 @@
 # Independent concerns, one parallel job each, so a failure names itself:
 # `skills` checks what Claude Code loads from skills/ and that every
 # `postman:<name>` the repo ships names one of them, `manifest` checks the
-# index `postman init` fetches, `postman-cli` has released Postman CLIs install the skills
+# index `postman init` fetches, `route-versions` has a release pull request bump every stale
+# route, `postman-cli` has released Postman CLIs install the skills
 # from this checkout, `installer` unit-tests `npx @postman/postman-plugin`
 # (installer-smoke.yml runs it against the real agent CLIs), `schema` checks each
 # vendor plugin manifest against that vendor's own published schema. One job per
 # route installs this checkout into a pinned agent (Cursor: the latest) and checks what it sends
 # its model and the MCP server: `claude-code`, `codex`, `copilot`, `cursor`, `factory`, `kimi`,
 # `opencode` and `pi`; `antigravity` checks only what agy registers (see that job). Every job but
-# `skills`, `manifest`, `postman-cli`, `schema`, `cursor` and `antigravity` runs on Linux, and on Windows too
+# `skills`, `manifest`, `route-versions`, `postman-cli`, `schema`, `cursor` and `antigravity` runs on Linux, and on Windows too
 # unless a pull request changes only skills or docs (see `os`).
 name: Validate
 
@@ -116,6 +117,28 @@ jobs:
       # those, so both run.
       - name: Claude Code accepts the marketplace and plugin manifests
         run: npx -y @anthropic-ai/claude-code plugin validate .
+
+  # A pull request that moves a route's or the installer's version is a release, and a release
+  # must bump every route its changes left stale, so a hand-made release can't forget one. The
+  # rule is in the release-installer skill's "Route versions"; the failure prints the fix.
+  route-versions:
+    name: Route versions
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          # The whole history, to find each route's last version change.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+
+      # A pull request checks out its merge commit, whose first parent is the base.
+      - name: A release bumps every stale route
+        run: node scripts/route-versions.js --check --base HEAD^1
 
   # Every Postman CLI fetches the skills from `main`, so a merge publishes them to all of them at
   # once, including ones released long ago. The harness serves this checkout to a released CLI and

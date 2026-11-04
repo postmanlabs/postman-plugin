@@ -1,9 +1,9 @@
 ---
 name: release-installer
-description: Release @postman/postman-plugin, the npx installer and Pi package, to npm - a release candidate on the `next` dist-tag or a plain version on `latest`. Use when asked to cut, publish, tag or ship an installer release or rc, promote an rc to latest, resume a release in progress, or retry one that failed.
+description: Release @postman/postman-plugin, the npx installer and Pi package, to npm - a release candidate on the `next` dist-tag or a plain version on `latest`, plus the plugin route version bumps a `latest` release carries. Use when asked to cut, publish, tag or ship an installer release or rc, promote an rc to latest, resume a release in progress, or retry one that failed.
 argument-hint: rc | latest | <version>
 disable-model-invocation: true
-allowed-tools: Bash(node .claude/skills/release-installer/scripts/release.mjs:*), Bash(git fetch:*), Bash(git status:*), Bash(git ls-remote:*), Bash(git show:*), Bash(git worktree list:*), Bash(git worktree add:*), Bash(npm ci:*), Bash(npm test:*), Bash(npm audit:*), Bash(npm pack:*), Bash(npm run test:pi-harness:*), Bash(gh run list:*), Bash(gh run view:*), Bash(git push -u origin release/*), Bash(gh pr create:*), Bash(gh pr view:*)
+allowed-tools: Bash(node .claude/skills/release-installer/scripts/release.mjs:*), Bash(git fetch:*), Bash(git status:*), Bash(git ls-remote:*), Bash(git show:*), Bash(node scripts/route-versions.js:*), Bash(git worktree list:*), Bash(git worktree add:*), Bash(npm ci:*), Bash(npm test:*), Bash(npm audit:*), Bash(npm pack:*), Bash(npm run test:pi-harness:*), Bash(gh run list:*), Bash(gh run view:*), Bash(git push -u origin release/*), Bash(gh pr create:*), Bash(gh pr view:*)
 ---
 
 # Release @postman/postman-plugin
@@ -51,6 +51,40 @@ Below, `release.mjs <command>` means that line.
 - **Work in a worktree off `origin/main`**, never in a checkout with other work
   in it.
 
+## Route versions
+
+The installer's version and each route's version are separate numbers. Every
+route but Pi installs from GitHub, so a route bump merged to `main` is already
+that route's release. Routes have no rc stage, and an rc branch never carries a
+route bump.
+
+Each route's `updatesBy` in `scripts/routes.js` says what its agent compares to
+update an install. `version` means a release that doesn't bump delivers
+nothing: Claude Code's `claude plugin update`, for one, skips an unchanged
+version. `commit` means the agent tracks `main` and the version is only
+`X-Plugin-Version` telemetry. Pi is `installer`: `bump` sets it.
+
+1. **Shared content changed** (`skills/`, `hooks/`, `manifest.json`): bump
+   every `version` route, each to its own next number, using CONTRIBUTING's
+   semver for skills (major for a broken or removed skill, minor for a new
+   skill, patch for wording or a fix).
+2. **One route's own files changed** (its directory, MCP config, a file its
+   manifest names such as a logo, or its `owns`):
+   bump only that route, `commit` routes included.
+3. **The installer** follows Step 1's levels, plus every content change, since
+   it is Pi's content. It never forces a route bump.
+
+`node scripts/route-versions.js` applies these rules: it lists each stale route,
+the commits since its last version change, and a version proposed from their
+conventional-commit prefixes. `--write` sets every stale route's strings, and
+`--write <id>=<x.y.z>` overrides one. The prefixes don't mark a removed skill as
+breaking, so read the commits before you accept a proposal.
+
+A `latest` release puts the route bumps in the same PR as a separate decision:
+show the user the script's list, with any version you'd change, and wait for
+their confirmation. CI's `Route versions` job fails any pull request that moves
+a version while a route is stale, and prints the fix.
+
 ## Resume first
 
 Run `status`, then find the first matching state for the version and skip to it:
@@ -87,8 +121,11 @@ release.mjs suggest latest [patch|minor|major]
 
 With no level, `suggest` continues an open rc line: `next` is `0.2.0-rc.1` and
 `latest` is `0.1.0`, so `rc` gives `0.2.0-rc.2` and `latest` gives `0.2.0`.
-Pass a level to start a new line instead. Pick the level from `status`'s
-changes:
+Pass a level to start a new line instead. `.github/workflows/rc.yml` already
+cuts an rc for every shipped change on `main` with `release.mjs next-rc`, so
+`origin` may hold a tag whose publish still awaits approval: run `status` and
+approve or promote that one instead of tagging another. Pick the level from
+`status`'s changes:
 
 - **minor**: a new agent route, a new skill, or a new installer command or flag
 - **patch**: fixes and wording
@@ -128,8 +165,14 @@ PI_PREFIX=$(mktemp -d) && npm install --no-save --prefix "$PI_PREFIX" @earendil-
 (cd installer && PI_BIN="$PI_PREFIX/node_modules/.bin/pi" npm run test:pi-harness)
 ```
 
-`git status --short` must show only the three version files. Commit them as
-`release: @postman/postman-plugin <version>`.
+For `latest`, also apply the route bumps the user confirmed in
+[Route versions](#route-versions) with
+`node scripts/route-versions.js --write <id>=<x.y.z>...`, one pair for every
+route the user confirmed. Without the pairs, `--write` uses its own proposals.
+
+`git status --short` must show only the three version files, plus those route
+strings for `latest`. Commit them as `release: @postman/postman-plugin <version>`,
+naming each bumped route and its version in the body.
 
 ## Step 4a — Tag an rc
 
@@ -154,8 +197,8 @@ git push -u origin release/postman-plugin-<version>
 gh pr create --base main --title "release: @postman/postman-plugin <version>" --body-file <body>
 ```
 
-The body lists what ships (`status`'s changes since the last `latest`), the
-checks Step 3 ran, and that the merge commit gets tagged next. Then stop. The PR
+The body lists what ships (`status`'s changes since the last `latest`), each
+route bump and its reason, the checks Step 3 ran, and that the merge commit gets tagged next. Then stop. The PR
 needs an approval, so give the user the PR link and tell them to run
 `/release-installer <version>` again once it merges.
 

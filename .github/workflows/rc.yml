@@ -1,0 +1,80 @@
+# Cuts a release candidate from every push to main that changes what the installer package ships:
+# the version comes from `release.mjs next-rc`, the commit that carries it lives on a
+# release/postman-plugin-<version> branch that never merges, and release.yml publishes it to `next`.
+# release.yml still waits for a headless-postman member to approve the `npm-publish` environment.
+name: Release candidate
+
+on:
+  push:
+    branches: ['main']
+    # release.mjs's SHIPPED list.
+    paths: ['installer/**', 'skills/**', 'hooks/session-start-context.md', 'mcp.pi.json', 'README.md', 'LICENSE']
+
+permissions:
+  contents: write
+  actions: write
+
+# A newer push cancels the run in progress and any waiting one, so only the latest main gets a candidate.
+concurrency:
+  group: release-candidate
+  cancel-in-progress: true
+
+jobs:
+  candidate:
+    # A plain release's own merge commit is not a change to carry.
+    if: ${{ !startsWith(github.event.head_commit.message, 'release:') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # The history and tags, so the version can be derived from the commits since the last release.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+
+      - name: Choose the version
+        id: version
+        run: |
+          set -euo pipefail
+          VERSION=$(node .claude/skills/release-installer/scripts/release.mjs next-rc)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=@postman/postman-plugin@$VERSION" >> "$GITHUB_OUTPUT"
+          echo "branch=release/postman-plugin-$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Release candidate $VERSION for $GITHUB_SHA"
+
+      - name: Commit the version on a branch that never merges
+        id: commit
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          BRANCH: ${{ steps.version.outputs.branch }}
+        run: |
+          set -euo pipefail
+          node .claude/skills/release-installer/scripts/release.mjs bump "$VERSION"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git switch -c "$BRANCH"
+          git commit --all --message "release: @postman/postman-plugin $VERSION"
+          git push origin "$BRANCH"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      # The tag is the release, so the commit it names is smoked first.
+      - name: Smoke the commit
+        env:
+          SHA: ${{ steps.commit.outputs.sha }}
+        run: node .claude/skills/release-installer/scripts/release.mjs smoke "$SHA" --minutes 50
+
+      - name: Tag it and hand it to release.yml
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+          SHA: ${{ steps.commit.outputs.sha }}
+        run: |
+          set -euo pipefail
+          git tag --annotate --message "$TAG" "$TAG" "$SHA"
+          git push origin "refs/tags/$TAG"
+          # A tag pushed with GITHUB_TOKEN starts no workflow, so release.yml is dispatched on it.
+          gh workflow run release.yml --ref "$TAG" -f tag="$TAG"
