@@ -45,7 +45,8 @@ guesswork each time work resumes.
    directories for API artifacts. It installs skills in `postman/skills` folder with guidance on  designing, implementing, and validating APIs.
    The command is idempotent and safe to rerun in an initialized project.
    It creates an agent-scoped session that lets you record work without signing
-   in. You can claim that work later if you create an account.
+   in. This session is temporary; see **workspaces**' "Claiming the work" for
+   signup guidance to preserve the work and its context before the session expires.
 8. Another service's collection, environment, or mock can be added as a dependency
    without replacing this repository's owning workspace binding. Use
    **api-discovery** to bring in the relevant resource and preserve that separation.

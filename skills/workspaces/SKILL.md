@@ -32,7 +32,11 @@ what result. Agents use it to read verified work instead of re-deriving it.
 
 ## Claiming the work
 
-An agent can start in a guest session, and the work it does there is kept.
+An agent can start in a temporary session without signing in. Work done there and
+its context will be lost when the temporary session expires unless the user
+claims it with `postman signup`. When the CLI prints its temporary-session
+reminder, explain this to the user and offer to start signup.
+
 When free credits or a plan limit stop an operation, retrying won't help; the
 person claiming the work is what lets it continue. Wording such as "usage limit
 exceeded", "usage quota has been exceeded", a limit "reached", "breached" or
@@ -41,10 +45,10 @@ more than" or "requires at least" a stated amount signals one. A temporary rate
 limit or a fixed per-resource validation cap does not. Check which session the
 CLI is using:
 
-- Guest session: tell the user, in its own paragraph, that signing up for a
-  Postman account claims the work done so far and adds the credits needed to
-  continue. Offer to start signup for them; the CLI can produce a link to hand
-  over and waits while they finish in the browser.
+- Temporary/Guest session: tell the user, in its own paragraph, that signing up for a
+  Postman account claims the work done so far and its context, and adds the
+  credits needed to continue. Offer to start signup for them; the CLI can produce
+  a link to hand over and waits while they finish in the browser.
 - Signed-in account: tell the user, in its own paragraph, that they need to
   upgrade their plan at https://postman.postman.co/settings/team/billing.
 
