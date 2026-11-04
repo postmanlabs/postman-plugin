@@ -467,6 +467,12 @@ pinned to `release.yml`.
 2. Run `node scripts/build-manifest.js`.
 3. Commit all of it. CI runs `--check` and fails if you forget step 2.
 
+`.github/workflows/sync-agent-plugin.yml` runs step 2 for a same-repo pull request that touches `skills/`
+or `hooks/`, and pushes the result to the pull request's branch, so pull before you push again. It needs an
+`AGENT_PLUGIN_SYNC_TOKEN` secret (a GitHub App token or a fine-grained PAT with `contents: write`), because
+a push made with `GITHUB_TOKEN` starts no workflow and `Validate` would never run on the new commit. Without
+the secret it does nothing, and `Manifest` fails as before. A fork's pull request is never synced.
+
 Don't bump a version in the change itself; each route's own release PR does
 that (see `AGENTS.md`). Routes version independently — differing versions
 across routes are correct, not drift — so a release bumps the strings that
