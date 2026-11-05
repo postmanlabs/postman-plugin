@@ -68,7 +68,8 @@ under `.*-plugin/`, an `mcp*.json`, `manifest.json`'s format or order,
 check that the route still delivers everything it did before:
 
 - the request the agent sends its model lists every skill in
-  `manifest.json` and carries the session-start mandate;
+  `manifest.json` and carries the session-start mandate (Codex's route
+  declares no hooks, so its request must carry none);
 - the agent registers or connects to the Postman MCP server from the route's
   MCP config. The server's tools reach the model only after the user signs
   in, because Postman's server answers 401 until then.

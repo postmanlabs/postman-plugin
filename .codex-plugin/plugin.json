@@ -21,7 +21,7 @@
     "flows"
   ],
   "skills": "./skills/",
-  "hooks": "./hooks/codex-hooks.json",
+  "hooks": {},
   "mcpServers": "./mcp.codex.json",
   "apps": "./.app.json",
   "interface": {

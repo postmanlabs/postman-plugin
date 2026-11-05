@@ -11,8 +11,7 @@ import { JsonRpcError } from '../dist/json-rpc.js';
 import { assertSkillsListed, runAgent, startStandIn, workspace } from '../../scripts/lib/harness.js';
 import { checkCodexTui } from './codex-tui-check.js';
 
-// Codex's key for the session-start hook in hooks/codex-hooks.json.
-const POSTMAN_HOOK_KEY = 'postman@postman:hooks/codex-hooks.json:session_start:0:0';
+const PLUGIN_ID = 'postman@postman';
 
 export function codexEnvironment (source = process.env, platform = process.platform) {
     // process.env is case-insensitive on Windows; a plain copy is not. Normalize
@@ -67,7 +66,8 @@ export async function writeTestConfig (rpc, edits, label, platform = process.pla
     }
 }
 
-// The installer must leave hook trust to the user: the hook stays untrusted after every install.
+// The installer must never trust a Postman hook. The Codex route declares none, but this installs `main`,
+// which may still carry one, so a hook that is there must stay untrusted.
 export async function checkCodexInstall () {
     const box = workspace('codex-installer'),
         previousCwd = process.cwd(),
@@ -133,8 +133,15 @@ export async function checkCodexInstall () {
 
                 const { data } = await rpc.request('hooks/list', { cwds: [box.project] });
 
-                return data.flatMap(({ hooks }) => hooks).find(({ key }) => key === POSTMAN_HOOK_KEY);
-            });
+                return data.flatMap(({ hooks }) => hooks).filter(({ pluginId }) => pluginId === PLUGIN_ID);
+            }),
+            assertNoneTrusted = async () => {
+                const hooks = await list();
+
+                assert.deepEqual(hooks.filter(({ trustStatus }) => trustStatus !== 'untrusted').map(({ key }) => key), [], 'the installer must not trust a Postman hook');
+
+                return hooks;
+            };
 
         if (process.platform === 'win32') {
             // Codex uses the native Windows profile rather than HOME/USERPROFILE.
@@ -155,12 +162,13 @@ export async function checkCodexInstall () {
             before = snapshot(installedPath),
             contentBefore = snapshot(installedPath, { includeMetadata: false });
 
-        assert.equal((await list())?.trustStatus, 'untrusted', 'the installer must not trust the hook');
+        const hasHook = (await assertNoneTrusted()).length > 0;
+
         assert.equal(await registeredRef(system), BRANCH, 'a fresh install must track main');
         assert.deepEqual(snapshot(installedPath), before, 'app-server startup changed the cached plugin');
 
         await runInstall({ isTTY: true });
-        assert.equal((await list()).trustStatus, 'untrusted');
+        await assertNoneTrusted();
 
         const configBeforeDry = fs.readFileSync(path.join(codexHome, 'config.toml'), 'utf8'),
             dry = await runAgent(process.execPath, [cli, 'install', '--dry-run', '--agent', 'codex'], { env, cwd: box.project });
@@ -184,12 +192,12 @@ export async function checkCodexInstall () {
             '-c', `model_providers.harness.base_url="${standIn.base}/v1"`,
             '-c', 'model_providers.harness.wire_api="responses"'
         ],
-            // The hook is untrusted, so the TUI must show its hook review.
+            // An untrusted hook makes the TUI show hook review; with none it must reach its prompt.
             tui = () => checkCodexTui({
                 // A pinned older Codex must reach hook review, not its unrelated
                 // update-available modal, which depends on a background HTTP check.
                 args: ['--no-alt-screen', '-c', 'check_for_update_on_startup=false', ...modelArgs],
-                env, cwd: box.project, expectReview: true
+                env, cwd: box.project, expectReview: hasHook
             }),
             result = await runAgent('codex', [
                 'exec', '--skip-git-repo-check', '--ephemeral', '--sandbox', 'danger-full-access', ...modelArgs,
@@ -204,12 +212,12 @@ export async function checkCodexInstall () {
                 (item.content ?? []).map((part) => part.text ?? '').join('\n'))].join('\n'),
             manifest = JSON.parse(fs.readFileSync(path.join(installedPath, 'manifest.json'), 'utf8'));
 
-        // Codex skips an untrusted hook, so the model gets the skills and no mandate.
+        // No hook runs, untrusted or absent, so the model gets the skills and no mandate.
         assertSkillsListed('Codex installer', text, (skill) => new RegExp(`^- postman:${skill}: `, 'm'));
-        assert.doesNotMatch(text, /<EXTREMELY_IMPORTANT>/, 'Codex ran the hook, but nothing trusted it');
+        assert.doesNotMatch(text, /<EXTREMELY_IMPORTANT>/, 'Codex ran a Postman hook, but nothing trusted it');
 
         assert.deepEqual(snapshot(installedPath), before, 'a later Codex session changed cached contents');
-        assert.equal((await list()).trustStatus, 'untrusted');
+        await assertNoneTrusted();
 
         if (process.platform === 'linux') {
             // Only after the fresh installer has completed, trust this throwaway
@@ -254,7 +262,7 @@ export async function checkCodexInstall () {
             assert.equal(await registeredRef(system), ref);
             await runInstall();
             assert.equal(await registeredRef(system), ref === null ? null : BRANCH);
-            assert.equal((await list()).trustStatus, 'untrusted');
+            await assertNoneTrusted();
             assert.equal(logs.some((line) => line.includes('marketplace remove')), ref !== null,
                 'only the legacy release branch needs re-registration');
             // Re-cloning creates new Git metadata and installation timestamps;
@@ -269,7 +277,7 @@ export async function checkCodexInstall () {
 
         const versionText = (await system.probe('codex', ['--version'])).stdout.trim();
 
-        console.log(`${versionText}: installs from main; migrates codex-release and preserves unpinned main registrations; hook left untrusted after every install; dry run writes nothing; ${manifest.skills.length} skills and no mandate reach the model; ${Object.keys(before).length} cached files unchanged by app-server; ${process.platform === 'linux' ? 'TUI shows hook review after installation and migration' : 'TUI check is Linux-only (trust state checked)'}`);
+        console.log(`${versionText}: installs from main; migrates codex-release and preserves unpinned main registrations; no Postman hook trusted after any install; dry run writes nothing; ${manifest.skills.length} skills and no mandate reach the model; ${Object.keys(before).length} cached files unchanged by app-server; ${process.platform === 'linux' ? `TUI shows ${hasHook ? 'hook review' : 'its prompt'} after installation and migration` : 'TUI check is Linux-only (trust state checked)'}`);
     }
     finally {
         standIn?.server.close();
