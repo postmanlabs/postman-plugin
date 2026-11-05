@@ -561,6 +561,14 @@ test('remove after an older remove still deletes the cached copy it left', async
     assert.deepEqual(system.commands, [`remove ${copy}`]);
 });
 
+test('remove after an older remove still deletes the cached copy of the spec POSTMAN_PLUGIN_OPENCODE_SPEC installs', async () => {
+    const copy = copyOf(GIT_SPEC),
+        system = fakeSystem({ probes: V2, env: GIT, files: { [json]: plugins('x') }, dirs: [path.join(copy, GENERATION), path.join(`${copy}.previous`, GENERATION)] });
+
+    assert.equal((await opencode.remove(system)).outcome, 'done');
+    assert.deepEqual(system.commands, [`remove ${copy}`, `remove ${copy}.previous`]);
+});
+
 test('a failed `plugin remove` keeps the cached copy, so the plugin still loads', async () => {
     const copy = copyOf(SPEC),
         system = fakeSystem({

@@ -1,4 +1,4 @@
-import type { System } from './system.js';
+import { type System, formatCommand } from './system.js';
 
 export const PACKAGE = '@postman/postman-plugin';
 
@@ -32,11 +32,11 @@ export function wantsReleaseCheck (env: NodeJS.ProcessEnv, isTTY: boolean): bool
  * Says when a newer release exists. A bare `npx` runs a global or project install of this package instead of
  * the registry's latest, so an older copy would otherwise keep running its own, older commands.
  */
-export async function noteNewerRelease (system: System, current: string, command: string): Promise<void> {
+export async function noteNewerRelease (system: System, current: string, args: string[]): Promise<void> {
     const exec = await system.probe('npm', ['view', `${PACKAGE}@latest`, 'version', '--fetch-retries=0', '--fetch-timeout=3000']),
         latest = exec.code === 0 ? exec.stdout.trim() : '';
 
     if (isNewer(latest, current)) {
-        system.log(`note: this is ${PACKAGE} ${current}, and ${latest} is out. To use it, run \`npx ${PACKAGE}@latest ${command}\`.\n`);
+        system.log(`note: this is ${PACKAGE} ${current}, and ${latest} is out. To use it, run \`${formatCommand('npx', [`${PACKAGE}@latest`, ...args])}\`.\n`);
     }
 }

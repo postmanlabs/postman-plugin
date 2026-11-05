@@ -457,7 +457,7 @@ export const opencode: Host = {
             const entries = await readableEntries(system, null),
                 { cloned, shim } = await legacyState(system);
 
-            const caches = await cachedCopies(system, [OPENCODE_SPEC, ...entries.map((entry) => entry.spec)]);
+            const caches = await cachedCopies(system, [OPENCODE_SPEC, specToInstall(system), ...entries.map((entry) => entry.spec)]);
 
             if (!entries.length && !cloned && shim !== OPENCODE_SHIM && !caches.length) {
                 return result('skipped', 'not installed');

@@ -113,7 +113,7 @@ async function main (argv: string[]): Promise<number> {
         isTTY = Boolean(stdin.isTTY);
 
     if (wantsReleaseCheck(process.env, isTTY)) {
-        await noteNewerRelease(system, version(), positionals[0] ?? 'install');
+        await noteNewerRelease(system, version(), argv);
     }
 
     return run(system, HOSTS, { command, agents: agents as HostId[], yes: Boolean(values.yes), isTTY, confirm });

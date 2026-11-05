@@ -19,16 +19,26 @@ test('a later release, or the release of the candidate this is, counts as newer'
 test('an older copy says which command runs the latest release', async () => {
     const system = fakeSystem({ probes: { [VIEW]: '0.7.0\n' } });
 
-    await noteNewerRelease(system, '0.6.0', 'remove');
+    await noteNewerRelease(system, '0.6.0', ['remove']);
 
     assert.deepEqual(system.lines, ['note: this is @postman/postman-plugin 0.6.0, and 0.7.0 is out. To use it, run `npx @postman/postman-plugin@latest remove`.\n']);
+});
+
+test('the suggested command keeps the agents and flags it was run with', async () => {
+    const system = fakeSystem({ probes: { [VIEW]: '0.7.0\n' } });
+
+    await noteNewerRelease(system, '0.6.0', ['remove', '--agent', 'codex', '--dry-run']);
+    await noteNewerRelease(system, '0.6.0', []);
+
+    assert.match(system.lines[0], /run `npx @postman\/postman-plugin@latest remove --agent codex --dry-run`\.$/m);
+    assert.match(system.lines[1], /run `npx @postman\/postman-plugin@latest`\.$/m);
 });
 
 test('stays quiet when up to date, offline, or the registry answers nonsense', async () => {
     for (const reply of ['0.6.0\n', { code: 1, stderr: 'ENOTFOUND' }, 'not a version']) {
         const system = fakeSystem({ probes: { [VIEW]: reply } });
 
-        await noteNewerRelease(system, '0.6.0', 'install');
+        await noteNewerRelease(system, '0.6.0', []);
         assert.deepEqual(system.lines, [], JSON.stringify(reply));
     }
 });
