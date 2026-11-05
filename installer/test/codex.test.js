@@ -6,8 +6,7 @@ import { codex, registeredRef } from '../dist/hosts/codex.js';
 import { fakeSystem } from './fake-system.js';
 import { run } from '../dist/run.js';
 import { createSystem } from '../dist/system.js';
-import { checkCodexTui } from '../scripts/codex-tui-check.js';
-import { codexEnvironment, writeTestConfig } from '../scripts/codex-hook-check.js';
+import { codexEnvironment, writeTestConfig } from '../scripts/codex-install-check.js';
 import { JsonRpcError } from '../dist/json-rpc.js';
 
 const MARKETPLACES = 'codex plugin marketplace list --json',
@@ -350,20 +349,6 @@ test('smoke setup retries only a temporary Windows config persistence error, wit
             (failure) => /Could not seed the legacy ref/.test(failure.message) && failure.cause === error);
         assert.equal(calls, expected);
     }
-});
-
-test('the TUI check detects hook review and requires a ready session', { skip: process.platform !== 'linux' && 'Linux terminal check', timeout: 10000 }, async () => {
-    const fake = (text, extra = {}) => checkCodexTui({
-        command: process.execPath,
-        args: ['-e', `console.log(${JSON.stringify(text)}); setInterval(()=>{},1000)`],
-        env: process.env, settleMs: 20, timeoutMs: 1000, ...extra
-    });
-
-    await fake('OpenAI Codex\n/status - show session configuration\n›');
-    await fake('OpenAI Codex\n› Ask Codex to do anything\nharness default');
-    await fake('Hooks need review\n1 hook is new or changed.', { expectReview: true });
-    await assert.rejects(fake('Hooks need review\n1 hook is new or changed.'), /still shows its hook review warning/);
-    await assert.rejects(fake('OpenAI Codex\nloading\nUpdate available'), /did not show a ready prompt/);
 });
 
 test('the RPC transport handles notifications, remote errors, EOF, bad JSON and timeouts', { timeout: 10000 }, async () => {

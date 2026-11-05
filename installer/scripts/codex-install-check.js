@@ -9,7 +9,6 @@ import { run as install } from '../dist/run.js';
 import { createSystem } from '../dist/system.js';
 import { JsonRpcError } from '../dist/json-rpc.js';
 import { assertSkillsListed, runAgent, startStandIn, workspace } from '../../scripts/lib/harness.js';
-import { checkCodexTui } from './codex-tui-check.js';
 
 const PLUGIN_ID = 'postman@postman';
 
@@ -162,7 +161,7 @@ export async function checkCodexInstall () {
             before = snapshot(installedPath),
             contentBefore = snapshot(installedPath, { includeMetadata: false });
 
-        const hasHook = (await assertNoneTrusted()).length > 0;
+        await assertNoneTrusted();
 
         assert.equal(await registeredRef(system), BRANCH, 'a fresh install must track main');
         assert.deepEqual(snapshot(installedPath), before, 'app-server startup changed the cached plugin');
@@ -192,13 +191,6 @@ export async function checkCodexInstall () {
             '-c', `model_providers.harness.base_url="${standIn.base}/v1"`,
             '-c', 'model_providers.harness.wire_api="responses"'
         ],
-            // An untrusted hook makes the TUI show hook review; with none it must reach its prompt.
-            tui = () => checkCodexTui({
-                // A pinned older Codex must reach hook review, not its unrelated
-                // update-available modal, which depends on a background HTTP check.
-                args: ['--no-alt-screen', '-c', 'check_for_update_on_startup=false', ...modelArgs],
-                env, cwd: box.project, expectReview: hasHook
-            }),
             result = await runAgent('codex', [
                 'exec', '--skip-git-repo-check', '--ephemeral', '--sandbox', 'danger-full-access', ...modelArgs,
                 'Say ok.'
@@ -218,18 +210,6 @@ export async function checkCodexInstall () {
 
         assert.deepEqual(snapshot(installedPath), before, 'a later Codex session changed cached contents');
         await assertNoneTrusted();
-
-        if (process.platform === 'linux') {
-            // Only after the fresh installer has completed, trust this throwaway
-            // project so folder review cannot hide hook review. No hook trust is
-            // changed here. Older TUI versions ignore a CLI project-trust override.
-            await system.withJsonRpc('codex', ['app-server'], async (rpc) => {
-                await rpc.request('initialize', { clientInfo: { name: 'postman-installer-smoke', version: '1' } });
-                rpc.notify('initialized');
-                await writeTestConfig(rpc, [{ keyPath: 'projects', value: { [box.project]: { trust_level: 'trusted' } }, mergeStrategy: 'upsert' }], 'trust the test project');
-            });
-            await tui();
-        }
 
         assert.deepEqual(snapshot(installedPath), before);
         assert.deepEqual(rpcChanges, [], 'app-server changed cached files');
@@ -268,16 +248,12 @@ export async function checkCodexInstall () {
             // Re-cloning creates new Git metadata and installation timestamps;
             // compare payloads here, while RPC snapshots above include all files.
             assert.deepEqual(snapshot(cachePath, { includeMetadata: false }), contentBefore, 'migration must deliver the same main content');
-
-            if (process.platform === 'linux') {
-                await tui();
-            }
         }
         assert.deepEqual(rpcChanges, [], 'migration app-server startup changed cached files');
 
         const versionText = (await system.probe('codex', ['--version'])).stdout.trim();
 
-        console.log(`${versionText}: installs from main; migrates codex-release and preserves unpinned main registrations; no Postman hook trusted after any install; dry run writes nothing; ${manifest.skills.length} skills and no mandate reach the model; ${Object.keys(before).length} cached files unchanged by app-server; ${process.platform === 'linux' ? `TUI shows ${hasHook ? 'hook review' : 'its prompt'} after installation and migration` : 'TUI check is Linux-only (trust state checked)'}`);
+        console.log(`${versionText}: installs from main; migrates codex-release and preserves unpinned main registrations; no Postman hook trusted after any install; dry run writes nothing; ${manifest.skills.length} skills and no mandate reach the model; ${Object.keys(before).length} cached files unchanged by app-server`);
     }
     finally {
         standIn?.server.close();

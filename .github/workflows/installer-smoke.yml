@@ -66,7 +66,7 @@ jobs:
       - name: Install the tested Codex version
         run: npm install --prefix "$RUNNER_TEMP/codex" @openai/codex@${{ matrix.version }}
       - name: Install from main, migrate legacy refs, and verify no Postman hook is trusted
-        run: node scripts/smoke-check.js codex-hooks
+        run: node scripts/smoke-check.js codex-install
         env:
           CODEX_BIN: ${{ runner.temp }}/codex/node_modules/.bin/codex${{ runner.os == 'Windows' && '.cmd' || '' }}
 
@@ -188,7 +188,7 @@ jobs:
 
       - name: The latest Codex installs and trusts no Postman hook
         if: ${{ !cancelled() }}
-        run: node scripts/smoke-check.js codex-hooks
+        run: node scripts/smoke-check.js codex-install
 
       - name: The latest Kimi Code loads this checkout
         if: ${{ !cancelled() }}
