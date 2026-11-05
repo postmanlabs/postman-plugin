@@ -4,7 +4,6 @@ import path from 'node:path';
 import test from 'node:test';
 import { codex, registeredRef } from '../dist/hosts/codex.js';
 import { fakeSystem } from './fake-system.js';
-import { POSTMAN_HOOK_KEY } from '../dist/hosts/codex-hooks.js';
 import { run } from '../dist/run.js';
 import { createSystem } from '../dist/system.js';
 import { checkCodexTui } from '../scripts/codex-tui-check.js';
@@ -307,115 +306,8 @@ test('remove skips when nothing is installed', async () => {
     assert.deepEqual(system.commands, []);
 });
 
-function hookSystem ({ status = 'untrusted', hash = 'declaration/content', ...options } = {}) {
-    const system = codexSystem(),
-        hook = { key: POSTMAN_HOOK_KEY, trustStatus: status, currentHash: hash, sourcePath: path.resolve('/plugin/hooks/codex-hooks.json'), command: '/plugin/hooks/session-start' };
-
-    Object.assign(system, options);
-    system.files[path.resolve('/plugin/hooks/session-start-context.md')] = 'The installed Postman mandate.';
-    Object.assign(system.rpcs, {
-        initialize: {},
-        'hooks/list': () => ({ data: [{ hooks: [hook, { key: 'other:hook', trustStatus: 'untrusted' }] }] }),
-        'config/batchWrite': () => { hook.trustStatus = 'trusted'; return {}; }
-    });
-
-    return { system, hook };
-}
-
-test('automatically approves only Postman, using the full hash on both protocol versions', async () => {
-    for (const hash of ['declaration', 'declaration/content']) {
-        const { system, hook } = hookSystem({ status: hash.includes('/') ? 'modified' : 'untrusted', hash });
-
-        assert.equal((await codex.install(system)).outcome, 'done');
-        assert.equal(hook.trustStatus, 'trusted');
-        assert.doesNotMatch(system.lines.join('\n'), /Approve Postman's|The installed Postman mandate|hooks[\\/]session-start/);
-        assert.deepEqual(system.rpcCalls.map(({ method }) => method), ['initialize', 'initialized', 'hooks/list', 'hooks/list', 'config/batchWrite', 'hooks/list']);
-        assert.deepEqual(system.rpcCalls.find(({ method }) => method === 'config/batchWrite').params, {
-            edits: [{ keyPath: 'hooks.state', value: { [POSTMAN_HOOK_KEY]: { trusted_hash: hash } }, mergeStrategy: 'upsert' }],
-            reloadUserConfig: true
-        });
-    }
-});
-
-test('unattended installs approve the hook without any extra flag or prompt', async () => {
-    const { system, hook } = hookSystem();
-
-    system.runs['codex plugin add postman@postman --json'] = (fake) => {
-        fake.probes[PLUGINS] = JSON.stringify({ installed: [installed('postman@postman')] });
-
-        return '';
-    };
-    assert.equal(await run(system, [codex], {
-        command: 'install', agents: ['codex'], yes: true, isTTY: false,
-        confirm: async () => { throw new Error('must not ask'); }
-    }), 0);
-    assert.equal(hook.trustStatus, 'trusted');
-});
-
-test('trusted reruns write nothing', async () => {
-    const { system } = hookSystem();
-
-    await codex.install(system);
-    system.rpcCalls.length = 0;
-    await codex.install(system);
-    assert.deepEqual(system.rpcCalls.map(({ method }) => method), ['initialize', 'initialized', 'hooks/list']);
-    assert.match(system.lines.join('\n'), /already trusted/);
-});
-
-test('missing APIs, failed writes and malformed hook listings never fail the install', async () => {
-    for (const [method, reply] of [
-        ['initialize', new Error('app-server missing')],
-        ['hooks/list', new Error('Method not found')],
-        ['hooks/list', {}],
-        ['hooks/list', { data: [{ hooks: [], errors: ['cannot load hooks'] }] }],
-        ['hooks/list', { data: [{ hooks: [] }] }],
-        ['config/batchWrite', new Error('write denied')]
-    ]) {
-        const { system } = hookSystem();
-
-        system.rpcs[method] = reply;
-        assert.equal((await codex.install(system)).outcome, 'done');
-        assert.match(system.lines.join('\n'), /approval (skipped|could not be confirmed)/);
-    }
-});
-
-test('a different hook, unknown status, missing hash or unreadable mandate never gets approved', async () => {
-    for (const patch of [{ key: 'postman@evil:hooks/codex-hooks.json:session_start:0:0' }, { trustStatus: 'future-status' }, { currentHash: '' }, { sourcePath: '/missing/hooks.json' }]) {
-        const { system, hook } = hookSystem();
-
-        Object.assign(hook, patch);
-        await codex.install(system);
-        assert.ok(!system.rpcCalls.some(({ method }) => method === 'config/batchWrite'));
-    }
-});
-
-test('a hash that changes while being checked is not approved', async () => {
-    const { system, hook } = hookSystem(),
-        list = system.rpcs['hooks/list'];
-    let reads = 0;
-
-    system.rpcs['hooks/list'] = () => {
-        if (++reads === 2) {
-            hook.currentHash = 'new-content';
-        }
-
-        return list();
-    };
-    await codex.install(system);
-    assert.ok(!system.rpcCalls.some(({ method }) => method === 'config/batchWrite'));
-    assert.match(system.lines.join('\n'), /changed while checking/);
-});
-
-test('a dry run prints the automatic config write without starting app-server', async () => {
-    const { system } = hookSystem({ dryRun: true });
-
-    await codex.install(system);
-    assert.deepEqual(system.rpcSessions, []);
-    assert.match(system.lines.join('\n'), /config\/batchWrite .*trusted_hash/);
-});
-
 test('dry-run ref detection starts no app-server, even for an installed marketplace', async () => {
-    const { system } = hookSystem({ dryRun: true });
+    const system = Object.assign(codexSystem(), { dryRun: true });
 
     system.probes[PLUGINS] = JSON.stringify({ installed: [installed('postman@postman')] });
     system.rpc = async () => { throw new Error('must not start a read-only app-server either'); };

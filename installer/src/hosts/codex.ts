@@ -2,7 +2,6 @@ import { BRANCH, GIT_URL, REPO, isSameRepo, redact } from '../source.js';
 import type { System } from '../system.js';
 import { StepFailed, blocked, failed, guard, mustProbeJson, mustRun, parseJson } from './shared.js';
 import { type Host, result } from './types.js';
-import { approvePostmanHook } from './codex-hooks.js';
 
 // Codex names the marketplace after `.claude-plugin/marketplace.json`'s `name`.
 // `npx plugins add` installs a second copy under its own `plugins-cli` marketplace.
@@ -170,7 +169,7 @@ export const codex: Host = {
             notes = SHADOW_IDS.filter((id) => isInstalled(plugins, id)).map((id) => `${id} duplicates it and will be removed`);
 
         if (installed && await registeredRef(system) === LEGACY_REF) {
-            notes.push(`marketplace ${MARKETPLACE} tracks ${LEGACY_REF} and will be re-added at ${BRANCH}; the installer then approves its session-start hook`);
+            notes.push(`marketplace ${MARKETPLACE} tracks ${LEGACY_REF} and will be re-added at ${BRANCH}`);
         }
 
         return installed ?
@@ -193,7 +192,6 @@ export const codex: Host = {
                 await mustRun(system, 'codex', ['plugin', 'add', PLUGIN_ID, '--json']);
             }
             await removeInstalled(system, plugins, SHADOW_IDS);
-            await approvePostmanHook(system);
 
             return result('done', `${wasInstalled ? 'updated' : 'installed'} ${PLUGIN_ID}`, NEXT);
         });
