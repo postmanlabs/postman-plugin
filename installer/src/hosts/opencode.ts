@@ -27,13 +27,6 @@ const KEYS = ['plugin', 'plugins'],
         [system.env.OPENCODE_CONFIG_DIR, configDir(system)])
         .filter((dir): dir is string => Boolean(dir))
         .filter((dir, at, dirs) => dirs.findIndex((other) => samePath(other, dir)) === at),
-    // OpenCode 2 keeps one cached copy of each git plugin here, named `git-<slug>-<first 12 hex of sha256(spec)>`.
-    cachedCopy = (system: System, spec: string) => path.join(
-        system.env.XDG_CACHE_HOME || path.join(system.home, '.cache'),
-        'opencode',
-        'npm',
-        `git-${gitSlug(spec)}-${createHash('sha256').update(spec).digest('hex').slice(0, 12)}`
-    ),
     // `plugin add` and `plugin remove` act on OPENCODE_CONFIG_DIR when it is set, wherever our entry was found.
     // Compared as paths, not strings: Windows spells the same directory with either slash, in any case.
     inConfigOf = (system: System, entry: Entry) => (system.env.OPENCODE_CONFIG_DIR && !samePath(system.env.OPENCODE_CONFIG_DIR, entry.dir) ?
@@ -43,6 +36,16 @@ const KEYS = ['plugin', 'plugins'],
     cloneDir = (system: System) => path.join(configDir(system), 'postman-plugin'),
     shimFile = (system: System) => path.join(configDir(system), 'plugins', 'postman.ts'),
     shimTarget = (system: System) => path.join(cloneDir(system), 'opencode', 'src', 'index.ts');
+
+/** Where OpenCode 2 keeps its cached copy of the git plugin `spec`: `git-<slug>-<first 12 hex of sha256(spec)>`. */
+export function cachedCopy (system: System, spec: string): string {
+    return path.join(
+        system.env.XDG_CACHE_HOME || path.join(system.home, '.cache'),
+        'opencode',
+        'npm',
+        `git-${gitSlug(spec)}-${createHash('sha256').update(spec).digest('hex').slice(0, 12)}`
+    );
+}
 
 /** OpenCode 2's name for a git spec's cache: its last path segment, as `gitSlug` in packages/util/src/npm.ts derives it. */
 function gitSlug (spec: string): string {
@@ -306,6 +309,14 @@ async function replaceEntry (system: System, version: Version, entry: Entry, spe
     }
 }
 
+/** The cached copies of `specs` on disk, including one `addFresh` set aside as `.previous`. */
+async function cachedCopies (system: System, specs: string[]): Promise<string[]> {
+    const copies = [...new Set(specs)].map((spec) => cachedCopy(system, spec)).flatMap((copy) => [copy, `${copy}.previous`]),
+        present = await Promise.all(copies.map((copy) => system.exists(copy)));
+
+    return copies.filter((_, at) => present[at]);
+}
+
 /** OpenCode 2 fetches into `.staging-*` and renames it to a numeric generation only once the fetch succeeds (packages/util/src/npm.ts). */
 async function isComplete (system: System, cache: string): Promise<boolean> {
     return (await system.readDir(cache)).some((entry) => /^\d+$/.test(entry));
@@ -446,7 +457,9 @@ export const opencode: Host = {
             const entries = await readableEntries(system, null),
                 { cloned, shim } = await legacyState(system);
 
-            if (!entries.length && !cloned && shim !== OPENCODE_SHIM) {
+            const caches = await cachedCopies(system, [OPENCODE_SPEC, ...entries.map((entry) => entry.spec)]);
+
+            if (!entries.length && !cloned && shim !== OPENCODE_SHIM && !caches.length) {
                 return result('skipped', 'not installed');
             }
 
@@ -476,6 +489,15 @@ export const opencode: Host = {
             }
 
             removed.push(...await removeLegacy(system));
+
+            // Only once every entry is out, so a failed remove leaves the plugin working.
+            for (const cache of caches) {
+                await system.remove(cache);
+            }
+
+            if (caches.length) {
+                removed.push(`the cached copy at ${caches.join(' and ')}`);
+            }
 
             return result('done', `removed ${removed.join(' and ')}`, NEXT);
         });

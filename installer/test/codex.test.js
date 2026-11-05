@@ -281,14 +281,15 @@ function removes (system, ids) {
     return system;
 }
 
-test('remove removes ours and the npx plugins copy; the marketplace stays', async () => {
+test('remove removes ours and the npx plugins copy, then the marketplace they came from', async () => {
     const system = removes(codexSystem({ plugins: [installed('postman@postman'), installed('postman@plugins-cli')] }),
         ['postman@postman', 'postman@plugins-cli']);
 
     assert.equal((await codex.remove(system)).outcome, 'done');
     assert.deepEqual(system.commands, [
         'codex plugin remove postman@postman --json',
-        'codex plugin remove postman@plugins-cli --json'
+        'codex plugin remove postman@plugins-cli --json',
+        'codex plugin marketplace remove postman --json'
     ]);
 });
 
@@ -301,10 +302,126 @@ test('remove fails when a remove exits 0 but leaves the duplicate installed', as
 });
 
 test('remove skips when nothing is installed', async () => {
-    const system = codexSystem();
+    const system = codexSystem({ marketplaces: [] });
 
     assert.equal((await codex.remove(system)).outcome, 'skipped');
     assert.deepEqual(system.commands, []);
+});
+
+const USER_CONFIG = '/home/user/.codex/config.toml';
+
+/** A Codex whose user config holds `state` under `hooks.state`, answering `config/read` and `config/batchWrite` like codex app-server. */
+function trustSystem (state, options = {}) {
+    const system = codexSystem(options);
+    let version = 1;
+
+    Object.assign(system.rpcs, {
+        initialize: {},
+        'config/read': () => ({ config: {}, origins: {}, layers: [{ name: { type: 'user', file: USER_CONFIG }, version: `v${version}`, config: { hooks: { state } } }] }),
+        'config/batchWrite': (params) => {
+            if (params.expectedVersion !== `v${version}`) {
+                throw new Error('Configuration was modified since last read');
+            }
+
+            for (const key of params.edits[0].keyPath === 'hooks.state' ? Object.keys(state) : [POSTMAN_HOOK_KEY]) {
+                delete state[key];
+            }
+            version++;
+
+            return { status: 'ok', version: `v${version}`, filePath: USER_CONFIG };
+        }
+    });
+
+    return system;
+}
+
+test('remove after an older remove still takes out the marketplace and the hook approval it left', async () => {
+    const state = { [POSTMAN_HOOK_KEY]: { trusted_hash: 'h' }, 'other@market:hooks/hooks.json:session_start:0:0': { trusted_hash: 'x' } },
+        system = trustSystem(state),
+        outcome = await codex.remove(system);
+
+    assert.equal(outcome.outcome, 'done');
+    assert.equal(outcome.message, 'removed marketplace postman, the session-start hook approval');
+    assert.deepEqual(system.commands, ['codex plugin marketplace remove postman --json']);
+    assert.deepEqual(system.rpcCalls.find(({ method }) => method === 'config/batchWrite').params, {
+        edits: [{ keyPath: `hooks.state.${JSON.stringify(POSTMAN_HOOK_KEY)}`, value: null, mergeStrategy: 'replace' }],
+        expectedVersion: 'v1',
+        filePath: USER_CONFIG,
+        reloadUserConfig: true
+    });
+    assert.deepEqual(Object.keys(state), ['other@market:hooks/hooks.json:session_start:0:0']);
+});
+
+test('remove leaves a postman marketplace registered from another source, and one still serving a plugin', async () => {
+    const foreign = codexSystem({ marketplaces: [{ name: 'postman', marketplaceSource: { sourceType: 'git', source: 'https://github.com/someone/fork.git' } }] }),
+        serving = codexSystem({ plugins: [installed('other@postman')] });
+
+    assert.equal((await codex.remove(foreign)).outcome, 'skipped');
+    assert.match(foreign.lines.join('\n'), /registered from https:\/\/github.com\/someone\/fork.git, not postmanlabs\/postman-plugin; left alone/);
+    assert.equal((await codex.remove(serving)).outcome, 'skipped');
+    assert.match(serving.lines.join('\n'), /still serves other@postman; left alone/);
+    assert.deepEqual([...foreign.commands, ...serving.commands], []);
+});
+
+test('a dry-run remove still keeps a marketplace another plugin installs from', async () => {
+    const system = codexSystem({ plugins: [installed('postman@postman'), installed('other@postman')] });
+
+    Object.assign(system, { dryRun: true });
+    await codex.remove(system);
+
+    assert.deepEqual(system.commands, ['codex plugin remove postman@postman --json']);
+    assert.match(system.lines.join('\n'), /still serves other@postman; left alone/);
+});
+
+test('remove keeps a hook approval it cannot delete safely, and says how to remove it', async () => {
+    const changed = trustSystem({ [POSTMAN_HOOK_KEY]: { trusted_hash: 'h' } }, { marketplaces: [] }),
+        read = changed.rpcs['config/read'];
+
+    // Another writer bumps the version between the read and the write.
+    changed.rpcs['config/read'] = () => { const reply = read(); reply.layers[0].version = 'stale'; return reply; };
+
+    const outcome = await codex.remove(changed);
+
+    assert.equal(outcome.outcome, 'skipped');
+    assert.match(changed.lines.join('\n'), /Could not delete Postman's hook approval: Configuration was modified since last read\. Remove `\[hooks\.state\."postman@postman:hooks\/codex-hooks\.json:session_start:0:0"\]`/);
+});
+
+test('remove deletes the whole hooks.state table when Postman\'s approval is the only one in it', async () => {
+    const system = trustSystem({ [POSTMAN_HOOK_KEY]: { trusted_hash: 'h' } }, { marketplaces: [] });
+
+    assert.equal((await codex.remove(system)).message, 'removed the session-start hook approval');
+    assert.deepEqual(system.rpcCalls.find(({ method }) => method === 'config/batchWrite').params.edits, [{ keyPath: 'hooks.state', value: null, mergeStrategy: 'replace' }]);
+});
+
+test('a Codex whose config/read has no layers gets the manual-removal note, and one without a user config none', async () => {
+    const unsupported = trustSystem({}, { marketplaces: [] }),
+        noConfig = trustSystem({}, { marketplaces: [] });
+
+    unsupported.rpcs['config/read'] = () => ({ config: {}, origins: {} });
+    noConfig.rpcs['config/read'] = () => ({ config: {}, origins: {}, layers: [] });
+
+    await codex.remove(unsupported);
+    await codex.remove(noConfig);
+
+    assert.match(unsupported.lines.join('\n'), /Could not delete Postman's hook approval: config\/read returned no config layers/);
+    assert.deepEqual(noConfig.lines, []);
+});
+
+test('remove without a hook approval writes nothing to the Codex config', async () => {
+    const system = trustSystem({ 'other:hook': { trusted_hash: 'x' } }, { marketplaces: [] });
+
+    assert.equal((await codex.remove(system)).outcome, 'skipped');
+    assert.ok(!system.rpcCalls.some(({ method }) => method === 'config/batchWrite'));
+});
+
+test('a dry-run remove prints the hook-approval delete without starting codex app-server', async () => {
+    const system = trustSystem({ [POSTMAN_HOOK_KEY]: { trusted_hash: 'h' } }, { marketplaces: [] });
+
+    Object.assign(system, { dryRun: true });
+    await codex.remove(system);
+
+    assert.deepEqual(system.rpcSessions, []);
+    assert.match(system.lines.join('\n'), /config\/batchWrite .*"value":null,"mergeStrategy":"replace"/);
 });
 
 function hookSystem ({ status = 'untrusted', hash = 'declaration/content', ...options } = {}) {

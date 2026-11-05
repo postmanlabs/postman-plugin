@@ -27,6 +27,68 @@ const trustEdit = (hash: string) => ({
     reloadUserConfig: true
 });
 
+type UserLayer = { name: { type: string; file?: string }; version: string; config?: { hooks?: { state?: Record<string, unknown> } } };
+
+// A quoted segment, since the key itself holds dots. `replace` with null deletes the table and nothing beside it;
+// when ours is the only approval, `hooks.state` goes too, or the empty header install wrote would stay behind.
+const revokeEdit = (layer: Pick<UserLayer, 'version'> & { file?: string }, onlyEntry = false) => ({
+    edits: [{ keyPath: onlyEntry ? 'hooks.state' : `hooks.state.${JSON.stringify(POSTMAN_HOOK_KEY)}`, value: null, mergeStrategy: 'replace' }],
+    expectedVersion: layer.version,
+    ...(layer.file ? { filePath: layer.file } : {}),
+    reloadUserConfig: true
+});
+
+async function userLayer (rpc: JsonRpc): Promise<UserLayer | undefined> {
+    const read = await rpc.request<{ layers?: UserLayer[] | null }>('config/read', { includeLayers: true });
+
+    // A Codex without layered reads can't say where the approval is; no user layer means no user config at all.
+    if (!Array.isArray(read?.layers)) {
+        throw new Error('config/read returned no config layers');
+    }
+
+    return read.layers.find((layer) => layer.name?.type === 'user');
+}
+
+/** Deletes the trust entry `approvePostmanHook` wrote; true when one was removed. Never fails the remove. */
+export async function revokePostmanHookApproval (system: System): Promise<boolean> {
+    const note = (message: string) => system.log(`  note: ${message}`);
+
+    if (system.dryRun) {
+        note('Would delete Postman\'s session-start hook approval from the Codex user config, if present, through codex app-server:');
+        system.log(`  config/batchWrite ${JSON.stringify(revokeEdit({ version: '<version from config/read>' }))}`);
+
+        return false;
+    }
+
+    try {
+        return await system.withJsonRpc('codex', ['app-server'], async (rpc) => {
+            await rpc.request('initialize', { clientInfo: { name: 'postman-plugin-installer', version: '1' } });
+            rpc.notify('initialized');
+
+            const layer = await userLayer(rpc),
+                state = layer?.config?.hooks?.state;
+
+            if (!layer || !state || !(POSTMAN_HOOK_KEY in state)) {
+                return false;
+            }
+
+            // `expectedVersion` makes Codex refuse the write if the file changed after this read.
+            await rpc.request('config/batchWrite', revokeEdit({ version: layer.version, file: layer.name.file }, Object.keys(state).length === 1));
+
+            if ((await userLayer(rpc))?.config?.hooks?.state?.[POSTMAN_HOOK_KEY] !== undefined) {
+                throw new Error('Codex accepted the write, but the approval is still there');
+            }
+
+            return true;
+        }) ?? false;
+    }
+    catch (error) {
+        note(`Could not delete Postman's hook approval: ${error instanceof Error ? error.message : String(error)}. Remove \`[hooks.state."${POSTMAN_HOOK_KEY}"]\` from ${path.join(system.env.CODEX_HOME || path.join(system.home, '.codex'), 'config.toml')} yourself.`);
+
+        return false;
+    }
+}
+
 /** Approves only Postman's current hook after installation; unsupported APIs never fail the install. */
 export async function approvePostmanHook (system: System): Promise<void> {
     const note = (message: string) => system.log(`  note: ${message}`);

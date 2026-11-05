@@ -1,4 +1,4 @@
-import { REPO } from '../source.js';
+import { REPO, isSameRepo, redact } from '../source.js';
 import type { System } from '../system.js';
 import { guard, mustProbeJson, mustRun, parseJson } from './shared.js';
 import { type Host, result } from './types.js';
@@ -14,11 +14,42 @@ const PLUGIN_NAME = 'postman',
 // `copilot plugin list --json` rows, per the Copilot CLI plugin reference.
 type InstalledPlugin = { name: string; marketplace?: string; version?: string; enabled?: boolean; source?: string };
 
-type Marketplace = { name: string };
+// `source` reads like `GitHub: owner/repo` in Copilot CLI 1.0.
+type Marketplace = { name: string; source?: string };
 
 const isOurs = (plugin: InstalledPlugin) => plugin.name === PLUGIN_NAME,
     // A direct install has no marketplace; it would load the same skills a second time.
     isDirect = (plugin: InstalledPlugin) => isOurs(plugin) && !plugin.marketplace;
+
+/** Unregisters this repo's marketplace once nothing installed comes from it; without `--force` Copilot refuses otherwise too. */
+async function removeMarketplace (system: System, plugins: InstalledPlugin[]): Promise<boolean> {
+    const marketplaces = await mustProbeJson<Marketplace[]>(system, 'copilot', ['plugin', 'marketplace', 'list', '--json']),
+        registered = marketplaces.find((marketplace) => marketplace.name === MARKETPLACE);
+
+    if (!registered) {
+        return false;
+    }
+
+    const source = registered.source?.replace(/^GitHub:\s*/i, '');
+
+    if (!isSameRepo(source, REPO)) {
+        system.log(`  note: marketplace ${MARKETPLACE} is registered from ${source ? redact(source) : 'an unknown source'}, not ${REPO}; left alone`);
+
+        return false;
+    }
+
+    const serving = plugins.filter((plugin) => plugin.marketplace === MARKETPLACE);
+
+    if (serving.length) {
+        system.log(`  note: marketplace ${MARKETPLACE} still serves ${serving.map((plugin) => plugin.name).join(', ')}; left alone`);
+
+        return false;
+    }
+
+    await mustRun(system, 'copilot', ['plugin', 'marketplace', 'remove', MARKETPLACE]);
+
+    return true;
+}
 
 export const copilot: Host = {
     id: 'copilot',
@@ -76,15 +107,24 @@ export const copilot: Host = {
 
     remove (system) {
         return guard(async () => {
-            const plugins = await mustProbeJson<InstalledPlugin[]>(system, 'copilot', ['plugin', 'list', '--json']);
+            const plugins = await mustProbeJson<InstalledPlugin[]>(system, 'copilot', ['plugin', 'list', '--json']),
+                wasInstalled = plugins.some(isOurs);
+            let remaining = plugins.filter((plugin) => !isOurs(plugin));
 
-            if (!plugins.some(isOurs)) {
-                return result('skipped', 'not installed');
+            if (wasInstalled) {
+                await mustRun(system, 'copilot', ['plugin', 'uninstall', PLUGIN_NAME]);
+
+                if (!system.dryRun) {
+                    remaining = await mustProbeJson<InstalledPlugin[]>(system, 'copilot', ['plugin', 'list', '--json']);
+                }
             }
 
-            await mustRun(system, 'copilot', ['plugin', 'uninstall', PLUGIN_NAME]);
+            const removals = [
+                ...(wasInstalled ? [`uninstalled ${PLUGIN_NAME}`] : []),
+                ...(await removeMarketplace(system, remaining) ? [`removed marketplace ${MARKETPLACE}`] : [])
+            ];
 
-            return result('done', `uninstalled ${PLUGIN_NAME}`, NEXT);
+            return removals.length ? result('done', removals.join(' and '), NEXT) : result('skipped', 'not installed');
         });
     }
 };

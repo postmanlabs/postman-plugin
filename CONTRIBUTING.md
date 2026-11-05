@@ -389,6 +389,23 @@ wherever one exists:
 | OpenCode | `opencode plugin add github:postmanlabs/postman-plugin` on OpenCode 2.0.4 or later, `opencode plugin --global …` on OpenCode 1.14.33 or later. A re-run refetches that spec in place, so it moves to the newest commit on `main`, and replaces an entry for any other spec of the repository (a branch, a tag or a git URL) by adding the bare spec and then removing the old one; on OpenCode 1 the add is forced, which replaces the same package in place. It reads the global config (`plugins`, or `plugin` on OpenCode 1, in `opencode.json` or `opencode.jsonc`) to see what is installed, removes with `opencode plugin remove` on OpenCode 2 and otherwise by editing the config entry — on OpenCode 1, and on 2 when the entry is in `opencode.jsonc` beside an `opencode.json`, the only file `plugin remove` edits — and then deletes an older clone-and-loader install so no skill loads twice. It refetches by re-running with `--force` on OpenCode 1 and, on OpenCode 2, by deleting the cached copy under `<cache>/opencode/npm/git-postman-plugin-*` and adding again: `plugin add` reuses that cache, and `plugin update`, `list` and `check` need OpenCode's background service, which a second instance on the same port or a cold start answers wrongly. It refuses to refresh an entry that the refresh would not write back to, where it would register a second copy instead: on OpenCode 2 one outside the first of `opencode.json`, `opencode.jsonc` and their `.opencode/` copies that exists, which is the file `plugin add` edits; on OpenCode 1 one in `OPENCODE_CONFIG_DIR`, which `plugin --global` ignores. `POSTMAN_PLUGIN_OPENCODE_SPEC` installs another spec instead, which installer smoke sets to a one-commit copy of its checkout on every run but the nightly one |
 | Pi | `pi install npm:@postman/postman-plugin`, or `pi update` when it's installed, then `pi remove` for any git install of this repo, which would load the same skills twice |
 
+`remove` uninstalls the plugin first, then whatever was installed alongside it,
+and runs that cleanup even when the plugin is already gone, since older releases
+removed only the plugin:
+
+- This repo's marketplace in Claude Code (`postman`, at user scope only), Codex
+  (`postman`), Copilot CLI (`postman`) and Droid (`postman-plugin`). It is removed
+  only when it is registered from this repo and no plugin the agent lists still
+  comes from it. Anthropic's `claude-plugins-official` is never removed.
+- Codex's approval of the session-start hook. It is deleted through app-server's
+  `config/batchWrite` with the version `config/read` returned, so Codex refuses
+  the write if the file changed in between.
+- OpenCode 2's cached copy of the spec it removed, only after the config entry
+  is out.
+
+Anything it can't prove is ours, it leaves in place and prints as a `note:`.
+Installer smoke's `removed` check asserts each of these is gone.
+
 Every agent but Pi gets the plugin from GitHub, not from the npm package, so a
 skill change needs no installer release. On Claude Code, a route release
 reaches installer users when Anthropic's catalog moves its pin for `postman`.

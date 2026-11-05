@@ -85,14 +85,43 @@ test('status notes a disabled install', async () => {
     assert.match(status.notes[0], /disabled/);
 });
 
-test('remove uninstalls, or skips when absent', async () => {
-    const present = cli({ plugins: [ours()] });
+const OWN = { name: 'postman', source: 'GitHub: postmanlabs/postman-plugin', isDefault: false },
+    DEFAULT = { name: 'awesome-copilot', source: 'GitHub: github/awesome-copilot', isDefault: true };
 
-    assert.equal((await copilot.remove(present)).outcome, 'done');
-    assert.deepEqual(present.commands, ['copilot plugin uninstall postman']);
+test('remove uninstalls, then unregisters the marketplace it came from; skips when neither is there', async () => {
+    const present = cliWith({ plugins: [ours({ marketplace: 'postman' })], marketplaces: [OWN, DEFAULT] });
 
-    const absent = cli();
+    present.runs['copilot plugin uninstall postman'] = (fake) => {
+        fake.probes[LIST] = '[]';
+
+        return '';
+    };
+
+    const outcome = await copilot.remove(present);
+
+    assert.equal(outcome.message, 'uninstalled postman and removed marketplace postman');
+    assert.deepEqual(present.commands, ['copilot plugin uninstall postman', 'copilot plugin marketplace remove postman']);
+
+    const absent = cliWith({ marketplaces: [DEFAULT] });
 
     assert.equal((await copilot.remove(absent)).outcome, 'skipped');
     assert.deepEqual(absent.commands, []);
+});
+
+test('remove after an older remove still unregisters the marketplace it left', async () => {
+    const system = cliWith({ marketplaces: [OWN, DEFAULT] });
+
+    assert.equal((await copilot.remove(system)).message, 'removed marketplace postman');
+    assert.deepEqual(system.commands, ['copilot plugin marketplace remove postman']);
+});
+
+test('remove leaves a postman marketplace from another repo, and one still serving a plugin', async () => {
+    const foreign = cliWith({ marketplaces: [{ name: 'postman', source: 'GitHub: someone/postman' }] }),
+        serving = cliWith({ plugins: [{ name: 'other', marketplace: 'postman' }], marketplaces: [OWN] });
+
+    assert.equal((await copilot.remove(foreign)).outcome, 'skipped');
+    assert.match(foreign.lines.join('\n'), /registered from someone\/postman, not postmanlabs\/postman-plugin; left alone/);
+    assert.equal((await copilot.remove(serving)).outcome, 'skipped');
+    assert.match(serving.lines.join('\n'), /still serves other; left alone/);
+    assert.deepEqual([...foreign.commands, ...serving.commands], []);
 });

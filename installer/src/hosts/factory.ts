@@ -88,6 +88,41 @@ async function refreshMarketplace (system: System): Promise<void> {
     await mustRun(system, 'droid', ['plugin', 'marketplace', 'update', MARKETPLACE]);
 }
 
+/**
+ * Removes this repo's marketplace once no plugin Droid can see comes from it. Droid removes a marketplace even
+ * while its plugins are installed, leaving them with nothing to update from, so this checks first.
+ */
+async function removeMarketplace (system: System, wasInstalled: boolean): Promise<boolean> {
+    const source = marketplaceSource(await mustProbeText(system, 'droid', ['plugin', 'marketplace', 'list']));
+
+    if (!source) {
+        return false;
+    }
+
+    if (!isSameRepo(sourceWithoutFactoryPrefix(source), REPO)) {
+        system.log(`  note: marketplace ${MARKETPLACE} is registered from ${redact(source)}, not ${REPO}; left alone`);
+
+        return false;
+    }
+
+    // Droid lists project scope only for the directory it runs in.
+    const listings = await Promise.all(['user', 'project'].map((scope) => mustProbeText(system, 'droid', ['plugin', 'list', '--scope', scope]))),
+        serving = listings.flatMap(installedPlugins)
+            .filter((plugin) => plugin.split(' ')[0].endsWith(`@${MARKETPLACE}`))
+            .filter((plugin) => !(system.dryRun && wasInstalled && plugin === `${PLUGIN_ID} [${SCOPE}]`));
+
+    if (serving.length) {
+        system.log(`  note: marketplace ${MARKETPLACE} still serves ${serving.join(', ')}; left alone`);
+
+        return false;
+    }
+
+    await mustRun(system, 'droid', ['plugin', 'marketplace', 'remove', MARKETPLACE]);
+    system.log(`  note: Droid lists project installs only for this directory; one elsewhere from marketplace ${MARKETPLACE} keeps its copy, without updates`);
+
+    return true;
+}
+
 export const factory: Host = {
     id: 'factory',
     name: 'Factory Droid',
@@ -124,13 +159,18 @@ export const factory: Host = {
 
     remove (system) {
         return guard(async () => {
-            if (!hasInstalledPlugin(await listPlugins(system))) {
-                return result('skipped', 'not installed');
+            const wasInstalled = hasInstalledPlugin(await listPlugins(system));
+
+            if (wasInstalled) {
+                await mustRun(system, 'droid', ['plugin', 'uninstall', PLUGIN_ID, '--scope', SCOPE]);
             }
 
-            await mustRun(system, 'droid', ['plugin', 'uninstall', PLUGIN_ID, '--scope', SCOPE]);
+            const removals = [
+                ...(wasInstalled ? [`uninstalled ${PLUGIN_ID}`] : []),
+                ...(await removeMarketplace(system, wasInstalled) ? [`removed marketplace ${MARKETPLACE}`] : [])
+            ];
 
-            return result('done', `uninstalled ${PLUGIN_ID}`, NEXT);
+            return removals.length ? result('done', removals.join(' and '), NEXT) : result('skipped', 'not installed');
         });
     }
 };

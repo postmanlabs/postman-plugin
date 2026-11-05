@@ -21,12 +21,29 @@ dependencies, ownership, runtime behavior, and the likely impact of a change.
 Install Postman in every compatible coding agent detected on your machine:
 
 ```bash
-npx @postman/postman-plugin
+npx @postman/postman-plugin@latest
 ```
 
 One command configures **Antigravity, Claude Code, Codex, GitHub Copilot CLI, Cursor,
 Factory Droid, Kimi Code, OpenCode and Pi**. Run it again to update, `status` to see what's installed,
-and `remove` to uninstall; `--agent <id>` limits any of them to one agent.
+and `remove` to uninstall; `--agent <id>` limits any of them to one agent. Keep `@latest`:
+without it, npx runs any older copy of the installer installed globally or in the current project.
+
+To uninstall:
+
+```bash
+npx @postman/postman-plugin@latest remove
+```
+
+`remove` uninstalls the plugin, then removes what it installed alongside it: the
+Postman marketplace in Claude Code, Codex, Copilot CLI and Factory Droid, once no
+plugin still installs from it; Codex's approval of Postman's session-start hook; and
+OpenCode's cached copy. Running it again cleans up what an earlier `remove` left
+behind. It never touches Anthropic's `claude-plugins-official` marketplace or
+another agent's settings, and it leaves project-scoped installs in place. Factory
+Droid lists project installs only for the current directory, so one elsewhere keeps
+working but stops getting updates once the marketplace is gone. Cursor Marketplace
+and Kimi Code installs can only be removed inside those apps; `remove` says how.
 
 For Codex, installation also approves Postman's session-start hook, which adds
 instructions for using Postman's API skills. There is no separate hook prompt
