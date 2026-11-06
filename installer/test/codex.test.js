@@ -403,7 +403,7 @@ test('a Codex whose config/read has no layers says the approval could not be che
 
     await codex.remove(noConfig);
 
-    assert.match(unsupported.lines.join('\n'), /Could not check \/home\/user\/\.codex\/config\.toml for Postman's session-start hook approval: config\/read returned no config layers\./);
+    assert.ok(unsupported.lines.join('\n').includes(`Could not check ${path.join('/home/user', '.codex', 'config.toml')} for Postman's session-start hook approval: config/read returned no config layers.`));
     assert.doesNotMatch(unsupported.lines.join('\n'), /yourself/);
     assert.deepEqual(outcome, { outcome: 'skipped', message: 'not installed, though the session-start hook approval could not be checked' });
     assert.deepEqual(noConfig.lines, []);
