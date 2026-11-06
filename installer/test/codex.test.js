@@ -392,17 +392,20 @@ test('remove deletes the whole hooks.state table when Postman\'s approval is the
     assert.deepEqual(system.rpcCalls.find(({ method }) => method === 'config/batchWrite').params.edits, [{ keyPath: 'hooks.state', value: null, mergeStrategy: 'replace' }]);
 });
 
-test('a Codex whose config/read has no layers gets the manual-removal note, and one without a user config none', async () => {
+test('a Codex whose config/read has no layers says the approval could not be checked, and one without a user config says nothing', async () => {
     const unsupported = trustSystem({}, { marketplaces: [] }),
         noConfig = trustSystem({}, { marketplaces: [] });
 
     unsupported.rpcs['config/read'] = () => ({ config: {}, origins: {} });
     noConfig.rpcs['config/read'] = () => ({ config: {}, origins: {}, layers: [] });
 
-    await codex.remove(unsupported);
+    const outcome = await codex.remove(unsupported);
+
     await codex.remove(noConfig);
 
-    assert.match(unsupported.lines.join('\n'), /Could not delete Postman's hook approval: config\/read returned no config layers/);
+    assert.match(unsupported.lines.join('\n'), /Could not check \/home\/user\/\.codex\/config\.toml for Postman's session-start hook approval: config\/read returned no config layers\./);
+    assert.doesNotMatch(unsupported.lines.join('\n'), /yourself/);
+    assert.deepEqual(outcome, { outcome: 'skipped', message: 'not installed, though the session-start hook approval could not be checked' });
     assert.deepEqual(noConfig.lines, []);
 });
 
@@ -421,6 +424,14 @@ test('a dry-run remove prints the hook-approval delete without starting codex ap
 
     assert.deepEqual(system.rpcSessions, []);
     assert.match(system.lines.join('\n'), /config\/batchWrite .*"value":null,"mergeStrategy":"replace"/);
+});
+
+test('a dry-run remove never reports "not installed" for a hook approval it cannot check', async () => {
+    const onlyApproval = Object.assign(trustSystem({ [POSTMAN_HOOK_KEY]: { trusted_hash: 'h' } }, { marketplaces: [] }), { dryRun: true }),
+        withMarketplace = Object.assign(trustSystem({ [POSTMAN_HOOK_KEY]: { trusted_hash: 'h' } }), { dryRun: true });
+
+    assert.deepEqual(await codex.remove(onlyApproval), { outcome: 'skipped', message: 'not installed, though the session-start hook approval could not be checked' });
+    assert.equal((await codex.remove(withMarketplace)).message, 'removed marketplace postman, the session-start hook approval, if present');
 });
 
 test('dry-run ref detection starts no app-server, even for an installed marketplace', async () => {

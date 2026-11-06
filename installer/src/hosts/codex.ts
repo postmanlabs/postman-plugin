@@ -248,14 +248,19 @@ export const codex: Host = {
                 }
             }
 
-            const removals = [
-                ...removed,
-                ...(await removeMarketplace(system, remaining) ? [`marketplace ${MARKETPLACE}`] : []),
-                ...(await revokePostmanHookApproval(system) ? ['the session-start hook approval'] : [])
-            ];
+            const removals = [...removed, ...(await removeMarketplace(system, remaining) ? [`marketplace ${MARKETPLACE}`] : [])],
+                approval = await revokePostmanHookApproval(system);
 
-            return removals.length ?
-                result('done', `removed ${removals.join(', ')}`, NEXT) :
+            if (approval === 'removed' || (approval === 'unchecked' && system.dryRun && removals.length)) {
+                removals.push(`the session-start hook approval${approval === 'removed' ? '' : ', if present'}`);
+            }
+
+            if (removals.length) {
+                return result('done', `removed ${removals.join(', ')}`, NEXT);
+            }
+
+            return approval === 'unchecked' ?
+                result('skipped', 'not installed, though the session-start hook approval could not be checked') :
                 result('skipped', 'not installed');
         });
     }

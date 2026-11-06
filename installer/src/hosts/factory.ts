@@ -37,19 +37,28 @@ function rowsOfWrappedTable (text: string): Row[] {
     return rows;
 }
 
-export function installedPlugins (droidPluginList: string): string[] {
+type InstalledPlugin = { id: string; scope: string };
+
+function parseInstalledPlugins (droidPluginList: string): InstalledPlugin[] {
     const bracketedScopes = droidPluginList.split(/\r?\n/)
         .map((line) => /^\s*(\S+@\S+)\s+\[(\w+)\]/.exec(line))
         .filter((match) => match !== null)
-        .map(([, plugin, scope]) => `${plugin} [${scope}]`);
+        .map(([, id, scope]) => ({ id, scope }));
 
     return bracketedScopes.length ?
         bracketedScopes :
-        rowsOfWrappedTable(droidPluginList).map((row) => `${row.PLUGIN} [${row.SOURCE}]`);
+        rowsOfWrappedTable(droidPluginList).map((row) => ({ id: row.PLUGIN, scope: row.SOURCE }));
+}
+
+const label = ({ id, scope }: InstalledPlugin) => `${id} [${scope}]`,
+    isOurs = (plugin: InstalledPlugin) => plugin.id === PLUGIN_ID && plugin.scope === SCOPE;
+
+export function installedPlugins (droidPluginList: string): string[] {
+    return parseInstalledPlugins(droidPluginList).map(label);
 }
 
 function hasInstalledPlugin (text: string): boolean {
-    return installedPlugins(text).includes(`${PLUGIN_ID} [${SCOPE}]`);
+    return parseInstalledPlugins(text).some(isOurs);
 }
 
 function marketplaceSource (text: string): string | null {
@@ -107,12 +116,12 @@ async function removeMarketplace (system: System, wasInstalled: boolean): Promis
 
     // Droid lists project scope only for the directory it runs in.
     const listings = await Promise.all(['user', 'project'].map((scope) => mustProbeText(system, 'droid', ['plugin', 'list', '--scope', scope]))),
-        serving = listings.flatMap(installedPlugins)
-            .filter((plugin) => plugin.split(' ')[0].endsWith(`@${MARKETPLACE}`))
-            .filter((plugin) => !(system.dryRun && wasInstalled && plugin === `${PLUGIN_ID} [${SCOPE}]`));
+        serving = listings.flatMap(parseInstalledPlugins)
+            .filter((plugin) => plugin.id.endsWith(`@${MARKETPLACE}`))
+            .filter((plugin) => !(system.dryRun && wasInstalled && isOurs(plugin)));
 
     if (serving.length) {
-        system.log(`  note: marketplace ${MARKETPLACE} still serves ${serving.join(', ')}; left alone`);
+        system.log(`  note: marketplace ${MARKETPLACE} still serves ${serving.map(label).join(', ')}; left alone`);
 
         return false;
     }
