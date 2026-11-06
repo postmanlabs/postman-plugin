@@ -110,7 +110,7 @@ const AGENTS = {
         ],
         alsoRemoved: () => {
             const system = createSystem({ log: () => {} }),
-                left = present(...[openCodeSpec, OPENCODE_SPEC].map((spec) => cachedCopy(system, spec)));
+                left = present(...[openCodeSpec, OPENCODE_SPEC].map((spec) => cachedCopy(system, spec)).flatMap((copy) => [copy, `${copy}.previous`]));
 
             assert.deepEqual(left, [], 'OpenCode 2 still has a cached copy of Postman');
         }

@@ -158,6 +158,15 @@ async function readableEntries (system: System, major: number | null): Promise<E
     return unreadable.length ? failed(`${unreadable[0]} is not valid JSON; fix it and re-run`) : entries;
 }
 
+/** `plugin remove` can exit 0 without editing the file the entry is in, and deleting the cache then breaks a plugin still configured. */
+async function assertNoEntryLeft (system: System, caches: string[]): Promise<void> {
+    const left = caches.length && !system.dryRun ? await readableEntries(system, null) : [];
+
+    if (left.length) {
+        failed(`${left.map((entry) => `${redact(entry.spec)} is still in ${entry.file}`).join(', ')}; kept the cached copy at ${caches.join(' and ')}`);
+    }
+}
+
 async function legacyState (system: System) {
     const cloned = await system.exists(cloneDir(system)),
         shim = await system.readFile(shimFile(system));
@@ -491,6 +500,8 @@ export const opencode: Host = {
             removed.push(...await removeLegacy(system));
 
             // Only once every entry is out, so a failed remove leaves the plugin working.
+            await assertNoEntryLeft(system, caches);
+
             for (const cache of caches) {
                 await system.remove(cache);
             }
