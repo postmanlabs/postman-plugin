@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "type": "command",
+        "bash": "\"$COPILOT_PLUGIN_ROOT/hooks/session-start\"",
+        "powershell": "cmd /d /c \"$env:COPILOT_PLUGIN_ROOT\\hooks\\session-start.cmd\"; exit $LASTEXITCODE",
+        "timeoutSec": 30
+      }
+    ]
+  }
+}

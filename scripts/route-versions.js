@@ -140,7 +140,8 @@ function withState (route) {
 
 function routes () {
     return [
-        ...Object.entries(MANIFEST_ROUTES).map(manifestRoute),
+        // A superseded route is frozen, so a release never has to bump it.
+        ...Object.entries(MANIFEST_ROUTES).filter(([, route]) => !route.supersededBy).map(manifestRoute),
         ...PACKAGE_ROUTES.filter((route) => route.updatesBy !== 'installer').map(packageRoute)
     ].map(withState);
 }

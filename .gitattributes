@@ -1,3 +1,9 @@
 # A Windows checkout with core.autocrlf would give the sh hook CRLF, which bash cannot run.
 hooks/session-start text eol=lf
 hooks/session-start.cmd text eol=crlf
+agent-plugin/hooks/session-start text eol=lf
+agent-plugin/hooks/session-start.cmd text eol=crlf
+# agent-plugin/ copies skills/ and hooks/ (scripts/build-manifest.js), so diffs collapse them.
+agent-plugin/skills/** linguist-generated=true
+agent-plugin/hooks/** linguist-generated=true
+agent-plugin/com.github.copilot/** linguist-generated=true

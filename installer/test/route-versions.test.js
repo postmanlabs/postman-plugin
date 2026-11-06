@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..'),
     script = path.join(repoRoot, 'scripts', 'route-versions.js'),
     ROUTE_FILES = ['.claude-plugin', '.codex-plugin', '.cursor-plugin', '.factory-plugin', '.kimi-plugin', '.antigravity-plugin',
-        '.github/plugin', '.app.json', 'mcp.json', 'mcp_config.json', 'mcp.claude-code.json', 'mcp.codex.json', 'mcp.copilot.json',
+        '.github/plugin', 'agent-plugin/plugin.json', 'agent-plugin/mcp.json', '.app.json', 'mcp.json', 'mcp_config.json', 'mcp.claude-code.json', 'mcp.codex.json', 'mcp.copilot.json',
         'mcp.cursor.json', 'mcp.opencode.json', 'mcp.pi.json', 'package.json', 'opencode/package.json', 'opencode/package-lock.json',
         'installer/package.json', 'assets'],
     GIT_ENV = { GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' };
@@ -72,7 +72,7 @@ test('a skill change makes the version-keyed routes stale, and leaves the commit
         failed = result.stdout.split('\n').filter((line) => line.startsWith('FAIL')).map((line) => line.split(/\s+/)[1]);
 
     assert.equal(result.status, 1);
-    assert.deepEqual(failed.sort(), ['claude-code', 'codex', 'copilot', 'cursor', 'kimi']);
+    assert.deepEqual(failed.sort(), ['agent', 'claude-code', 'codex', 'cursor', 'kimi']);
 });
 
 test('a change to one route\'s own files makes only that route stale', (t) => {

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "postman": {
+      "type": "streamable-http",
+      "url": "https://mcp.postman.com/mcp",
+      "headers": {
+        "X-Source": "postman-agent-plugin",
+        "X-Plugin-Version": "0.2.0",
+        "User-Agent": "postman-agent-plugin/0.2.0"
+      }
+    }
+  }
+}

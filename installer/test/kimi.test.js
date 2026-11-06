@@ -93,11 +93,11 @@ test('the Kimi mandate keeps the shared mandate\'s line endings when it is built
 
     t.after(() => fs.rmSync(copy, { recursive: true, force: true }));
 
-    for (const entry of ['scripts/build-manifest.js', '.claude-plugin/plugin.json', 'skills']) {
+    // hooks/ too, since build-manifest.js copies its scripts into agent-plugin/.
+    for (const entry of ['scripts/build-manifest.js', '.claude-plugin/plugin.json', 'skills', 'hooks']) {
         fs.cpSync(path.join(repoRoot, entry), path.join(copy, entry), { recursive: true });
     }
 
-    fs.mkdirSync(path.join(copy, 'hooks'));
     fs.writeFileSync(path.join(copy, 'hooks', 'session-start-context.md'),
         fs.readFileSync(path.join(repoRoot, 'hooks', 'session-start-context.md'), 'utf8').replace(/\r?\n/g, '\r\n'));
     execFileSync(process.execPath, [path.join(copy, 'scripts', 'build-manifest.js')], { stdio: 'ignore' });

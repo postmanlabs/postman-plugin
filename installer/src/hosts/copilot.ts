@@ -4,7 +4,8 @@ import { guard, mustProbeJson, mustRun, parseJson } from './shared.js';
 import { type Host, result } from './types.js';
 
 // Copilot CLI is deprecating direct installs (repos, URLs, local paths), so this installs from this
-// repo as a marketplace, which Copilot reads from `.claude-plugin/marketplace.json`. Once Postman is
+// repo as a marketplace. Copilot reads `.github/plugin/marketplace.json` before Claude Code's
+// `.claude-plugin/marketplace.json`, and ours installs agent-plugin/. Once Postman is
 // listed in awesome-copilot, which Copilot ships registered, `postman@awesome-copilot` replaces it.
 const PLUGIN_NAME = 'postman',
     MARKETPLACE = 'postman',
@@ -54,7 +55,7 @@ async function removeMarketplace (system: System, plugins: InstalledPlugin[]): P
 export const copilot: Host = {
     id: 'copilot',
     name: 'GitHub Copilot CLI',
-    route: '.github/plugin',
+    route: 'agent-plugin',
 
     async detect (system) {
         return (await system.which('copilot')) !== null;

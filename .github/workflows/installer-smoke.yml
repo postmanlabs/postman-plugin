@@ -198,6 +198,12 @@ jobs:
         if: ${{ !cancelled() }}
         run: node ../scripts/copilot-harness.js
 
+      - name: The latest Copilot CLI loads this checkout's legacy .github/plugin/ manifest
+        if: ${{ !cancelled() }}
+        run: node ../scripts/copilot-harness.js
+        env:
+          COPILOT_ROUTE: legacy
+
       # Installed only now: before the installer ran, Cursor had to be found by its home directory alone.
       # Linux only: the Cursor CLI on Windows runs no sessionStart hook headless
       # (https://github.com/postmanlabs/postman-plugin/issues/83).
