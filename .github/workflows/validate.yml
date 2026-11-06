@@ -249,11 +249,10 @@ jobs:
         shell: pwsh
         run: npm run build && node --test --test-reporter=spec --test-reporter-destination=stdout --test-reporter=tap --test-reporter-destination=unit-tests.tap test/*.test.js
 
-      # Keep skips restricted to the named platform tests. Hook trust and model
-      # delivery still run on Windows; only the Linux pseudo-terminal check skips.
-      - name: Only the platform-specific terminal and process tests may skip
+      # Keep skips restricted to the Windows-only tests, which skip everywhere else.
+      - name: Only the Windows-only tests may skip
         env:
-          ALLOWED_SKIP: ${{ runner.os == 'Windows' && '# SKIP Linux terminal check$' || '# SKIP Windows only$' }}
+          ALLOWED_SKIP: '# SKIP Windows only$'
         run: |
           test -s unit-tests.tap
           if grep -E '# SKIP' unit-tests.tap | grep -v -E "$ALLOWED_SKIP"; then exit 1; fi
@@ -353,7 +352,7 @@ jobs:
           CLAUDE_BIN: ${{ runner.temp }}/claude/node_modules/.bin/claude${{ runner.os == 'Windows' && '.cmd' || '' }}
 
   # Codex installs this checkout as a local marketplace. The harness checks what Codex sends a stand-in
-  # Responses API and MCP server, with the plugin's hook untrusted, as a new user has it, and trusted.
+  # Responses API and MCP server, with hook trust bypassed so any hook the route declared would run.
   codex:
     name: Codex plugin / ${{ matrix.label }}
     runs-on: ${{ matrix.os }}
