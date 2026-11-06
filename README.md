@@ -28,14 +28,6 @@ One command configures **Antigravity, Claude Code, Codex, GitHub Copilot CLI, Cu
 Factory Droid, Kimi Code, OpenCode and Pi**. Run it again to update, `status` to see what's installed,
 and `remove` to uninstall; `--agent <id>` limits any of them to one agent.
 
-For Codex, installation also approves Postman's session-start hook, which adds
-instructions for using Postman's API skills. There is no separate hook prompt
-or dump of its instructions. Already trusted hooks are left alone. If Codex's
-hook API is unavailable, installation continues with a note to approve the hook
-inside Codex. Run the installer and Codex with the same `HOME` and `CODEX_HOME`;
-hook approval applies to that profile. If Codex later refreshes the plugin from
-`main` and its contents change, run the installer again to approve the update.
-
 You can also use the following commands to install individually:
 
 ### Antigravity
@@ -71,9 +63,8 @@ codex plugin marketplace upgrade postman
 codex plugin add postman@postman
 ```
 
-These commands track `main`; review the session-start hook in Codex after a
-manual install. The npx installer also approves the hook after each install or
-update.
+These commands track `main`, and Codex updates the plugin from it when a
+session starts.
 
 ### Cursor
 

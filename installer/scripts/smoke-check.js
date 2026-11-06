@@ -10,7 +10,7 @@ import { registeredRef } from '../dist/hosts/codex.js';
 import { installedPlugins } from '../dist/hosts/factory.js';
 import { parseJsonc } from '../dist/hosts/opencode-config.js';
 import { BRANCH, OPENCODE_SHIM, OPENCODE_SPEC } from '../dist/source.js';
-import { checkCodexHookApproval } from './codex-hook-check.js';
+import { checkCodexInstall } from './codex-install-check.js';
 import { createSystem } from '../dist/system.js';
 
 const [mode, ...agents] = process.argv.slice(2),
@@ -88,12 +88,12 @@ const AGENTS = {
     }
 };
 
-if (mode === 'codex-hooks') {
-    await checkCodexHookApproval();
+if (mode === 'codex-install') {
+    await checkCodexInstall();
     process.exit(0);
 }
 
-assert.ok(['installed', 'removed'].includes(mode) && agents.length > 0, 'usage: smoke-check.js installed|removed <agent>... | codex-hooks');
+assert.ok(['installed', 'removed'].includes(mode) && agents.length > 0, 'usage: smoke-check.js installed|removed <agent>... | codex-install');
 
 for (const agent of agents) {
     assert.ok(AGENTS[agent], `no check for the agent ${agent}`);

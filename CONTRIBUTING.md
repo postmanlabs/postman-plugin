@@ -329,8 +329,8 @@ DROID_BIN=<path to droid> node scripts/factory-harness.js
 Each route has a harness that installs this checkout the way a user gets it,
 under a throwaway home, and checks what the agent sends its model and the MCP
 server: every skill in `manifest.json` listed, the session-start mandate in the
-form that agent resolves (`postman:` names for Claude Code, Codex and Kimi Code,
-bare names elsewhere), the skill the mandate names loaded, and the route's MCP headers.
+form that agent resolves (`postman:` names for Claude Code and Kimi Code, bare
+names elsewhere; Codex gets none), the skill the mandate names loaded, and the route's MCP headers.
 `scripts/lib/harness.js` holds the stand-in they share. CI's job per route runs
 each harness against a pinned agent; the `Installer smoke` workflow runs it
 against the latest one nightly.
@@ -347,10 +347,11 @@ DROID_BIN=<path to droid> node scripts/factory-harness.js
 (cd installer && PI_BIN=<path to pi> npm run test:pi-harness)
 ```
 
-Each `*_BIN` defaults to the agent's command on `PATH`. Codex skips a plugin's
-hook until the user trusts it, so its harness runs twice: untrusted, which must
-carry the skills and no mandate, and with `--dangerously-bypass-hook-trust`,
-which must carry both. Copilot CLI's harness runs it with `COPILOT_OFFLINE=true`
+Each `*_BIN` defaults to the agent's command on `PATH`. The Codex route
+declares no hooks (`"hooks": {}`; without the key Codex falls back to
+`hooks/hooks.json`), so Codex gets the skills and no session-start mandate. Its
+harness runs with `--dangerously-bypass-hook-trust` and asserts that no hook
+runs. Copilot CLI's harness runs it with `COPILOT_OFFLINE=true`
 and a BYOK provider, `COPILOT_PROVIDER_BASE_URL`, pointed at the stand-in, so it
 needs no GitHub account. Cursor's CLI has no stand-in model, so its harness asks
 Cursor's model to quote the mandate and the skill it names, and needs a
