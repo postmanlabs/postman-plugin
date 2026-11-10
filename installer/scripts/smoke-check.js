@@ -9,8 +9,10 @@ import { spawnCliSync } from '../../scripts/lib/cli.js';
 import { registeredRef } from '../dist/hosts/codex.js';
 import { installedPlugins } from '../dist/hosts/factory.js';
 import { parseJsonc } from '../dist/hosts/opencode-config.js';
+import { cachedCopy } from '../dist/hosts/opencode.js';
 import { BRANCH, OPENCODE_SHIM, OPENCODE_SPEC } from '../dist/source.js';
-import { checkCodexHookApproval } from './codex-hook-check.js';
+import { checkCodexInstall } from './codex-install-check.js';
+import { POSTMAN_HOOK_KEY } from '../dist/hosts/codex-hooks.js';
 import { createSystem } from '../dist/system.js';
 
 const [mode, ...agents] = process.argv.slice(2),
@@ -28,28 +30,51 @@ function output (command, args) {
     return result.stdout;
 }
 
+/** Whether the Codex user config still holds the approval `install` wrote for Postman's session-start hook. */
+async function codexHookApproved () {
+    const layers = await createSystem({ log: () => {} }).withJsonRpc('codex', ['app-server'], async (rpc) => {
+        await rpc.request('initialize', { clientInfo: { name: 'postman-installer-smoke', version: '1' } });
+        rpc.notify('initialized');
+
+        return (await rpc.request('config/read', { includeLayers: true })).layers;
+    });
+
+    assert.ok(Array.isArray(layers), 'codex app-server config/read returned no layers');
+
+    return layers.some((layer) => layer.name?.type === 'user' && layer.config?.hooks?.state?.[POSTMAN_HOOK_KEY] !== undefined);
+}
+
 const lines = (text, needle) => text.split(/\r?\n/).filter((line) => line.includes(needle)).map((line) => line.trim().replace(/\s+/g, ' ')),
     present = (...files) => files.filter((file) => fs.existsSync(file));
 
-// `expected` must all be found after an install; nothing at all may be found after a remove.
+// `expected` must all be found after an install; nothing at all may be found after a remove, and `alsoRemoved`
+// checks what a remove takes out besides the plugin.
 const AGENTS = {
     'claude-code': {
         expected: ['postman@claude-plugins-official [user]'],
         found: () => JSON.parse(output('claude', ['plugin', 'list', '--json']))
-            .filter(({ id }) => id.startsWith('postman@')).map(({ id, scope }) => `${id} [${scope}]`)
+            .filter(({ id }) => id.startsWith('postman@')).map(({ id, scope }) => `${id} [${scope}]`),
+        alsoRemoved: () => assert.ok(!JSON.parse(output('claude', ['plugin', 'marketplace', 'list', '--json'])).some(({ name }) => name === 'postman'),
+            'Claude Code still has the postman marketplace')
     },
     codex: {
         expected: ['postman@postman'],
         found: () => JSON.parse(output('codex', ['plugin', 'list', '--json'])).installed
             .map(({ pluginId }) => pluginId).filter((id) => id.startsWith('postman@')),
-        // Checked after an install only: a remove leaves the marketplace registered.
         alsoInstalled: async () => assert.ok([BRANCH, null].includes(await registeredRef(createSystem({ log: () => {} }))),
-            `Codex's config/read doesn't report the postman marketplace tracking ${BRANCH}`)
+            `Codex's config/read doesn't report the postman marketplace tracking ${BRANCH}`),
+        alsoRemoved: async () => {
+            assert.ok(!(JSON.parse(output('codex', ['plugin', 'marketplace', 'list', '--json'])).marketplaces ?? []).some(({ name }) => name === 'postman'),
+                'Codex still has the postman marketplace');
+            assert.ok(!(await codexHookApproved()), 'Codex still holds the approval of Postman\'s session-start hook');
+        }
     },
     copilot: {
         expected: ['postman@postman'],
         found: () => JSON.parse(output('copilot', ['plugin', 'list', '--json']))
-            .filter(({ name }) => name === 'postman').map(({ name, marketplace }) => `${name}@${marketplace}`)
+            .filter(({ name }) => name === 'postman').map(({ name, marketplace }) => `${name}@${marketplace}`),
+        alsoRemoved: () => assert.ok(!JSON.parse(output('copilot', ['plugin', 'marketplace', 'list', '--json'])).some(({ name }) => name === 'postman'),
+            'Copilot CLI still has the postman marketplace')
     },
     cursor: {
         expected: [path.join(home, '.cursor', 'plugins', 'local', 'postman', '.cursor-plugin', 'plugin.json')],
@@ -57,7 +82,9 @@ const AGENTS = {
     },
     factory: {
         expected: ['postman@postman-plugin [user]'],
-        found: () => installedPlugins(output('droid', ['plugin', 'list', '--scope', 'user'])).filter((plugin) => plugin.startsWith('postman@'))
+        found: () => installedPlugins(output('droid', ['plugin', 'list', '--scope', 'user'])).filter((plugin) => plugin.startsWith('postman@')),
+        alsoRemoved: () => assert.ok(!/^\s*postman-plugin\s/m.test(output('droid', ['plugin', 'marketplace', 'list'])),
+            'Factory Droid still has the postman-plugin marketplace')
     },
     kimi: {
         expected: ['postman'],
@@ -80,7 +107,13 @@ const AGENTS = {
             ...present(path.join(openCodeConfig, 'postman-plugin', 'opencode', 'src', 'index.ts')),
             ...present(path.join(openCodeConfig, 'plugins', 'postman.ts'))
                 .filter((shim) => fs.readFileSync(shim, 'utf8') === OPENCODE_SHIM)
-        ]
+        ],
+        alsoRemoved: () => {
+            const system = createSystem({ log: () => {} }),
+                left = present(...[openCodeSpec, OPENCODE_SPEC].map((spec) => cachedCopy(system, spec)).flatMap((copy) => [copy, `${copy}.previous`]));
+
+            assert.deepEqual(left, [], 'OpenCode 2 still has a cached copy of Postman');
+        }
     },
     pi: {
         expected: ['npm:@postman/postman-plugin'],
@@ -88,17 +121,17 @@ const AGENTS = {
     }
 };
 
-if (mode === 'codex-hooks') {
-    await checkCodexHookApproval();
+if (mode === 'codex-install') {
+    await checkCodexInstall();
     process.exit(0);
 }
 
-assert.ok(['installed', 'removed'].includes(mode) && agents.length > 0, 'usage: smoke-check.js installed|removed <agent>... | codex-hooks');
+assert.ok(['installed', 'removed'].includes(mode) && agents.length > 0, 'usage: smoke-check.js installed|removed <agent>... | codex-install');
 
 for (const agent of agents) {
     assert.ok(AGENTS[agent], `no check for the agent ${agent}`);
 
-    const { expected, found, alsoInstalled } = AGENTS[agent],
+    const { expected, found, alsoInstalled, alsoRemoved } = AGENTS[agent],
         actual = found();
 
     if (mode === 'installed') {
@@ -107,6 +140,7 @@ for (const agent of agents) {
     }
     else {
         assert.deepEqual(actual, [], `${agent} still has Postman`);
+        await alsoRemoved?.();
     }
 
     console.log(`${agent}: ${mode === 'installed' ? actual.join(', ') : 'nothing of Postman left'}`);

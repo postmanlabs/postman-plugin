@@ -6,13 +6,16 @@ import { parseArgs } from 'node:util';
 import { HOSTS } from './hosts/index.js';
 import type { HostId } from './hosts/types.js';
 import { type Command, EXIT, run } from './run.js';
+import { PACKAGE, noteNewerRelease, wantsReleaseCheck } from './latest.js';
 import { createSystem } from './system.js';
 
 const COMMANDS: Record<string, Command> = { install: 'install', status: 'status', remove: 'remove', uninstall: 'remove' },
     HOST_IDS = HOSTS.map((host) => host.id),
     USAGE = `Install the Postman plugin into every coding agent on this machine.
 
-Usage: npx @postman/postman-plugin [command] [options]
+Usage: npx ${PACKAGE}@latest [command] [options]
+
+Keep @latest: without it, npx runs any older copy installed globally or in this project.
 
 Commands:
   install     Install into each detected agent, or update it there (default)
@@ -106,13 +109,14 @@ async function main (argv: string[]): Promise<number> {
         return fail(`Unknown agent: ${unknown.join(', ')}`);
     }
 
-    return run(createSystem({ dryRun: Boolean(values['dry-run']) }), HOSTS, {
-        command,
-        agents: agents as HostId[],
-        yes: Boolean(values.yes),
-        isTTY: Boolean(stdin.isTTY),
-        confirm
-    });
+    const system = createSystem({ dryRun: Boolean(values['dry-run']) }),
+        isTTY = Boolean(stdin.isTTY);
+
+    if (wantsReleaseCheck(process.env, isTTY)) {
+        await noteNewerRelease(system, version(), argv);
+    }
+
+    return run(system, HOSTS, { command, agents: agents as HostId[], yes: Boolean(values.yes), isTTY, confirm });
 }
 
 process.exitCode = await main(process.argv.slice(2));

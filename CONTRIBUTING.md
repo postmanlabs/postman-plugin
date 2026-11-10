@@ -337,8 +337,8 @@ DROID_BIN=<path to droid> node scripts/factory-harness.js
 Each route has a harness that installs this checkout the way a user gets it,
 under a throwaway home, and checks what the agent sends its model and the MCP
 server: every skill in `manifest.json` listed, the session-start mandate in the
-form that agent resolves (`postman:` names for Claude Code, Codex and Kimi Code,
-bare names elsewhere), the skill the mandate names loaded, and the route's MCP headers.
+form that agent resolves (`postman:` names for Claude Code and Kimi Code, bare
+names elsewhere; Codex gets none), the skill the mandate names loaded, and the route's MCP headers.
 `scripts/lib/harness.js` holds the stand-in they share. CI's job per route runs
 each harness against a pinned agent; the `Installer smoke` workflow runs it
 against the latest one nightly.
@@ -356,10 +356,11 @@ DROID_BIN=<path to droid> node scripts/factory-harness.js
 (cd installer && PI_BIN=<path to pi> npm run test:pi-harness)
 ```
 
-Each `*_BIN` defaults to the agent's command on `PATH`. Codex skips a plugin's
-hook until the user trusts it, so its harness runs twice: untrusted, which must
-carry the skills and no mandate, and with `--dangerously-bypass-hook-trust`,
-which must carry both. Copilot CLI's harness runs it with `COPILOT_OFFLINE=true`
+Each `*_BIN` defaults to the agent's command on `PATH`. The Codex route
+declares no hooks (`"hooks": {}`; without the key Codex falls back to
+`hooks/hooks.json`), so Codex gets the skills and no session-start mandate. Its
+harness runs with `--dangerously-bypass-hook-trust` and asserts that no hook
+runs. Copilot CLI's harness runs it with `COPILOT_OFFLINE=true`
 and a BYOK provider, `COPILOT_PROVIDER_BASE_URL`, pointed at the stand-in, so it
 needs no GitHub account. It installs `agent-plugin/` through
 `.github/plugin/marketplace.json`; with `COPILOT_ROUTE=legacy` it leaves that
@@ -400,6 +401,24 @@ wherever one exists:
 | Kimi Code | `npx --package=plugins@1.3.4 plugins add postmanlabs/postman-plugin --target kimi`, because Kimi installs plugins only from its TUI |
 | OpenCode | `opencode plugin add github:postmanlabs/postman-plugin` on OpenCode 2.0.4 or later, `opencode plugin --global …` on OpenCode 1.14.33 or later. A re-run refetches that spec in place, so it moves to the newest commit on `main`, and replaces an entry for any other spec of the repository (a branch, a tag or a git URL) by adding the bare spec and then removing the old one; on OpenCode 1 the add is forced, which replaces the same package in place. It reads the global config (`plugins`, or `plugin` on OpenCode 1, in `opencode.json` or `opencode.jsonc`) to see what is installed, removes with `opencode plugin remove` on OpenCode 2 and otherwise by editing the config entry — on OpenCode 1, and on 2 when the entry is in `opencode.jsonc` beside an `opencode.json`, the only file `plugin remove` edits — and then deletes an older clone-and-loader install so no skill loads twice. It refetches by re-running with `--force` on OpenCode 1 and, on OpenCode 2, by deleting the cached copy under `<cache>/opencode/npm/git-postman-plugin-*` and adding again: `plugin add` reuses that cache, and `plugin update`, `list` and `check` need OpenCode's background service, which a second instance on the same port or a cold start answers wrongly. It refuses to refresh an entry that the refresh would not write back to, where it would register a second copy instead: on OpenCode 2 one outside the first of `opencode.json`, `opencode.jsonc` and their `.opencode/` copies that exists, which is the file `plugin add` edits; on OpenCode 1 one in `OPENCODE_CONFIG_DIR`, which `plugin --global` ignores. `POSTMAN_PLUGIN_OPENCODE_SPEC` installs another spec instead, which installer smoke sets to a one-commit copy of its checkout on every run but the nightly one |
 | Pi | `pi install npm:@postman/postman-plugin`, or `pi update` when it's installed, then `pi remove` for any git install of this repo, which would load the same skills twice |
+
+`remove` uninstalls the plugin first, then whatever was installed alongside it,
+and runs that cleanup even when the plugin is already gone, since older releases
+removed only the plugin:
+
+- This repo's marketplace in Claude Code (`postman`, at user scope only), Codex
+  (`postman`), Copilot CLI (`postman`) and Droid (`postman-plugin`). It is removed
+  only when it is registered from this repo and no plugin the agent lists still
+  comes from it. Anthropic's `claude-plugins-official` is never removed.
+- Codex's approval of the session-start hook, which installs before 0.7.2 wrote.
+  It is deleted through app-server's
+  `config/batchWrite` with the version `config/read` returned, so Codex refuses
+  the write if the file changed in between.
+- OpenCode 2's cached copy of the spec it removed, only after the config entry
+  is out.
+
+Anything it can't prove is ours, it leaves in place and prints as a `note:`.
+Installer smoke's `removed` check asserts each of these is gone.
 
 Every agent but Pi gets the plugin from GitHub, not from the npm package, so a
 skill change needs no installer release. On Claude Code, a route release

@@ -2,7 +2,7 @@ import { BRANCH, GIT_URL, REPO, isSameRepo, redact } from '../source.js';
 import type { System } from '../system.js';
 import { StepFailed, blocked, failed, guard, mustProbeJson, mustRun, parseJson } from './shared.js';
 import { type Host, result } from './types.js';
-import { approvePostmanHook } from './codex-hooks.js';
+import { revokePostmanHookApproval } from './codex-hooks.js';
 
 // Codex names the marketplace after `.claude-plugin/marketplace.json`'s `name`.
 // `npx plugins add` installs a second copy under its own `plugins-cli` marketplace.
@@ -51,16 +51,16 @@ async function addMarketplace (system: System): Promise<void> {
 /** Adds or upgrades the marketplace, leaving the old release branch for `migrate`. */
 async function refreshMarketplace (system: System): Promise<'ready' | 'legacy' | 'deferred'> {
     const listing = await mustProbeJson<{ marketplaces?: Marketplace[] }>(system, 'codex', ['plugin', 'marketplace', 'list', '--json']),
-        existing = listing.marketplaces?.find((marketplace) => marketplace.name === MARKETPLACE);
+        registered = listing.marketplaces?.find((marketplace) => marketplace.name === MARKETPLACE);
 
-    if (!existing) {
+    if (!registered) {
         await addMarketplace(system);
 
         return 'ready';
     }
 
     // A local marketplace can carry any path text, so only a git source counts as this repo.
-    const { sourceType, source } = existing.marketplaceSource ?? {};
+    const { sourceType, source } = registered.marketplaceSource ?? {};
 
     if (sourceType !== 'git' || !isSameRepo(source, REPO)) {
         const from = source ? `${sourceType ?? 'unknown'} source ${redact(source)}` : 'an unknown source';
@@ -149,6 +149,39 @@ async function removeInstalled (system: System, plugins: InstalledPlugin[], ids:
     return present;
 }
 
+/**
+ * Removes the `postman` marketplace once nothing installed comes from it. Codex's `marketplace remove` also
+ * uninstalls its plugins, so a marketplace still serving one, or registered from another source, stays.
+ */
+async function removeMarketplace (system: System, plugins: InstalledPlugin[]): Promise<boolean> {
+    const listing = await mustProbeJson<{ marketplaces?: Marketplace[] }>(system, 'codex', ['plugin', 'marketplace', 'list', '--json']),
+        registered = listing.marketplaces?.find((marketplace) => marketplace.name === MARKETPLACE);
+
+    if (!registered) {
+        return false;
+    }
+
+    const { sourceType, source } = registered.marketplaceSource ?? {};
+
+    if (sourceType !== 'git' || !isSameRepo(source, REPO)) {
+        system.log(`  note: marketplace ${MARKETPLACE} is registered from ${source ? redact(source) : 'an unknown source'}, not ${REPO}; left alone`);
+
+        return false;
+    }
+
+    const serving = plugins.filter((plugin) => plugin.installed !== false && plugin.pluginId.endsWith(`@${MARKETPLACE}`));
+
+    if (serving.length) {
+        system.log(`  note: marketplace ${MARKETPLACE} still serves ${serving.map((plugin) => plugin.pluginId).join(', ')}; left alone`);
+
+        return false;
+    }
+
+    await mustRun(system, 'codex', ['plugin', 'marketplace', 'remove', MARKETPLACE, '--json']);
+
+    return true;
+}
+
 export const codex: Host = {
     id: 'codex',
     name: 'Codex',
@@ -170,7 +203,7 @@ export const codex: Host = {
             notes = SHADOW_IDS.filter((id) => isInstalled(plugins, id)).map((id) => `${id} duplicates it and will be removed`);
 
         if (installed && await registeredRef(system) === LEGACY_REF) {
-            notes.push(`marketplace ${MARKETPLACE} tracks ${LEGACY_REF} and will be re-added at ${BRANCH}; the installer then approves its session-start hook`);
+            notes.push(`marketplace ${MARKETPLACE} tracks ${LEGACY_REF} and will be re-added at ${BRANCH}`);
         }
 
         return installed ?
@@ -193,7 +226,6 @@ export const codex: Host = {
                 await mustRun(system, 'codex', ['plugin', 'add', PLUGIN_ID, '--json']);
             }
             await removeInstalled(system, plugins, SHADOW_IDS);
-            await approvePostmanHook(system);
 
             return result('done', `${wasInstalled ? 'updated' : 'installed'} ${PLUGIN_ID}`, NEXT);
         });
@@ -201,20 +233,34 @@ export const codex: Host = {
 
     remove (system) {
         return guard(async () => {
-            const removed = await removeInstalled(system, await listPlugins(system), [PLUGIN_ID, ...SHADOW_IDS]);
+            const plugins = await listPlugins(system),
+                removed = await removeInstalled(system, plugins, [PLUGIN_ID, ...SHADOW_IDS]);
+            let remaining = plugins.filter((plugin) => !removed.includes(plugin.pluginId));
 
             // status() sees only our ID, so the duplicate's removal is confirmed here.
-            if (removed.length && !system.dryRun) {
-                const after = await listPlugins(system),
-                    left = removed.filter((id) => isInstalled(after, id));
+            if (!system.dryRun) {
+                remaining = await listPlugins(system);
+
+                const left = removed.filter((id) => isInstalled(remaining, id));
 
                 if (left.length) {
                     failed(`remove exited 0, but ${left.join(', ')} is still installed`);
                 }
             }
 
-            return removed.length ?
-                result('done', `removed ${removed.join(', ')}`, NEXT) :
+            const removals = [...removed, ...(await removeMarketplace(system, remaining) ? [`marketplace ${MARKETPLACE}`] : [])],
+                approval = await revokePostmanHookApproval(system);
+
+            if (approval === 'removed' || (approval === 'unchecked' && system.dryRun && removals.length)) {
+                removals.push(`the session-start hook approval${approval === 'removed' ? '' : ', if present'}`);
+            }
+
+            if (removals.length) {
+                return result('done', `removed ${removals.join(', ')}`, NEXT);
+            }
+
+            return approval === 'unchecked' ?
+                result('skipped', 'not installed, though the session-start hook approval could not be checked') :
                 result('skipped', 'not installed');
         });
     }

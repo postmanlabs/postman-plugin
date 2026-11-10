@@ -184,3 +184,55 @@ test('remove skips when nothing is installed at user scope', async () => {
     assert.equal((await claudeCode.remove(system)).outcome, 'skipped');
     assert.deepEqual(system.commands, []);
 });
+
+const OWN = { name: 'postman', source: 'github', repo: 'postmanlabs/postman-plugin' },
+    REMOVE_OWN = 'claude plugin marketplace remove postman --scope user --json';
+
+test('remove after an older remove still takes out this repo\'s own marketplace, at user scope only', async () => {
+    const system = claude({ marketplaces: [official, OWN] }),
+        outcome = await claudeCode.remove(system);
+
+    assert.equal(outcome.outcome, 'done');
+    assert.equal(outcome.message, 'removed marketplace postman');
+    assert.deepEqual(system.commands, [REMOVE_OWN]);
+});
+
+test('remove uninstalls the duplicate before removing the marketplace it came from', async () => {
+    const system = claude({ marketplaces: [official, OWN], plugins: [plugin('postman@postman')] });
+
+    system.runs['claude plugin uninstall postman@postman --scope user --json'] = (fake) => {
+        fake.probes[PLUGINS] = '[]';
+
+        return '';
+    };
+
+    assert.equal((await claudeCode.remove(system)).message, 'uninstalled postman@postman and removed marketplace postman');
+    assert.deepEqual(system.commands, ['claude plugin uninstall postman@postman --scope user --json', REMOVE_OWN]);
+});
+
+test('remove keeps the own marketplace while a project still installs from it, or when it comes from elsewhere', async () => {
+    const project = claude({ marketplaces: [OWN], plugins: [plugin('postman@postman', 'project', { projectPath: '/work/api' })] }),
+        foreign = claude({ marketplaces: [{ name: 'postman', source: 'github', repo: 'someone/postman' }] });
+
+    assert.equal((await claudeCode.remove(project)).outcome, 'skipped');
+    assert.match(project.lines.join('\n'), /still serves postman@postman \(\/work\/api\); left alone/);
+    assert.equal((await claudeCode.remove(foreign)).outcome, 'skipped');
+    assert.match(foreign.lines.join('\n'), /registered from someone\/postman, not postmanlabs\/postman-plugin; left alone/);
+    assert.deepEqual([...project.commands, ...foreign.commands], []);
+});
+
+test('never removes Anthropic\'s marketplace, which other plugins come from', async () => {
+    const system = claude({ plugins: [plugin('postman@claude-plugins-official')] });
+
+    await claudeCode.remove(system);
+
+    assert.ok(!system.commands.some((line) => line.includes('marketplace remove')));
+});
+
+test('an own marketplace declared only in a project is reported, not a failed remove', async () => {
+    const system = claude({ marketplaces: [OWN], runs: { [REMOVE_OWN]: { code: 1, stderr: 'not found in user settings' } } }),
+        outcome = await claudeCode.remove(system);
+
+    assert.equal(outcome.outcome, 'skipped');
+    assert.match(system.lines.join('\n'), /could not remove marketplace postman from user settings, so it was left alone: not found in user settings/);
+});
