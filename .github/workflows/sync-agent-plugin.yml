@@ -7,6 +7,9 @@
 # a required check would wait on it forever. The push therefore needs a token that does start them: a
 # GitHub App token or a fine-grained PAT with `contents: write`, stored as the AGENT_PLUGIN_SYNC_TOKEN
 # secret. Without that secret the job does nothing and `Manifest` fails as it always did.
+#
+# `regenerate` runs the pull request's own code and never sees that token. `push` holds the token and
+# runs none of the pull request's code: it applies the patch only if it touches nothing but generated paths.
 name: Sync generated files
 
 on:
@@ -25,16 +28,54 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  GENERATED: manifest.json .kimi-plugin rules agent-plugin
+
 jobs:
-  sync:
-    name: Sync
+  regenerate:
+    name: Regenerate
     runs-on: ubuntu-latest
     timeout-minutes: 5
     # A fork's pull request has no secrets and no branch of ours to push to.
     if: github.event.pull_request.head.repo.full_name == github.repository
+    outputs:
+      changed: ${{ steps.diff.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 'lts/*'
+
+      # The script copies each source's mode, and a binary diff keeps it, so the hook scripts stay executable.
+      - name: Regenerate
+        id: diff
+        run: |
+          node scripts/build-manifest.js
+          git add -A -- $GENERATED
+          git diff --cached --binary > generated.patch
+          if [ -s generated.patch ]; then echo "changed=true" >> "$GITHUB_OUTPUT"; fi
+
+      - uses: actions/upload-artifact@v7
+        if: steps.diff.outputs.changed == 'true'
+        with:
+          name: generated-patch
+          path: generated.patch
+          retention-days: 1
+
+  push:
+    name: Push
+    needs: regenerate
+    if: needs.regenerate.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
     env:
       SYNC_TOKEN: ${{ secrets.AGENT_PLUGIN_SYNC_TOKEN }}
       HEAD_REF: ${{ github.event.pull_request.head.ref }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
     steps:
       - name: The token that lets the push start Validate is not set
         if: env.SYNC_TOKEN == ''
@@ -43,27 +84,26 @@ jobs:
       - uses: actions/checkout@v7
         if: env.SYNC_TOKEN != ''
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
+          ref: ${{ github.event.pull_request.head.sha }}
           token: ${{ secrets.AGENT_PLUGIN_SYNC_TOKEN }}
 
-      - uses: actions/setup-node@v7
+      - uses: actions/download-artifact@v8
         if: env.SYNC_TOKEN != ''
         with:
-          node-version: '22'
+          name: generated-patch
+          path: ${{ runner.temp }}
 
-      # Only what the script writes is added, so nothing else in the working tree can ride along.
-      # The script copies each source's mode, so the hook scripts stay executable.
-      - name: Regenerate and commit what changed
+      - name: Apply and push the generated files
         if: env.SYNC_TOKEN != ''
         run: |
-          node scripts/build-manifest.js
-          git add -A -- manifest.json .kimi-plugin rules agent-plugin
-          if git diff --cached --quiet; then
-            echo "The generated files are already in step with their sources."
-            exit 0
-          fi
+          git apply --index "$RUNNER_TEMP/generated.patch"
+          git diff --cached --name-only --no-renames -z | while IFS= read -r -d '' file; do
+            case " $GENERATED " in
+              *" ${file%%/*} "*) ;;
+              *) echo "::error::The patch touches $file, which the generator does not own"; exit 1 ;;
+            esac
+          done
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "chore: regenerate manifest.json, the mandate's copies and agent-plugin/"
-          node scripts/build-manifest.js --check
           git push origin "HEAD:refs/heads/${HEAD_REF}"

@@ -176,6 +176,31 @@ test('--base fails a release that moves a route\'s version back', (t) => {
     assert.match(result.stdout, /FAIL claude-code moves back/);
 });
 
+test('--base does not read a newly added route as a release, so the other routes need no bump', (t) => {
+    const repo = fixture(t),
+        added = ['agent-plugin/plugin.json', 'agent-plugin/mcp.json'].map((file) => [file, fs.readFileSync(path.join(repo.dir, file), 'utf8')]);
+
+    repo.git('rm', '-q', '-r', 'agent-plugin');
+    repo.git('commit', '-q', '-m', 'chore: before the route');
+
+    const base = repo.git('rev-parse', 'HEAD');
+
+    repo.commit('skills/demo/SKILL.md', 'changed\n', 'feat(demo): a new section');
+
+    for (const [file, content] of added) {
+        fs.mkdirSync(path.dirname(path.join(repo.dir, file)), { recursive: true });
+        fs.writeFileSync(path.join(repo.dir, file), content);
+    }
+
+    repo.git('add', '-A');
+    repo.git('commit', '-q', '-m', 'feat: add agent-plugin');
+
+    const result = repo.run('--check', '--base', base);
+
+    assert.equal(result.status, 0, result.stdout);
+    assert.match(result.stdout, /not a release/);
+});
+
 test('--base checks only a change that moves a version, which makes it a release', (t) => {
     const repo = fixture(t),
         base = repo.git('rev-parse', 'HEAD');
