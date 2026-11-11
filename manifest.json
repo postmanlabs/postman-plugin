@@ -176,8 +176,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/collection-schema-v3/SKILL.md",
-          "bytes": 3676,
-          "sha256": "0a9c241db87b59d43c9674c920d69b4e9530f61d39ee73ada84d44b48a5f6201"
+          "bytes": 4089,
+          "sha256": "0e4ae2c862c7f525404c35239008ccccea98e19bd07be4ac5939793f8769b540"
         },
         {
           "target": "reference/environment.md",
@@ -194,14 +194,14 @@
         {
           "target": "reference/http.md",
           "source": "skills/collection-schema-v3/reference/http.md",
-          "bytes": 9193,
-          "sha256": "8079ddfdb443d90bbed094e4d1719f3c5badd9bb5f8219fa5d7d1b4f8fea34c2"
+          "bytes": 9881,
+          "sha256": "d7225d2c6230e54085393c2d26cbc8e61c9552380562f0137f33f72b99ad7f2a"
         },
         {
           "target": "reference/other_protocols.md",
           "source": "skills/collection-schema-v3/reference/other_protocols.md",
-          "bytes": 7236,
-          "sha256": "9f9d6e8e3c5a5bdf0efcdbd6b5cca8c55e1fa637e89d42cf9e579276da5a0e9f"
+          "bytes": 7468,
+          "sha256": "a831ddd5ffd517dd2b29da2fb7f151d4dff7e26e42154537e762b8f2fad948df"
         }
       ]
     },
