@@ -137,6 +137,11 @@ Maintained by hand, and they are not interchangeable copies. Four things
 differ per route on purpose, and copying one file over another breaks them
 all:
 
+- **Claude Code sends only `User-Agent`.** The directory validator flags `X-Source`, and
+  the server records `X-Plugin-Version` only beside a recognized `X-Source`, so
+  `mcp.claude-code.json` carries `postman-claude-code-plugin/<version>` alone
+  (`userAgentOnly` in `scripts/routes.js`). Route attribution for it needs the server
+  to read `User-Agent`.
 - **`X-Source` must be unique per route.** It is the dimension route
   attribution keys on, so two routes sharing a value collapse into one bucket
   — which reads
@@ -306,10 +311,10 @@ filename is also Cursor's default, which `.cursor-plugin/plugin.json`'s
 `.claude/hooks/validate-manifests.js` fails on that removal, in CI's Manifest job
 and as the pre-commit guard.
 
-Droid runs the shared `hooks/hooks.json`, filling in both `${CLAUDE_PLUGIN_ROOT}`
-and `${DROID_PLUGIN_ROOT}`, through cmd.exe on Windows. Its skill names are
+Droid runs the shared `hooks/hooks.json`, filling in `${CLAUDE_PLUGIN_ROOT}`
+and exporting `DROID_PLUGIN_ROOT`, through cmd.exe on Windows. Its skill names are
 un-namespaced and its Skill tool rejects `postman:api-engineer`, so when the
-hook gets Droid's root as its argument it rewrites `` `postman:<skill>` `` to
+hook's environment has `DROID_PLUGIN_ROOT` set it rewrites `` `postman:<skill>` `` to
 `` `<skill>` ``, as the OpenCode plugin does.
 
 `scripts/factory-harness.js` installs this checkout into Droid as a local
@@ -497,7 +502,7 @@ Codex the two headers sit under `http_headers`, not `headers`; for OpenCode
 the manifest is `opencode/package.json`, and the root `package.json` repeats its
 version as a fourth string; for Pi it is
 `installer/package.json`, so Pi's bump is an installer release; for Factory
-Droid the MCP config is the root `mcp.json`). `--write` moves all of them; by
+Droid the MCP config is the root `mcp.json`; Claude Code has no `X-Plugin-Version`, only `User-Agent`). `--write` moves all of them; by
 hand, check the route's strings against each other before you commit. Don't
 skip the release's bump either: `claude plugin update` compares only that
 string against a version-keyed cache, so a release that changes files

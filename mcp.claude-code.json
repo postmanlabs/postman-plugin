@@ -4,8 +4,6 @@
       "type": "http",
       "url": "https://mcp.postman.com/mcp",
       "headers": {
-        "X-Source": "postman-claude-code-plugin",
-        "X-Plugin-Version": "2.4.2",
         "User-Agent": "postman-claude-code-plugin/2.4.2"
       }
     }

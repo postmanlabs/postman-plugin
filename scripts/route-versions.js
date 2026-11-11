@@ -117,6 +117,9 @@ function compare (a, b) {
     return x[0] - y[0] || x[1] - y[1] || x[2] - y[2];
 }
 
+/** The `postman-<vendor>-plugin` a route reports as: its X-Source, else the User-Agent's product. */
+const agentOf = (headers) => headers['X-Source'] ?? headers['User-Agent'].split('/')[0];
+
 function withState (route) {
     const manifest = readJson(route.manifest),
         { servers } = serversOf(route, manifest),
@@ -129,7 +132,7 @@ function withState (route) {
 
     return {
         ...route,
-        id: servers[0][route.keys.headerKey]['X-Source'].replace(/^postman-(.+)-plugin$/, '$1'),
+        id: agentOf(servers[0][route.keys.headerKey]).replace(/^postman-(.+)-plugin$/, '$1'),
         version: manifest.version,
         since: since.slice(0, 7) || 'its first commit',
         commits,
@@ -165,8 +168,11 @@ function setVersion (route, version) {
     for (const server of servers) {
         const headers = server[route.keys.headerKey];
 
-        headers['X-Plugin-Version'] = version;
-        headers['User-Agent'] = `${headers['X-Source']}/${version}`;
+        if (headers['X-Plugin-Version'] !== undefined || headers['X-Source'] !== undefined) {
+            headers['X-Plugin-Version'] = version;
+        }
+
+        headers['User-Agent'] = `${agentOf(headers)}/${version}`;
     }
 
     writeJson(route.manifest, manifest);

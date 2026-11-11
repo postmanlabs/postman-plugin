@@ -14,13 +14,13 @@ const hooksDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'
     bareNames = (text) => text.replace(/`postman:([a-z0-9-]*)`/g, '`$1`'),
     agentEnv = Object.fromEntries(Object.entries(process.env).filter(([name]) => !/^(CLAUDE|CURSOR|COPILOT|DROID)_PLUGIN_ROOT$/i.test(name)));
 
-/** `droidRoot` is what `"${DROID_PLUGIN_ROOT}"` becomes: Droid's root on Droid, empty everywhere else. */
+/** `droidRoot` is Droid's `DROID_PLUGIN_ROOT` hook environment variable: set on Droid, absent everywhere else. */
 function runHook (dir, droidRoot, env = {}) {
-    const options = { env: { ...agentEnv, ...env }, encoding: 'utf8' },
+    const options = { env: { ...agentEnv, ...(droidRoot && { DROID_PLUGIN_ROOT: droidRoot }), ...env }, encoding: 'utf8' },
         result = windows ?
             // `/s` drops the outer quotes, so cmd.exe runs the rest exactly as quoted here.
-            spawnSync('cmd.exe', ['/d', '/s', '/c', `""${path.join(dir, 'session-start.cmd')}" "${droidRoot}""`], { ...options, windowsVerbatimArguments: true }) :
-            spawnSync(path.join(dir, 'session-start'), [droidRoot], options);
+            spawnSync('cmd.exe', ['/d', '/s', '/c', `""${path.join(dir, 'session-start.cmd')}""`], { ...options, windowsVerbatimArguments: true }) :
+            spawnSync(path.join(dir, 'session-start'), [], options);
 
     assert.equal(result.status, 0, result.stderr || result.error?.message);
 
@@ -66,4 +66,19 @@ test('Cursor JSON survives quotes, backslashes, tabs, CRLF and non-ASCII in the 
 
     assert.deepEqual(jsonOutput(runHook(dir, '', { CURSOR_PLUGIN_ROOT: dir })), { additional_context: bareNames(fixture) });
     assert.deepEqual(jsonOutput(runHook(dir, '', { COPILOT_PLUGIN_ROOT: dir })), { additionalContext: bareNames(fixture) });
+});
+
+test('Droid on Windows is recognised by its placeholder root, not the value', () => {
+    assert.equal(runHook(hooksDir, '/PLUGIN_ROOT_NOT_EXPANDED_ERROR'), bareNames(mandate));
+});
+
+test('hooks.json names no variable but CLAUDE_PLUGIN_ROOT', () => {
+    const hooks = JSON.parse(fs.readFileSync(path.join(hooksDir, 'hooks.json'), 'utf8')),
+        commands = Object.values(hooks.hooks).flat().flatMap((entry) => entry.hooks.map((hook) => hook.command));
+
+    assert.ok(commands.length > 0);
+
+    for (const command of commands) {
+        assert.deepEqual([...command.matchAll(/\$\{(\w+)\}/g)].map((match) => match[1]), ['CLAUDE_PLUGIN_ROOT']);
+    }
 });
