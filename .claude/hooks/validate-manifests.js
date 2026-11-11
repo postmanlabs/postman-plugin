@@ -19,7 +19,8 @@ const fs = require('fs'),
 const SERVER_KEYS = ['mcpServers', 'mcp'],
     HEADER_KEYS = ['headers', 'http_headers'],
     DEFAULT_ROUTE_KEYS = { serverKey: 'mcpServers', headerKey: 'headers' },
-    X_SOURCE_FORMAT = /^postman-[a-z0-9-]+-plugin$/;
+    X_SOURCE_FORMAT = /^postman-[a-z0-9-]+-plugin$/,
+    USER_AGENT_FORMAT = /^postman-[a-z0-9-]+-plugin\/([^/\s]+)$/;
 
 const ROOT = repoRootOrExit();
 
@@ -197,9 +198,9 @@ function checkUserAgentOnly (headers, at, where, manifestVersion) {
         errors.push(`${at}: ${present.join(' and ')} must stay out of this route's headers (userAgentOnly in scripts/routes.js)`);
     }
 
-    const [product, version] = agent.split('/');
+    const [, version] = agent.match(USER_AGENT_FORMAT) || [];
 
-    if (!X_SOURCE_FORMAT.test(product) || !version || (manifestVersion && version !== manifestVersion)) {
+    if (!version || (manifestVersion && version !== manifestVersion)) {
         errors.push(`${at}: User-Agent is ${agent || '(unset)'}, expected postman-<vendor>-plugin/${manifestVersion || '<version>'} matching ${where}'s version`);
     }
 }
