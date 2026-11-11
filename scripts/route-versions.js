@@ -140,7 +140,8 @@ function withState (route) {
 
 function routes () {
     return [
-        ...Object.entries(MANIFEST_ROUTES).map(manifestRoute),
+        // A superseded route is frozen, so a release never has to bump it.
+        ...Object.entries(MANIFEST_ROUTES).filter(([, route]) => !route.supersededBy).map(manifestRoute),
         ...PACKAGE_ROUTES.filter((route) => route.updatesBy !== 'installer').map(packageRoute)
     ].map(withState);
 }
@@ -224,11 +225,15 @@ function write (overrides) {
     }
 }
 
-/** True when HEAD moves a route's or the installer's version since `base`: a release pull request. */
+/** True when HEAD moves a route's or the installer's version since `base`: a release pull request. A route added since `base` moves nothing. */
 function movesAVersion (base) {
     const manifests = [...Object.keys(MANIFEST_ROUTES).map((dir) => `${dir}/plugin.json`), ...PACKAGE_ROUTES.map((route) => route.manifest)];
 
-    return manifests.some((manifest) => versionAt(base, manifest) !== versionAt('HEAD', manifest));
+    return manifests.some((manifest) => {
+        const before = versionAt(base, manifest);
+
+        return before !== undefined && before !== versionAt('HEAD', manifest);
+    });
 }
 
 function check (base) {

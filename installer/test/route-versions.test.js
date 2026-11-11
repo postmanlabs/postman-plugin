@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..'),
     script = path.join(repoRoot, 'scripts', 'route-versions.js'),
     ROUTE_FILES = ['.claude-plugin', '.codex-plugin', '.cursor-plugin', '.factory-plugin', '.kimi-plugin', '.antigravity-plugin',
-        '.github/plugin', '.app.json', 'mcp.json', 'mcp_config.json', 'mcp.claude-code.json', 'mcp.codex.json', 'mcp.copilot.json',
+        '.github/plugin', 'agent-plugin/plugin.json', 'agent-plugin/mcp.json', '.app.json', 'mcp.json', 'mcp_config.json', 'mcp.claude-code.json', 'mcp.codex.json', 'mcp.copilot.json',
         'mcp.cursor.json', 'mcp.opencode.json', 'mcp.pi.json', 'package.json', 'opencode/package.json', 'opencode/package-lock.json',
         'installer/package.json', 'assets'],
     GIT_ENV = { GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' };
@@ -72,7 +72,7 @@ test('a skill change makes the version-keyed routes stale, and leaves the commit
         failed = result.stdout.split('\n').filter((line) => line.startsWith('FAIL')).map((line) => line.split(/\s+/)[1]);
 
     assert.equal(result.status, 1);
-    assert.deepEqual(failed.sort(), ['claude-code', 'codex', 'copilot', 'cursor', 'kimi']);
+    assert.deepEqual(failed.sort(), ['agent', 'claude-code', 'codex', 'cursor', 'kimi']);
 });
 
 test('a change to one route\'s own files makes only that route stale', (t) => {
@@ -174,6 +174,31 @@ test('--base fails a release that moves a route\'s version back', (t) => {
 
     assert.equal(result.status, 1, result.stdout);
     assert.match(result.stdout, /FAIL claude-code moves back/);
+});
+
+test('--base does not read a newly added route as a release, so the other routes need no bump', (t) => {
+    const repo = fixture(t),
+        added = ['agent-plugin/plugin.json', 'agent-plugin/mcp.json'].map((file) => [file, fs.readFileSync(path.join(repo.dir, file), 'utf8')]);
+
+    repo.git('rm', '-q', '-r', 'agent-plugin');
+    repo.git('commit', '-q', '-m', 'chore: before the route');
+
+    const base = repo.git('rev-parse', 'HEAD');
+
+    repo.commit('skills/demo/SKILL.md', 'changed\n', 'feat(demo): a new section');
+
+    for (const [file, content] of added) {
+        fs.mkdirSync(path.dirname(path.join(repo.dir, file)), { recursive: true });
+        fs.writeFileSync(path.join(repo.dir, file), content);
+    }
+
+    repo.git('add', '-A');
+    repo.git('commit', '-q', '-m', 'feat: add agent-plugin');
+
+    const result = repo.run('--check', '--base', base);
+
+    assert.equal(result.status, 0, result.stdout);
+    assert.match(result.stdout, /not a release/);
 });
 
 test('--base checks only a change that moves a version, which makes it a release', (t) => {
