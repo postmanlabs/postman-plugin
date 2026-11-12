@@ -11,6 +11,7 @@
   },
   "homepage": "https://github.com/postmanlabs/postman-plugin",
   "repository": "https://github.com/postmanlabs/postman-plugin",
+  "privacyPolicyUrl": "https://www.postman.com/legal/privacy-policy/",
   "license": "Apache-2.0",
   "keywords": [
     "postman",

@@ -19,7 +19,8 @@ const fs = require('fs'),
 const SERVER_KEYS = ['mcpServers', 'mcp'],
     HEADER_KEYS = ['headers', 'http_headers'],
     DEFAULT_ROUTE_KEYS = { serverKey: 'mcpServers', headerKey: 'headers' },
-    X_SOURCE_FORMAT = /^postman-[a-z0-9-]+-plugin$/;
+    X_SOURCE_FORMAT = /^postman-[a-z0-9-]+-plugin$/,
+    USER_AGENT_FORMAT = /^postman-[a-z0-9-]+-plugin\/([^/\s]+)$/;
 
 const ROOT = repoRootOrExit();
 
@@ -160,8 +161,14 @@ function checkRoute (config, where, keys, manifestVersion) {
             continue;
         }
 
-        const headers = isObject(server[keys.headerKey]) ? server[keys.headerKey] : {},
-            declared = headers['X-Plugin-Version'],
+        const headers = isObject(server[keys.headerKey]) ? server[keys.headerKey] : {};
+
+        if (keys.userAgentOnly) {
+            checkUserAgentOnly(headers, at, where, manifestVersion);
+            continue;
+        }
+
+        const declared = headers['X-Plugin-Version'],
             source = recordSource(headers, at, where),
             version = manifestVersion || declared;
 
@@ -179,6 +186,22 @@ function checkRoute (config, where, keys, manifestVersion) {
         if (source && version && headers['User-Agent'] !== `${source}/${version}`) {
             errors.push(`${at}: User-Agent is ${headers['User-Agent'] || '(unset)'}, expected ${source}/${version}`);
         }
+    }
+}
+
+/** A `userAgentOnly` route sends `postman-<vendor>-plugin/<version>` and neither X-Source nor X-Plugin-Version. */
+function checkUserAgentOnly (headers, at, where, manifestVersion) {
+    const present = ['X-Source', 'X-Plugin-Version'].filter((name) => headers[name] !== undefined),
+        agent = headers['User-Agent'] || '';
+
+    if (present.length) {
+        errors.push(`${at}: ${present.join(' and ')} must stay out of this route's headers (userAgentOnly in scripts/routes.js)`);
+    }
+
+    const [, version] = agent.match(USER_AGENT_FORMAT) || [];
+
+    if (!version || (manifestVersion && version !== manifestVersion)) {
+        errors.push(`${at}: User-Agent is ${agent || '(unset)'}, expected postman-<vendor>-plugin/${manifestVersion || '<version>'} matching ${where}'s version`);
     }
 }
 

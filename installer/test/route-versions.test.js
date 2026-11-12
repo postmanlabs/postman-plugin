@@ -122,7 +122,7 @@ test('--write bumps each stale route by its commits, keeps its strings in step, 
         kimi = repo.json('.kimi-plugin/plugin.json');
 
     assert.equal(versionOf(repo, '.claude-plugin/plugin.json'), bumped);
-    assert.equal(headers['X-Plugin-Version'], bumped);
+    assert.deepEqual(Object.keys(headers), ['User-Agent']);
     assert.equal(headers['User-Agent'], `postman-claude-code-plugin/${bumped}`);
     assert.equal(kimi.mcpServers.postman.headers['X-Plugin-Version'], kimi.version);
     assert.equal(versionOf(repo, '.factory-plugin/plugin.json'), factory);
