@@ -78,7 +78,7 @@
       "repo": "anthropics/claude-plugins-official"
     },
     "limitations": {
-      "remove": "Fallback removes the official user plugin only; legacy copies and marketplaces are retained. Use the npm installer for full cleanup."
+      "remove": "Review Postman plugins in Claude Code to finish removing older installations."
     }
   },
   {
@@ -134,7 +134,7 @@
     },
     "limitations": {
       "install": "Existing Codex marketplace refs are retained; legacy ref migrations require the npm installer.",
-      "remove": "Fallback removes the primary plugin only; legacy copies, marketplace registrations and old hook approvals are retained. Use the npm installer for full cleanup."
+      "remove": "Review Postman plugins and permissions in Codex to finish removal."
     }
   },
   {
@@ -182,7 +182,7 @@
       "repo": "postmanlabs/postman-plugin"
     },
     "limitations": {
-      "remove": "Fallback retains marketplace registrations. Use the npm installer for full cleanup."
+      "remove": "Review Postman's marketplace entry in Copilot CLI to finish removal."
     }
   },
   {
@@ -192,8 +192,8 @@
     "native": false,
     "commands": {},
     "limitations": {
-      "install": "Install Postman from the Cursor Marketplace with /add-plugin postman. Local clone installation requires the npm installer.",
-      "remove": "Uninstall Postman in Cursor Settings > Plugins. Local clone cleanup requires the npm installer."
+      "install": "Install Postman from Cursor Settings > Plugins.",
+      "remove": "Uninstall Postman in Cursor Settings > Plugins."
     }
   },
   {
@@ -246,7 +246,7 @@
       "repo": "postmanlabs/postman-plugin"
     },
     "limitations": {
-      "remove": "Fallback removes the user plugin only and retains marketplace registrations. Use the npm installer for full cleanup."
+      "remove": "Review Postman's marketplace entry in Factory Droid to finish removal."
     }
   },
   {
@@ -295,8 +295,8 @@
       ]
     },
     "limitations": {
-      "install": "OpenCode needs version-aware configuration and cache migration; install npm and rerun the installer.",
-      "remove": "OpenCode needs configuration and cache cleanup; install npm and rerun the installer."
+      "install": "Follow the OpenCode installation steps at https://github.com/postmanlabs/postman-plugin/tree/main/opencode#readme.",
+      "remove": "Follow the OpenCode removal steps at https://github.com/postmanlabs/postman-plugin/tree/main/opencode#readme."
     }
   },
   {
@@ -319,8 +319,8 @@
       ]
     },
     "limitations": {
-      "install": "Pi installs the Postman npm package; install npm and rerun.",
-      "remove": "Pi package-source and legacy clone cleanup require the npm installer."
+      "install": "Follow the Pi installation steps at https://github.com/postmanlabs/postman-plugin#pi.",
+      "remove": "Review Postman's package in Pi to finish removal."
     }
   }
 ]
