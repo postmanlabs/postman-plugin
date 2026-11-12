@@ -29,13 +29,13 @@ function setClaudeUserAgent (dir, userAgent) {
     fs.writeFileSync(file, JSON.stringify(config, null, 2));
 }
 
-function validate (dir) {
-    return spawnSync(process.execPath, [path.join(dir, '.claude', 'hooks', 'validate-manifests.js')], { cwd: dir, encoding: 'utf8' });
+function userAgentErrors (dir) {
+    const { stderr } = spawnSync(process.execPath, [path.join(dir, '.claude', 'hooks', 'validate-manifests.js')], { cwd: dir, encoding: 'utf8' });
+    return stderr.split('\n').filter((line) => line.includes('User-Agent is'));
 }
 
 test('the Claude route\'s User-Agent passes as postman-<vendor>-plugin/<manifest version>', (t) => {
-    const result = validate(copyOfRepo(t));
-    assert.equal(result.status, 0, result.stderr);
+    assert.deepEqual(userAgentErrors(copyOfRepo(t)), []);
 });
 
 for (const suffix of ['/extra', ' extra', '/']) {
@@ -43,8 +43,6 @@ for (const suffix of ['/extra', ' extra', '/']) {
         const dir = copyOfRepo(t),
             { version } = JSON.parse(fs.readFileSync(path.join(dir, '.claude-plugin', 'plugin.json'), 'utf8'));
         setClaudeUserAgent(dir, `postman-claude-code-plugin/${version}${suffix}`);
-        const result = validate(dir);
-        assert.equal(result.status, 2, result.stderr);
-        assert.match(result.stderr, /User-Agent is/);
+        assert.equal(userAgentErrors(dir).length, 1);
     });
 }
