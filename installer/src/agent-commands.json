@@ -1,0 +1,326 @@
+[
+  {
+    "id": "antigravity",
+    "name": "Antigravity",
+    "executable": "agy",
+    "native": true,
+    "commands": {
+      "install": [
+        "plugin",
+        "install",
+        "https://github.com/postmanlabs/postman-plugin"
+      ],
+      "update": [
+        "plugin",
+        "install",
+        "https://github.com/postmanlabs/postman-plugin"
+      ],
+      "remove": [
+        "plugin",
+        "uninstall",
+        "postman"
+      ]
+    }
+  },
+  {
+    "id": "claude-code",
+    "name": "Claude Code",
+    "executable": "claude",
+    "native": true,
+    "commands": {
+      "listMarketplaces": [
+        "plugin",
+        "marketplace",
+        "list",
+        "--json"
+      ],
+      "addMarketplace": [
+        "plugin",
+        "marketplace",
+        "add",
+        "anthropics/claude-plugins-official",
+        "--scope",
+        "user"
+      ],
+      "updateMarketplace": [
+        "plugin",
+        "marketplace",
+        "update",
+        "claude-plugins-official"
+      ],
+      "install": [
+        "plugin",
+        "install",
+        "postman@claude-plugins-official",
+        "--scope",
+        "user",
+        "--json"
+      ],
+      "update": [
+        "plugin",
+        "update",
+        "postman@claude-plugins-official",
+        "--scope",
+        "user",
+        "--json"
+      ],
+      "remove": [
+        "plugin",
+        "uninstall",
+        "postman@claude-plugins-official",
+        "--scope",
+        "user",
+        "--json"
+      ]
+    },
+    "marketplace": {
+      "name": "claude-plugins-official",
+      "repo": "anthropics/claude-plugins-official"
+    },
+    "limitations": {
+      "remove": "Fallback removes the official user plugin only; legacy copies and marketplaces are retained. Use the npm installer for full cleanup."
+    }
+  },
+  {
+    "id": "codex",
+    "name": "Codex",
+    "executable": "codex",
+    "native": true,
+    "commands": {
+      "listMarketplaces": [
+        "plugin",
+        "marketplace",
+        "list",
+        "--json"
+      ],
+      "addMarketplace": [
+        "plugin",
+        "marketplace",
+        "add",
+        "postmanlabs/postman-plugin",
+        "--ref",
+        "main",
+        "--json"
+      ],
+      "updateMarketplace": [
+        "plugin",
+        "marketplace",
+        "upgrade",
+        "postman",
+        "--json"
+      ],
+      "install": [
+        "plugin",
+        "add",
+        "postman@postman",
+        "--json"
+      ],
+      "update": [
+        "plugin",
+        "add",
+        "postman@postman",
+        "--json"
+      ],
+      "remove": [
+        "plugin",
+        "remove",
+        "postman@postman",
+        "--json"
+      ]
+    },
+    "marketplace": {
+      "name": "postman",
+      "repo": "postmanlabs/postman-plugin"
+    },
+    "limitations": {
+      "install": "Existing Codex marketplace refs are retained; legacy ref migrations require the npm installer.",
+      "remove": "Fallback removes the primary plugin only; legacy copies, marketplace registrations and old hook approvals are retained. Use the npm installer for full cleanup."
+    }
+  },
+  {
+    "id": "copilot",
+    "name": "GitHub Copilot CLI",
+    "executable": "copilot",
+    "native": true,
+    "commands": {
+      "listMarketplaces": [
+        "plugin",
+        "marketplace",
+        "list",
+        "--json"
+      ],
+      "addMarketplace": [
+        "plugin",
+        "marketplace",
+        "add",
+        "postmanlabs/postman-plugin"
+      ],
+      "updateMarketplace": [
+        "plugin",
+        "marketplace",
+        "update",
+        "postman"
+      ],
+      "install": [
+        "plugin",
+        "install",
+        "postman@postman"
+      ],
+      "update": [
+        "plugin",
+        "update",
+        "postman"
+      ],
+      "remove": [
+        "plugin",
+        "uninstall",
+        "postman"
+      ]
+    },
+    "marketplace": {
+      "name": "postman",
+      "repo": "postmanlabs/postman-plugin"
+    },
+    "limitations": {
+      "remove": "Fallback retains marketplace registrations. Use the npm installer for full cleanup."
+    }
+  },
+  {
+    "id": "cursor",
+    "name": "Cursor",
+    "executable": "cursor",
+    "native": false,
+    "commands": {},
+    "limitations": {
+      "install": "Install Postman from the Cursor Marketplace with /add-plugin postman. Local clone installation requires the npm installer.",
+      "remove": "Uninstall Postman in Cursor Settings > Plugins. Local clone cleanup requires the npm installer."
+    }
+  },
+  {
+    "id": "factory",
+    "name": "Factory Droid",
+    "executable": "droid",
+    "native": true,
+    "commands": {
+      "listMarketplaces": [
+        "plugin",
+        "marketplace",
+        "list"
+      ],
+      "addMarketplace": [
+        "plugin",
+        "marketplace",
+        "add",
+        "https://github.com/postmanlabs/postman-plugin.git"
+      ],
+      "updateMarketplace": [
+        "plugin",
+        "marketplace",
+        "update",
+        "postman-plugin"
+      ],
+      "install": [
+        "plugin",
+        "install",
+        "postman@postman-plugin",
+        "--scope",
+        "user"
+      ],
+      "update": [
+        "plugin",
+        "update",
+        "postman@postman-plugin",
+        "--scope",
+        "user"
+      ],
+      "remove": [
+        "plugin",
+        "uninstall",
+        "postman@postman-plugin",
+        "--scope",
+        "user"
+      ]
+    },
+    "marketplace": {
+      "name": "postman-plugin",
+      "repo": "postmanlabs/postman-plugin"
+    },
+    "limitations": {
+      "remove": "Fallback removes the user plugin only and retains marketplace registrations. Use the npm installer for full cleanup."
+    }
+  },
+  {
+    "id": "kimi",
+    "name": "Kimi Code",
+    "executable": "kimi",
+    "native": false,
+    "commands": {
+      "install": [
+        "-y",
+        "--package=plugins@1.3.4",
+        "plugins",
+        "add",
+        "postmanlabs/postman-plugin",
+        "--target",
+        "kimi",
+        "--yes"
+      ]
+    },
+    "limitations": {
+      "install": "Run /plugins install https://github.com/postmanlabs/postman-plugin/tree/main inside Kimi Code, then /new.",
+      "remove": "Run /plugins remove postman inside Kimi Code."
+    },
+    "installExecutable": "npx"
+  },
+  {
+    "id": "opencode",
+    "name": "OpenCode",
+    "executable": "opencode",
+    "native": false,
+    "commands": {
+      "install": [
+        "plugin",
+        "add",
+        "github:postmanlabs/postman-plugin"
+      ],
+      "legacyInstall": [
+        "plugin",
+        "--global",
+        "github:postmanlabs/postman-plugin"
+      ],
+      "remove": [
+        "plugin",
+        "remove",
+        "github:postmanlabs/postman-plugin"
+      ]
+    },
+    "limitations": {
+      "install": "OpenCode needs version-aware configuration and cache migration; install npm and rerun the installer.",
+      "remove": "OpenCode needs configuration and cache cleanup; install npm and rerun the installer."
+    }
+  },
+  {
+    "id": "pi",
+    "name": "Pi",
+    "executable": "pi",
+    "native": false,
+    "commands": {
+      "install": [
+        "install",
+        "npm:@postman/postman-plugin"
+      ],
+      "update": [
+        "update",
+        "npm:@postman/postman-plugin"
+      ],
+      "remove": [
+        "remove",
+        "npm:@postman/postman-plugin"
+      ]
+    },
+    "limitations": {
+      "install": "Pi installs the Postman npm package; install npm and rerun.",
+      "remove": "Pi package-source and legacy clone cleanup require the npm installer."
+    }
+  }
+]

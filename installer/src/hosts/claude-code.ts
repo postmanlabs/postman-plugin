@@ -1,7 +1,10 @@
+import { commandsFor } from '../agent-commands.js';
 import { REPO, isSameRepo, redact } from '../source.js';
 import type { System } from '../system.js';
 import { blocked, failed, guard, mustProbeJson, mustRun, parseJson } from './shared.js';
 import { type Host, result } from './types.js';
+
+const COMMANDS = commandsFor('claude-code');
 
 // Anthropic's catalog entry is the Claude Code install; our own marketplace
 // would register the same skills a second time under `postman@postman`.
@@ -40,11 +43,11 @@ function otherScopeNotes (plugins: InstalledPlugin[]): string[] {
 }
 
 async function refreshMarketplace (system: System): Promise<void> {
-    const marketplaces = await mustProbeJson<Marketplace[]>(system, 'claude', ['plugin', 'marketplace', 'list', '--json']),
+    const marketplaces = await mustProbeJson<Marketplace[]>(system, 'claude', COMMANDS.listMarketplaces),
         registered = marketplaces.find((marketplace) => marketplace.name === MARKETPLACE.name);
 
     if (!registered) {
-        await mustRun(system, 'claude', ['plugin', 'marketplace', 'add', MARKETPLACE.repo, '--scope', SCOPE]);
+        await mustRun(system, 'claude', COMMANDS.addMarketplace);
 
         return;
     }
@@ -55,13 +58,13 @@ async function refreshMarketplace (system: System): Promise<void> {
         blocked(`marketplace ${MARKETPLACE.name} is registered from ${source ? redact(source) : 'an unknown source'}, not ${MARKETPLACE.repo}`);
     }
 
-    await mustRun(system, 'claude', ['plugin', 'marketplace', 'update', MARKETPLACE.name]);
+    await mustRun(system, 'claude', COMMANDS.updateMarketplace);
 }
 
 async function uninstallAtUserScope (system: System, plugins: InstalledPlugin[], ids: string[]): Promise<void> {
     for (const id of ids) {
         if (plugins.some((plugin) => plugin.id === id && plugin.scope === SCOPE)) {
-            await mustRun(system, 'claude', ['plugin', 'uninstall', id, '--scope', SCOPE, '--json']);
+            await mustRun(system, 'claude', id === PLUGIN_ID ? COMMANDS.remove : ['plugin', 'uninstall', id, '--scope', SCOPE, '--json']);
         }
     }
 }
@@ -71,7 +74,7 @@ async function uninstallAtUserScope (system: System, plugins: InstalledPlugin[],
  * `marketplace remove` leaves the records of plugins still installed from it behind (anthropics/claude-code#17061).
  */
 async function removeOwnMarketplace (system: System, plugins: InstalledPlugin[]): Promise<boolean> {
-    const marketplaces = await mustProbeJson<Marketplace[]>(system, 'claude', ['plugin', 'marketplace', 'list', '--json']),
+    const marketplaces = await mustProbeJson<Marketplace[]>(system, 'claude', COMMANDS.listMarketplaces),
         registered = marketplaces.find((marketplace) => marketplace.name === OWN_MARKETPLACE);
 
     if (!registered) {
@@ -143,7 +146,7 @@ export const claudeCode: Host = {
                 verb = plugins.some((plugin) => plugin.id === PLUGIN_ID && plugin.scope === SCOPE) ? 'update' : 'install';
 
             // Replacement first: if it fails, the duplicate is still a working copy.
-            await mustRun(system, 'claude', ['plugin', verb, PLUGIN_ID, '--scope', SCOPE, '--json']);
+            await mustRun(system, 'claude', COMMANDS[verb]);
             await uninstallAtUserScope(system, plugins, SHADOW_IDS);
 
             return result('done', `${verb === 'update' ? 'updated' : 'installed'} ${PLUGIN_ID}`, NEXT);
