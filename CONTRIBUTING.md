@@ -255,16 +255,6 @@ The route's version is the installer's, so `X-Plugin-Version` and `User-Agent`
 in `mcp.pi.json` move with `installer/package.json` and `npm test` fails when
 they differ. A skill change reaches Pi with the next installer release.
 
-## Shared installer command definitions
-
-`installer/src/agent-commands.json` is the array of agent executables and install, update and removal
-arguments consumed by the installer hosts and the Postman CLI's npm-free fallback. Keep the host
-guards, scope checks, migrations and cleanup in `installer/src/hosts/`; command constants do not replace them.
-`native: false` marks routes whose configuration, package management or app interaction cannot be
-represented by the fallback's native command sequence. Their `limitations` describe the remaining steps.
-The installer build publishes the JSON beside its compiled modules. Run `npm test` from `installer/`
-after changing the constants or their consumers.
-
 ## The Kimi Code plugin
 
 Kimi discards a SessionStart hook's output, so the mandate reaches it through
