@@ -32,10 +32,6 @@ proxy that answers for the dependencies' own hostnames, so the code under test
 keeps the base URLs it ships with, or on one local port where each member is
 reached by its routeKey.
 
-With one dependency and nothing to inject, a simulation adds nothing: run
-that dependency's mock with `postman mock run` and point the code's base URL
-at it (see **api-mocking**).
-
 Simulation adds value when the result depends on real HTTP behavior, such as
 client configuration, serialization, timeouts or retries, and the real
 dependencies are unavailable or unsuitable for the exercise. Stubbing the

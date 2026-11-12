@@ -92,8 +92,7 @@ real service.
 
 `postman mock run` prints the URL it bound; a busy configured port moves
 unless you pass `--port`, so take the URL from that line. Nothing reloads:
-restart it after an edit. Running a mock by its Postman id records the run
-in that mock's start history in its workspace; `--no-history` leaves it out.
+restart it after an edit.
 
 A mock checked against the handler you just wrote proves nothing, so call
 it with requests from the contract: `postman request`, or the API's

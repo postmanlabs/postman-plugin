@@ -9,8 +9,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-engineer/SKILL.md",
-          "bytes": 5943,
-          "sha256": "5be0dc2ab1fe1df8458648ca61a981dbf2cc549118c8631aab73dd08916cf2c9"
+          "bytes": 5872,
+          "sha256": "816a35fee2b34adfb64383c6064d52659c7716c7ac03fbb24306fa0b4aeac0b7"
         }
       ]
     },
@@ -73,8 +73,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-mocking/SKILL.md",
-          "bytes": 8069,
-          "sha256": "f1e93d261fdb998f355fb90cb5e9095b3c583dbc5ad7bd64df7e9d7887a611c7"
+          "bytes": 7943,
+          "sha256": "c1180d6db28e6010df78f32ae2ffabd972320944a356830440da35c9b8f75ba2"
         }
       ]
     },
@@ -99,8 +99,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-simulation/SKILL.md",
-          "bytes": 13072,
-          "sha256": "037fd98278318314a6a37c173320f0e6d8d8cc2a21b6d5812225f17b48218cca"
+          "bytes": 12891,
+          "sha256": "59fe5420433120baf84078151ff56ebb3964952ec0847f14ee74386acbf7e958"
         },
         {
           "target": "reference/context_file.md",
