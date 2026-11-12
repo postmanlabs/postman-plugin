@@ -1,3 +1,4 @@
+import { commandsFor } from '../agent-commands.js';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { OPENCODE_MINIMUM, OPENCODE_SHIM, OPENCODE_SPEC, REPO, isSameRepo, redact } from '../source.js';
@@ -5,6 +6,8 @@ import type { ExecOptions, System } from '../system.js';
 import { parseJsonc, withoutArrayString } from './opencode-config.js';
 import { assertCloneRemovable, blocked, failed, guard, mustRun, removeClone } from './shared.js';
 import { type Host, result } from './types.js';
+
+const COMMANDS = commandsFor('opencode');
 
 type Version = { major: number; text: string };
 // `form` is how the list holds it: a bare string, OpenCode 1's `[spec, options]` tuple or OpenCode 2's `{ package }`.
@@ -311,7 +314,7 @@ async function replaceEntry (system: System, version: Version, entry: Entry, spe
     }
 
     if (byOpenCode) {
-        await mustRun(system, 'opencode', ['plugin', 'remove', entry.spec], inConfigOf(system, entry));
+        await mustRun(system, 'opencode', entry.spec === OPENCODE_SPEC ? COMMANDS.remove : ['plugin', 'remove', entry.spec], inConfigOf(system, entry));
     }
     else {
         await system.writeFile(entry.file, await withoutEntry(system, entry));
@@ -340,7 +343,7 @@ async function isComplete (system: System, cache: string): Promise<boolean> {
  */
 async function addFresh (system: System, version: Version, spec: string, options?: ExecOptions, force = false): Promise<void> {
     if (version.major < 2) {
-        await mustRun(system, 'opencode', ['plugin', '--global', ...(force ? ['--force'] : []), spec], options);
+        await mustRun(system, 'opencode', [...COMMANDS.legacyInstall.slice(0, -1), ...(force ? ['--force'] : []), spec], options);
 
         return;
     }
@@ -362,7 +365,7 @@ async function addFresh (system: System, version: Version, spec: string, options
     }
 
     try {
-        await mustRun(system, 'opencode', ['plugin', 'add', spec], options);
+        await mustRun(system, 'opencode', spec === OPENCODE_SPEC ? COMMANDS.install : ['plugin', 'add', spec], options);
     }
     catch (error) {
         if (cached) {
@@ -488,7 +491,7 @@ export const opencode: Host = {
 
             for (const [at, entry] of entries.entries()) {
                 if (byOpenCode[at]) {
-                    await mustRun(system, 'opencode', ['plugin', 'remove', entry.spec], inConfigOf(system, entry));
+                    await mustRun(system, 'opencode', entry.spec === OPENCODE_SPEC ? COMMANDS.remove : ['plugin', 'remove', entry.spec], inConfigOf(system, entry));
                 }
                 else {
                     await system.writeFile(entry.file, await withoutEntry(system, entry));

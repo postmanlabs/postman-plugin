@@ -1,8 +1,11 @@
+import { commandsFor } from '../agent-commands.js';
 import { BRANCH, GIT_URL, REPO, isSameRepo, redact } from '../source.js';
 import type { System } from '../system.js';
 import { StepFailed, blocked, failed, guard, mustProbeJson, mustRun, parseJson } from './shared.js';
 import { type Host, result } from './types.js';
 import { revokePostmanHookApproval } from './codex-hooks.js';
+
+const COMMANDS = commandsFor('codex');
 
 // Codex names the marketplace after `.claude-plugin/marketplace.json`'s `name`.
 // `npx plugins add` installs a second copy under its own `plugins-cli` marketplace.
@@ -43,14 +46,14 @@ export async function registeredRef (system: System): Promise<Ref> {
 }
 
 async function addMarketplace (system: System): Promise<void> {
-    await mustRun(system, 'codex', ['plugin', 'marketplace', 'add', REPO, '--ref', BRANCH, '--json']);
+    await mustRun(system, 'codex', COMMANDS.addMarketplace);
     // `add` records no revision, so without this Codex's next startup refetches the plugin and asks for approval again.
-    await mustRun(system, 'codex', ['plugin', 'marketplace', 'upgrade', MARKETPLACE, '--json']);
+    await mustRun(system, 'codex', COMMANDS.updateMarketplace);
 }
 
 /** Adds or upgrades the marketplace, leaving the old release branch for `migrate`. */
 async function refreshMarketplace (system: System): Promise<'ready' | 'legacy' | 'deferred'> {
-    const listing = await mustProbeJson<{ marketplaces?: Marketplace[] }>(system, 'codex', ['plugin', 'marketplace', 'list', '--json']),
+    const listing = await mustProbeJson<{ marketplaces?: Marketplace[] }>(system, 'codex', COMMANDS.listMarketplaces),
         registered = listing.marketplaces?.find((marketplace) => marketplace.name === MARKETPLACE);
 
     if (!registered) {
@@ -81,7 +84,7 @@ async function refreshMarketplace (system: System): Promise<'ready' | 'legacy' |
     }
 
     if (ref === BRANCH || ref === null || ref === undefined) {
-        await mustRun(system, 'codex', ['plugin', 'marketplace', 'upgrade', MARKETPLACE, '--json']);
+        await mustRun(system, 'codex', COMMANDS.updateMarketplace);
 
         return 'ready';
     }
@@ -98,7 +101,7 @@ async function restoreLegacy (system: System, wasInstalled: boolean): Promise<bo
     // Exits non-zero when the failed step left nothing registered, which is the state wanted here.
     await system.run('codex', ['plugin', 'marketplace', 'remove', MARKETPLACE, '--json']);
 
-    const steps = [['plugin', 'marketplace', 'add', REPO, '--ref', LEGACY_REF, '--json'], ...(wasInstalled ? [['plugin', 'add', PLUGIN_ID, '--json']] : [])];
+    const steps = [['plugin', 'marketplace', 'add', REPO, '--ref', LEGACY_REF, '--json'], ...(wasInstalled ? [COMMANDS.install] : [])];
 
     for (const args of steps) {
         if ((await system.run('codex', args)).code !== 0) {
@@ -124,7 +127,7 @@ async function migrate (system: System, wasInstalled: boolean): Promise<void> {
 
     try {
         await addMarketplace(system);
-        await mustRun(system, 'codex', ['plugin', 'add', PLUGIN_ID, '--json']);
+        await mustRun(system, 'codex', COMMANDS.install);
     }
     catch (error) {
         if (!(error instanceof StepFailed)) {
@@ -143,7 +146,7 @@ async function removeInstalled (system: System, plugins: InstalledPlugin[], ids:
     const present = ids.filter((id) => isInstalled(plugins, id));
 
     for (const id of present) {
-        await mustRun(system, 'codex', ['plugin', 'remove', id, '--json']);
+        await mustRun(system, 'codex', id === PLUGIN_ID ? COMMANDS.remove : ['plugin', 'remove', id, '--json']);
     }
 
     return present;
@@ -154,7 +157,7 @@ async function removeInstalled (system: System, plugins: InstalledPlugin[], ids:
  * uninstalls its plugins, so a marketplace still serving one, or registered from another source, stays.
  */
 async function removeMarketplace (system: System, plugins: InstalledPlugin[]): Promise<boolean> {
-    const listing = await mustProbeJson<{ marketplaces?: Marketplace[] }>(system, 'codex', ['plugin', 'marketplace', 'list', '--json']),
+    const listing = await mustProbeJson<{ marketplaces?: Marketplace[] }>(system, 'codex', COMMANDS.listMarketplaces),
         registered = listing.marketplaces?.find((marketplace) => marketplace.name === MARKETPLACE);
 
     if (!registered) {
@@ -223,7 +226,7 @@ export const codex: Host = {
                 await migrate(system, wasInstalled);
             }
             else {
-                await mustRun(system, 'codex', ['plugin', 'add', PLUGIN_ID, '--json']);
+                await mustRun(system, 'codex', COMMANDS.install);
             }
             await removeInstalled(system, plugins, SHADOW_IDS);
 

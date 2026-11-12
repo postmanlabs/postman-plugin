@@ -1,7 +1,10 @@
+import { commandsFor } from '../agent-commands.js';
 import { REPO, isSameRepo, redact } from '../source.js';
 import type { System } from '../system.js';
 import { guard, mustProbeJson, mustRun, parseJson } from './shared.js';
 import { type Host, result } from './types.js';
+
+const COMMANDS = commandsFor('copilot');
 
 // Copilot CLI is deprecating direct installs (repos, URLs, local paths), so this installs from this
 // repo as a marketplace, which Copilot reads from `.claude-plugin/marketplace.json`. Once Postman is
@@ -23,7 +26,7 @@ const isOurs = (plugin: InstalledPlugin) => plugin.name === PLUGIN_NAME,
 
 /** Unregisters this repo's marketplace once nothing installed comes from it; without `--force` Copilot refuses otherwise too. */
 async function removeMarketplace (system: System, plugins: InstalledPlugin[]): Promise<boolean> {
-    const marketplaces = await mustProbeJson<Marketplace[]>(system, 'copilot', ['plugin', 'marketplace', 'list', '--json']),
+    const marketplaces = await mustProbeJson<Marketplace[]>(system, 'copilot', COMMANDS.listMarketplaces),
         registered = marketplaces.find((marketplace) => marketplace.name === MARKETPLACE);
 
     if (!registered) {
@@ -84,22 +87,22 @@ export const copilot: Host = {
     install (system) {
         return guard(async () => {
             const plugins = await mustProbeJson<InstalledPlugin[]>(system, 'copilot', ['plugin', 'list', '--json']),
-                marketplaces = await mustProbeJson<Marketplace[]>(system, 'copilot', ['plugin', 'marketplace', 'list', '--json']),
+                marketplaces = await mustProbeJson<Marketplace[]>(system, 'copilot', COMMANDS.listMarketplaces),
                 current = plugins.some((plugin) => isOurs(plugin) && plugin.marketplace === MARKETPLACE);
 
             if (marketplaces.some((marketplace) => marketplace.name === MARKETPLACE)) {
-                await mustRun(system, 'copilot', ['plugin', 'marketplace', 'update', MARKETPLACE]);
+                await mustRun(system, 'copilot', COMMANDS.updateMarketplace);
             }
             else {
-                await mustRun(system, 'copilot', ['plugin', 'marketplace', 'add', REPO]);
+                await mustRun(system, 'copilot', COMMANDS.addMarketplace);
             }
 
             // The same name can't be installed twice, so a direct install goes first.
             if (plugins.some(isDirect)) {
-                await mustRun(system, 'copilot', ['plugin', 'uninstall', PLUGIN_NAME]);
+                await mustRun(system, 'copilot', COMMANDS.remove);
             }
 
-            await mustRun(system, 'copilot', current ? ['plugin', 'update', PLUGIN_NAME] : ['plugin', 'install', PLUGIN_ID]);
+            await mustRun(system, 'copilot', current ? COMMANDS.update : COMMANDS.install);
 
             return result('done', `${current ? 'updated' : 'installed'} ${PLUGIN_ID}`, NEXT);
         });
@@ -112,7 +115,7 @@ export const copilot: Host = {
             let remaining = plugins.filter((plugin) => !isOurs(plugin));
 
             if (wasInstalled) {
-                await mustRun(system, 'copilot', ['plugin', 'uninstall', PLUGIN_NAME]);
+                await mustRun(system, 'copilot', COMMANDS.remove);
 
                 if (!system.dryRun) {
                     remaining = await mustProbeJson<InstalledPlugin[]>(system, 'copilot', ['plugin', 'list', '--json']);
