@@ -34,7 +34,8 @@ guesswork each time work resumes.
 5. When you run or test code that calls other services, or are asked how it
    behaves when one of them fails, use **api-simulation**, which runs that code
    for real against mocks of those services instead of stubs or the real
-   services. Looking something up, choosing an API or comparing code with a
+   services; for one service and no injected failures, its mock alone is
+   enough. Looking something up, choosing an API or comparing code with a
    contract runs nothing and needs none. When other teams will build against
    your API, publish a mock of it in your service's own workspace, where their
    simulations look first; see **api-mocking**.

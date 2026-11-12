@@ -9,8 +9,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-engineer/SKILL.md",
-          "bytes": 5872,
-          "sha256": "816a35fee2b34adfb64383c6064d52659c7716c7ac03fbb24306fa0b4aeac0b7"
+          "bytes": 5943,
+          "sha256": "5be0dc2ab1fe1df8458648ca61a981dbf2cc549118c8631aab73dd08916cf2c9"
         }
       ]
     },
@@ -68,13 +68,13 @@
     {
       "name": "api-mocking",
       "plugin": "postman",
-      "description": "Finds, builds, runs and publishes a stand-in for one API — the owning team's published mock when there is one, otherwise one built from its spec or collection that behaves like the real API, stateful when callers write then read. Use when something needs an API that isn't built or reachable yet (a frontend, client or demo), when other teams should build against your API before it ships, or when asked to mock an API or fake a backend. To run and test your own code against the services it calls, use api-simulation. Covers `postman mock` and `postman dependency add mock`.",
+      "description": "Finds, builds, runs and publishes a stand-in for one API — a published mock when its owner or a verified publisher has one, otherwise one built from its spec or collection that behaves like the real API, stateful when callers write then read. Use when something needs an API that isn't built or reachable yet (a frontend, client or demo), when other teams should build against your API before it ships, or when asked to mock an API or fake a backend. To run and test your own code against the services it calls, use api-simulation. Covers `postman mock` and `postman dependency add mock`.",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/api-mocking/SKILL.md",
-          "bytes": 7318,
-          "sha256": "9a567c14a964b4122d98f728ada8bce169cdcab8be9e96d2cee905ecfa8e713c"
+          "bytes": 8069,
+          "sha256": "f1e93d261fdb998f355fb90cb5e9095b3c583dbc5ad7bd64df7e9d7887a611c7"
         }
       ]
     },
@@ -99,8 +99,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-simulation/SKILL.md",
-          "bytes": 12891,
-          "sha256": "59fe5420433120baf84078151ff56ebb3964952ec0847f14ee74386acbf7e958"
+          "bytes": 13072,
+          "sha256": "037fd98278318314a6a37c173320f0e6d8d8cc2a21b6d5812225f17b48218cca"
         },
         {
           "target": "reference/context_file.md",

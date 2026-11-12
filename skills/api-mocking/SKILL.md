@@ -1,6 +1,6 @@
 ---
 name: api-mocking
-description: Finds, builds, runs and publishes a stand-in for one API — the owning team's published mock when there is one, otherwise one built from its spec or collection that behaves like the real API, stateful when callers write then read. Use when something needs an API that isn't built or reachable yet (a frontend, client or demo), when other teams should build against your API before it ships, or when asked to mock an API or fake a backend. To run and test your own code against the services it calls, use api-simulation. Covers `postman mock` and `postman dependency add mock`.
+description: Finds, builds, runs and publishes a stand-in for one API — a published mock when its owner or a verified publisher has one, otherwise one built from its spec or collection that behaves like the real API, stateful when callers write then read. Use when something needs an API that isn't built or reachable yet (a frontend, client or demo), when other teams should build against your API before it ships, or when asked to mock an API or fake a backend. To run and test your own code against the services it calls, use api-simulation. Covers `postman mock` and `postman dependency add mock`.
 ---
 
 # API Mocking
@@ -17,31 +17,43 @@ can't run it themselves.
 Several APIs at once, for a service, a frontend or a test suite? Use
 `api-simulation`, which gets each member's mock here.
 
-## Use the owner's mock first
+## Use a published mock first
 
-When the API belongs to another team, look for their published mock before
-writing one: theirs encodes their contract and their service's state; yours
-encodes a guess.
+When the API belongs to another team or a third-party provider, look for a
+published mock before writing one: a maintained mock encodes the contract
+and the service's state; yours encodes a guess.
 
 Every step below needs a signed-in CLI. Check `postman status` first; signed
-out, skip to building one and say the owner search was skipped.
+out, skip to building one and say the search was skipped.
 
-1. Find the owner's workspace with `postman search workspaces "<service>" -o json`.
-   Name the service plainly, as your code does, not by what it returns: a
-   description matches lookalike services. Prefer a Git-connected workspace
-   (`isGitConnected`) named for that service.
-2. List its mocks with `postman mock list -w <workspaceId> --json`.
-   `postman search mocks` misses some, and its `classicMock` results only
-   replay a collection's saved examples: `postman mock` can't pull or run
-   them, so call one at `https://<mockId>.mock.pstmn.io` with
-   `postman request`, or generate a code mock from its collection. A
-   same-named mock in another workspace isn't the owner's.
-3. Pull it with `postman dependency add mock <mockId>` and use it as it is.
-   Never edit `postman/.dependencies/`: `dependency update` overwrites it,
-   so copy a mock to `postman/mocks/` to change it. A pulled copy loses
-   `interceptRequests`, so fork one whose handler reads `req.body` or relies
-   on sessions. A mock is code that runs as you; pull only from workspaces
-   you trust.
+1. Find the mock.
+   - **Another team's service:** find the owner's workspace with
+     `postman search workspaces "<service>" -o json`. Name the service
+     plainly, as your code does, not by what it returns: a description
+     matches lookalike services. Prefer a Git-connected workspace
+     (`isGitConnected`) named for that service, then list its mocks with
+     `postman mock list -w <workspaceId> --json`. `postman search mocks`
+     misses some, and a same-named mock in another workspace isn't the
+     owner's.
+   - **A third-party API,** such as a payment or email provider: search
+     mocks directly with
+     `postman search mocks "<provider>" --ownership all -o json`. The
+     workspace that holds one is rarely named for the provider, and the
+     default ownership searches only your organization. Prefer a `codeMock`
+     named for the provider from a verified organization
+     (`organization.isVerified`).
+
+   A `classicMock` only replays a collection's saved examples: `postman mock`
+   can't pull or run it, so call one at `https://<mockId>.mock.pstmn.io` with
+   `postman request`, or generate a code mock from its collection.
+2. Pull it with `postman dependency add mock <mockId>`, run the folder it
+   writes with `postman mock run`, and use it as it is. Commit
+   `postman/.dependencies/` when CI should run it without signing in;
+   otherwise CI restores it with `dependency install`, which needs a sign-in
+   (see **api-discovery**). Never edit `postman/.dependencies/`:
+   `dependency update` overwrites it, so copy a mock to `postman/mocks/` to
+   change it. A mock is code that runs as you; pull only from publishers you
+   trust.
 
 ## Or build one that behaves like the real API
 
@@ -80,7 +92,8 @@ real service.
 
 `postman mock run` prints the URL it bound; a busy configured port moves
 unless you pass `--port`, so take the URL from that line. Nothing reloads:
-restart it after an edit.
+restart it after an edit. Running a mock by its Postman id records the run
+in that mock's start history in its workspace; `--no-history` leaves it out.
 
 A mock checked against the handler you just wrote proves nothing, so call
 it with requests from the contract: `postman request`, or the API's
