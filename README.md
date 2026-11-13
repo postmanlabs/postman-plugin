@@ -21,20 +21,30 @@ dependencies, ownership, runtime behavior, and the likely impact of a change.
 Install Postman in every compatible coding agent detected on your machine:
 
 ```bash
-npx @postman/postman-plugin
+npx @postman/postman-plugin@latest
 ```
 
 One command configures **Antigravity, Claude Code, Codex, GitHub Copilot CLI, Cursor,
 Factory Droid, Kimi Code, OpenCode and Pi**. Run it again to update, `status` to see what's installed,
-and `remove` to uninstall; `--agent <id>` limits any of them to one agent.
+and `remove` to uninstall; `--agent <id>` limits any of them to one agent. Keep `@latest`:
+without it, npx runs any older copy of the installer installed globally or in the current project.
 
-For Codex, installation also approves Postman's session-start hook, which adds
-instructions for using Postman's API skills. There is no separate hook prompt
-or dump of its instructions. Already trusted hooks are left alone. If Codex's
-hook API is unavailable, installation continues with a note to approve the hook
-inside Codex. Run the installer and Codex with the same `HOME` and `CODEX_HOME`;
-hook approval applies to that profile. If Codex later refreshes the plugin from
-`main` and its contents change, run the installer again to approve the update.
+To uninstall:
+
+```bash
+npx @postman/postman-plugin@latest remove
+```
+
+`remove` uninstalls the plugin, then removes what it installed alongside it: the
+Postman marketplace in Claude Code, Codex, Copilot CLI and Factory Droid, once no
+plugin still installs from it; the approval of Postman's Codex session-start hook that
+releases before 0.7.2 wrote; and
+OpenCode's cached copy. Running it again cleans up what an earlier `remove` left
+behind. It never touches Anthropic's `claude-plugins-official` marketplace or
+another agent's settings, and it leaves project-scoped installs in place. Factory
+Droid lists project installs only for the current directory, so one elsewhere keeps
+working but stops getting updates once the marketplace is gone. Cursor Marketplace
+and Kimi Code installs can only be removed inside those apps; `remove` says how.
 
 You can also use the following commands to install individually:
 
@@ -71,9 +81,8 @@ codex plugin marketplace upgrade postman
 codex plugin add postman@postman
 ```
 
-These commands track `main`; review the session-start hook in Codex after a
-manual install. The npx installer also approves the hook after each install or
-update.
+These commands track `main`, and Codex updates the plugin from it when a
+session starts.
 
 ### Cursor
 
@@ -235,8 +244,8 @@ exercise failure paths.
 `postman init` is idempotent and safe to run in any project. Run it before API
 engineering work to create the relevant local directories and make Postman
 skills available to guide the task, even if the project is already initialized.
-See [bootstrap](skills/bootstrap/SKILL.md#start-with-postman-init) for setup
-options and workspace binding.
+See [workspaces](skills/workspaces/SKILL.md) for init's
+workspace options and binding.
 
 Work done in a Postman folder produces artifacts: collection runs, lint
 results, request history, mock deployments. When that folder is connected to a

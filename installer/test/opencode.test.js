@@ -32,7 +32,9 @@ const config = path.join('/home/user', '.config', 'opencode'),
         [`git -C ${clone} rev-list --count origin/main..HEAD`]: `${ahead}\n`
     }),
     ourClone = (extra = {}) => ({ dirs: [path.join(clone, '.git'), target], files: { [shim]: OPENCODE_SHIM }, ...extra }),
-    withProbes = (...tables) => Object.assign({}, ...tables);
+    withProbes = (...tables) => Object.assign({}, ...tables),
+    // A `plugin remove` run that empties the plugin list in `file`, as OpenCode does.
+    removesFrom = (file) => (system) => { system.files[file] = plugins(); return ''; };
 
 test('detects OpenCode by its CLI on PATH', async () => {
     assert.equal(await opencode.detect(fakeSystem({ bins: ['opencode'] })), true);
@@ -540,6 +542,62 @@ test('remove has nothing to do when nothing of Postman is there', async () => {
 
     assert.equal((await opencode.remove(system)).outcome, 'skipped');
     assert.deepEqual(system.commands, []);
+});
+
+test('remove deletes OpenCode 2\'s cached copy of the spec it took out, after the entry, and no other copy', async () => {
+    const copy = copyOf(SPEC),
+        other = path.join(cached, 'git-other-repo-abc123def456'),
+        system = fakeSystem({
+            probes: V2,
+            files: { [json]: plugins(SPEC) },
+            dirs: [path.join(copy, GENERATION), path.join(`${copy}.previous`, GENERATION), other],
+            runs: { [`opencode plugin remove ${SPEC}`]: removesFrom(json) }
+        }),
+        outcome = await opencode.remove(system);
+
+    assert.equal(outcome.message, `removed ${SPEC} and the cached copy at ${copy} and ${copy}.previous`);
+    assert.deepEqual(system.commands, [`opencode plugin remove ${SPEC}`, `remove ${copy}`, `remove ${copy}.previous`]);
+    assert.ok(await system.exists(other), 'the copy of another repo is not touched');
+});
+
+test('remove after an older remove still deletes the cached copy it left', async () => {
+    const copy = copyOf(SPEC),
+        system = fakeSystem({ probes: V2, files: { [json]: plugins('x') }, dirs: [path.join(copy, GENERATION)] });
+
+    assert.equal((await opencode.remove(system)).outcome, 'done');
+    assert.deepEqual(system.commands, [`remove ${copy}`]);
+});
+
+test('remove after an older remove still deletes the cached copy of the spec POSTMAN_PLUGIN_OPENCODE_SPEC installs', async () => {
+    const copy = copyOf(GIT_SPEC),
+        system = fakeSystem({ probes: V2, env: GIT, files: { [json]: plugins('x') }, dirs: [path.join(copy, GENERATION), path.join(`${copy}.previous`, GENERATION)] });
+
+    assert.equal((await opencode.remove(system)).outcome, 'done');
+    assert.deepEqual(system.commands, [`remove ${copy}`, `remove ${copy}.previous`]);
+});
+
+test('a `plugin remove` that exits 0 but leaves the entry keeps the cached copy, so the plugin still loads', async () => {
+    const copy = copyOf(SPEC),
+        system = fakeSystem({ probes: V2, files: { [json]: plugins(SPEC) }, dirs: [path.join(copy, GENERATION)] }),
+        outcome = await opencode.remove(system);
+
+    assert.equal(outcome.outcome, 'failed');
+    assert.match(outcome.message, new RegExp(`still in ${json.replace(/[\\.]/g, '\\$&')}`));
+    assert.ok(await system.exists(copy));
+    assert.ok(!system.commands.includes(`remove ${copy}`));
+});
+
+test('a failed `plugin remove` keeps the cached copy, so the plugin still loads', async () => {
+    const copy = copyOf(SPEC),
+        system = fakeSystem({
+            probes: V2,
+            files: { [json]: plugins(SPEC) },
+            dirs: [path.join(copy, GENERATION)],
+            runs: { [`opencode plugin remove ${SPEC}`]: { code: 1, stderr: 'locked' } }
+        });
+
+    assert.equal((await opencode.remove(system)).outcome, 'failed');
+    assert.ok(await system.exists(copy));
 });
 
 test('remove acts on the config directory the entry was found in, not on a custom OPENCODE_CONFIG_DIR', async () => {

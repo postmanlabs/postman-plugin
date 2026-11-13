@@ -38,8 +38,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  codex-hook-approval:
-    name: Codex hook approval / ${{ matrix.version }} / ${{ matrix.os }}
+  codex-install:
+    name: Codex install / ${{ matrix.version }} / ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     strategy:
@@ -59,14 +59,14 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: lts/*
-      - name: Build and unit-test the installer, including automatic hook approval and RPC failures
+      - name: Build and unit-test the installer, including RPC failures
         # Git Bash enables backup privilege, bypassing Windows ACL deny tests.
         shell: pwsh
         run: npm ci && npm test
       - name: Install the tested Codex version
         run: npm install --prefix "$RUNNER_TEMP/codex" @openai/codex@${{ matrix.version }}
-      - name: Install from main, migrate legacy refs, and verify approval, mandate delivery and Linux TUI
-        run: node scripts/smoke-check.js codex-hooks
+      - name: Install from main, migrate legacy refs, and verify no Postman hook is trusted
+        run: node scripts/smoke-check.js codex-install
         env:
           CODEX_BIN: ${{ runner.temp }}/codex/node_modules/.bin/codex${{ runner.os == 'Windows' && '.cmd' || '' }}
 
@@ -186,9 +186,9 @@ jobs:
         if: ${{ !cancelled() }}
         run: node ../scripts/codex-harness.js
 
-      - name: The latest Codex approves the hook and Linux TUI startup needs no hook review
+      - name: The latest Codex installs and trusts no Postman hook
         if: ${{ !cancelled() }}
-        run: node scripts/smoke-check.js codex-hooks
+        run: node scripts/smoke-check.js codex-install
 
       - name: The latest Kimi Code loads this checkout
         if: ${{ !cancelled() }}

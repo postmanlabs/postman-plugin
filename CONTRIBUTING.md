@@ -137,6 +137,11 @@ Maintained by hand, and they are not interchangeable copies. Four things
 differ per route on purpose, and copying one file over another breaks them
 all:
 
+- **Claude Code sends only `User-Agent`.** The directory validator flags `X-Source`, and
+  the server records `X-Plugin-Version` only beside a recognized `X-Source`, so
+  `mcp.claude-code.json` carries `postman-claude-code-plugin/<version>` alone
+  (`userAgentOnly` in `scripts/routes.js`). Route attribution for it needs the server
+  to read `User-Agent`.
 - **`X-Source` must be unique per route.** It is the dimension route
   attribution keys on, so two routes sharing a value collapse into one bucket
   — which reads
@@ -306,10 +311,10 @@ filename is also Cursor's default, which `.cursor-plugin/plugin.json`'s
 `.claude/hooks/validate-manifests.js` fails on that removal, in CI's Manifest job
 and as the pre-commit guard.
 
-Droid runs the shared `hooks/hooks.json`, filling in both `${CLAUDE_PLUGIN_ROOT}`
-and `${DROID_PLUGIN_ROOT}`, through cmd.exe on Windows. Its skill names are
+Droid runs the shared `hooks/hooks.json`, filling in `${CLAUDE_PLUGIN_ROOT}`
+and exporting `DROID_PLUGIN_ROOT`, through cmd.exe on Windows. Its skill names are
 un-namespaced and its Skill tool rejects `postman:api-engineer`, so when the
-hook gets Droid's root as its argument it rewrites `` `postman:<skill>` `` to
+hook's environment has `DROID_PLUGIN_ROOT` set it rewrites `` `postman:<skill>` `` to
 `` `<skill>` ``, as the OpenCode plugin does.
 
 `scripts/factory-harness.js` installs this checkout into Droid as a local
@@ -329,8 +334,8 @@ DROID_BIN=<path to droid> node scripts/factory-harness.js
 Each route has a harness that installs this checkout the way a user gets it,
 under a throwaway home, and checks what the agent sends its model and the MCP
 server: every skill in `manifest.json` listed, the session-start mandate in the
-form that agent resolves (`postman:` names for Claude Code, Codex and Kimi Code,
-bare names elsewhere), the skill the mandate names loaded, and the route's MCP headers.
+form that agent resolves (`postman:` names for Claude Code and Kimi Code, bare
+names elsewhere; Codex gets none), the skill the mandate names loaded, and the route's MCP headers.
 `scripts/lib/harness.js` holds the stand-in they share. CI's job per route runs
 each harness against a pinned agent; the `Installer smoke` workflow runs it
 against the latest one nightly.
@@ -347,10 +352,11 @@ DROID_BIN=<path to droid> node scripts/factory-harness.js
 (cd installer && PI_BIN=<path to pi> npm run test:pi-harness)
 ```
 
-Each `*_BIN` defaults to the agent's command on `PATH`. Codex skips a plugin's
-hook until the user trusts it, so its harness runs twice: untrusted, which must
-carry the skills and no mandate, and with `--dangerously-bypass-hook-trust`,
-which must carry both. Copilot CLI's harness runs it with `COPILOT_OFFLINE=true`
+Each `*_BIN` defaults to the agent's command on `PATH`. The Codex route
+declares no hooks (`"hooks": {}`; without the key Codex falls back to
+`hooks/hooks.json`), so Codex gets the skills and no session-start mandate. Its
+harness runs with `--dangerously-bypass-hook-trust` and asserts that no hook
+runs. Copilot CLI's harness runs it with `COPILOT_OFFLINE=true`
 and a BYOK provider, `COPILOT_PROVIDER_BASE_URL`, pointed at the stand-in, so it
 needs no GitHub account. Cursor's CLI has no stand-in model, so its harness asks
 Cursor's model to quote the mandate and the skill it names, and needs a
@@ -388,6 +394,24 @@ wherever one exists:
 | Kimi Code | `npx --package=plugins@1.3.4 plugins add postmanlabs/postman-plugin --target kimi`, because Kimi installs plugins only from its TUI |
 | OpenCode | `opencode plugin add github:postmanlabs/postman-plugin` on OpenCode 2.0.4 or later, `opencode plugin --global …` on OpenCode 1.14.33 or later. A re-run refetches that spec in place, so it moves to the newest commit on `main`, and replaces an entry for any other spec of the repository (a branch, a tag or a git URL) by adding the bare spec and then removing the old one; on OpenCode 1 the add is forced, which replaces the same package in place. It reads the global config (`plugins`, or `plugin` on OpenCode 1, in `opencode.json` or `opencode.jsonc`) to see what is installed, removes with `opencode plugin remove` on OpenCode 2 and otherwise by editing the config entry — on OpenCode 1, and on 2 when the entry is in `opencode.jsonc` beside an `opencode.json`, the only file `plugin remove` edits — and then deletes an older clone-and-loader install so no skill loads twice. It refetches by re-running with `--force` on OpenCode 1 and, on OpenCode 2, by deleting the cached copy under `<cache>/opencode/npm/git-postman-plugin-*` and adding again: `plugin add` reuses that cache, and `plugin update`, `list` and `check` need OpenCode's background service, which a second instance on the same port or a cold start answers wrongly. It refuses to refresh an entry that the refresh would not write back to, where it would register a second copy instead: on OpenCode 2 one outside the first of `opencode.json`, `opencode.jsonc` and their `.opencode/` copies that exists, which is the file `plugin add` edits; on OpenCode 1 one in `OPENCODE_CONFIG_DIR`, which `plugin --global` ignores. `POSTMAN_PLUGIN_OPENCODE_SPEC` installs another spec instead, which installer smoke sets to a one-commit copy of its checkout on every run but the nightly one |
 | Pi | `pi install npm:@postman/postman-plugin`, or `pi update` when it's installed, then `pi remove` for any git install of this repo, which would load the same skills twice |
+
+`remove` uninstalls the plugin first, then whatever was installed alongside it,
+and runs that cleanup even when the plugin is already gone, since older releases
+removed only the plugin:
+
+- This repo's marketplace in Claude Code (`postman`, at user scope only), Codex
+  (`postman`), Copilot CLI (`postman`) and Droid (`postman-plugin`). It is removed
+  only when it is registered from this repo and no plugin the agent lists still
+  comes from it. Anthropic's `claude-plugins-official` is never removed.
+- Codex's approval of the session-start hook, which installs before 0.7.2 wrote.
+  It is deleted through app-server's
+  `config/batchWrite` with the version `config/read` returned, so Codex refuses
+  the write if the file changed in between.
+- OpenCode 2's cached copy of the spec it removed, only after the config entry
+  is out.
+
+Anything it can't prove is ours, it leaves in place and prints as a `note:`.
+Installer smoke's `removed` check asserts each of these is gone.
 
 Every agent but Pi gets the plugin from GitHub, not from the npm package, so a
 skill change needs no installer release. On Claude Code, a route release
@@ -446,6 +470,17 @@ already under way:
 Every run of `release.yml`, a dry run included, waits for a `headless-postman`
 member to approve it in the `npm-publish` environment before the publish job starts.
 
+Every push to `main` that changes a shipped file (`SHIPPED` in `release.mjs`)
+also cuts a release candidate by itself: `.github/workflows/rc.yml` runs
+`release.mjs next-rc`, commits the bump on a `release/postman-plugin-<version>`
+branch, smokes that commit, tags it and dispatches `release.yml`, which waits
+for the approval above and then publishes to `next`. `next-rc` takes the bump
+from the conventional-commit prefixes since npm's `latest` (`feat` is minor, `!`
+or `BREAKING CHANGE:` is major, anything else is patch; a 0.x package never
+reaches 1.0.0 this way) and the number from the first `-rc.N` that neither npm nor
+an origin tag has claimed. Approve the newest waiting run and reject the older ones:
+`release.yml` refuses a version below its dist-tag.
+
 Keep the workflow's filename: npm's trusted publisher for the package is
 pinned to `release.yml`.
 
@@ -455,8 +490,11 @@ pinned to `release.yml`.
 2. Run `node scripts/build-manifest.js`.
 3. Commit all of it. CI runs `--check` and fails if you forget step 2.
 
-Don't bump a version in the change itself; each route's own release PR does
-that (see `AGENTS.md`). Routes version independently — differing versions
+Don't bump a version in the change itself; a release PR does that (see
+`AGENTS.md`). `node scripts/route-versions.js` lists the routes a release must
+bump and why, and `--write` bumps them; CI's `Route versions` job fails a
+release PR that leaves one stale. The release-installer skill's "Route
+versions" has the rule. Routes version independently — differing versions
 across routes are correct, not drift — so a release bumps the strings that
 one route owns, three for every route but OpenCode: `version` in its manifest, plus `X-Plugin-Version` and
 `User-Agent` in its MCP config (for Kimi all three live in the manifest; for
@@ -464,8 +502,8 @@ Codex the two headers sit under `http_headers`, not `headers`; for OpenCode
 the manifest is `opencode/package.json`, and the root `package.json` repeats its
 version as a fourth string; for Pi it is
 `installer/package.json`, so Pi's bump is an installer release; for Factory
-Droid the MCP config is the root `mcp.json`). Nothing verifies this, so check
-the route's strings against each other before you commit the release. Don't
+Droid the MCP config is the root `mcp.json`; Claude Code has no `X-Plugin-Version`, only `User-Agent`). `--write` moves all of them; by
+hand, check the route's strings against each other before you commit. Don't
 skip the release's bump either: `claude plugin update` compares only that
 string against a version-keyed cache, so a release that changes files
 without bumping it reports "already at the latest version" and delivers

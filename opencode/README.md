@@ -12,9 +12,9 @@ Install it with OpenCode's own plugin command, from this repository's `main`:
 opencode plugin add github:postmanlabs/postman-plugin
 ```
 
-Restart OpenCode afterwards. To check it loaded, ask OpenCode to "set up
-Postman in this repo": it should load the `bootstrap` skill and run the Postman
-CLI.
+Restart OpenCode afterwards. To check it loaded, ask OpenCode to "connect
+this repo to a Postman workspace": it should load the `workspaces` skill
+and run the Postman CLI.
 
 | | OpenCode 2 (`@opencode/cli`) | OpenCode 1 (`opencode-ai`) |
 | --- | --- | --- |
@@ -68,7 +68,7 @@ To uninstall, delete `plugins/postman.ts` and the `postman-plugin` clone.
 - **Skills** — every skill in
   [`skills/`](https://github.com/postmanlabs/postman-plugin/tree/main/skills),
   under OpenCode's own un-namespaced names. They do the work through the
-  Postman CLI, which the `bootstrap` skill installs the first time a task needs
+  Postman CLI, which the `cli-install` skill installs the first time a task needs
   it. `api-engineer` is the entry point and routes to the rest.
 - **Session guidance** — a short system instruction that points API work at
   `api-engineer`. Your own instructions, such as `AGENTS.md` and direct
@@ -88,7 +88,7 @@ wins is not guaranteed, so rename one of the two.
 
 Local work, such as setting up a repository with `postman init` or running a
 mock on your machine, needs no Postman account. When a task reaches your
-Postman workspace, the `bootstrap` skill signs the CLI in. To sign in yourself:
+Postman workspace, your agent signs the CLI in. To sign in yourself:
 
 ```bash
 postman login

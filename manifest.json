@@ -9,8 +9,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-engineer/SKILL.md",
-          "bytes": 5844,
-          "sha256": "586be65a16d2b418ce5a158593dd6f3dc1eeca26c1a9efe058a79c576cf26f8e"
+          "bytes": 5872,
+          "sha256": "816a35fee2b34adfb64383c6064d52659c7716c7ac03fbb24306fa0b4aeac0b7"
         }
       ]
     },
@@ -35,8 +35,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-discovery/SKILL.md",
-          "bytes": 4337,
-          "sha256": "c9d5257a4642b278cbd7f0b4f5c796da4bfde0b956ca93d96aaf4ef99a939f22"
+          "bytes": 4582,
+          "sha256": "539c705809c5dbdf5d6e747415e40adf21f85b15ef2519dade849a92d195f57e"
         },
         {
           "target": "reference/orbit.md",
@@ -54,8 +54,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-documentation/SKILL.md",
-          "bytes": 2943,
-          "sha256": "4f01faa4a8b4acfc6e3d397a7063df3905e8f174bd740ab56300b30b51053c81"
+          "bytes": 2845,
+          "sha256": "c7e4eef6d451f556caca2cfebdf9ac82448cce19c617006bfb8eaff9203b0832"
         },
         {
           "target": "reference/rest-api-best-practices.md",
@@ -73,8 +73,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-mocking/SKILL.md",
-          "bytes": 7262,
-          "sha256": "39a04d60e23863eafe7893a8b6bd380d32263d22ac0ca7979074ba91fc222409"
+          "bytes": 7318,
+          "sha256": "9a567c14a964b4122d98f728ada8bce169cdcab8be9e96d2cee905ecfa8e713c"
         }
       ]
     },
@@ -86,8 +86,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-monitoring/SKILL.md",
-          "bytes": 3922,
-          "sha256": "fe63b4d1015cede7b1fd242375ff3a179a8c405eb5af50770fa37e0aa6513085"
+          "bytes": 4582,
+          "sha256": "17d55bdbac883272e0f6f3c84d237788a16d375a44912b7ffda3b3225b38a05d"
         }
       ]
     },
@@ -99,8 +99,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-simulation/SKILL.md",
-          "bytes": 12720,
-          "sha256": "23aa8cf7808d915a59476bfb7d810dba13132a9f5b7d1c98ae24d2986473f13e"
+          "bytes": 12891,
+          "sha256": "59fe5420433120baf84078151ff56ebb3964952ec0847f14ee74386acbf7e958"
         },
         {
           "target": "reference/context_file.md",
@@ -124,8 +124,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-testing/SKILL.md",
-          "bytes": 3454,
-          "sha256": "5875263235d39428949f5d2d36ca9ddb0f01b59fb82829e52edaf8bde77138be"
+          "bytes": 3404,
+          "sha256": "9ff9bda768a1d544dabbd4cbb0213f4eac0eb5638efbd55728a02224959a37dd"
         }
       ]
     },
@@ -137,27 +137,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/application-testing/SKILL.md",
-          "bytes": 11629,
-          "sha256": "2531d4485bf5097313d9bc1ffefe22e432d7ba624d5f6c1973f3d7a945c44409"
-        }
-      ]
-    },
-    {
-      "name": "bootstrap",
-      "plugin": "postman",
-      "description": "Use when resolving Postman CLI setup, authentication, or a repository workspace binding; initializing local API files; handling a CLI error that says an operation isn't allowed because of insufficient entitlements; or importing, pulling, pushing, syncing, or sharing workspace resources. Reuses existing context and chooses sync direction without duplicating a workspace or rebinding a dependency. Use for requests such as \"set up Postman for this repo\".",
-      "files": [
-        {
-          "target": "SKILL.md",
-          "source": "skills/bootstrap/SKILL.md",
-          "bytes": 8274,
-          "sha256": "5b2dc72aa03334a6057c362154a4d59e63e9df8183f0b5ffd312580cc5982b0a"
-        },
-        {
-          "target": "reference/cli_installation.md",
-          "source": "skills/bootstrap/reference/cli_installation.md",
-          "bytes": 1724,
-          "sha256": "1542ad092d0b5a301dde216f01bc406495bad248415e1957a7d7e3d5660f734b"
+          "bytes": 11584,
+          "sha256": "7188c4b5811908f3f4560bcb78710261171fb66e66050d0b0a4bc76ee5001b1f"
         }
       ]
     },
@@ -169,52 +150,77 @@
         {
           "target": "SKILL.md",
           "source": "skills/ci-integration/SKILL.md",
-          "bytes": 3987,
-          "sha256": "8726a8e7225e40e77253a2bbd4aeb36001af964275a931abff16c8c155cbf50f"
+          "bytes": 4169,
+          "sha256": "15d9ae2b57cd422d8f4a9e921814bbef403e07b8bdf11f118d94eb48c0ca929b"
+        }
+      ]
+    },
+    {
+      "name": "cli-install",
+      "plugin": "postman",
+      "description": "Use when the Postman CLI is missing or can't be installed, or when `postman` is \"command not found\". Installs the CLI globally so `postman` is on `PATH`, with a fallback to the hosted MCP server when installing is blocked. Use for requests such as \"install the Postman CLI\".",
+      "files": [
+        {
+          "target": "SKILL.md",
+          "source": "skills/cli-install/SKILL.md",
+          "bytes": 1097,
+          "sha256": "41a2036b49bfca591d8a96b8f617d1cdc714439a016025cd2c0f57f1b2967adc"
         }
       ]
     },
     {
       "name": "collection-schema-v3",
       "plugin": "postman",
-      "description": "Use when writing or debugging local Postman v3 collection and environment YAML, including collection lint failures. Preserves the per-entity files, inherited context, and schema shapes that make API changes reusable and reviewable in Git. Use for requests such as \"fix this request YAML\".",
+      "description": "Use when writing or debugging local Postman v3 collection, environment or globals files, including collection lint failures. Preserves the per-entity files, inherited context, and schema shapes that make API changes reusable and reviewable in Git. Use for requests such as \"fix this request YAML\".",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/collection-schema-v3/SKILL.md",
-          "bytes": 3093,
-          "sha256": "95f2349ba42f46e8ea6fdb3b8f01297ddfea63817883fe859f9d213e23a10370"
+          "bytes": 3676,
+          "sha256": "0a9c241db87b59d43c9674c920d69b4e9530f61d39ee73ada84d44b48a5f6201"
         },
         {
           "target": "reference/environment.md",
           "source": "skills/collection-schema-v3/reference/environment.md",
-          "bytes": 2109,
-          "sha256": "9b9fc2fe582596a9d2873476be63190a89042de2da30609cabb2c8ad0473f693"
+          "bytes": 2232,
+          "sha256": "b2a34943987af5345d97cd01acbe1eeed56ce27ab905055291d626c530fbff50"
+        },
+        {
+          "target": "reference/globals.md",
+          "source": "skills/collection-schema-v3/reference/globals.md",
+          "bytes": 1213,
+          "sha256": "0d5f8526e88521ae111733eecd1aa55e1dfbad40e6ddf7a263a08220f2ac8919"
         },
         {
           "target": "reference/http.md",
           "source": "skills/collection-schema-v3/reference/http.md",
-          "bytes": 5354,
-          "sha256": "9db348b1ca9c0e6eba70f3864210df92de5aba5d1c8a4e9a8cc794fb73997787"
+          "bytes": 9193,
+          "sha256": "8079ddfdb443d90bbed094e4d1719f3c5badd9bb5f8219fa5d7d1b4f8fea34c2"
         },
         {
           "target": "reference/other_protocols.md",
           "source": "skills/collection-schema-v3/reference/other_protocols.md",
-          "bytes": 3454,
-          "sha256": "c27c63240d8608016c1c54a9200e63ca6bac9d77acc71712c9697189e2f62d6a"
+          "bytes": 7236,
+          "sha256": "9f9d6e8e3c5a5bdf0efcdbd6b5cca8c55e1fa637e89d42cf9e579276da5a0e9f"
         }
       ]
     },
     {
       "name": "datasets",
       "plugin": "postman",
-      "description": "Use when a collection needs queried or joined test inputs, a reusable named view, spreadsheet worksheet data, live database rows, or script access through pm.datasets(). Chooses between a simple iteration file and a dataset while preserving query semantics, portability, and credential boundaries. Use for requests such as \"run this collection over database rows\".",
+      "description": "Use when creating or repairing dataset manifests, or when a collection needs queried or joined test inputs, a reusable named view, spreadsheet worksheet data, live database rows, or script access through pm.datasets(). Chooses between a simple iteration file and a dataset while preserving query semantics, portability, and credential boundaries. Use for requests such as \"run this collection over database rows\".",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/datasets/SKILL.md",
-          "bytes": 5859,
-          "sha256": "0845b92bc9149af595ad16b7a1ca3f004295da893a9ecea16a8a7ee30177bac7"
+          "bytes": 5975,
+          "sha256": "01284a2267e06d6dfb7f51367f766dc14122b9b190fb048563d5ed28476b7a17"
+        },
+        {
+          "target": "reference/schema.md",
+          "source": "skills/datasets/reference/schema.md",
+          "bytes": 1868,
+          "sha256": "69daa658202bed710004c2864e79d914b331ac7ce77d86241ea897f72947127e"
         },
         {
           "target": "reference/spreadsheets.md",
@@ -232,8 +238,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/flows/SKILL.md",
-          "bytes": 4039,
-          "sha256": "8768eca644a26e8e79e65a1134e80d2bbc3a517cb55e8ea6e6a38bd2f111cf6a"
+          "bytes": 3977,
+          "sha256": "535ba20cf1a3506136682938b926b1c183ddcbb098abb863a3e6f0259365db6b"
         },
         {
           "target": "reference/flow_cli_flags.md",
@@ -246,13 +252,43 @@
     {
       "name": "performance-testing",
       "plugin": "postman",
-      "description": "Use when load-testing or benchmarking an API with concurrent virtual users and latency or error thresholds. Reuses a collection to probe a chosen failure mode and distinguishes target limits from load-generator limits. Use for requests such as \"load test this API\".",
+      "description": "Use when load-testing or benchmarking an API with concurrent virtual users and latency or error thresholds, or when importing or migrating a JMeter `.jmx` plan or a Gatling simulation (Java/Kotlin/Scala/JS/TS) into a Postman collection plus a `postman performance run` configuration. Reuses a collection to probe a chosen failure mode and distinguishes target limits from load-generator limits. Use for requests such as \"load test this API\", \"import my JMeter plan\", or \"convert my Gatling project to Postman\".",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/performance-testing/SKILL.md",
-          "bytes": 4101,
-          "sha256": "584177eb9c45c340445671c75449be4e89b7bf4ed511a0e1fd69c35596604f55"
+          "bytes": 5146,
+          "sha256": "9bb544fab3a1ceba9ff725b98b05ce90023b924a1e3323cbcd4ace674394d68b"
+        },
+        {
+          "target": "references/gatling-import/README.md",
+          "source": "skills/performance-testing/references/gatling-import/README.md",
+          "bytes": 12510,
+          "sha256": "366f80efde1beba5c32a93ffeb881256163d586c6bbc7dfeaddd37147353378c"
+        },
+        {
+          "target": "references/gatling-import/feeders.md",
+          "source": "skills/performance-testing/references/gatling-import/feeders.md",
+          "bytes": 3498,
+          "sha256": "036465bcbfd648bc07ab18de2346aa1915e07e7254f67b598c9837bb4718cc4e"
+        },
+        {
+          "target": "references/gatling-import/injection.md",
+          "source": "skills/performance-testing/references/gatling-import/injection.md",
+          "bytes": 10523,
+          "sha256": "8504c8df5f16807225efd58cc364fd32230a53776b543eb85859c20af36f9b8b"
+        },
+        {
+          "target": "references/gatling-import/mapping.md",
+          "source": "skills/performance-testing/references/gatling-import/mapping.md",
+          "bytes": 11150,
+          "sha256": "cf8db5e4e1aadb23699667b2059b14b3f3100e35ec9b648a3407b048ea34b365"
+        },
+        {
+          "target": "references/gatling-import/unsupported.md",
+          "source": "skills/performance-testing/references/gatling-import/unsupported.md",
+          "bytes": 3222,
+          "sha256": "d45d48d27c16b378c91ba0d020169a0d4502c8c2c25e55597925e2a143094104"
         },
         {
           "target": "references/jmeter-import/README.md",
@@ -330,8 +366,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/postman-mcp-server/SKILL.md",
-          "bytes": 4197,
-          "sha256": "2e306eb4bd705b27a64ba48358e97eb0e5220b057807d74a0f196a85411ff5c1"
+          "bytes": 4179,
+          "sha256": "238d517f8a0dd3a9acb51ad01fb214058391f948320fdb842e1ca3eafada1268"
         },
         {
           "target": "references/docs.md",
@@ -397,8 +433,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/variables/SKILL.md",
-          "bytes": 3396,
-          "sha256": "b9d1c26d4d97bbfa7cf69d96c5d5f486c310c261daa05abc61e8369771e726b8"
+          "bytes": 3362,
+          "sha256": "9294ef74ac2bd7d8933b784d4919d203ce4fda05dc33ee1f455774c888e28dcc"
         }
       ]
     },
@@ -410,8 +446,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/webhook-testing/SKILL.md",
-          "bytes": 6210,
-          "sha256": "0f7b600d8c2a9954b1ef35707ccfa407c366d73dd2b8fbe5bd4bed4c4b15ba94"
+          "bytes": 6201,
+          "sha256": "fab800cc329c8e590aaee83cdd76f4bfadd495489dfb0ca0bc31f808e9a0bd24"
         },
         {
           "target": "reference/forwarding.md",
@@ -430,6 +466,19 @@
           "source": "skills/webhook-testing/reference/webhook_scripts.md",
           "bytes": 6828,
           "sha256": "afc392d3e0573ef9f9b3061fe12b777eee2b8b93be7d660f4657ed251fc057b2"
+        }
+      ]
+    },
+    {
+      "name": "workspaces",
+      "plugin": "postman",
+      "description": "Use when initializing Postman in a repository, binding it to a Postman workspace, interpreting what `postman init` did, or handling CLI-suggested actions for authentication, plan, credits, usage quota, or subscription restrictions. Treats the workspace as the place where a service's API work and its evidence live, kept separate from the services it depends on. Use for requests such as \"set up Postman in this repo\" or \"connect this repo to our workspace\".",
+      "files": [
+        {
+          "target": "SKILL.md",
+          "source": "skills/workspaces/SKILL.md",
+          "bytes": 3818,
+          "sha256": "118c18eacf29aa5db1b572897a08f1385603c6a5654429be6e0b45a798a52b8c"
         }
       ]
     }

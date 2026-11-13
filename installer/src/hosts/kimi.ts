@@ -1,8 +1,10 @@
+import { commandsFor } from '../agent-commands.js';
 import path from 'node:path';
-import { PLUGINS_CLI, REPO } from '../source.js';
 import type { System } from '../system.js';
 import { blocked, guard, mustRun, parseJson } from './shared.js';
 import { type Host, result } from './types.js';
+
+const COMMANDS = commandsFor('kimi');
 
 // Kimi Code installs plugins only from its TUI (`/plugins install`), so the
 // `plugins` CLI writes its plugin store instead. Kimi records it as a local path.
@@ -68,7 +70,7 @@ export const kimi: Host = {
             const installed = await kimi.status(system).then((status) => status.installed, () => null);
 
             // An explicit --package outranks the npm_config_package an outer `npx -p` exports to us.
-            await mustRun(system, 'npx', ['-y', `--package=${PLUGINS_CLI}`, 'plugins', 'add', REPO, '--target', 'kimi', '--yes'], {
+            await mustRun(system, 'npx', COMMANDS.install, {
                 env: { DISABLE_TELEMETRY: '1', DO_NOT_TRACK: '1' }
             });
 

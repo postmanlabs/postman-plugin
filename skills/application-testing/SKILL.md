@@ -44,7 +44,7 @@ If this run does not need to publish results (local debugging, dry run), authent
 
 Publishing to Application Inventory requires a workspace binding. Check `.postman/resources.yaml` for a `workspace.id`. Reason about whether publishing is actually needed for this task before treating a missing workspace as a blocker:
 
-- If publishing is needed and the workspace is missing, load the `bootstrap` skill to set it up. In a non-interactive context this must be done locally first, then `.postman/resources.yaml` committed.
+- If publishing is needed and the workspace is missing, load the `workspaces` skill to set it up. In a non-interactive context this must be done locally first, then `.postman/resources.yaml` committed.
 - If publishing is not needed, pass `--report-events false` and proceed.
 
 ### Capture plugin
@@ -106,7 +106,7 @@ A **target** is a named set of collections + optional environment. The `default`
 ```bash
 postman --version
 ```
-This skill targets the latest CLI release. If the version is outdated, load the `bootstrap` skill for installation and update steps, then re-run. The `--help` output for each command shows the flags actually available in the installed version.
+This skill targets the latest CLI release. If the version is outdated, update the CLI, then re-run. The `--help` output for each command shows the flags actually available in the installed version.
 
 Read the CLI error output first — it names the specific failure and what to fix.
 

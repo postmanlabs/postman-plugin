@@ -1,13 +1,18 @@
-import { isSameRepo, redact } from '../source.js';
+import { commandsFor } from '../agent-commands.js';
+import { REPO, isSameRepo, redact } from '../source.js';
 import type { System } from '../system.js';
 import { blocked, failed, guard, mustProbeJson, mustRun, parseJson } from './shared.js';
 import { type Host, result } from './types.js';
+
+const COMMANDS = commandsFor('claude-code');
 
 // Anthropic's catalog entry is the Claude Code install; our own marketplace
 // would register the same skills a second time under `postman@postman`.
 const MARKETPLACE = { name: 'claude-plugins-official', repo: 'anthropics/claude-plugins-official' },
     PLUGIN_ID = `postman@${MARKETPLACE.name}`,
     SHADOW_IDS = ['postman@postman'],
+    // This repo's own marketplace, which the README once had users add; no release of the installer added it.
+    OWN_MARKETPLACE = 'postman',
     SCOPE = 'user',
     NEXT = 'Restart Claude Code for the change to take effect.';
 
@@ -38,30 +43,70 @@ function otherScopeNotes (plugins: InstalledPlugin[]): string[] {
 }
 
 async function refreshMarketplace (system: System): Promise<void> {
-    const marketplaces = await mustProbeJson<Marketplace[]>(system, 'claude', ['plugin', 'marketplace', 'list', '--json']),
-        existing = marketplaces.find((marketplace) => marketplace.name === MARKETPLACE.name);
+    const marketplaces = await mustProbeJson<Marketplace[]>(system, 'claude', COMMANDS.listMarketplaces),
+        registered = marketplaces.find((marketplace) => marketplace.name === MARKETPLACE.name);
 
-    if (!existing) {
-        await mustRun(system, 'claude', ['plugin', 'marketplace', 'add', MARKETPLACE.repo, '--scope', SCOPE]);
+    if (!registered) {
+        await mustRun(system, 'claude', COMMANDS.addMarketplace);
 
         return;
     }
 
-    if (!isOfficialSource(existing)) {
-        const source = existing.repo ?? existing.url ?? existing.path;
+    if (!isOfficialSource(registered)) {
+        const source = registered.repo ?? registered.url ?? registered.path;
 
         blocked(`marketplace ${MARKETPLACE.name} is registered from ${source ? redact(source) : 'an unknown source'}, not ${MARKETPLACE.repo}`);
     }
 
-    await mustRun(system, 'claude', ['plugin', 'marketplace', 'update', MARKETPLACE.name]);
+    await mustRun(system, 'claude', COMMANDS.updateMarketplace);
 }
 
 async function uninstallAtUserScope (system: System, plugins: InstalledPlugin[], ids: string[]): Promise<void> {
     for (const id of ids) {
         if (plugins.some((plugin) => plugin.id === id && plugin.scope === SCOPE)) {
-            await mustRun(system, 'claude', ['plugin', 'uninstall', id, '--scope', SCOPE, '--json']);
+            await mustRun(system, 'claude', id === PLUGIN_ID ? COMMANDS.remove : ['plugin', 'uninstall', id, '--scope', SCOPE, '--json']);
         }
     }
+}
+
+/**
+ * Removes this repo's own marketplace from user settings once no plugin at any scope comes from it.
+ * `marketplace remove` leaves the records of plugins still installed from it behind (anthropics/claude-code#17061).
+ */
+async function removeOwnMarketplace (system: System, plugins: InstalledPlugin[]): Promise<boolean> {
+    const marketplaces = await mustProbeJson<Marketplace[]>(system, 'claude', COMMANDS.listMarketplaces),
+        registered = marketplaces.find((marketplace) => marketplace.name === OWN_MARKETPLACE);
+
+    if (!registered) {
+        return false;
+    }
+
+    if (!isSameRepo(registered.repo, REPO) && !(registered.source === 'git' && isSameRepo(registered.url, REPO))) {
+        const source = registered.repo ?? registered.url ?? registered.path;
+
+        system.log(`  note: marketplace ${OWN_MARKETPLACE} is registered from ${source ? redact(source) : 'an unknown source'}, not ${REPO}; left alone`);
+
+        return false;
+    }
+
+    const serving = plugins.filter((plugin) => plugin.id.endsWith(`@${OWN_MARKETPLACE}`));
+
+    if (serving.length) {
+        system.log(`  note: marketplace ${OWN_MARKETPLACE} still serves ${serving.map((plugin) => `${plugin.id} (${plugin.projectPath ?? plugin.scope})`).join(', ')}; left alone`);
+
+        return false;
+    }
+
+    // User scope only: a project's settings are shared with everyone who works in it.
+    const exec = await system.run('claude', ['plugin', 'marketplace', 'remove', OWN_MARKETPLACE, '--scope', SCOPE, '--json']);
+
+    if (exec.code !== 0) {
+        system.log(`  note: could not remove marketplace ${OWN_MARKETPLACE} from user settings, so it was left alone: ${(exec.stderr || exec.stdout).trim()}`);
+
+        return false;
+    }
+
+    return true;
 }
 
 export const claudeCode: Host = {
@@ -101,7 +146,7 @@ export const claudeCode: Host = {
                 verb = plugins.some((plugin) => plugin.id === PLUGIN_ID && plugin.scope === SCOPE) ? 'update' : 'install';
 
             // Replacement first: if it fails, the duplicate is still a working copy.
-            await mustRun(system, 'claude', ['plugin', verb, PLUGIN_ID, '--scope', SCOPE, '--json']);
+            await mustRun(system, 'claude', COMMANDS[verb]);
             await uninstallAtUserScope(system, plugins, SHADOW_IDS);
 
             return result('done', `${verb === 'update' ? 'updated' : 'installed'} ${PLUGIN_ID}`, NEXT);
@@ -112,24 +157,29 @@ export const claudeCode: Host = {
         return guard(async () => {
             const plugins = await listPlugins(system),
                 ids = [PLUGIN_ID, ...SHADOW_IDS].filter((id) => plugins.some((plugin) => plugin.id === id && plugin.scope === SCOPE));
-
-            if (!ids.length) {
-                return result('skipped', 'not installed at user scope');
-            }
+            let remaining = plugins.filter((plugin) => !(ids.includes(plugin.id) && plugin.scope === SCOPE));
 
             await uninstallAtUserScope(system, plugins, ids);
 
             // status() sees only the official ID, so the duplicate's removal is confirmed here.
-            if (!system.dryRun) {
-                const after = await listPlugins(system),
-                    left = ids.filter((id) => after.some((plugin) => plugin.id === id && plugin.scope === SCOPE));
+            if (ids.length && !system.dryRun) {
+                remaining = await listPlugins(system);
+
+                const left = ids.filter((id) => remaining.some((plugin) => plugin.id === id && plugin.scope === SCOPE));
 
                 if (left.length) {
                     failed(`uninstall exited 0, but ${left.join(', ')} is still installed at user scope`);
                 }
             }
 
-            return result('done', `uninstalled ${ids.join(', ')}`, NEXT);
+            const removals = [
+                ...(ids.length ? [`uninstalled ${ids.join(', ')}`] : []),
+                ...(await removeOwnMarketplace(system, remaining) ? [`removed marketplace ${OWN_MARKETPLACE}`] : [])
+            ];
+
+            return removals.length ?
+                result('done', removals.join(' and '), NEXT) :
+                result('skipped', 'not installed at user scope');
         });
     }
 };

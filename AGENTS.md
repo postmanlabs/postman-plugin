@@ -68,7 +68,8 @@ under `.*-plugin/`, an `mcp*.json`, `manifest.json`'s format or order,
 check that the route still delivers everything it did before:
 
 - the request the agent sends its model lists every skill in
-  `manifest.json` and carries the session-start mandate;
+  `manifest.json` and carries the session-start mandate (Codex's route
+  declares no hooks, so its request must carry none);
 - the agent registers or connects to the Postman MCP server from the route's
   MCP config. The server's tools reach the model only after the user signs
   in, because Postman's server answers 401 until then.
@@ -93,9 +94,11 @@ Don't bump `version` in `.claude-plugin/plugin.json` (or the matching
 version fields in `.codex-plugin/plugin.json`, `.cursor-plugin/plugin.json`,
 `.kimi-plugin/plugin.json`, `.factory-plugin/plugin.json`, and the
 `X-Plugin-Version`/`User-Agent` headers in `mcp.*.json` and `mcp.json`) as
-part of a content change. A route's strings bump together, and only in
-that route's own release commit/PR. Routes version independently, so a
-release leaves every other route's strings alone. Bundling a version bump
+part of a content change. A route's strings bump together, and only in a
+release commit/PR. Routes version independently: each keeps its own number,
+and a release bumps only the routes whose delivered content changed, by the
+rule in `.claude/skills/release-installer/SKILL.md`'s "Route versions".
+Bundling a version bump
 into an unrelated fix makes the diff harder to review and conflates "what
 changed" with "what shipped."
 
@@ -119,7 +122,7 @@ Check every `SKILL.md` you write or review for these.
 3. **Don't restate the same paragraph across two skills.** If two skills
    need the same guidance (e.g., when and how to file `postman feedback`),
    write it once in the skill that owns that concern and have every other
-   skill point to it by name (`see **bootstrap**'s "..." section`) instead
+   skill point to it by name (`see **api-engineer**'s "..." section`) instead
    of copying the paragraph. A duplicated paragraph drifts the next time
    only one copy gets edited.
 4. **Don't make a step mandatory up front when only some branches need it.**

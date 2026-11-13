@@ -1,6 +1,6 @@
 ---
 name: collection-schema-v3
-description: Use when writing or debugging local Postman v3 collection and environment YAML, including collection lint failures. Preserves the per-entity files, inherited context, and schema shapes that make API changes reusable and reviewable in Git. Use for requests such as "fix this request YAML".
+description: Use when writing or debugging local Postman v3 collection, environment or globals files, including collection lint failures. Preserves the per-entity files, inherited context, and schema shapes that make API changes reusable and reviewable in Git. Use for requests such as "fix this request YAML".
 ---
 
 # Collection Schema (v3, Git-Native)
@@ -19,12 +19,14 @@ checks, without regenerating a single large collection export.
    Collection/folder definitions supply shared context; copying every inherited
    field into each request creates competing values and noisy future edits.
    See **variables** when deciding the scope of a value or secret reference.
-3. Use [HTTP field shapes and examples](reference/http.md) when authoring
-   request, example, or definition files. For other protocols, read
-   [their schemas](reference/other_protocols.md); HTTP's URL/body/script shape
-   cannot be assumed for gRPC, WebSocket, MCP, or LLM requests.
-   [Environment files](reference/environment.md) have their own schema and
-   do not use the collection entity's `$kind` discriminator.
+3. Consult the reference section for the entity being changed:
+   [HTTP requests, examples, and definitions](reference/http.md),
+   [environment files](reference/environment.md), or
+   [other protocols](reference/other_protocols.md).
+   Protocols have different URL, body, script, and settings shapes; an HTTP
+   field is not necessarily valid on another request kind.
+   For globals files, use the [globals reference](reference/globals.md).
+   Dataset YAML belongs to **datasets**; mocks belong to **api-mocking**.
 4. Preserve types at the YAML boundary. Quote `{{variables}}` and strings that
    resemble booleans or numbers; JSON bodies are string content, best expressed
    with block scalars. A syntactically valid YAML object can still be the wrong
@@ -43,7 +45,15 @@ checks, without regenerating a single large collection export.
 ## Verification
 
 Run `postman collection lint <collection-path>` for collection changes and
-`postman environment lint <path>` for environment changes. Then inspect the
-diff for unintended scope changes; when execution is appropriate, run the
-changed request through its collection to check inherited context. Report
-structural validation separately from behavior verified against a target.
+`postman environment lint <path>` for environment changes. Review warnings as
+well as errors: an ignored field can change behavior even when parsing succeeds.
+Use `postman workspace lint` when checking relationships across entities or
+workspace manifest mappings.
+
+Inspect the diff for unintended scope changes. When execution is appropriate,
+run the changed request through its collection to check inherited context.
+For script changes, check that the changed script executed and produced its
+intended effect; compare assertion counts with the assertions expected for that
+run. A setup script may intentionally have none, and unrelated passing assertions
+do not prove the changed script worked. Report structural validation separately
+from behavior verified against a target.

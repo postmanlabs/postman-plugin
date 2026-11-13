@@ -23,7 +23,7 @@ how to use it:
   to fire it again.
 
 The command is singular, and every subcommand needs a signed-in session. Run what you need,
-and read `bootstrap` only if a command fails with a setup error such as `Authentication required`.
+and sign in only if a command fails with a setup error such as `Authentication required`.
 When all you have is the URL, its subdomain is the webhook id.
 
 For capture or inspection alone, create or reuse a webhook and inspect its
