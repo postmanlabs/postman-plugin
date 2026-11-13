@@ -9,8 +9,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-engineer/SKILL.md",
-          "bytes": 5872,
-          "sha256": "816a35fee2b34adfb64383c6064d52659c7716c7ac03fbb24306fa0b4aeac0b7"
+          "bytes": 6503,
+          "sha256": "8a71319d59ceafa9bb0d1bb0eabd5ea9c9dbda2be973fb99092be78e202ec70f"
         }
       ]
     },
@@ -139,6 +139,19 @@
           "source": "skills/application-testing/SKILL.md",
           "bytes": 11584,
           "sha256": "7188c4b5811908f3f4560bcb78710261171fb66e66050d0b0a4bc76ee5001b1f"
+        }
+      ]
+    },
+    {
+      "name": "change-notes",
+      "plugin": "postman",
+      "description": "Use when finishing, handing off, resuming, or reviewing an API change, or when opening a pull request for one. Keeps what was asked, what was decided, and what each test run showed in the bound workspace, with a link to every run, so a reviewer or the next session can check the work instead of trusting a summary. Use for requests such as \"open a PR for this\" or \"continue the work on this branch\".",
+      "files": [
+        {
+          "target": "SKILL.md",
+          "source": "skills/change-notes/SKILL.md",
+          "bytes": 5682,
+          "sha256": "00f9456b520e64821b726fe5dcd9d0c80711aef52520640c7a54daa9326f97d4"
         }
       ]
     },

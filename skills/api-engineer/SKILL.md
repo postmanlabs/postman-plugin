@@ -11,6 +11,12 @@ code; the Context Graph can reveal consumers, ownership, and runtime relationshi
 beyond the current repository. Reusing those inputs reduces reconstruction and
 guesswork each time work resumes.
 
+When the work will end in a commit, a pull request or a handoff, open a change note
+before you start and record your decisions and test runs as you go, so a reviewer
+can check them. If the branch already has a note (`postman workspace note show`),
+carry on in it: record each new request, and replace what is no longer true, then
+record the test run after you commit. See **change-notes**.
+
 1. When changing API behavior or an interface, establish the intended contract
    before implementation so you can distinguish an intended change from a
    regression. Reuse the existing contract; update it where behavior changes.
@@ -64,6 +70,9 @@ guesswork each time work resumes.
    Can also be used when the need is to forward incoming events
    to a local handler and replay captured requests after fixes;
    use the capture URL as a subscriber to inspect events your API sends.
+12. When you finish a change, hand it off, resume it on a later branch, or open a
+   pull request for it, use **change-notes** so the request, your decisions and
+   the test runs are recorded in the workspace and a reviewer can check them.
 
 Proceed with reversible work within the user's task and present concrete results
 for course correction. Recommend additional work only when it closes a material
