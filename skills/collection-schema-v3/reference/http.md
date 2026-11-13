@@ -12,9 +12,11 @@ Optional metadata for a collection or folder:
 - `name` — optional, defaults to the filesystem folder name.
 - `description` — optional.
 - `variables` — array of `{key, value, description?, disabled?}`. `value`
-  must be a string; `disabled` a boolean.
+  must be a string; `disabled` a boolean. A map of name to value is also
+  accepted when no entry needs `description` or `disabled`.
 - `auth` — a single auth object `{type, credentials: [{key, value}, ...]}`
   or an array for multiAuth: `[{id, name, type, credentials, rules?}, ...]`.
+  `credentials` may also be a map of key to value.
 - `scripts` — array of `{type, code, language: "text/javascript"}`. `type`
   is one of `http:beforeRequest`, `http:afterResponse`,
   `graphql:beforeQuery`, `graphql:afterResponse`, `grpc:beforeInvoke`,
@@ -30,7 +32,8 @@ Optional metadata for a collection or folder:
   insertion between two requests shouldn't force renumbering every sibling.
 - `url` — string, with `{{varName}}` variable syntax.
 - `method` — `GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS`.
-- `headers` — array of `{key, value, description?, disabled?}`.
+- `headers` — array of `{key, value, description?, disabled?}`, or a map of
+  header name to value when no entry needs `description` or `disabled`.
 - `queryParams` — array of `{key, value, description?, disabled?}`.
 - `pathVariables` — array of `{key, value, description?}`.
 - `body` — `{type, content}`; `type` required whenever `body` is present.
@@ -39,7 +42,8 @@ Optional metadata for a collection or folder:
   - `json`/`text`/`xml`/`html`/`javascript`: `content` is a string.
   - `formdata`: `content` is an array of
     `{key, type: "text"|"file", value or src, contentType?, description?}`.
-  - `urlencoded`: `content` is an array of `{key, value, description?}`.
+  - `urlencoded`: `content` is an array of `{key, value, description?}`, or a
+    map of key to value.
 - `auth` — `{type, credentials}`.
 - `settings` —
   `{protocolVersion?, strictSSL?, followRedirects?, maxRedirects?, disabledSystemHeaders?}`.
@@ -48,9 +52,12 @@ Optional metadata for a collection or folder:
   `./.resources/<request-name>.resources/examples/`.
 
 When editing query parameters, update both places they are recorded: the
-query string in `url` and the entries in `queryParams`. Their names and values
-must match; lint reports a mismatch as `FMT209`. For example, `q=shoes&page=2`
-is represented as:
+query string in `url` and the entries in `queryParams`. Their names, values and
+order must match; lint reports a difference as `FMT209`: a different value or
+order, an entry in only one of the two, or `queryParams: []` next to a query
+string. Disabled `queryParams` entries are ignored by the check, and a query
+string in `url` with no `queryParams` key at all is not reported, but write both
+so they stay in step. For example, `q=shoes&page=2` is represented as:
 
 ```yaml
 url: '{{base_url}}/search?q=shoes&page=2'
@@ -194,7 +201,9 @@ scripts:
 
 `type` is `beforeRequest` or `afterResponse` on a request, and protocol-prefixed on a
 collection or folder (`http:beforeRequest`, `http:afterResponse`,
-`graphql:beforeQuery`, `grpc:beforeInvoke`, …). A script entry may also carry
+`graphql:beforeQuery`, `grpc:beforeInvoke`, …). The request-level types for
+GraphQL and gRPC are listed with those request kinds in `other_protocols.md`;
+lint does not check a script's `type`. A script entry may also carry
 `language`, `packages`, and `requests`. `language` takes exactly one value,
 **`text/javascript`** — `language: javascript` is a hard error,
 `Invalid input: expected "text/javascript"`. Omitting it is fine.
