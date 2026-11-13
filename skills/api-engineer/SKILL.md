@@ -13,7 +13,9 @@ guesswork each time work resumes.
 
 When the work will end in a commit, a pull request or a handoff, open a change note
 before you start and record your decisions and test runs as you go, so a reviewer
-can check them. See **change-notes**.
+can check them. If the branch already has a note (`postman workspace note show`),
+carry on in it: record each new request, and replace what is no longer true, then
+record the test run after you commit. See **change-notes**.
 
 1. When changing API behavior or an interface, establish the intended contract
    before implementation so you can distinguish an intended change from a
