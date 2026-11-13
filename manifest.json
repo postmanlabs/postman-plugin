@@ -323,8 +323,8 @@
         {
           "target": "references/readyapi-import/README.md",
           "source": "skills/performance-testing/references/readyapi-import/README.md",
-          "bytes": 8078,
-          "sha256": "6bf4a656870168f2e205a2384671a1b2bfe3f1537cf9937cd11fa58c11b625e2"
+          "bytes": 8240,
+          "sha256": "2ba0f7fc3ed63cc359a29587c233125ce3f69120703a2715ad4a8aaed886ff56"
         },
         {
           "target": "references/readyapi-import/import-report.md",

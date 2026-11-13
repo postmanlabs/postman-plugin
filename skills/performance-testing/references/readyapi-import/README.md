@@ -4,7 +4,7 @@
 
 Turn a ReadyAPI (SoapUI) project `.xml` into three artifacts:
 
-1. **Postman Collection v2.1** — REST + SOAP + HTTP requests, suites/cases → folders, headers, auth (incl. OAuth 2), properties → variables, assertions.
+1. **Postman Collection (v3)** — REST + SOAP + HTTP requests, suites/cases → folders, headers, auth (incl. OAuth 2), properties → variables, assertions. The CLI writes it as a git-native v3 collection (a directory of `*.request.yaml` plus `.resources/`); v2.1 is only the converter's internal intermediate.
 2. **Performance config** — VU count, duration, load profile, `--pass-if`, and the exact `postman performance run` command, derived from ReadyAPI `<con:loadTest>` definitions.
 3. **Import report** — what imported exactly, what was approximated, what needs manual work, what is unsupported.
 
@@ -37,7 +37,7 @@ Replace the placeholder body with the translation. Keep a `// REVIEW` line on an
 
 ### 3. Validate
 
-Confirm the collection is valid v2.1 and **every `event` script parses as JavaScript** (`node --check` each `exec`, or equivalent). A syntax error is invisible in the file and only surfaces mid-load when the perf run executes that request. If the CLI ships `postman collection lint --readyapi`, run it — it checks the schema, that every script parses, that scripts call only real `pm.*` APIs, and that no `[MANUAL TRANSLATION REQUIRED]` markers remain.
+Confirm the collection is valid v3 and **every embedded script parses as JavaScript** (`node --check` each script's `code`, or equivalent). A syntax error is invisible in the file and only surfaces mid-load when the perf run executes that request. If the CLI ships `postman collection lint --readyapi`, run it — it checks the schema, that every script parses, that scripts call only real `pm.*` APIs, and that no `[MANUAL TRANSLATION REQUIRED]` markers remain.
 
 ### 4. Performance config (LoadTest → perf run)
 
