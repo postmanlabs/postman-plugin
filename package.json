@@ -13,6 +13,7 @@
     "opencode/package.json",
     "skills/",
     "hooks/session-start-context.md",
+    "hooks/session-start-postman-dir.md",
     "manifest.json",
     "mcp.opencode.json"
   ],

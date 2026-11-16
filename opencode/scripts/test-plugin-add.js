@@ -11,7 +11,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
-    ENTRY_SKILL, assertMandate, assertMcpHeaders, chatCompletion, commit, copyCheckout,
+    ENTRY_SKILL, addPostmanDir, assertMandate, assertRepoParagraph, assertMcpHeaders, chatCompletion, commit, copyCheckout,
     mandatedSkill, pointMcpAt, readJson, run, runAgent, skillExcerpt, skills, startStandIn, workspace
 } from '../../scripts/lib/harness.js';
 import { resolveOpenCodeExecutable } from './lib/opencode-executable.js';
@@ -63,6 +63,8 @@ try {
             { body: chatCompletion.call('skill', { [argument]: mandatedSkill(chatCompletion.transcript(body)) }) };
     });
     fs.mkdirSync(nested, { recursive: true });
+    // OpenCode's session directory is where it starts, so the postman/ mandate needs postman/ there.
+    addPostmanDir(nested);
 
     // A new user's state: no config directory, no marketplace, an empty npm config.
     const environment = { ...process.env, HOME: home, USERPROFILE: home, ...xdg, PWD: nested, NPM_CONFIG_USERCONFIG: path.join(root, 'npmrc'), OPENCODE_DISABLE_CLAUDE_CODE_SKILLS: '1', OPENCODE_DISABLE_EXTERNAL_SKILLS: '1' };
@@ -133,6 +135,10 @@ try {
     }
 
     assertMandate('OpenCode', first, { namespaced: false });
+    if (!(route in PUBLISHED)) {
+        // What is pushed may predate the postman/ check.
+        assertRepoParagraph('OpenCode', first);
+    }
     assert.ok(second.includes(skillExcerpt(ENTRY_SKILL, installedRoot)), `the mandated skill did not load:\n${second.slice(-800)}`);
     assertMcpHeaders('OpenCode', standIn.mcpRequests, mcpConfig.mcp.postman.headers);
 

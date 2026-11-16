@@ -11,7 +11,7 @@ const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '
     BLOB = 'https://github.com/postmanlabs/postman-plugin/blob/main/',
     RAW = 'https://raw.githubusercontent.com/postmanlabs/postman-plugin/main/',
     STAGED = ['README.md', 'LICENSE', 'skills', 'hooks', 'mcp.pi.json'],
-    SESSION_CONTEXT = path.join('hooks', 'session-start-context.md'),
+    SESSION_CONTEXTS = ['session-start-context.md', 'session-start-postman-dir.md'].map((file) => path.join('hooks', file)),
     // A target that already has a scheme, is protocol-relative or root-relative, or is an in-page anchor.
     NOT_RELATIVE = '(?![a-z][a-z0-9+.-]*:|/|#)(?:\\./)?';
 
@@ -34,7 +34,7 @@ function stage () {
     clean();
     fs.writeFileSync(path.join(packageRoot, 'README.md'), toPackageReadme(fs.readFileSync(path.join(repoRoot, 'README.md'), 'utf8')));
     copyFromRepo('LICENSE');
-    copyFromRepo(SESSION_CONTEXT);
+    SESSION_CONTEXTS.forEach(copyFromRepo);
     copyFromRepo('mcp.pi.json');
     // Dot-directories such as skills/.quarantine/ are local and gitignored, never published.
     fs.cpSync(path.join(repoRoot, 'skills'), path.join(packageRoot, 'skills'), {

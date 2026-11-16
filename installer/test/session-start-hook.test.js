@@ -13,7 +13,7 @@ const hooksDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'
     read = (file) => fs.readFileSync(path.join(hooksDir, file), 'utf8'),
     // The mandate for a session in a repository with postman/.
     repoMandate = read('session-start-postman-dir.md'),
-    light = read('session-start-light.md'),
+    light = read('session-start-context.md'),
     // Session directories: one with a postman/ directory, one without, and one where postman is only a file.
     repo = fs.mkdtempSync(path.join(os.tmpdir(), 'postman-plugin-repo-')),
     noRepo = fs.mkdtempSync(path.join(os.tmpdir(), 'postman-plugin-no-repo-')),
@@ -65,7 +65,7 @@ for (const [where, cwd, expected] of [['with a postman/ directory', repo, repoMa
 test('a repository with postman/ gets a mandate that names the directory and the entry skill', () => {
     const output = jsonOutput(runHook(hooksDir, '', { CURSOR_PLUGIN_ROOT: path.dirname(hooksDir) }, repo)).additional_context;
 
-    assert.match(output, /^You have (the )?Postman plugin/);
+    assert.match(output, /^<EXTREMELY_IMPORTANT>\s*You have the Postman plugin/);
     assert.match(output, /This repository has a `postman\/` directory/);
     assert.match(output, /load the `api-engineer` skill/);
 });
@@ -86,6 +86,13 @@ test('a file named postman is not a postman/ directory', () => {
     assert.equal(runHook(hooksDir, '', {}, fileRepo), light);
 });
 
+test('a Postman/ directory is not a postman/ directory, even where the disk ignores case', () => {
+    const upper = fs.mkdtempSync(path.join(os.tmpdir(), 'postman-plugin-upper-repo-'));
+
+    fs.mkdirSync(path.join(upper, 'Postman'));
+    assert.equal(runHook(hooksDir, '', {}, upper), light);
+});
+
 test('Cursor JSON survives quotes, backslashes, tabs, CRLF and non-ASCII in the message', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'postman-plugin-hook-')),
         fixture = 'Say "hi" from C:\\Users\\me\\\tthen `postman:api-engineer` — 100% done.\r\nNext line\r\n\nLast line\n';
@@ -93,7 +100,7 @@ test('Cursor JSON survives quotes, backslashes, tabs, CRLF and non-ASCII in the 
     for (const script of ['session-start', 'session-start.cmd']) {
         fs.copyFileSync(path.join(hooksDir, script), path.join(dir, script));
     }
-    fs.writeFileSync(path.join(dir, 'session-start-light.md'), fixture);
+    fs.writeFileSync(path.join(dir, 'session-start-context.md'), fixture);
 
     assert.deepEqual(jsonOutput(runHook(dir, '', { CURSOR_PLUGIN_ROOT: dir })), { additional_context: bareNames(fixture) });
     assert.deepEqual(jsonOutput(runHook(dir, '', { COPILOT_PLUGIN_ROOT: dir })), { additionalContext: bareNames(fixture) });

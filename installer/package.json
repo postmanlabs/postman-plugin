@@ -35,6 +35,7 @@
     "dist/",
     "skills/",
     "hooks/session-start-context.md",
+    "hooks/session-start-postman-dir.md",
     "mcp.pi.json"
   ],
   "pi": {

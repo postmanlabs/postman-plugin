@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -7,7 +8,13 @@ import { postmanExtension, toPiSessionContext } from '../dist/pi-extension.js';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..'),
     { mcpServers } = JSON.parse(fs.readFileSync(path.join(repoRoot, 'mcp.pi.json'), 'utf8')),
-    mandate = fs.readFileSync(path.join(repoRoot, 'hooks', 'session-start-context.md'), 'utf8');
+    mandate = fs.readFileSync(path.join(repoRoot, 'hooks', 'session-start-context.md'), 'utf8'),
+    postmanDirMandate = fs.readFileSync(path.join(repoRoot, 'hooks', 'session-start-postman-dir.md'), 'utf8'),
+    // Session directories: one without a postman/ directory, one with it, and one with Postman/.
+    [noProject, project, upperProject] = ['none', 'repo', 'upper'].map((name) => fs.mkdtempSync(path.join(os.tmpdir(), `postman-pi-${name}-`)));
+
+fs.mkdirSync(path.join(project, 'postman'));
+fs.mkdirSync(path.join(upperProject, 'Postman'));
 
 /** A Pi host that records what the extension registers. Pi before 0.99.0 has no `registerMcpServer`. */
 function loadExtension ({ registersMcp = true } = {}) {
@@ -52,14 +59,14 @@ function agentStartEvent (skills, { sections = true } = {}) {
 }
 
 /** What each `before_agent_start` handler returns. */
-function agentStartResults (host, event) {
-    return (host.handlers.before_agent_start ?? []).map((handler) => handler(event));
+function agentStartResults (host, event, cwd = noProject) {
+    return (host.handlers.before_agent_start ?? []).map((handler) => handler(event, { cwd }));
 }
 
-function startAgent (host, skills) {
+function startAgent (host, skills, cwd) {
     const event = agentStartEvent(skills);
 
-    agentStartResults(host, event);
+    agentStartResults(host, event, cwd);
 
     return event.systemPromptOptions.sections;
 }
@@ -68,12 +75,20 @@ test('registers the MCP servers exactly as mcp.pi.json declares them', () => {
     assert.deepEqual(loadExtension().servers, mcpServers);
 });
 
-test('adds the session-start mandate as a prompt section, naming skills as Pi does', () => {
+test('adds the light note as a prompt section in a project without postman/, naming skills as Pi does', () => {
     const { postman } = startAgent(loadExtension(), ['api-engineer', 'api-testing']);
 
     assert.equal(postman, toPiSessionContext(mandate));
-    assert.match(postman, /load the `api-engineer` skill/);
+    assert.match(postman, /`api-engineer` skill/);
     assert.doesNotMatch(postman, /`postman:[a-z0-9-]+`/);
+});
+
+test('adds the postman/ mandate in a project with a postman/ directory, and not for Postman/', () => {
+    const host = loadExtension();
+
+    assert.equal(startAgent(host, ['api-engineer'], project).postman, toPiSessionContext(postmanDirMandate));
+    assert.match(startAgent(host, ['api-engineer'], project).postman, /load the `api-engineer` skill/);
+    assert.equal(startAgent(host, ['api-engineer'], upperProject).postman, toPiSessionContext(mandate));
 });
 
 test('leaves the prompt alone when api-engineer is not loaded', () => {

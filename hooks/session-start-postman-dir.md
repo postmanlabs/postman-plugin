@@ -1,8 +1,11 @@
-You have Postman plugin installed. This repository has a `postman/` directory which indicates the team uses Postman to document and test apis. 
-Before responding to any non-trivial API engineering task — designing, implementing, mocking, testing, monitoring, documenting, you can — load the `postman:api-engineer` skill and follow it. It is the default entry point and routes to the specific postman skills from there. 
+<EXTREMELY_IMPORTANT>
+You have the Postman plugin. This repository has a `postman/` directory, which means the team uses Postman to design, document and test its APIs.
 
-Pure questions and trivial one-line edits don't need it.
+Before responding to any non-trivial API engineering task — designing, implementing, mocking, testing, monitoring, documenting, or deploying an API — load the `postman:api-engineer` skill and follow it. It is the default entry point and routes to the specific postman skills from there. Pure questions and trivial one-line edits don't need it.
+
+When the intent is already specific, you may enter directly into the relevant skill instead.
 
 If you were dispatched as a subagent to execute a specific task, ignore this block — `postman:api-engineer` governs the orchestrating session, and it already shaped your dispatch.
 
 User instructions (project instruction files such as AGENTS.md or CLAUDE.md, and direct requests) take precedence over this mandate.
+</EXTREMELY_IMPORTANT>

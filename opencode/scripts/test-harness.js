@@ -6,7 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnCliSync } from '../../scripts/lib/cli.js';
 import {
-    ENTRY_SKILL, assertMandate, assertMcpHeaders, assertSkillsListed, chatCompletion, mandatedSkill, pointMcpAt,
+    ENTRY_SKILL, addPostmanDir, assertMandate, assertRepoParagraph, assertMcpHeaders, assertSkillsListed, chatCompletion, mandatedSkill, pointMcpAt,
     runAgent, skillExcerpt, startStandIn
 } from '../../scripts/lib/harness.js';
 import { resolveOpenCodeExecutable } from './lib/opencode-executable.js';
@@ -69,13 +69,15 @@ let standIn;
 try {
     standIn = await startStandIn(answer);
     fs.mkdirSync(nestedDirectory, { recursive: true });
+    // OpenCode's session directory is where it starts, so the postman/ mandate needs postman/ there.
+    addPostmanDir(nestedDirectory);
     fs.mkdirSync(path.join(openCodeConfig, 'plugins'), { recursive: true });
 
     const manifest = JSON.parse(fs.readFileSync(path.join(repoRoot, 'manifest.json'), 'utf8'));
 
     // The files a clone gives the plugin at runtime, laid out as the clone lays them out.
     for (const file of [
-        'opencode/src/index.ts', 'hooks/session-start-context.md', 'manifest.json', 'mcp.opencode.json',
+        'opencode/src/index.ts', 'hooks/session-start-context.md', 'hooks/session-start-postman-dir.md', 'manifest.json', 'mcp.opencode.json',
         ...manifest.skills.flatMap((skill) => skill.files.map((entry) => entry.source))
     ]) {
         copyFromRepo(file);
@@ -161,6 +163,7 @@ try {
 
     assertSkillsListed('OpenCode', first, (skill) => new RegExp(`<name>${skill}</name>`));
     assertMandate('OpenCode', first, { namespaced: false });
+    assertRepoParagraph('OpenCode', first);
     assert.ok(second.includes(skillExcerpt(ENTRY_SKILL)), `the mandated skill did not load:\n${second.slice(-800)}`);
     assertMcpHeaders('OpenCode', standIn.mcpRequests, JSON.parse(fs.readFileSync(path.join(repoRoot, 'mcp.opencode.json'), 'utf8')).mcp.postman.headers);
 

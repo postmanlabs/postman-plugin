@@ -12,7 +12,7 @@ const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '
     skillIndex = JSON.parse(fs.readFileSync(path.join(repoRoot, 'manifest.json'), 'utf8')).skills,
     TOP_LEVEL = ['LICENSE', 'README.md', 'dist', 'hooks', 'mcp.pi.json', 'package.json', 'skills'],
     // What `pi.extensions` and the extension itself read from the tarball.
-    PI_FILES = ['dist/pi-extension.js', 'hooks/session-start-context.md', 'mcp.pi.json'],
+    PI_FILES = ['dist/pi-extension.js', 'hooks/session-start-context.md', 'hooks/session-start-postman-dir.md', 'mcp.pi.json'],
     // Pi's own limits, from the Agent Skills spec; a skill past them loads with a warning on every start.
     SKILL_NAME = /^(?!.*--)[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/,
     MAX_DESCRIPTION = 1024;
@@ -85,7 +85,7 @@ test('the tarball carries every skill file, what the extension reads, and nothin
 
     assert.deepEqual(skills, repoSkillFiles().sort());
     assert.deepEqual(PI_FILES.filter((file) => !files.includes(file)), []);
-    assert.deepEqual(files.filter((file) => file.startsWith('hooks/')), ['hooks/session-start-context.md']);
+    assert.deepEqual(files.filter((file) => file.startsWith('hooks/')).sort(), ['hooks/session-start-context.md', 'hooks/session-start-postman-dir.md']);
     assert.deepEqual([...new Set(files.map((file) => file.split('/')[0]))].sort(), TOP_LEVEL);
     assert.equal(fs.existsSync(path.join(packageRoot, 'skills')), false, 'clean left the staged skills/ behind');
 });

@@ -10,6 +10,7 @@ const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '
 export const assetRoot = path.dirname(packageRoot);
 export const skillsDirectory = path.join(assetRoot, 'skills');
 export const sessionContextFile = path.join(assetRoot, 'hooks', 'session-start-context.md');
+export const postmanDirContextFile = path.join(assetRoot, 'hooks', 'session-start-postman-dir.md');
 export const mcpConfigFile = path.join(assetRoot, 'mcp.opencode.json');
 
 type SkillsConfig = { paths?: string[]; urls?: string[] };
@@ -53,7 +54,23 @@ export function applyPostmanConfig (config: MutableConfig): void {
     }
 }
 
-const sessionContext = toOpenCodeSessionContext(fs.readFileSync(sessionContextFile, 'utf8'));
+const sessionContext = toOpenCodeSessionContext(fs.readFileSync(sessionContextFile, 'utf8')),
+    postmanDirContext = toOpenCodeSessionContext(fs.readFileSync(postmanDirContextFile, 'utf8'));
+
+/** Whether `directory` holds a directory named exactly `postman`, which a case-insensitive disk's lookup can't tell. */
+function hasPostmanDir (directory: string): boolean {
+    try {
+        return fs.readdirSync(directory, { withFileTypes: true }).some((entry) => entry.name === 'postman' && entry.isDirectory());
+    }
+    catch {
+        return false;
+    }
+}
+
+/** The mandate where the session's directory or worktree has a `postman/` directory, as hooks/session-start picks it; the light note anywhere else. */
+export function sessionContextFor (directories: Array<string | undefined>): string {
+    return directories.some((directory) => directory && hasPostmanDir(directory)) ? postmanDirContext : sessionContext;
+}
 
 function packagedSkills (): Array<Skill.Info> {
     const manifest = readJson<{ skills: ManifestSkill[] }>(path.join(assetRoot, 'manifest.json'));
@@ -71,14 +88,16 @@ function packagedSkills (): Array<Skill.Info> {
     });
 }
 
-export const PostmanPlugin: Plugin = async () => {
+export const PostmanPlugin: Plugin = async (input) => {
+    const context = sessionContextFor([input?.directory ?? process.cwd(), input?.worktree]);
+
     return {
         config: async (config) => {
             applyPostmanConfig(config);
         },
         'experimental.chat.system.transform': async (_input, output) => {
-            if (!output.system.includes(sessionContext)) {
-                output.system.push(sessionContext);
+            if (!output.system.includes(context)) {
+                output.system.push(context);
             }
         }
     };
@@ -87,7 +106,9 @@ export const PostmanPlugin: Plugin = async () => {
 const PostmanPluginV2 = {
     id: 'postman',
     async setup (context) {
-        const skills = packagedSkills();
+        // v2 hands plugins no session directory, so the server's working directory stands in for it.
+        const skills = packagedSkills(),
+            sessionText = sessionContextFor([process.cwd()]);
 
         await context.skill.transform((editor) => {
             for (const skill of skills) {
@@ -106,8 +127,8 @@ const PostmanPluginV2 = {
         });
 
         await context.session.hook('context', (event) => {
-            if (!event.system.some((part) => part.text === sessionContext)) {
-                event.system.push({ type: 'text', text: sessionContext });
+            if (!event.system.some((part) => part.text === sessionText)) {
+                event.system.push({ type: 'text', text: sessionText });
             }
         });
     }

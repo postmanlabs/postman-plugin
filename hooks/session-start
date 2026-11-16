@@ -3,11 +3,16 @@
 # a placeholder, so test that it is set, never its value. Only Cursor sets CURSOR_PLUGIN_ROOT and only Copilot
 # CLI sets COPILOT_PLUGIN_ROOT; both read stdout only as JSON, under different keys. None of the three prefixes
 # skills with `postman:`. session-start.cmd is this script for cmd.exe.
-# A project with a postman/ directory gets session-start-postman-dir.md, any other session-start-light.md.
+# A project with a postman/ directory gets session-start-postman-dir.md, any other session-start-context.md.
 # Claude Code, Copilot CLI and Droid all set CLAUDE_PROJECT_DIR, and Copilot CLI runs the hook in the plugin's
-# directory, so the working directory is only the last resort.
-context="${0%/*}/session-start-light.md"
-[ ! -d "${CLAUDE_PROJECT_DIR:-${CURSOR_PROJECT_DIR:-.}}/postman" ] || context="${0%/*}/session-start-postman-dir.md"
+# directory, so the working directory is only the last resort. The glob matches the directory's own name, so
+# Postman/ doesn't count on macOS's case-insensitive disks either. The OpenCode plugin and the Pi extension
+# make the same choice in their own code. Kimi Code and Antigravity run none of ours, so they always get
+# session-start-context.md, copied by scripts/build-manifest.js.
+context="${0%/*}/session-start-context.md"
+for dir in "${CLAUDE_PROJECT_DIR:-${CURSOR_PROJECT_DIR:-.}}"/[p]ostman/; do
+    [ ! -d "$dir" ] || context="${0%/*}/session-start-postman-dir.md"
+done
 bare_names='s/`postman:\([a-z0-9-]*\)`/`\1`/g'
 if [ -n "$DROID_PLUGIN_ROOT" ]; then
     sed "$bare_names" "$context"

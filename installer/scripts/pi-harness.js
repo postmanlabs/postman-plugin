@@ -10,7 +10,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnCli, spawnCliSync } from '../../scripts/lib/cli.js';
-import { assertMcpHeaders, chatCompletion, mandatedSkill, pointMcpAt, skillExcerpt, startStandIn } from '../../scripts/lib/harness.js';
+import { addPostmanDir, assertMcpHeaders, assertRepoParagraph, chatCompletion, mandatedSkill, pointMcpAt, skillExcerpt, startStandIn } from '../../scripts/lib/harness.js';
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'),
     repoRoot = path.dirname(packageRoot),
@@ -111,6 +111,7 @@ try {
     for (const dir of [home, agentDir, project, installed]) {
         fs.mkdirSync(dir, { recursive: true });
     }
+    addPostmanDir(project);
 
     standIn = await startStandIn(answer);
 
@@ -166,8 +167,12 @@ export default function (pi) {
         assert.ok(prompt.includes(path.join(root, 'skills', skill, 'SKILL.md')), `the skill ${skill} is not in the system prompt`);
     }
 
-    assert.match(prompt, /<postman>\s*<EXTREMELY_IMPORTANT>/, 'the session-start mandate is not in the system prompt');
-    assert.match(prompt, /load the `api-engineer` skill/);
+    assert.match(prompt, /<postman>\s*(<EXTREMELY_IMPORTANT>\s*)?You have the Postman plugin/, 'the session-start mandate is not in the system prompt');
+    assert.match(prompt, /`api-engineer`/);
+    if (!published) {
+        // A published version may predate the postman/ check.
+        assertRepoParagraph('Pi', prompt);
+    }
     assert.doesNotMatch(prompt, /`postman:[a-z0-9-]+`/, 'the mandate still names skills as `postman:<skill>`');
     assert.equal(turns.length, 2, `pi called the model ${turns.length} times, not twice\n${session.stdout}\n${session.stderr}`);
     assert.ok(chatCompletion.transcript(turns[1]).includes(skillExcerpt(mandatedSkill(prompt), root)), `the mandated skill did not load from ${listedSkillFile(prompt, mandatedSkill(prompt))}`);

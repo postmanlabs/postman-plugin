@@ -75,7 +75,7 @@ export function skillExcerpt (skill, root = repoRoot) {
 
 /** The entry skill exactly as the mandate spells it, so a name the agent can't resolve fails later. */
 export function mandatedSkill (text) {
-    return text.match(/load the `([^`]+)` skill/)?.[1] ?? 'mandate-not-found';
+    return text.match(new RegExp(`\`((?:postman:)?${ENTRY_SKILL})\``))?.[1] ?? 'mandate-not-found';
 }
 
 /**
@@ -160,7 +160,7 @@ export function assertMandate (agent, text, { namespaced }) {
     assert.match(text, /You have (the )?Postman plugin/, `the session-start mandate is not in what ${agent} sent the model`);
 
     if (namespaced) {
-        assert.match(text, /load the `postman:api-engineer` skill/, `${agent} got the mandate without its postman: skill names`);
+        assert.match(text, /`postman:api-engineer`/, `${agent} got the mandate without its postman: skill names`);
     }
     else {
         assert.doesNotMatch(text, /`postman:[a-z0-9-]+`/, `the mandate still names skills as \`postman:<skill>\`, which ${agent} cannot resolve`);
