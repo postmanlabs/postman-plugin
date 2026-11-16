@@ -1,46 +1,38 @@
 ---
 name: rest-api-design-best-practices
-description: Use when designing or changing an HTTP API's contract (its endpoints, request and response fields, parameters, status codes or errors), or when judging whether an API follows REST conventions. Applies REST design practice, checks what the change does to existing callers, keeps the OpenAPI spec, collections and examples in step with the code, and generates and publishes API documentation. Use for requests such as "review this endpoint's design" or "publish API docs".
+description: Use when adding or changing an HTTP endpoint's contract (paths, methods, request or response fields, query parameters, status codes, errors or versioning), or when reviewing whether an HTTP API follows REST conventions. Checks the design against REST practice, separates breaking from additive changes, and updates the OpenAPI spec, collection and mocks together with the code. For finding which services consume an endpoint, use api-discovery. Not for function, class or library interfaces. Use for requests such as "add a field to this response" or "review this endpoint's design".
 ---
 
 # REST API Design Best Practices
 
-A maintained contract gives callers enough information to integrate without
-reading the implementation. Keeping descriptions and examples beside the API
-artifacts lets the same knowledge support documentation, tests, and mocks,
-with changes reviewable alongside code.
+A contract change is cheapest to get right before callers depend on it. Review
+the design against REST practice first, then change the contract artifacts and
+the code together, so the spec, collection and mocks never disagree with what
+the service actually does.
 
-1. Start from the existing source of truth. An OpenAPI spec describes the
-   interface for tooling; a Postman collection adds runnable requests,
-   examples, and assertions. Maintain both when both uses matter, with an
-   explicit direction of generation or synchronization so they do not become
-   competing definitions.
-2. When the spec is authoritative, reuse its operations with
-   `postman spec generate collection <spec-path-or-id> -n "<collection-name>"`.
-   Inspect the generated result before replacing an existing collection:
-   maintained scripts and examples carry knowledge beyond endpoint shapes.
-3. Describe what changes a caller's decision: required versus optional inputs,
-   auth and scopes, response guarantees, pagination, retryable failures, and
-   side effects. Derive guarantees from the agreed contract or verified
-   behavior; label unresolved design choices instead of inventing them.
-   Use [REST design guidance](reference/rest-api-best-practices.md) when a
-   design choice affects usability or compatibility, not to redesign an
-   unrelated interface while filling a documentation gap.
-4. Save examples that clarify consequential cases, including relevant errors.
-   Examples become inputs for mocks as well as explanations for readers;
-   a success-only example can hide the failure path callers must handle.
-   Use **collection-schema-v3** for local collection edits and **variables**
-   to keep credentials out of reusable requests and examples.
-5. Choose delivery by audience. Local artifacts support Git review;
-   publishing to the bound workspace makes them available to teammates with
-   access. A workspace push does not itself publish a
-   public docs page or change permissions. For a public documentation link,
-   use **postman-mcp-server**'s documentation workflow and the available
-   publishing tool; establish the intended audience before public exposure.
+1. Find the current contract. Read the route handlers, the OpenAPI spec and the
+   Postman collection, and note where they already disagree. The code is what
+   callers get today; record any mismatch instead of silently picking one.
+2. Review the design against [REST design guidance](reference/rest-api-best-practices.md):
+   resource naming, methods, status codes, error shape, pagination,
+   idempotency and versioning. For a review request, report each finding with
+   the endpoint, what a caller would trip over, and the smallest fix.
+3. Classify the change. Removing or renaming a field, changing a type,
+   tightening validation or changing auth is breaking; adding an optional field
+   or a new endpoint is additive. For a breaking change, use **api-discovery**
+   to find the consumers it affects before you make it, and prefer an additive
+   path or a deprecation window.
+4. Change the contract and the code together. Update the OpenAPI operation
+   (parameters, request and response schemas, error responses), the matching
+   collection request and its examples with **collection-schema-v3**, and any
+   mock that serves the endpoint with **api-mocking**, in the same change as the
+   handler.
+5. Verify the behaviour, not just the files. Run the changed requests against
+   the service with **api-testing**, including the error cases the change
+   introduces, and lint the spec and collection.
 
 ## Verification
 
-Check that the edited artifact parses and its examples agree with the
-contract. For a publication, inspect the resulting page and report its actual
-link and visibility; a successful upload alone does not show readers usable
-documentation. State any behavior that remains undocumented or unverified.
+Report which artifacts changed, the requests you ran and their results, whether
+the change is breaking and which consumers you checked, and anything that still
+disagrees between code, spec, collection and mocks.

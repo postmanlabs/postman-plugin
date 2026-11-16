@@ -1,6 +1,6 @@
 ---
 name: api-engineer
-description: Use for API work that no narrower Postman skill clearly covers, and as the entry point when an API task spans several of them: designing, implementing, testing, mocking, monitoring, documenting or deploying an HTTP API. Prefer the narrower skill when one fits. Guides decisions using reusable local API contracts, tests and mocks plus organization-wide dependency context, and routes to the relevant Postman skills. Use for requests such as "implement this endpoint".
+description: Use when an HTTP API task spans several steps, such as building a new endpoint end to end with its contract, implementation, tests and mocks, or when it is API work and no narrower Postman skill fits. Prefer the narrower Postman skill when one fits. Routes to the relevant Postman skills and keeps contracts, tests and mocks reusable across the work, using organization-wide dependency context. Not for UI-only changes, library or CLI code, or questions about what existing code does. Use for requests such as "implement this endpoint".
 ---
 
 # API Engineer
