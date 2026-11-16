@@ -238,3 +238,13 @@ test('reads every agent state at once, so one slow listing does not stack on the
     assert.equal(peak, 3);
     assert.deepEqual(system.lines.slice(2, 5).map((line) => line.trim().split(/\s+/)[0]), ['a', 'b', 'c']);
 });
+
+test('a detection error with an empty message still fails the run', async () => {
+    const broken = fakeHost('broken'),
+        ok = fakeHost('ok');
+
+    broken.detect = async () => { throw new Error(''); };
+
+    assert.equal(await run(fakeSystem(), [broken, ok], options()), 1);
+    assert.deepEqual(ok.calls, ['install']);
+});

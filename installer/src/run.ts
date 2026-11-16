@@ -58,7 +58,7 @@ async function readStatus (system: System, host: Host): Promise<Status> {
     }
 }
 
-type Probe = { status: Status } | { failure?: string };
+type Probe = { status: Status } | { failure: string } | Record<string, never>;
 
 async function detectAndRead (system: System, host: Host): Promise<Probe> {
     try {
@@ -122,7 +122,7 @@ export async function run (system: System, hosts: readonly Host[], options: RunO
         if ('status' in probe) {
             targets.push({ host, status: probe.status });
         }
-        else if (probe.failure) {
+        else if ('failure' in probe) {
             reports.push({ host, result: { outcome: 'failed', message: `could not check whether ${host.name} is here: ${probe.failure}` } });
         }
         else if (options.agents.length) {
