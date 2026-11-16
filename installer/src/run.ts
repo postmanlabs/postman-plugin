@@ -58,6 +58,21 @@ async function readStatus (system: System, host: Host): Promise<Status> {
     }
 }
 
+type Probe = { status: Status } | { failure?: string };
+
+async function detectAndRead (system: System, host: Host): Promise<Probe> {
+    try {
+        if (!(await host.detect(system))) {
+            return {};
+        }
+    }
+    catch (error) {
+        return { failure: error instanceof Error ? error.message : String(error) };
+    }
+
+    return { status: await readStatus(system, host) };
+}
+
 async function execute (system: System, command: 'install' | 'remove', host: Host): Promise<Result> {
     try {
         const outcome = await host[command](system);
@@ -96,26 +111,24 @@ export async function run (system: System, hosts: readonly Host[], options: RunO
         reports: Report[] = [],
         targets: Target[] = [];
 
-    for (const host of requested) {
-        let detected: boolean;
+    system.log('Checking which coding agents are here...');
 
-        try {
-            detected = await host.detect(system);
+    // Concurrent, because some agents' own listings take tens of seconds (`codex plugin list`).
+    const found = await Promise.all(requested.map((host) => detectAndRead(system, host)));
+
+    requested.forEach((host, index) => {
+        const probe = found[index];
+
+        if ('status' in probe) {
+            targets.push({ host, status: probe.status });
         }
-        catch (error) {
-            const reason = error instanceof Error ? error.message : String(error);
-
-            reports.push({ host, result: { outcome: 'failed', message: `could not check whether ${host.name} is here: ${reason}` } });
-            continue;
-        }
-
-        if (detected) {
-            targets.push({ host, status: await readStatus(system, host) });
+        else if (probe.failure) {
+            reports.push({ host, result: { outcome: 'failed', message: `could not check whether ${host.name} is here: ${probe.failure}` } });
         }
         else if (options.agents.length) {
             reports.push({ host, result: { outcome: 'blocked', message: `${host.name} was not found on this machine` } });
         }
-    }
+    });
 
     if (!targets.length) {
         system.log(options.agents.length ?
