@@ -1,1 +1,3 @@
-You have the Postman plugin installed and available. The `postman:api-engineer` skill is the default entry point for this plugin.
+<EXTREMELY_IMPORTANT>
+You have the Postman plugin. Treat a task as API work when it changes a request or response that other code depends on, adds or changes code that calls or receives HTTP, or asks whether an API is well designed. For API work, check the `postman:` skills before you start and load the one whose description fits best; use `postman:api-engineer` when none fits more closely. Postman skills compose with general workflow skills such as planning, TDD or debugging, so load both when both apply. Questions about what existing code does, and work with no HTTP API in it, don't need a Postman skill.
+</EXTREMELY_IMPORTANT>

@@ -1,9 +1,9 @@
 ---
-name: api-documentation
-description: Use when defining or improving an API contract, generating documentation from a collection or OpenAPI spec, publishing API docs, or sharing a documentation link. Makes auth, inputs, responses, and examples reusable by callers, tests, and mocks. Use for requests such as "publish API docs".
+name: rest-api-design-best-practices
+description: Use when designing or changing an HTTP API's contract (its endpoints, request and response fields, parameters, status codes or errors), or when judging whether an API follows REST conventions. Applies REST design practice, checks what the change does to existing callers, keeps the OpenAPI spec, collections and examples in step with the code, and generates and publishes API documentation. Use for requests such as "review this endpoint's design" or "publish API docs".
 ---
 
-# API Documentation
+# REST API Design Best Practices
 
 A maintained contract gives callers enough information to integrate without
 reading the implementation. Keeping descriptions and examples beside the API

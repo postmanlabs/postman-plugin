@@ -1,6 +1,6 @@
 ---
 name: webhook-testing
-description: Capture, forward to localhost, replay, and validate webhook deliveries using a reusable public URL. Keep sender configuration across debugging sessions and record arrivals even while local forwarding is stopped, helping distinguish delivery failures from local connectivity issues. Use for implementing or debugging incoming handlers and testing webhooks an API sends, whether or not Postman is mentioned. Example requests include "get payment events to localhost," "inspect a webhook delivery," and "replay an event after a fix"; these illustrate intent, not an exhaustive list or exact phrases to match.
+description: Use when writing, debugging or testing code that receives HTTP callbacks (webhooks) from another system, or testing webhooks your API sends, whether or not Postman is mentioned. Gives a reusable public URL that captures deliveries, forwards them to localhost and replays them, keeps sender configuration across sessions, and records arrivals even while forwarding is stopped, so delivery failures can be told apart from local connectivity problems. Use for requests such as "get payment events to localhost" or "replay an event after a fix".
 ---
 
 # Webhook Testing

@@ -1,6 +1,6 @@
 ---
 name: api-engineer
-description: Use when designing, implementing, mocking, testing, monitoring, documenting, or deploying an API. Guides decisions using reusable local API contracts, tests, and mocks, plus organization-wide dependency context, and routes to the relevant Postman skills. Use for requests such as "implement this endpoint".
+description: Use for API work that no narrower Postman skill clearly covers, and as the entry point when an API task spans several of them: designing, implementing, testing, mocking, monitoring, documenting or deploying an HTTP API. Prefer the narrower skill when one fits. Guides decisions using reusable local API contracts, tests and mocks plus organization-wide dependency context, and routes to the relevant Postman skills. Use for requests such as "implement this endpoint".
 ---
 
 # API Engineer
@@ -15,7 +15,7 @@ guesswork each time work resumes.
    before implementation so you can distinguish an intended change from a
    regression. Reuse the existing contract; update it where behavior changes.
    Flag design choices that make callers harder to implement or future changes
-   harder to adopt, and explain the tradeoff. See **api-documentation**.
+   harder to adopt, and explain the tradeoff. See **rest-api-design-best-practices**.
 2. A Postman collection records the contract in a form that runs. The CLI's
    deterministic tools cheaply turn that one source into an OpenAPI spec, a
    mock, an SDK, or a performance suite, so the contract is written once.

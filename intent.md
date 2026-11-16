@@ -10,7 +10,7 @@ that sentence. None of them own "API development" broadly — that scope is
 gone with api-builder.
 
 This draft went through one adversarial pass. Its one real factual challenge —
-"prove api-documentation is a real, distinct feature or kill it" — is resolved
+"prove rest-api-design-best-practices is a real, distinct feature or kill it" — is resolved
 below with a citation. The other four findings are fixes, folded in inline.
 
 ## Cross-skill invariants
@@ -33,7 +33,7 @@ These apply to all five; not repeating them per skill.
 4. **No invented facts.** Workspace id, alert destination, environment URL,
    product feature names — if it isn't in the repo, the CLI, or told to us,
    the skill states the gap and stops. (This draft violated its own rule
-   once — see api-documentation below — and got called on it.)
+   once — see rest-api-design-best-practices below — and got called on it.)
 
 ---
 
@@ -130,7 +130,7 @@ different trigger and target.
 
 ---
 
-## api-documentation
+## rest-api-design-best-practices
 
 **Wraps:** confirmed real, distinct feature (verified directly against
 postman.com, not assumed): Postman "automatically generates API documentation

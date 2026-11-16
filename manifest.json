@@ -47,19 +47,19 @@
       ]
     },
     {
-      "name": "api-documentation",
+      "name": "rest-api-design-best-practices",
       "plugin": "postman",
       "description": "Use when defining or improving an API contract, generating documentation from a collection or OpenAPI spec, publishing API docs, or sharing a documentation link. Makes auth, inputs, responses, and examples reusable by callers, tests, and mocks. Use for requests such as \"publish API docs\".",
       "files": [
         {
           "target": "SKILL.md",
-          "source": "skills/api-documentation/SKILL.md",
+          "source": "skills/rest-api-design-best-practices/SKILL.md",
           "bytes": 2845,
           "sha256": "c7e4eef6d451f556caca2cfebdf9ac82448cce19c617006bfb8eaff9203b0832"
         },
         {
           "target": "reference/rest-api-best-practices.md",
-          "source": "skills/api-documentation/reference/rest-api-best-practices.md",
+          "source": "skills/rest-api-design-best-practices/reference/rest-api-best-practices.md",
           "bytes": 2995,
           "sha256": "af4f5bb2ec4f7ece778c3f9bf47743b3a3c7959ae19152b6f04b91587122a3c5"
         }

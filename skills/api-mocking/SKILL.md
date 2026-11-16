@@ -1,6 +1,6 @@
 ---
 name: api-mocking
-description: Finds, builds, runs and publishes a stand-in for one API — a published mock when its owner or a verified publisher has one, otherwise one built from its spec or collection that behaves like the real API, stateful when callers write then read. Use when something needs an API that isn't built or reachable yet (a frontend, client or demo), when other teams should build against your API before it ships, or when asked to mock an API or fake a backend. To run and test your own code against the services it calls, use api-simulation. Covers `postman mock` and `postman dependency add mock`.
+description: Use when code or people need an API that isn't built, reachable or safe to call yet: a frontend or client waiting on a backend, a demo, or another team building against your API before it ships. Finds a published mock when its owner or a verified publisher has one, otherwise builds one from the spec or collection that behaves like the real API, stateful when callers write then read. To run your own service against the services it calls, use api-simulation. Covers `postman mock` and `postman dependency add mock`.
 ---
 
 # API Mocking
