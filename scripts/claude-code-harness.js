@@ -5,7 +5,7 @@
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import {
-    ENTRY_SKILL, assertMandate, assertMcpHeaders, assertSkillsListed, copyCheckout, mandatedSkill, pointMcpAt,
+    ENTRY_SKILL, addPostmanDir, assertMandate, assertMcpHeaders, assertRepoParagraph, assertSkillsListed, copyCheckout, mandatedSkill, pointMcpAt,
     readJson, repoRoot, run, runAgent, skillExcerpt, skills, startStandIn, workspace
 } from './lib/harness.js';
 
@@ -47,6 +47,7 @@ let standIn;
 try {
     standIn = await startStandIn(answer);
     copyCheckout(marketplace);
+    addPostmanDir(project);
     pointMcpAt(path.join(marketplace, 'mcp.claude-code.json'), standIn.mcpUrl);
 
     Object.assign(env, { HOME: home, USERPROFILE: home, ANTHROPIC_BASE_URL: standIn.base, ANTHROPIC_API_KEY: 'harness', DISABLE_AUTOUPDATER: '1' });
@@ -65,6 +66,7 @@ try {
 
     assertSkillsListed('Claude Code', first, (skill) => new RegExp(`^- postman:${skill}: `, 'm'));
     assertMandate('Claude Code', first, { namespaced: true });
+    assertRepoParagraph('Claude Code', first);
     assert.ok(second.includes(skillExcerpt(ENTRY_SKILL)), `the mandated skill did not load:\n${second.slice(-800)}`);
     assertMcpHeaders('Claude Code', standIn.mcpRequests, headers);
 

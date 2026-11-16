@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {
-    ENTRY_SKILL, assertMcpHeaders, copyCheckout, pointMcpAt, readJson, repoRoot, run, runAgent, skillExcerpt,
+    ENTRY_SKILL, addPostmanDir, assertMcpHeaders, copyCheckout, pointMcpAt, readJson, repoRoot, run, runAgent, skillExcerpt,
     skills, startStandIn, workspace
 } from './lib/harness.js';
 
@@ -18,9 +18,12 @@ const cursor = process.env.CURSOR_BIN || 'cursor-agent',
     { root, home, project, remove } = workspace('cursor'),
     plugin = path.join(root, 'postman-plugin'),
     { headers } = readJson(path.join(repoRoot, 'mcp.cursor.json')).mcpServers.postman,
-    mandate = fs.readFileSync(path.join(repoRoot, 'hooks', 'session-start-context.md'), 'utf8'),
+    // The project has a postman/ directory, so this is the mandate the hook sends.
+    mandate = fs.readFileSync(path.join(repoRoot, 'hooks', 'session-start-postman-dir.md'), 'utf8'),
     // A sentence only the mandate has, and the skill it names in the form Cursor should get: bare.
     [, sentence] = mandate.match(/load the `[^`]+` skill and follow it\. ([^.]+\.)/),
+    // The sentence that names the project's postman/ directory.
+    [repoSentence] = mandate.match(/This repository has a `postman\/` directory[^.]*\./),
     env = { ...process.env, HOME: home, USERPROFILE: home };
 
 const normalize = (text) => text.replace(/[`*_]/g, '').replace(/\s+/g, ' ').trim(),
@@ -30,6 +33,7 @@ const normalize = (text) => text.replace(/[`*_]/g, '').replace(/\s+/g, ' ').trim
         'Reply with only a JSON object with these keys:',
         `"mandate": the sentence in your context that ends with "${sentence.split(' ').slice(-6).join(' ')}", quoted exactly, or null;`,
         '"skill": the name of the skill the sentence before it tells you to load, exactly as written there, or null;',
+        `"repo": the sentence in your context that starts with "${repoSentence.split(' ').slice(0, 6).join(' ')}", quoted exactly, or null;`,
         '"firstLine": after loading that skill, the first numbered line of its instructions, verbatim, or null;',
         '"skills": the name of every skill available to you that comes from the Postman plugin, exactly as listed.'
     ].join(' ');
@@ -52,6 +56,7 @@ let standIn;
 try {
     standIn = await startStandIn(() => ({ status: 404, type: 'text/plain', body: '' }));
     copyCheckout(plugin);
+    addPostmanDir(project);
     pointMcpAt(path.join(plugin, 'mcp.cursor.json'), standIn.mcpUrl);
 
     const answer = await ask(),
@@ -61,6 +66,7 @@ try {
     console.log(`Cursor's model replied:\n${reply}`);
     // The model sometimes quotes the whole mandate paragraph rather than the one sentence asked for.
     assert.ok(normalize(answer.mandate ?? '').includes(normalize(sentence)), `the session-start mandate did not reach Cursor's model:\n${reply}`);
+    assert.ok(normalize(answer.repo ?? '').includes(normalize(repoSentence)), `the postman/ paragraph did not reach Cursor's model:\n${reply}`);
     assert.equal(normalize(answer.skill ?? ''), ENTRY_SKILL, `Cursor's model did not name ${ENTRY_SKILL} as the mandate spells it for Cursor, without \`postman:\`:\n${reply}`);
     assert.equal(normalize(answer.firstLine ?? ''), normalize(skillExcerpt(ENTRY_SKILL)), `the mandated skill did not load from ${plugin}:\n${reply}`);
     assert.deepEqual(skills.filter((skill) => !listed.includes(skill)), [], `Cursor's model did not list every skill in manifest.json:\n${reply}`);

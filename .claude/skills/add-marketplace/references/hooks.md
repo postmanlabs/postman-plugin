@@ -82,6 +82,24 @@ instruction Codex and OpenCode cannot follow, and it reaches them verbatim.
 Name the skill and let each agent use its own loading mechanism. A vendor that
 needs different wording is a reason to fix the shared text, not to fork it.
 
+## The hook scripts pick the message from the project
+
+Only the hook scripts look at the project. In a project with a `postman/`
+directory they print `session-start-postman-dir.md`; in any other project they
+print `session-start-light.md`, which names the entry skill and mandates
+nothing. Every other route sends `session-start-context.md` as is.
+
+- **The project is `CLAUDE_PROJECT_DIR`, not the working directory.** Claude
+  Code, Copilot CLI and Droid all set it. Copilot CLI 1.0.98 runs the hook in the
+  plugin's own directory, so a bare `[ -d postman ]` never matches there. The
+  scripts fall back to `CURSOR_PROJECT_DIR`, then the working directory.
+- **Neither file has to carry `<EXTREMELY_IMPORTANT>`, so no check may key on it.**
+  The harnesses and Codex's no-hook checks look for "You have (the) Postman
+  plugin", which all three files open with.
+- **The harnesses for those four routes start their session in a project with
+  `postman/`,** and check that its mandate reached the model. The unit test
+  covers a project without one.
+
 ## Which shell, and which OS
 
 Claude Code runs a hook's `command` through `sh -c` on macOS and Linux, and on

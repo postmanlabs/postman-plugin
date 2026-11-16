@@ -336,6 +336,8 @@ under a throwaway home, and checks what the agent sends its model and the MCP
 server: every skill in `manifest.json` listed, the session-start mandate in the
 form that agent resolves (`postman:` names for Claude Code and Kimi Code, bare
 names elsewhere; Codex gets none), the skill the mandate names loaded, and the route's MCP headers.
+The Claude Code, Copilot CLI, Cursor and Droid harnesses start their session in a project with a
+`postman/` directory, so they also check the paragraph the hook adds there.
 `scripts/lib/harness.js` holds the stand-in they share. CI's job per route runs
 each harness against a pinned agent; the `Installer smoke` workflow runs it
 against the latest one nightly.
