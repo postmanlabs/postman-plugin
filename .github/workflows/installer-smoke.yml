@@ -200,7 +200,7 @@ jobs:
 
       - name: The latest Copilot CLI loads this checkout's legacy .github/plugin/ manifest
         if: ${{ !cancelled() }}
-        run: node ../scripts/copilot-harness.js
+        run: node ../test/copilot-harness.js
         env:
           COPILOT_ROUTE: legacy
 

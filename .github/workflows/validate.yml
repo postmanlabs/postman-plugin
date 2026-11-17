@@ -414,7 +414,7 @@ jobs:
       # .github/plugin/plugin.json still ships, for a direct install and for a marketplace Copilot
       # lists without .github/plugin/marketplace.json, which is the state before agent-plugin/.
       - name: Copilot CLI loads the skills, the mandate and the MCP server from .github/plugin/
-        run: node scripts/copilot-harness.js
+        run: node test/copilot-harness.js
         env:
           COPILOT_BIN: ${{ runner.temp }}/copilot/node_modules/.bin/copilot${{ runner.os == 'Windows' && '.cmd' || '' }}
           COPILOT_ROUTE: legacy
