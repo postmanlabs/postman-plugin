@@ -1,0 +1,27 @@
+#!/bin/sh
+# Prints the session-start mandate. Only Droid sets DROID_PLUGIN_ROOT in a hook's environment, on Windows to
+# a placeholder, so test that it is set, never its value. Only Cursor sets CURSOR_PLUGIN_ROOT and only Copilot
+# CLI sets COPILOT_PLUGIN_ROOT; both read stdout only as JSON, under different keys. None of the three prefixes
+# skills with `postman:`. session-start.cmd is this script for cmd.exe.
+# A project with a postman/ directory gets session-start-postman-dir.md, any other session-start-context.md.
+# Claude Code, Copilot CLI and Droid all set CLAUDE_PROJECT_DIR, and Copilot CLI runs the hook in the plugin's
+# directory, so the working directory is only the last resort. The glob matches the directory's own name, so
+# Postman/ doesn't count on macOS's case-insensitive disks either. The OpenCode plugin and the Pi extension
+# make the same choice in their own code. Kimi Code and Antigravity run none of ours, so they always get
+# session-start-context.md, copied by scripts/build-manifest.js.
+context="${0%/*}/session-start-context.md"
+for dir in "${CLAUDE_PROJECT_DIR:-${CURSOR_PROJECT_DIR:-.}}"/[p]ostman/; do
+    [ ! -d "$dir" ] || context="${0%/*}/session-start-postman-dir.md"
+done
+bare_names='s/`postman:\([a-z0-9-]*\)`/`\1`/g'
+if [ -n "$DROID_PLUGIN_ROOT" ]; then
+    sed "$bare_names" "$context"
+elif [ -n "$CURSOR_PLUGIN_ROOT$COPILOT_PLUGIN_ROOT" ]; then
+    key=additionalContext
+    [ -z "$CURSOR_PLUGIN_ROOT" ] || key=additional_context
+    tab=$(printf '\t') cr=$(printf '\r')
+    text=$(sed -e "$bare_names" -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e "s/$tab/\\\\t/g" -e "s/$cr/\\\\r/g" -e 's/$/\\n/' "$context") || exit
+    printf '{"%s":"%s"}' "$key" "$text" | tr -d '\n'
+else
+    cat "$context"
+fi

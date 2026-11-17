@@ -2,3 +2,9 @@
 # An eol= conversion here makes GitHub's tarball differ from the tree, which the Claude plugin directory rejects.
 hooks/session-start -text
 hooks/session-start.cmd -text
+agent-plugin/hooks/session-start -text
+agent-plugin/hooks/session-start.cmd -text
+# agent-plugin/ copies skills/ and hooks/ (scripts/build-manifest.js), so diffs collapse them.
+agent-plugin/skills/** linguist-generated=true
+agent-plugin/hooks/** linguist-generated=true
+agent-plugin/com.github.copilot/** linguist-generated=true

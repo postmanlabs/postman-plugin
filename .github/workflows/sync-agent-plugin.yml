@@ -1,0 +1,109 @@
+# Keeps what `node scripts/build-manifest.js` generates in step with its sources, so a pull request
+# that changes a skill or a hook no longer depends on its author remembering to run it. Validate's
+# `Manifest` job still runs `--check` and is the gate; this only fixes what that job would fail on.
+#
+# `main` is behind a merge queue, so the commit goes onto the pull request's branch, not onto `main`.
+# A push made with GITHUB_TOKEN starts no workflow, so `Validate` would never run on the new commit and
+# a required check would wait on it forever. The push therefore needs a token that does start them: a
+# GitHub App token or a fine-grained PAT with `contents: write`, stored as the AGENT_PLUGIN_SYNC_TOKEN
+# secret. Without that secret the job does nothing and `Manifest` fails as it always did.
+#
+# `regenerate` runs the pull request's own code and never sees that token. `push` holds the token and
+# runs none of the pull request's code: it applies the patch only if it touches nothing but generated paths.
+name: Sync generated files
+
+on:
+  pull_request:
+    paths:
+      - 'skills/**'
+      - 'hooks/**'
+      - 'scripts/build-manifest.js'
+      - '.claude-plugin/plugin.json'
+
+# One run per pull request, and a run that has started pushing is never cancelled halfway.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  GENERATED: manifest.json .kimi-plugin rules agent-plugin
+
+jobs:
+  regenerate:
+    name: Regenerate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # A fork's pull request has no secrets and no branch of ours to push to.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    outputs:
+      changed: ${{ steps.diff.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 'lts/*'
+
+      # The script copies each source's mode, and a binary diff keeps it, so the hook scripts stay executable.
+      - name: Regenerate
+        id: diff
+        run: |
+          node scripts/build-manifest.js
+          git add -A -- $GENERATED
+          git diff --cached --binary > generated.patch
+          if [ -s generated.patch ]; then echo "changed=true" >> "$GITHUB_OUTPUT"; fi
+
+      - uses: actions/upload-artifact@v7
+        if: steps.diff.outputs.changed == 'true'
+        with:
+          name: generated-patch
+          path: generated.patch
+          retention-days: 1
+
+  push:
+    name: Push
+    needs: regenerate
+    if: needs.regenerate.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      SYNC_TOKEN: ${{ secrets.AGENT_PLUGIN_SYNC_TOKEN }}
+      HEAD_REF: ${{ github.event.pull_request.head.ref }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - name: The token that lets the push start Validate is not set
+        if: env.SYNC_TOKEN == ''
+        run: echo "::notice::AGENT_PLUGIN_SYNC_TOKEN is not set, so nothing is regenerated here. Run \`node scripts/build-manifest.js\` and commit the result."
+
+      - uses: actions/checkout@v7
+        if: env.SYNC_TOKEN != ''
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          token: ${{ secrets.AGENT_PLUGIN_SYNC_TOKEN }}
+
+      - uses: actions/download-artifact@v8
+        if: env.SYNC_TOKEN != ''
+        with:
+          name: generated-patch
+          path: ${{ runner.temp }}
+
+      - name: Apply and push the generated files
+        if: env.SYNC_TOKEN != ''
+        run: |
+          git apply --index "$RUNNER_TEMP/generated.patch"
+          git diff --cached --name-only --no-renames -z | while IFS= read -r -d '' file; do
+            case " $GENERATED " in
+              *" ${file%%/*} "*) ;;
+              *) echo "::error::The patch touches $file, which the generator does not own"; exit 1 ;;
+            esac
+          done
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore: regenerate manifest.json, the mandate's copies and agent-plugin/"
+          git push origin "HEAD:refs/heads/${HEAD_REF}"
