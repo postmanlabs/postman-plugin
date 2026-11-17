@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { spawnCliSync } from '../../../scripts/lib/cli.js';
+import { spawnCliSync } from '../../../test/lib/cli.js';
 
 /** Resolve a working OpenCode CLI, preferring the version pinned by this repo. */
 export function resolveOpenCodeExecutable (root) {

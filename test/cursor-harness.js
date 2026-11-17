@@ -21,9 +21,9 @@ const cursor = process.env.CURSOR_BIN || 'cursor-agent',
     // The project has a postman/ directory, so this is the mandate the hook sends.
     mandate = fs.readFileSync(path.join(repoRoot, 'hooks', 'session-start-postman-dir.md'), 'utf8'),
     // A sentence only the mandate has, and the skill it names in the form Cursor should get: bare.
-    [, sentence] = mandate.match(/load the `[^`]+` skill and follow it\. ([^.]+\.)/),
+    [sentence] = mandate.match(/`[^`]+` is the default entry point[^.]+\./),
     // The sentence that names the project's postman/ directory.
-    [repoSentence] = mandate.match(/This repository has a `postman\/` directory[^.]*\./),
+    [repoSentence] = mandate.match(/This repository has a postman\/ directory[^.]*\./),
     env = { ...process.env, HOME: home, USERPROFILE: home };
 
 const normalize = (text) => text.replace(/[`*_]/g, '').replace(/\s+/g, ' ').trim(),
@@ -32,7 +32,7 @@ const normalize = (text) => text.replace(/[`*_]/g, '').replace(/\s+/g, ' ').trim
         'Answer from what is already in your context: do not search or read files, except to load one skill if asked below, and answer null for anything your context does not have.',
         'Reply with only a JSON object with these keys:',
         `"mandate": the sentence in your context that ends with "${sentence.split(' ').slice(-6).join(' ')}", quoted exactly, or null;`,
-        '"skill": the name of the skill the sentence before it tells you to load, exactly as written there, or null;',
+        '"skill": the name of the skill that sentence calls the default entry point, exactly as written there, or null;',
         `"repo": the sentence in your context that starts with "${repoSentence.split(' ').slice(0, 6).join(' ')}", quoted exactly, or null;`,
         '"firstLine": after loading that skill, the first numbered line of its instructions, verbatim, or null;',
         '"skills": the name of every skill available to you that comes from the Postman plugin, exactly as listed.'

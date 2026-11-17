@@ -70,7 +70,7 @@ test('adapts the shared session mandate to native OpenCode skill ids', () => {
 
     assert.match(canonical, /postman:api-engineer/);
     assert.doesNotMatch(adapted, /postman:/);
-    assert.match(adapted, /`api-engineer` skill/);
+    assert.match(adapted, /`api-engineer` is the default entry point/);
 });
 
 test('picks the postman/ mandate where the directory or worktree has postman/, and the light note elsewhere', () => {
@@ -85,7 +85,7 @@ test('picks the postman/ mandate where the directory or worktree has postman/, a
     assert.equal(sessionContextFor([repo, undefined]), postmanDir);
     assert.equal(sessionContextFor([none, repo]), postmanDir);
     assert.equal(sessionContextFor([upper, undefined]), light);
-    assert.match(postmanDir, /load the `api-engineer` skill/);
+    assert.match(postmanDir, /`api-engineer` is the default entry point/);
 });
 
 test('rewrites only backticked skill references', () => {
@@ -105,7 +105,7 @@ test('exposes config and system hooks through the public plugin export', async (
     assert.deepEqual(config.skills.paths, [skillsDirectory]);
     assert.equal(output.system[0], 'existing system instruction');
     assert.equal(output.system.length, 2);
-    assert.match(output.system[1], /`api-engineer` skill/);
+    assert.match(output.system[1], /`api-engineer` is the default entry point/);
 });
 
 test('exposes a default v2 definition while retaining the v1 server entrypoint', async () => {
@@ -164,7 +164,7 @@ test('exposes a default v2 definition while retaining the v1 server entrypoint',
 
     assert.equal(event.system.length, 1);
     assert.equal(event.system[0].type, 'text');
-    assert.match(event.system[0].text, /`api-engineer` skill/);
+    assert.match(event.system[0].text, /`api-engineer` is the default entry point/);
 });
 
 test('manifest.json lists api-engineer first, the skill postman init names in AGENTS.md', () => {

@@ -177,7 +177,7 @@ export function addPostmanDir (project) {
 
 /** The sentence only the hook's postman/ mandate has. */
 export function assertRepoParagraph (agent, text) {
-    assert.match(text, /This repository has a `postman\/` directory/, `the postman/ mandate is not what ${agent} sent the model`);
+    assert.match(text, /This repository has a postman\/ directory/, `the postman/ mandate is not what ${agent} sent the model`);
 }
 
 /** `listing(skill)` matches the agent's own skill-list entry, which the mandate's backticked names never do. */

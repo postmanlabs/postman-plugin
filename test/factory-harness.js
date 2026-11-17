@@ -91,7 +91,7 @@ function transcript (request) {
 
 /** The entry skill exactly as the mandate spells it, so a name Droid can't resolve fails below. */
 function mandatedSkill (request) {
-    return transcript(request).match(/load the `([^`]+)` skill/)?.[1] ?? 'mandate-not-found';
+    return transcript(request).match(/`([^`]+)` is the default entry point/)?.[1] ?? 'mandate-not-found';
 }
 
 /** The checkout as git would ship it, committed, since Droid tracks a local marketplace by commit. */
@@ -146,7 +146,7 @@ try {
     }
 
     assert.match(first, /You have (the )?Postman plugin/, 'the session-start mandate is not in the session');
-    assert.match(first, /This repository has a `postman\/` directory/, 'the postman/ mandate is not what Droid sent the model');
+    assert.match(first, /This repository has a postman\/ directory/, 'the postman/ mandate is not what Droid sent the model');
     assert.doesNotMatch(first, /`postman:[a-z0-9-]+`/, 'the mandate still names skills as `postman:<skill>`, which Droid cannot resolve');
     assert.match(second, new RegExp(`Skill "${ENTRY_SKILL}" is now active`), `the mandated skill did not load:\n${second.slice(-500)}`);
 
