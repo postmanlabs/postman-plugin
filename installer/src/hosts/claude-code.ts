@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { commandsFor } from '../agent-commands.js';
 import { REPO, isSameRepo, redact } from '../source.js';
 import type { System } from '../system.js';
@@ -6,25 +7,31 @@ import { type Host, result } from './types.js';
 
 const COMMANDS = commandsFor('claude-code');
 
-// Anthropic's catalog entry is the Claude Code install; our own marketplace
-// would register the same skills a second time under `postman@postman`.
-const MARKETPLACE = { name: 'claude-plugins-official', repo: 'anthropics/claude-plugins-official' },
+// This repo's own marketplace, so a merge to main reaches users without waiting on a bump in Anthropic's catalog.
+const MARKETPLACE = { name: 'postman', repo: REPO },
     PLUGIN_ID = `postman@${MARKETPLACE.name}`,
-    SHADOW_IDS = ['postman@postman'],
-    // This repo's own marketplace, which the README once had users add; no release of the installer added it.
-    OWN_MARKETPLACE = 'postman',
+    // Anthropic's catalog entry, installed by earlier releases. Two enabled copies load every skill twice and drop one copy's hooks.
+    SHADOW_IDS = ['postman@claude-plugins-official'],
     SCOPE = 'user',
     NEXT = 'Restart Claude Code for the change to take effect.';
 
 type Marketplace = { name: string; source?: string; repo?: string; url?: string; path?: string };
 type InstalledPlugin = { id: string; scope: string; version?: string; projectPath?: string };
+type MarketplaceEntry = { source?: { source?: string; repo?: string; url?: string }; autoUpdate?: boolean };
+type ClaudeSettings = { extraKnownMarketplaces?: Record<string, MarketplaceEntry> };
 
 const isOurs = (plugin: InstalledPlugin) => plugin.id === PLUGIN_ID || SHADOW_IDS.includes(plugin.id);
 
 // A `url` source fetches one marketplace.json instead of cloning, so a URL names the repo only in a `git` source.
-function isOfficialSource (marketplace: Marketplace): boolean {
+function isOurSource (marketplace: { source?: string; repo?: string; url?: string }): boolean {
     return isSameRepo(marketplace.repo, MARKETPLACE.repo) ||
         (marketplace.source === 'git' && isSameRepo(marketplace.url, MARKETPLACE.repo));
+}
+
+function describeSource (marketplace: Marketplace): string {
+    const source = marketplace.repo ?? marketplace.url ?? marketplace.path;
+
+    return source ? redact(source) : 'an unknown source';
 }
 
 function listPlugins (system: System): Promise<InstalledPlugin[]> {
@@ -52,13 +59,47 @@ async function refreshMarketplace (system: System): Promise<void> {
         return;
     }
 
-    if (!isOfficialSource(registered)) {
-        const source = registered.repo ?? registered.url ?? registered.path;
-
-        blocked(`marketplace ${MARKETPLACE.name} is registered from ${source ? redact(source) : 'an unknown source'}, not ${MARKETPLACE.repo}`);
+    if (!isOurSource(registered)) {
+        blocked(`marketplace ${MARKETPLACE.name} is registered from ${describeSource(registered)}, not ${MARKETPLACE.repo}`);
     }
 
     await mustRun(system, 'claude', COMMANDS.updateMarketplace);
+}
+
+function settingsFile (system: System): string {
+    return path.join(system.env.CLAUDE_CONFIG_DIR || path.join(system.home, '.claude'), 'settings.json');
+}
+
+/**
+ * Third-party marketplaces don't auto-update by default and marketplace.json can't change that, so this sets
+ * `autoUpdate` on the entry `marketplace add` wrote: the same key the /plugin Marketplaces toggle writes.
+ * A value the user already chose is kept.
+ */
+async function enableAutoUpdate (system: System): Promise<boolean> {
+    const file = settingsFile(system),
+        text = await system.readFile(file),
+        settings = text === null ? null : parseJson<ClaudeSettings>(text),
+        entry = settings?.extraKnownMarketplaces?.[MARKETPLACE.name],
+        toggle = `turn it on under /plugin → Marketplaces → ${MARKETPLACE.name}`;
+
+    if (!settings || !entry?.source || !isOurSource(entry.source)) {
+        system.log(`  note: ${system.dryRun ? 'would turn on' : 'could not turn on'} auto-update in ${file}; ${toggle}`);
+
+        return false;
+    }
+
+    if (entry.autoUpdate !== undefined) {
+        if (!entry.autoUpdate) {
+            system.log(`  note: auto-update for ${MARKETPLACE.name} is off in ${file}, as set there; ${toggle} to get main's changes at session start`);
+        }
+
+        return entry.autoUpdate;
+    }
+
+    entry.autoUpdate = true;
+    await system.writeFile(file, `${JSON.stringify(settings, null, 2)}\n`);
+
+    return true;
 }
 
 async function uninstallAtUserScope (system: System, plugins: InstalledPlugin[], ids: string[]): Promise<void> {
@@ -70,38 +111,36 @@ async function uninstallAtUserScope (system: System, plugins: InstalledPlugin[],
 }
 
 /**
- * Removes this repo's own marketplace from user settings once no plugin at any scope comes from it.
+ * Removes this repo's marketplace from user settings once no plugin at any scope comes from it.
  * `marketplace remove` leaves the records of plugins still installed from it behind (anthropics/claude-code#17061).
  */
-async function removeOwnMarketplace (system: System, plugins: InstalledPlugin[]): Promise<boolean> {
+async function removeMarketplace (system: System, plugins: InstalledPlugin[]): Promise<boolean> {
     const marketplaces = await mustProbeJson<Marketplace[]>(system, 'claude', COMMANDS.listMarketplaces),
-        registered = marketplaces.find((marketplace) => marketplace.name === OWN_MARKETPLACE);
+        registered = marketplaces.find((marketplace) => marketplace.name === MARKETPLACE.name);
 
     if (!registered) {
         return false;
     }
 
-    if (!isSameRepo(registered.repo, REPO) && !(registered.source === 'git' && isSameRepo(registered.url, REPO))) {
-        const source = registered.repo ?? registered.url ?? registered.path;
-
-        system.log(`  note: marketplace ${OWN_MARKETPLACE} is registered from ${source ? redact(source) : 'an unknown source'}, not ${REPO}; left alone`);
+    if (!isOurSource(registered)) {
+        system.log(`  note: marketplace ${MARKETPLACE.name} is registered from ${describeSource(registered)}, not ${REPO}; left alone`);
 
         return false;
     }
 
-    const serving = plugins.filter((plugin) => plugin.id.endsWith(`@${OWN_MARKETPLACE}`));
+    const serving = plugins.filter((plugin) => plugin.id.endsWith(`@${MARKETPLACE.name}`));
 
     if (serving.length) {
-        system.log(`  note: marketplace ${OWN_MARKETPLACE} still serves ${serving.map((plugin) => `${plugin.id} (${plugin.projectPath ?? plugin.scope})`).join(', ')}; left alone`);
+        system.log(`  note: marketplace ${MARKETPLACE.name} still serves ${serving.map((plugin) => `${plugin.id} (${plugin.projectPath ?? plugin.scope})`).join(', ')}; left alone`);
 
         return false;
     }
 
     // User scope only: a project's settings are shared with everyone who works in it.
-    const exec = await system.run('claude', ['plugin', 'marketplace', 'remove', OWN_MARKETPLACE, '--scope', SCOPE, '--json']);
+    const exec = await system.run('claude', ['plugin', 'marketplace', 'remove', MARKETPLACE.name, '--scope', SCOPE, '--json']);
 
     if (exec.code !== 0) {
-        system.log(`  note: could not remove marketplace ${OWN_MARKETPLACE} from user settings, so it was left alone: ${(exec.stderr || exec.stdout).trim()}`);
+        system.log(`  note: could not remove marketplace ${MARKETPLACE.name} from user settings, so it was left alone: ${(exec.stderr || exec.stdout).trim()}`);
 
         return false;
     }
@@ -149,7 +188,9 @@ export const claudeCode: Host = {
             await mustRun(system, 'claude', COMMANDS[verb]);
             await uninstallAtUserScope(system, plugins, SHADOW_IDS);
 
-            return result('done', `${verb === 'update' ? 'updated' : 'installed'} ${PLUGIN_ID}`, NEXT);
+            const autoUpdate = await enableAutoUpdate(system);
+
+            return result('done', `${verb === 'update' ? 'updated' : 'installed'} ${PLUGIN_ID}${autoUpdate ? ', auto-update on' : ''}`, NEXT);
         });
     },
 
@@ -161,7 +202,7 @@ export const claudeCode: Host = {
 
             await uninstallAtUserScope(system, plugins, ids);
 
-            // status() sees only the official ID, so the duplicate's removal is confirmed here.
+            // status() sees only our own ID, so the official copy's removal is confirmed here.
             if (ids.length && !system.dryRun) {
                 remaining = await listPlugins(system);
 
@@ -174,7 +215,7 @@ export const claudeCode: Host = {
 
             const removals = [
                 ...(ids.length ? [`uninstalled ${ids.join(', ')}`] : []),
-                ...(await removeOwnMarketplace(system, remaining) ? [`removed marketplace ${OWN_MARKETPLACE}`] : [])
+                ...(await removeMarketplace(system, remaining) ? [`removed marketplace ${MARKETPLACE.name}`] : [])
             ];
 
             return removals.length ?

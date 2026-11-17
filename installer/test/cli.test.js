@@ -21,7 +21,7 @@ if (call === 'plugin marketplace list --json') {
     console.log('[]');
 }
 else if (call === 'plugin list --json') {
-    console.log(fs.existsSync(process.env.FAKE_STATE) ? '[{"id":"postman@claude-plugins-official","scope":"user"}]' : '[]');
+    console.log(fs.existsSync(process.env.FAKE_STATE) ? '[{"id":"postman@postman","scope":"user"}]' : '[]');
 }
 else if (call.startsWith('plugin install ')) {
     fs.writeFileSync(process.env.FAKE_STATE, '');
@@ -118,7 +118,7 @@ test('--dry-run runs only read-only probes', () => {
     const dry = cliRun(['install', '--dry-run', '--agent', 'claude-code'], box.env);
 
     assert.equal(dry.status, 0, dry.stdout + dry.stderr);
-    assert.match(dry.stdout, /\$ claude plugin marketplace add anthropics\/claude-plugins-official --scope user/);
+    assert.match(dry.stdout, /\$ claude plugin marketplace add postmanlabs\/postman-plugin --scope user/);
     assert.deepEqual(box.calls(), ['plugin list --json', 'plugin marketplace list --json', 'plugin list --json']);
 });
 
@@ -131,8 +131,8 @@ test('--yes installs through the real process layer and verifies the result', ()
 
     assert.equal(install.status, 0, install.stdout + install.stderr);
     assert.deepEqual(box.calls().filter((call) => !call.endsWith('list --json')), [
-        'plugin marketplace add anthropics/claude-plugins-official --scope user',
-        'plugin install postman@claude-plugins-official --scope user --json'
+        'plugin marketplace add postmanlabs/postman-plugin --scope user',
+        'plugin install postman@postman --scope user --json'
     ]);
 });
 
