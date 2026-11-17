@@ -124,7 +124,11 @@ lastWill:
 ### `mcp-request`
 
 Requires `$kind` **and** `transport`, which selects the legal keys. Common to both:
-`message`, `auth`.
+`message`, `auth`, `scripts`.
+
+`scripts` entries have `type` `beforeConnect`, `afterConnect`, `afterResponse` or
+`afterDisconnect`; a collection or folder definition prefixes them `mcp:`
+(`mcp:beforeConnect`, …).
 
 | `transport` | Its keys | `settings` |
 |---|---|---|

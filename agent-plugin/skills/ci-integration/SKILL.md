@@ -27,8 +27,11 @@ the author's own passing tests do not establish cross-service compatibility.
    compliance. Read command-specific `-h` for installed options.
 2. Keep gate results distinguishable so a failed build identifies behavior,
    structure, governance, or readiness. Preserve nonzero exits; suppressing
-   them with `-x`/`--suppress-exit-code` removes the gate. For collection runs,
-   `-r junit,html` produces reviewable reports; `--bail` trades a complete
+   them with `-x`/`--suppress-exit-code` removes the gate. A run of a local
+   collection under `postman/collections/` supports only the `cli` reporter:
+   `-r junit` or `-r html` exits 1 without running anything. Keep its report
+   with `--output <folder>`, which writes a YAML run summary and per-request
+   executions to upload as a build artifact. `--bail` trades a complete
    failure inventory for an earlier signal. See **api-testing** for assertion
    semantics and **ai-readiness** for score limitations.
 3. Restore declared dependencies with `postman dependency install` when tests

@@ -67,6 +67,7 @@ guesswork each time work resumes.
    Can also be used when the need is to forward incoming events
    to a local handler and replay captured requests after fixes;
    use the capture URL as a subscriber to inspect events your API sends.
+14. When the work is an MCP server rather than an HTTP API, use **mcp-testing**.
 
 Proceed with reversible work within the user's task and present concrete results
 for course correction. Recommend additional work only when it closes a material

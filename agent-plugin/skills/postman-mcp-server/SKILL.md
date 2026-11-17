@@ -1,6 +1,6 @@
 ---
 name: postman-mcp-server
-description: Use when working through Postman MCP tools to inspect or change workspace resources, choose a targeted operation, or handle MCP limitations. Supports hosted workflows when the CLI is unavailable and distinguishes tool completion from a usable result. Use for requests such as "use Postman MCP to inspect this collection".
+description: Use when working through Postman MCP tools to inspect or change workspace resources, choose a targeted operation, or handle MCP limitations. Supports hosted workflows when the CLI is unavailable and distinguishes tool completion from a usable result. Not for testing an MCP server itself; that is mcp-testing. Use for requests such as "use Postman MCP to inspect this collection".
 ---
 
 # Postman MCP Server
