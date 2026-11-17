@@ -73,7 +73,8 @@ test('without --yes and without a terminal, refuses instead of silently doing no
     assert.equal(await run(system, [a], options({ yes: false })), 2);
     assert.deepEqual(a.calls, []);
     assert.ok(system.lines.includes('\nNothing changed: there is no terminal to confirm in. To install or update Postman in a, re-run with --yes (add --agent <id> for only some).'));
-    assert.equal(system.lines[0], 'Found 1 coding agent. Postman in each:');
+    assert.equal(system.lines[0], 'Checking which coding agents are here...');
+    assert.equal(system.lines[1], 'Found 1 coding agent. Postman in each:');
 });
 
 test('asks once in a terminal, and a "no" changes nothing', async () => {
@@ -202,7 +203,7 @@ test('finding no agent fails an install, but not a status or a remove', async ()
         system = fakeSystem();
 
     assert.equal(await run(system, hosts, options()), 1);
-    assert.match(system.lines[0], /No supported coding agent found\. Supported: a\./);
+    assert.match(system.lines[1], /No supported coding agent found\. Supported: a\./);
     assert.equal(await run(fakeSystem(), hosts, options({ command: 'status' })), 0);
     assert.equal(await run(fakeSystem(), hosts, options({ command: 'remove' })), 0);
 });
@@ -211,5 +212,39 @@ test('when no requested agent is found, says so instead of listing them as the s
     const system = fakeSystem();
 
     assert.equal(await run(system, [fakeHost('a', { detected: false }), fakeHost('b')], options({ agents: ['a'], command: 'status' })), 0);
-    assert.deepEqual(system.lines, ['None of the requested agents was found.', '  a was not found on this machine']);
+    assert.deepEqual(system.lines, ['Checking which coding agents are here...', 'None of the requested agents was found.', '  a was not found on this machine']);
+});
+
+test('reads every agent state at once, so one slow listing does not stack on the others', async () => {
+    let inFlight = 0,
+        peak = 0;
+    const slow = (id) => {
+            const host = fakeHost(id);
+
+            host.status = async () => {
+                inFlight++;
+                peak = Math.max(peak, inFlight);
+                await new Promise((resolve) => setTimeout(resolve, 20));
+                inFlight--;
+
+                return { installed: false, detail: 'not installed', notes: [] };
+            };
+
+            return host;
+        },
+        system = fakeSystem();
+
+    assert.equal(await run(system, [slow('a'), slow('b'), slow('c')], options({ command: 'status' })), 0);
+    assert.equal(peak, 3);
+    assert.deepEqual(system.lines.slice(2, 5).map((line) => line.trim().split(/\s+/)[0]), ['a', 'b', 'c']);
+});
+
+test('a detection error with an empty message still fails the run', async () => {
+    const broken = fakeHost('broken'),
+        ok = fakeHost('ok');
+
+    broken.detect = async () => { throw new Error(''); };
+
+    assert.equal(await run(fakeSystem(), [broken, ok], options()), 1);
+    assert.deepEqual(ok.calls, ['install']);
 });

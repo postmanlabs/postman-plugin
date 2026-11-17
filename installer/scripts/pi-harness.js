@@ -9,8 +9,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { spawnCli, spawnCliSync } from '../../scripts/lib/cli.js';
-import { addPostmanDir, assertMcpHeaders, assertRepoParagraph, chatCompletion, mandatedSkill, pointMcpAt, skillExcerpt, startStandIn } from '../../scripts/lib/harness.js';
+import { spawnCli, spawnCliSync } from '../../test/lib/cli.js';
+import { addPostmanDir, assertMcpHeaders, assertRepoParagraph, chatCompletion, mandatedSkill, pointMcpAt, skillExcerpt, startStandIn } from '../../test/lib/harness.js';
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'),
     repoRoot = path.dirname(packageRoot),

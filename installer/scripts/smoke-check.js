@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { spawnCliSync } from '../../scripts/lib/cli.js';
+import { spawnCliSync } from '../../test/lib/cli.js';
 import { registeredRef } from '../dist/hosts/codex.js';
 import { installedPlugins } from '../dist/hosts/factory.js';
 import { parseJsonc } from '../dist/hosts/opencode-config.js';

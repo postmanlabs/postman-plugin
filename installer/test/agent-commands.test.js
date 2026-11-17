@@ -74,7 +74,7 @@ test('the Kimi harness reads shared command arguments from the manifest', (conte
         delete environment[key];
     }
     environment.PATH = [tools, existingPath].join(path.delimiter);
-    const result = spawnSync(process.execPath, ['scripts/kimi-harness.js'], {
+    const result = spawnSync(process.execPath, ['test/kimi-harness.js'], {
         cwd: repoRoot, env: environment, encoding: 'utf8', timeout: 30000
     });
 

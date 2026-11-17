@@ -4,11 +4,11 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { spawnCliSync } from '../../scripts/lib/cli.js';
+import { spawnCliSync } from '../../test/lib/cli.js';
 import {
     ENTRY_SKILL, addPostmanDir, assertMandate, assertRepoParagraph, assertMcpHeaders, assertSkillsListed, chatCompletion, mandatedSkill, pointMcpAt,
     runAgent, skillExcerpt, startStandIn
-} from '../../scripts/lib/harness.js';
+} from '../../test/lib/harness.js';
 import { resolveOpenCodeExecutable } from './lib/opencode-executable.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'),

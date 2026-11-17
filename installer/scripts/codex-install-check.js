@@ -8,7 +8,7 @@ import { BRANCH, REPO } from '../dist/source.js';
 import { run as install } from '../dist/run.js';
 import { createSystem } from '../dist/system.js';
 import { JsonRpcError } from '../dist/json-rpc.js';
-import { assertSkillsListed, runAgent, startStandIn, workspace } from '../../scripts/lib/harness.js';
+import { assertSkillsListed, runAgent, startStandIn, workspace } from '../../test/lib/harness.js';
 
 const PLUGIN_ID = 'postman@postman';
 
