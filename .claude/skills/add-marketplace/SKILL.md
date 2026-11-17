@@ -1,6 +1,6 @@
 ---
 name: add-marketplace
-description: Add a new vendor plugin route (marketplace) to this repo - Windsurf, Zed, Copilot, Gemini CLI, or any other agent that can be pointed at a skills directory, whether it loads a plugin manifest, only a project config, or a package from a registry. Use when asked to add, wire up, or onboard a new marketplace, vendor, plugin route, or agent target. Covers the manifest or config, the MCP config, the session-start hook, the CI schema check, the installer adapter, and the README and CONTRIBUTING sections that do not update themselves.
+description: Add a new vendor plugin route (marketplace) to this repo - Windsurf, Zed, Gemini CLI, or any other agent that can be pointed at a skills directory, whether it loads a plugin manifest, only a project config, or a package from a registry. Use when asked to add, wire up, or onboard a new marketplace, vendor, plugin route, or agent target. Covers the manifest or config, the MCP config, the session-start hook, the CI schema check, the installer adapter, and the README and CONTRIBUTING sections that do not update themselves.
 argument-hint: <vendor-name>
 disable-model-invocation: true
 ---
@@ -99,11 +99,14 @@ carries it in those two headers alone.
 ## Step 2 — The MCP config
 
 A new `mcp.<vendor>.json`, or an inline server block, per Step 0. Four things
-must hold. CI checks none of them; the pre-commit guard checks the first three.
+must hold. `.claude/hooks/validate-manifests.js` checks the first three, at
+commit and in CI's `manifest` job; nothing checks the fourth.
 
 - **`X-Source` is `postman-<vendor>-plugin` and unique.** Postman's telemetry
   keys on it, so a reused value collapses two routes into one bucket — which
-  reads exactly like an agent nobody uses.
+  reads exactly like an agent nobody uses. The one exception is a route marked
+  `userAgentOnly` in `scripts/routes.js` (Claude Code), which sends the
+  `User-Agent` alone; don't mark a new route that way without the same reason.
 - **`X-Plugin-Version` and `User-Agent` agree with the manifest `version`.**
   `User-Agent` is `postman-<vendor>-plugin/<version>`. A mismatch is accepted at
   runtime and files the traffic under a version never cut.
@@ -117,7 +120,13 @@ must hold. CI checks none of them; the pre-commit guard checks the first three.
 Register the route in `scripts/routes.js` — `MANIFEST_ROUTES`, or
 `PACKAGE_ROUTES` with the package manifest and the MCP config its code reads —
 or the pre-commit guard blocks the commit as an unregistered route (manifest)
-or never checks it (package). The installer's tests read the same registry
+or never checks it (package). Every entry needs `updatesBy` (`'version'` or
+`'commit'`, whichever the agent compares to update an install).
+`scripts/route-versions.js` decides from it which changes need a bump: without
+it, a route that updates by version goes unflagged when `skills/`, `hooks/` or
+`manifest.json` change, and the status listing throws. A
+manifest directory that is not a top-level `.*-plugin/` also goes in
+`NESTED_MANIFEST_DIRS`. The installer's tests read the same registry
 (Step 6). It has no list for config-only routes yet; add one beside
 `PACKAGE_ROUTES` when the first one arrives, and read it in
 `installer/test/routes.test.js`.
@@ -158,7 +167,7 @@ the injection itself: the OpenCode plugin reads
 plugin hooks. Either way it is always-on context rather than a `SessionStart`
 event, but the effect on the session is the one that matters.
 
-Both failure modes here are silent, and in CI only the Droid harness runs `hooks/` through an agent, so read
+Both failure modes here are silent, and only a route's own harness (Step 4) shows the mandate reaching its model, so read
 [references/hooks.md](references/hooks.md) before editing anything under
 `hooks/`: it carries the per-vendor variable and discovery tables, the load-bearing
 properties of that command, and the six things to establish for a
@@ -166,9 +175,14 @@ new vendor.
 
 ## Step 4 — CI
 
-`.github/workflows/validate.yml` runs one parallel job per concern; the `schema`
-job is the one a route touches. A package route also gets a job of its own that
-builds, tests and loads it — the `opencode` job is the example.
+`.github/workflows/validate.yml` runs one parallel job per concern. A route
+touches two of them: the `schema` job, and a job of its own that runs the
+route's harness against a pinned agent (`claude-code`, `codex`, `kimi` and the
+rest are examples). Write `test/<vendor>-harness.js` on `test/lib/harness.js`,
+as CONTRIBUTING.md's "Checking what each route delivers" describes, and add the
+same harness as a step in `.github/workflows/installer-smoke.yml`, which runs
+each one against the latest agent release. A package route's job also builds
+and tests it — the `opencode` job is the example.
 
 - **Vendor publishes a schema** → add a `matrix.include` entry: `name`, `file`,
   `schema` (the vendor's raw URL, not a mirror, so a vendor tightening its
@@ -179,7 +193,7 @@ builds, tests and loads it — the `opencode` job is the example.
 The `manifest` job's `git ls-files '*.json'` loop picks up the new file
 automatically once it is tracked.
 
-Three things about that job are not obvious, and each one cost a debugging pass:
+Three things about that job are not obvious:
 
 - **`spec` is not always `draft7`.** Read the schema's own `$schema`; opencode's
   is draft/2020-12 and needs `--spec=draft2020`. A wrong `--spec` fails in ways
@@ -274,8 +288,8 @@ node .claude/hooks/validate-manifests.js && echo "manifests consistent"
 # Scope by file, not by grepping the diff - an added `"version": "0.1.0"` line
 # names no vendor and slips a text filter. Package routes match no
 # `*plugin.json`, so name their package manifest explicitly, as Factory Droid's
-# fixed-name `mcp.json` matches no `mcp.*.json`.
-git diff --name-only main -- '*plugin.json' 'mcp.*.json' mcp.json package.json opencode/package.json installer/package.json
+# fixed-name `mcp.json` and Antigravity's `mcp_config.json` match no `mcp.*.json`.
+git diff --name-only main -- '*plugin.json' 'mcp.*.json' mcp.json mcp_config.json package.json opencode/package.json installer/package.json
 ```
 
 If the vendor publishes a schema, run the `schema` job's ajv command against the

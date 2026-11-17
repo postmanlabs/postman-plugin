@@ -5,7 +5,8 @@ failure modes documented here are silent: the pre-commit hook never reads
 `hooks/`, and an agent that never finds or runs the hook still starts. CI's
 route harnesses (CONTRIBUTING.md's "Checking what each route delivers") run
 each agent on every OS its CI job covers and check that the mandate reaches its
-model; Cursor's runs on Linux only, until #83 is fixed;
+model. Cursor's job is disabled until CI has a `CURSOR_API_KEY`, and covers
+Linux only until #83 is fixed;
 `installer/test/session-start-hook.test.js` runs the scripts directly.
 
 ## The plugin-root variable is the trap
@@ -71,10 +72,11 @@ mandate arriving twice.
 context mechanism — Claude Code, Cursor and Factory Droid through
 `hooks/hooks.json`, Copilot CLI through its own hooks file on the same scripts, OpenCode and
 Pi through their own code, and Kimi and Antigravity through copies `scripts/build-manifest.js`
-generate. Cursor, Copilot CLI, Droid, OpenCode, Pi, Kimi and Antigravity name skills without the
+generate. Cursor, Copilot CLI, Droid, OpenCode, Pi and Antigravity name skills without the
 `postman:` prefix, so each gets `` `postman:<skill>` `` rewritten to the bare
 name: the two plugins in code, the hook scripts for Droid, Cursor and Copilot CLI, and the
-build script for the Kimi and Antigravity copies. Droid's Skill tool answers
+build script for the Antigravity copy. Kimi Code lists plugin skills as `postman:<skill>`
+from 2.3.0 on, so its generated copy keeps the prefix and tells older releases to drop it. Droid's Skill tool answers
 `Skill "postman:api-engineer" not found` otherwise; Cursor sends a plugin skill
 to its backend by path, and invokes it as `/<skill>`. So the file must not name
 one vendor's machinery: "invoke it with the Skill tool" is an

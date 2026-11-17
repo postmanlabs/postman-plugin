@@ -4,7 +4,10 @@ Reference for Steps 4 and 6.
 
 ## CI — `.github/workflows/validate.yml`
 
-One parallel job per concern, so a failure names itself:
+One parallel job per concern, so a failure names itself. Besides these, each
+route has a harness job of its own (CONTRIBUTING.md's "Checking what each route
+delivers"), and `installer`, `route-versions` and `postman-cli` cover the
+installer, version bumps and the Postman CLI. The ones a route's files touch:
 
 - **`skills`** — every `skills/*/SKILL.md` has frontmatter with `name` and
   `description`. Pure bash, no `setup-node` on purpose.
@@ -82,7 +85,9 @@ It checks:
    the route its attribution.
 5. Per server: `X-Plugin-Version` and `User-Agent` agree with the manifest's
    `version`, and `X-Source` is present and of the form `postman-<vendor>-plugin`.
-   No two routes share an `X-Source`; servers within one route may.
+   No two routes share an `X-Source`; servers within one route may. A
+   `userAgentOnly` route (Claude Code) is the reverse: it must send neither
+   `X-Source` nor `X-Plugin-Version`, only the `User-Agent`.
    Where the route's format carries no `version` key, the two header strings are
    checked against each other instead — a route with neither is reported, since
    its traffic is filed under no version at all.
@@ -104,11 +109,12 @@ node .claude/hooks/validate-manifests.js && echo "manifests consistent"
 
 - **The URL mode segment** (`/mcp` vs `/minimal`) — a product decision about
   which tool surface the vendor gets.
-- **Hooks, for every vendor but Droid.** The pre-commit guard never reads
-  `hooks/`; in CI only `test/factory-harness.js` runs the hook through an
-  agent, Droid. `installer/test/session-start-hook.test.js` runs the scripts
+- **Hooks, outside the route harnesses.** The pre-commit guard never reads
+  `hooks/`; only each route's harness runs the hook through its agent, so a
+  route with no harness has nothing checking that its mandate arrives.
+  `installer/test/session-start-hook.test.js` runs the scripts
   directly, on Linux and Windows, for what Claude Code, Droid and Cursor each
-  get. `scripts/check-hooks.sh` covers root resolution and Droid's bare skill
+  get. `.claude/skills/add-marketplace/scripts/check-hooks.sh` covers root resolution and Droid's bare skill
   names — not whether a vendor discovers the file at all, nor whether it spells
   the session-start event the way the file does. Pass `none`
   for a config-only or package vendor: it has no plugin-root variable, and the

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Exercise hooks/hooks.json's SessionStart command. In CI only the Droid
-# harness runs it, through Droid, so for every other vendor this is the only check
-# that it resolves the root; installer/test/session-start-hook.test.js checks what the scripts print.
+# Exercise hooks/hooks.json's SessionStart command. The route harnesses run it
+# through each agent; this checks a new vendor's root variable before its harness
+# exists. installer/test/session-start-hook.test.js checks what the scripts print.
 #
 # Run from the repo root:
 #   .claude/skills/add-marketplace/scripts/check-hooks.sh
@@ -24,7 +24,7 @@ cmd=$(node -p 'JSON.parse(require("fs").readFileSync("hooks/hooks.json","utf8"))
 status=0
 
 # Every plugin-root variable a vendor sets, so each check starts from nothing.
-clear_env=(env -u CLAUDE_PLUGIN_ROOT -u CURSOR_PLUGIN_ROOT -u KIMI_PLUGIN_ROOT -u PLUGIN_ROOT -u DROID_PLUGIN_ROOT)
+clear_env=(env -u CLAUDE_PLUGIN_ROOT -u CURSOR_PLUGIN_ROOT -u COPILOT_PLUGIN_ROOT -u KIMI_PLUGIN_ROOT -u PLUGIN_ROOT -u DROID_PLUGIN_ROOT)
 
 check_resolves() {
   local var=$1 out rc
