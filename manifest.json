@@ -9,8 +9,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-engineer/SKILL.md",
-          "bytes": 6223,
-          "sha256": "112eeb2fa7626ddfb4fded3126eb424b79a8156d916f2bdca43b871191e249c3"
+          "bytes": 6210,
+          "sha256": "3aad6087399cdd0ff76cfe4dab865b3cc7117c794f02593f03736c85c88d0cfe"
         }
       ]
     },
@@ -22,8 +22,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/ai-readiness/SKILL.md",
-          "bytes": 2851,
-          "sha256": "c9dd5d7321f810fb7024e960990f934ad5298f94b8da964e61cba4882be2974e"
+          "bytes": 2838,
+          "sha256": "ac93e38506048982897f70d47db53165759922dc050e8d8b51e54678ef208d25"
         }
       ]
     },
@@ -43,6 +43,25 @@
           "source": "skills/api-discovery/reference/orbit.md",
           "bytes": 4078,
           "sha256": "792c6c96db431afb508435e60c1f957cbb6a629320b7b61c26a8f78d477844dc"
+        }
+      ]
+    },
+    {
+      "name": "api-documentation",
+      "plugin": "postman",
+      "description": "Use when defining or improving an API contract, generating documentation from a collection or OpenAPI spec, publishing API docs, or sharing a documentation link. Makes auth, inputs, responses, and examples reusable by callers, tests, and mocks. Use for requests such as \"publish API docs\".",
+      "files": [
+        {
+          "target": "SKILL.md",
+          "source": "skills/api-documentation/SKILL.md",
+          "bytes": 2845,
+          "sha256": "c7e4eef6d451f556caca2cfebdf9ac82448cce19c617006bfb8eaff9203b0832"
+        },
+        {
+          "target": "reference/rest-api-best-practices.md",
+          "source": "skills/api-documentation/reference/rest-api-best-practices.md",
+          "bytes": 2995,
+          "sha256": "af4f5bb2ec4f7ece778c3f9bf47743b3a3c7959ae19152b6f04b91587122a3c5"
         }
       ]
     },
@@ -157,8 +176,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/collection-schema-v3/SKILL.md",
-          "bytes": 4102,
-          "sha256": "aceae99422b9e3340f4dbabc8cc50030eb40307de95a10ad89e46628d477f9a4"
+          "bytes": 4089,
+          "sha256": "0e4ae2c862c7f525404c35239008ccccea98e19bd07be4ac5939793f8769b540"
         },
         {
           "target": "reference/environment.md",
@@ -403,25 +422,6 @@
           "source": "skills/postman-mcp-server/references/test.md",
           "bytes": 3031,
           "sha256": "b8a0996727d8990a95dd767d88c984fbd6cc1c63b9cc7ad6029a6f4d1d102d02"
-        }
-      ]
-    },
-    {
-      "name": "rest-api-design-best-practices",
-      "plugin": "postman",
-      "description": "Use when adding or changing an HTTP endpoint's contract (paths, methods, request or response fields, query parameters, status codes, errors or versioning), or when reviewing whether an HTTP API follows REST conventions. Checks the design against REST practice, separates breaking from additive changes, and updates the OpenAPI spec, collection and mocks together with the code. For finding which services consume an endpoint, use api-discovery. Not for function, class or library interfaces. Use for requests such as \"add a field to this response\" or \"review this endpoint's design\".",
-      "files": [
-        {
-          "target": "SKILL.md",
-          "source": "skills/rest-api-design-best-practices/SKILL.md",
-          "bytes": 2577,
-          "sha256": "e474ad22f611394ee944cbe9eec98b861beaaf37217971303f47266875bd1728"
-        },
-        {
-          "target": "reference/rest-api-best-practices.md",
-          "source": "skills/rest-api-design-best-practices/reference/rest-api-best-practices.md",
-          "bytes": 2995,
-          "sha256": "af4f5bb2ec4f7ece778c3f9bf47743b3a3c7959ae19152b6f04b91587122a3c5"
         }
       ]
     },

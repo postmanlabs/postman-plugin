@@ -37,7 +37,7 @@ checks, without regenerating a single large collection export.
    can preserve characters that cannot appear in a filename. Renaming a request
    also requires checking its examples path.
 6. Save examples for behavior consumers need to understand or simulate.
-   Their schemas feed **rest-api-design-best-practices**, **api-mocking**, and
+   Their schemas feed **api-documentation**, **api-mocking**, and
    **ai-readiness**; structural validity alone does not make an example
    accurate or useful. Assertions derived from the contract belong with the
    request through **api-testing**.

@@ -29,7 +29,7 @@ checking their effect, or enforcing an agreed readiness gate.
    inputs, missing auth instructions, or errors with no recovery guidance.
    Establish the actual behavior before adding descriptions or examples;
    invented certainty can raise apparent completeness while misleading agents.
-   See **rest-api-design-best-practices** for improving the authoritative contract and
+   See **api-documentation** for improving the authoritative contract and
    **collection-schema-v3** for saved examples.
 4. Re-run against the edited artifact to show which measured gaps closed.
    A readiness score measures consumability, not live correctness; use

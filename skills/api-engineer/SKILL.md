@@ -15,7 +15,7 @@ guesswork each time work resumes.
    before implementation so you can distinguish an intended change from a
    regression. Reuse the existing contract; update it where behavior changes.
    Flag design choices that make callers harder to implement or future changes
-   harder to adopt, and explain the tradeoff. See **rest-api-design-best-practices**.
+   harder to adopt, and explain the tradeoff. See **api-documentation**.
 2. A Postman collection records the contract in a form that runs. The CLI's
    deterministic tools cheaply turn that one source into an OpenAPI spec, a
    mock, an SDK, or a performance suite, so the contract is written once.
