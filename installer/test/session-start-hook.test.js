@@ -66,8 +66,8 @@ test('a repository with postman/ gets a mandate that names the directory and the
     const output = jsonOutput(runHook(hooksDir, '', { CURSOR_PLUGIN_ROOT: path.dirname(hooksDir) }, repo)).additional_context;
 
     assert.match(output, /^<EXTREMELY_IMPORTANT>\s*You have the Postman plugin/);
-    assert.match(output, /This repository has a `postman\/` directory/);
-    assert.match(output, /load the `api-engineer` skill/);
+    assert.match(output, /This repository has a postman\/ directory/);
+    assert.match(output, /`api-engineer` is the default entry point/);
 });
 
 test('a repository without postman/ gets the light note, which mandates nothing', () => {

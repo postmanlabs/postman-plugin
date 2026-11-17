@@ -79,7 +79,7 @@ test('adds the light note as a prompt section in a project without postman/, nam
     const { postman } = startAgent(loadExtension(), ['api-engineer', 'api-testing']);
 
     assert.equal(postman, toPiSessionContext(mandate));
-    assert.match(postman, /`api-engineer` skill/);
+    assert.match(postman, /`api-engineer` is the default entry point/);
     assert.doesNotMatch(postman, /`postman:[a-z0-9-]+`/);
 });
 
@@ -87,7 +87,7 @@ test('adds the postman/ mandate in a project with a postman/ directory, and not 
     const host = loadExtension();
 
     assert.equal(startAgent(host, ['api-engineer'], project).postman, toPiSessionContext(postmanDirMandate));
-    assert.match(startAgent(host, ['api-engineer'], project).postman, /load the `api-engineer` skill/);
+    assert.match(startAgent(host, ['api-engineer'], project).postman, /`api-engineer` is the default entry point/);
     assert.equal(startAgent(host, ['api-engineer'], upperProject).postman, toPiSessionContext(mandate));
 });
 
