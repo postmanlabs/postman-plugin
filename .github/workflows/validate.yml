@@ -43,7 +43,7 @@ jobs:
         env:
           EVENT: ${{ github.event_name }}
           # What a Windows leg runs or reads, short of skill content and the manifest of it.
-          CODE: '^(installer|opencode|scripts|hooks|\.github/workflows|\.[a-z]+-plugin)/|^mcp[^/]*\.json$|^\.gitattributes$'
+          CODE: '^(installer|opencode|scripts|test|hooks|\.github/workflows|\.[a-z]+-plugin)/|^mcp[^/]*\.json$|^\.gitattributes$'
         run: |
           linux='{"os":"ubuntu-latest","label":"Linux"}'
           windows='{"os":"windows-latest","label":"Windows"}'
