@@ -91,7 +91,7 @@ function transcript (request) {
 
 /** The entry skill exactly as the mandate spells it, so a name Droid can't resolve fails below. */
 function mandatedSkill (request) {
-    return transcript(request).match(/load the `([^`]+)` skill/)?.[1] ?? 'mandate-not-found';
+    return transcript(request).match(/`([^`]+)` is the default entry point/)?.[1] ?? 'mandate-not-found';
 }
 
 /** The checkout as git would ship it, committed, since Droid tracks a local marketplace by commit. */
