@@ -34,6 +34,30 @@ the output the tool just returned only proves the server agrees with itself.
   one, and a script given by absolute path cannot take arguments; use a
   relative path.
 
+## Script hooks
+
+Each MCP request runs its scripts at four points. Put each script where its
+job belongs:
+
+- `beforeConnect` is setup, before the session opens: a value unique to the
+  run, or a token.
+  `pm.request.headers.push({ key: "Authorization", value: "Bearer " + pm.variables.get("token") })`
+  sends the token on every call in the session. Headers are a `{key, value}`
+  array; assigning an object is silently ignored.
+- `afterConnect` tests the server itself: `pm.response.tools`, `resources`,
+  `prompts`, `capabilities`, `server`, `protocolVersion` and `instructions`. A
+  request with no message only connects, so it checks what the server
+  advertises once.
+- `afterResponse` tests the call: `pm.response.result`, including `isError`.
+- `afterDisconnect` is cleanup, after the session closes, so it can no longer
+  call the server's tools. Unset the variables a run no longer needs, or remove
+  data the run created with `pm.sendRequest`.
+
+A collection or folder definition holds the same hooks as `mcp:<event>`, and
+they run for every MCP request under it. That suits auth in
+`mcp:beforeConnect`. A server check or cleanup placed there repeats on every
+request, so give those their own request.
+
 ## Chain requests into workflows
 
 A collection runs its requests in order, and scripts pass values between them,
