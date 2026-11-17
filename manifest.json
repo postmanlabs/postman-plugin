@@ -4,13 +4,13 @@
     {
       "name": "api-engineer",
       "plugin": "postman",
-      "description": "Use when designing, implementing, mocking, testing, monitoring, documenting, or deploying an API. Guides decisions using reusable local API contracts, tests, and mocks, plus organization-wide dependency context, and routes to the relevant Postman skills. Use for requests such as \"implement this endpoint\".",
+      "description": "Use when an HTTP API task spans several steps, such as building a new endpoint end to end with its contract, implementation, tests and mocks, or when it is API work and no narrower Postman skill fits. Prefer the narrower Postman skill when one fits. Routes to the relevant Postman skills and keeps contracts, tests and mocks reusable across the work, using organization-wide dependency context. Not for UI-only changes, library or CLI code, or questions about what existing code does. Use for requests such as \"implement this endpoint\".",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/api-engineer/SKILL.md",
-          "bytes": 5872,
-          "sha256": "816a35fee2b34adfb64383c6064d52659c7716c7ac03fbb24306fa0b4aeac0b7"
+          "bytes": 6210,
+          "sha256": "3aad6087399cdd0ff76cfe4dab865b3cc7117c794f02593f03736c85c88d0cfe"
         }
       ]
     },
@@ -68,13 +68,13 @@
     {
       "name": "api-mocking",
       "plugin": "postman",
-      "description": "Finds, builds, runs and publishes a stand-in for one API — a published mock when its owner or a verified publisher has one, otherwise one built from its spec or collection that behaves like the real API, stateful when callers write then read. Use when something needs an API that isn't built or reachable yet (a frontend, client or demo), when other teams should build against your API before it ships, or when asked to mock an API or fake a backend. To run and test your own code against the services it calls, use api-simulation. Covers `postman mock` and `postman dependency add mock`.",
+      "description": "Use when something needs an API that isn't built or reachable yet (a frontend, client or demo), when other teams should build against your API before it ships, or when asked to mock an API or fake a backend. Finds, builds, runs and publishes a stand-in for one API — a published mock when its owner or a verified publisher has one, otherwise one built from its spec or collection that behaves like the real API, stateful when callers write then read. To run and test your own code against the services it calls, use api-simulation. Covers `postman mock` and `postman dependency add mock`.",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/api-mocking/SKILL.md",
           "bytes": 7943,
-          "sha256": "c1180d6db28e6010df78f32ae2ffabd972320944a356830440da35c9b8f75ba2"
+          "sha256": "be30e96e7b22eb860a19a629f8f1377ed51a9882adbc64ee6163b4080f61ed48"
         }
       ]
     },
@@ -94,13 +94,13 @@
     {
       "name": "api-simulation",
       "plugin": "postman",
-      "description": "Runs services, frontends, tests or demos against stand-ins for their HTTP dependencies, served as one environment locally or at a deployed URL. Use when you add or change code that calls other services and need to run it, test it, prove a fix or reproduce an upstream failure (timeouts, 5xx, 409, 429) end to end, locally or in CI, without the real services because they're unreachable, need credentials, cost money, have side effects or don't exist yet. Also answers what happens to a request, or to the data it writes, when a service it calls goes down, is slow or returns errors (\"what happens to a booking if the email service is down?\"), by exercising relevant failures and observing caller outcomes. Applies even when nobody says mock or simulation, and a `postman/simulations/` directory in the repository is itself a reason to load this before changing code it covers. To give a frontend or another team a stand-in for an API, use api-mocking. Covers `postman simulation`.",
+      "description": "Use when you add or change code that calls other services and need to run it, test it, prove a fix or reproduce an upstream failure (timeouts, 5xx, 409, 429) end to end, locally or in CI, without the real services because they're unreachable, need credentials, cost money, have side effects or don't exist yet. Also use it to answer what happens to a request, or to the data it writes, when a service it calls goes down, is slow or returns errors (\"what happens to a booking if the email service is down?\"). Runs services, frontends, tests or demos against stand-ins for their HTTP dependencies, served as one environment locally or at a deployed URL. Applies even when nobody says mock or simulation; a `postman/simulations/` directory is itself a reason to load it. To give a frontend or another team a stand-in for an API, use api-mocking. Covers `postman simulation`.",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/api-simulation/SKILL.md",
-          "bytes": 12891,
-          "sha256": "59fe5420433120baf84078151ff56ebb3964952ec0847f14ee74386acbf7e958"
+          "bytes": 12782,
+          "sha256": "a731b0933c66659deba5551e2c4bb495008a3593e4b1facf9e3bc970b29d904a"
         },
         {
           "target": "reference/context_file.md",
@@ -119,26 +119,26 @@
     {
       "name": "api-testing",
       "plugin": "postman",
-      "description": "Use when testing an endpoint, running collection assertions, or checking real application traffic against an API contract. Reuses saved requests and reports what live, mocked, or captured-traffic results actually establish. Use for requests such as \"test this endpoint\".",
+      "description": "Use when testing an endpoint with real HTTP requests, running collection assertions, or checking real application traffic against an API contract. Not for unit tests of internal functions. Reuses saved requests and reports what live, mocked, or captured-traffic results actually establish. Use for requests such as \"test this endpoint\".",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/api-testing/SKILL.md",
-          "bytes": 3404,
-          "sha256": "9ff9bda768a1d544dabbd4cbb0213f4eac0eb5638efbd55728a02224959a37dd"
+          "bytes": 3470,
+          "sha256": "09e4238f962138dc109497d889c55526d75f7ae67d6cb321571461c07c15820e"
         }
       ]
     },
     {
       "name": "application-testing",
       "plugin": "postman",
-      "description": "Sets up, runs, debugs, and interprets results from `postman application test` — the Postman layer that runs your Playwright tests, captures their network traffic, matches it against a collection contract, runs pm.test assertions, and publishes results to Application Inventory. Covers the Postman side of the integration only — not Playwright test authoring or Playwright failures unrelated to capture. Use when the user asks to \"set up application testing,\" \"test my application with Postman,\" \"connect my Playwright tests to Postman,\" \"capture network traffic from Playwright,\" \"Playwright tests are running but nothing shows up in Postman,\" \"why isn't application testing capturing anything,\" \"exclude certain requests from capture,\" \"generate a collection from my app's traffic,\" \"set up application testing in CI,\" \"what API coverage do my e2e tests have,\" \"which APIs are my Playwright tests not hitting.\"",
+      "description": "Use when connecting Playwright end-to-end tests to Postman — capturing their network traffic, generating a collection from that traffic, matching it against a collection contract, measuring which APIs the tests cover, setting it up in CI, or debugging why capture shows nothing. Runs `postman application test`, which wraps Playwright, runs pm.test assertions on captured traffic and publishes results to Application Inventory. Covers the Postman side only, not Playwright test authoring or Playwright failures unrelated to capture. Use for requests such as \"connect my Playwright tests to Postman\" or \"which APIs are my e2e tests not hitting\".",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/application-testing/SKILL.md",
-          "bytes": 11584,
-          "sha256": "7188c4b5811908f3f4560bcb78710261171fb66e66050d0b0a4bc76ee5001b1f"
+          "bytes": 11315,
+          "sha256": "b56071fa141a749339494cbb272f45b6861bed1025bc9a19f6ab026d751258d6"
         }
       ]
     },
@@ -441,13 +441,13 @@
     {
       "name": "webhook-testing",
       "plugin": "postman",
-      "description": "Capture, forward to localhost, replay, and validate webhook deliveries using a reusable public URL. Keep sender configuration across debugging sessions and record arrivals even while local forwarding is stopped, helping distinguish delivery failures from local connectivity issues. Use for implementing or debugging incoming handlers and testing webhooks an API sends, whether or not Postman is mentioned. Example requests include \"get payment events to localhost,\" \"inspect a webhook delivery,\" and \"replay an event after a fix\"; these illustrate intent, not an exhaustive list or exact phrases to match.",
+      "description": "Use when writing, debugging or testing code that receives HTTP callbacks (webhooks) from another system, or testing webhooks your API sends, whether or not Postman is mentioned. Gives a reusable public URL that captures deliveries, forwards them to localhost and replays them, keeps sender configuration across sessions, and records arrivals even while forwarding is stopped, so delivery failures can be told apart from local connectivity problems. Use for requests such as \"get payment events to localhost\" or \"replay an event after a fix\".",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/webhook-testing/SKILL.md",
-          "bytes": 6201,
-          "sha256": "fab800cc329c8e590aaee83cdd76f4bfadd495489dfb0ca0bc31f808e9a0bd24"
+          "bytes": 6137,
+          "sha256": "6e37a4bf4d967d910bc90eca76c12383a20070f6967feae5d7847bddd330ae86"
         },
         {
           "target": "reference/forwarding.md",

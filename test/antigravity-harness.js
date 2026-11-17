@@ -35,7 +35,7 @@ try {
     const rule = fs.readFileSync(path.join(installed.path, 'rules', 'GEMINI.md'), 'utf8'),
         server = readJson(path.join(installed.path, 'mcp_config.json')).mcpServers.postman;
 
-    assert.match(rule, /<EXTREMELY_IMPORTANT>\s*You have the Postman plugin/, 'the installed rules/GEMINI.md does not carry the mandate');
+    assert.match(rule, /^You have the Postman plugin/, 'the installed rules/GEMINI.md does not carry the session-start note');
     assert.equal(rule, mandate.replace(/`postman:([a-z0-9-]+)`/g, '`$1`'), 'the installed rules/GEMINI.md is not the shared mandate with bare skill names');
     assert.equal(server.serverUrl, 'https://mcp.postman.com/mcp', 'the installed MCP server is not Postman\'s, under the `serverUrl` key agy reads');
     assert.deepEqual(server.headers, headers, 'the installed MCP server lost this route\'s headers');

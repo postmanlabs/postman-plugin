@@ -12,7 +12,7 @@ const NAME = '@postman/postman-plugin',
     VERSION_PATTERN = /^[0-9]+\.[0-9]+\.[0-9]+(-([A-Za-z0-9-]+)[A-Za-z0-9.-]*)?$/,
     SEMVER = 'semver@7.8.5',
     // Everything the tarball ships or builds from; a change elsewhere reaches no user.
-    SHIPPED = ['installer', 'skills', 'hooks/session-start-context.md', 'mcp.pi.json', 'README.md', 'LICENSE'],
+    SHIPPED = ['installer', 'skills', 'hooks/session-start-context.md', 'hooks/session-start-postman-dir.md', 'mcp.pi.json', 'README.md', 'LICENSE'],
     USAGE = 'usage: release.mjs status | suggest <rc|latest> [patch|minor|major] | next-rc | check <version> [commit]' +
         ' | bump <version> | smoke <commit> [--minutes N] | watch <version> [--minutes N] [--new-run] | verify <version>',
     root = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim();

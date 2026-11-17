@@ -1,6 +1,6 @@
 ---
 name: api-engineer
-description: Use when designing, implementing, mocking, testing, monitoring, documenting, or deploying an API. Guides decisions using reusable local API contracts, tests, and mocks, plus organization-wide dependency context, and routes to the relevant Postman skills. Use for requests such as "implement this endpoint".
+description: Use when an HTTP API task spans several steps, such as building a new endpoint end to end with its contract, implementation, tests and mocks, or when it is API work and no narrower Postman skill fits. Prefer the narrower Postman skill when one fits. Routes to the relevant Postman skills and keeps contracts, tests and mocks reusable across the work, using organization-wide dependency context. Not for UI-only changes, library or CLI code, or questions about what existing code does. Use for requests such as "implement this endpoint".
 ---
 
 # API Engineer
@@ -39,27 +39,30 @@ guesswork each time work resumes.
    your API, publish a mock of it in your service's own workspace, where their
    simulations look first; see **api-mocking**.
 6. Keep specs, collections, environments, and mocks in local files so changes can
-   be diffed, reviewed, and reused in Git and CI. `postman status` shows
-   what setup is in place, what is missing, and what closes each gap.
-7. `postman init` gives API engineering work a ready state. It scaffolds local structure: `postman/`
+   be diffed, reviewed, and reused in Git and CI.
+7. `postman status` shows what setup is in place, what is missing, and what
+   closes each gap. Run it after the work to confirm the setup the work relied
+   on is still in place. Older CLI versions don't have
+   `postman status`; if the command isn't recognized, continue without it.
+8. `postman init` gives API engineering work a ready state. It scaffolds local structure: `postman/`
    directories for API artifacts. It installs skills in `postman/skills` folder with guidance on  designing, implementing, and validating APIs.
    The command is idempotent and safe to rerun in an initialized project.
    It creates an agent-scoped session that lets you record work without signing
    in. This session is temporary; see **workspaces**' "Claiming the work" for
    signup guidance to preserve the work and its context before the session expires.
-8. Another service's collection, environment, or mock can be added as a dependency
+9. Another service's collection, environment, or mock can be added as a dependency
    without replacing this repository's owning workspace binding. Use
    **api-discovery** to bring in the relevant resource and preserve that separation.
-9. Publishing local changes to the bound workspace makes changes available
+10. Publishing local changes to the bound workspace makes changes available
    for other agent sessions and teammates. Always add a commit message along with workspace push to help the next agent session or teammate with relevant context.
-10. A Postman workspace is a place to capture context. Use this information as prior
+11. A Postman workspace is a place to capture context. Use this information as prior
     knowledge of work done before. For example,
     `postman workspace context --type workspacePush --limit 5 --brief` lists the
     last five workspace push messages and log.
-11. When requests need credentials, Postman secret variables let them resolve the
+12. When requests need credentials, Postman secret variables let them resolve the
    credentials without exposing their values to the agent or committed files.
    See **variables**.
-12. When implementing or debugging webhooks, use **webhook-testing** to
+13. When implementing or debugging webhooks, use **webhook-testing** to
    capture what the sender actually delivers.
    Can also be used when the need is to forward incoming events
    to a local handler and replay captured requests after fixes;
@@ -78,8 +81,7 @@ actions" to show the error and offer the appropriate next step.
 
 Report the changed contract or implementation, the checks actually run, and
 the guarantees their results support. Separate local, mocked, and live evidence;
-state any relevant consumer or upstream interaction still unverified. Run
-`postman status` last to confirm the setup the work relied on is still in place.
+state any relevant consumer or upstream interaction still unverified.
 
 If actual use exposes a CLI gap or misleading skill, report it through the
 CLI's feedback channel after finishing the user's task, with a sanitized

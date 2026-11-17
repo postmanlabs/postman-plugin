@@ -75,7 +75,7 @@ export function skillExcerpt (skill, root = repoRoot) {
 
 /** The entry skill exactly as the mandate spells it, so a name the agent can't resolve fails later. */
 export function mandatedSkill (text) {
-    return text.match(/load the `([^`]+)` skill/)?.[1] ?? 'mandate-not-found';
+    return text.match(new RegExp(`\`((?:postman:)?${ENTRY_SKILL})\``))?.[1] ?? 'mandate-not-found';
 }
 
 /**
@@ -157,14 +157,27 @@ export function assertMcpHeaders (agent, mcpRequests, headers) {
 
 /** `postman:` names for Claude Code, Codex and Kimi Code; bare names for every agent that doesn't namespace skills. */
 export function assertMandate (agent, text, { namespaced }) {
-    assert.match(text, /<EXTREMELY_IMPORTANT>\s*You have the Postman plugin/, `the session-start mandate is not in what ${agent} sent the model`);
+    assert.match(text, /You have (the )?Postman plugin/, `the session-start mandate is not in what ${agent} sent the model`);
 
     if (namespaced) {
-        assert.match(text, /load the `postman:api-engineer` skill/, `${agent} got the mandate without its postman: skill names`);
+        assert.match(text, /`postman:api-engineer`/, `${agent} got the mandate without its postman: skill names`);
     }
     else {
         assert.doesNotMatch(text, /`postman:[a-z0-9-]+`/, `the mandate still names skills as \`postman:<skill>\`, which ${agent} cannot resolve`);
     }
+}
+
+/**
+ * A project the hook routes start their session in: it has a postman/ directory, so the hook sends
+ * hooks/session-start-postman-dir.md. installer/test/session-start-hook.test.js covers a project without one.
+ */
+export function addPostmanDir (project) {
+    fs.mkdirSync(path.join(project, 'postman'), { recursive: true });
+}
+
+/** The sentence only the hook's postman/ mandate has. */
+export function assertRepoParagraph (agent, text) {
+    assert.match(text, /This repository has a postman\/ directory/, `the postman/ mandate is not what ${agent} sent the model`);
 }
 
 /** `listing(skill)` matches the agent's own skill-list entry, which the mandate's backticked names never do. */

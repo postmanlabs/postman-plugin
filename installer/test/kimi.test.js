@@ -76,7 +76,7 @@ test('remove is a manual step, since Kimi has no shell command for it', async ()
 
 test('the Kimi manifest hands Kimi the mandate, naming skills as 2.3.0 lists them and as earlier releases do', () => {
     const { systemPromptPath } = JSON.parse(fs.readFileSync(path.join(repoRoot, '.kimi-plugin', 'plugin.json'), 'utf8')),
-        [mandate] = fs.readFileSync(path.join(repoRoot, 'hooks', 'session-start-context.md'), 'utf8').split('</EXTREMELY_IMPORTANT>');
+        mandate = fs.readFileSync(path.join(repoRoot, 'hooks', 'session-start-context.md'), 'utf8');
 
     // Kimi ignores a path that does not start with `./`.
     assert.match(systemPromptPath, /^\.\//);
@@ -85,7 +85,7 @@ test('the Kimi manifest hands Kimi the mandate, naming skills as 2.3.0 lists the
 
     assert.ok(kimiMandate.startsWith(mandate), `${systemPromptPath} is not the shared mandate with its \`postman:\` names`);
     // A Windows checkout with core.autocrlf gives both files CRLF.
-    assert.match(kimiMandate.slice(mandate.length), /^\r?\nIf your skill listing names these skills without the `postman:` prefix, drop the prefix when you load one\.\r?\n<\/EXTREMELY_IMPORTANT>\r?\n$/);
+    assert.match(kimiMandate.slice(mandate.length), /^If your skill listing names these skills without the `postman:` prefix, drop the prefix when you load one\.\r?\n$/);
 });
 
 test('the Kimi mandate keeps the shared mandate\'s line endings when it is built from a CRLF checkout', (t) => {

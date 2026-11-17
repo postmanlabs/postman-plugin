@@ -8,10 +8,11 @@
  * what they should hash to. This script derives that index from the files
  * themselves so the two can never disagree.
  *
- * It also writes the session-start mandate as the routes that never run
- * `hooks/` read it: `.kimi-plugin/session-start-context.md` for Kimi, which
- * shows the model no hook output, and `rules/GEMINI.md` for Antigravity, which
- * has no session-start hook and loads that file as an always-on rule. Kimi's
+ * It also copies `hooks/session-start-context.md`, the session-start note a
+ * project without postman/ gets, to where the routes that never run `hooks/`
+ * read it: `.kimi-plugin/session-start-context.md` for Kimi, which shows the
+ * model no hook output, and `rules/GEMINI.md` for Antigravity, which has no
+ * session-start hook and loads that file as an always-on rule. Kimi's
  * keeps the `postman:` names and says to drop the prefix where Kimi lists skills
  * bare; Antigravity's names skills bare.
  *
@@ -41,7 +42,7 @@ const ROOT = path.join(__dirname, '..'),
     // What agent-plugin/ copies from the root, so a file is generated if, and only if, it is under one of these.
     AGENT_PLUGIN_SKILLS = path.join(AGENT_PLUGIN, 'skills'),
     AGENT_PLUGIN_HOOKS = path.join(AGENT_PLUGIN, 'hooks'),
-    AGENT_PLUGIN_HOOK_SCRIPTS = ['session-start', 'session-start.cmd', 'session-start-context.md'],
+    AGENT_PLUGIN_HOOK_SCRIPTS = ['session-start', 'session-start.cmd', 'session-start-context.md', 'session-start-postman-dir.md'],
     // Copilot CLI reads an Agent Plugins plugin's hooks only from its namespace directory.
     COPILOT_DIR = path.join(AGENT_PLUGIN, 'com.github.copilot'),
     COPILOT_HOOKS = path.join(COPILOT_DIR, 'hooks', 'hooks.json'),
@@ -191,14 +192,9 @@ function bareMandate () {
 function kimiMandate () {
     const mandate = fs.readFileSync(MANDATE, 'utf8'),
         // A Windows checkout with core.autocrlf gives the mandate CRLF, and `--check` compares bytes.
-        eol = mandate.includes('\r\n') ? '\r\n' : '\n',
-        close = '</EXTREMELY_IMPORTANT>';
+        eol = mandate.includes('\r\n') ? '\r\n' : '\n';
 
-    if (!mandate.includes(close)) {
-        throw new Error(`${path.relative(ROOT, MANDATE)}: no ${close} to put Kimi's naming note before`);
-    }
-
-    return mandate.replace(close, `${eol}If your skill listing names these skills without the \`postman:\` prefix, drop the prefix when you load one.${eol}${close}`);
+    return `${mandate}If your skill listing names these skills without the \`postman:\` prefix, drop the prefix when you load one.${eol}`;
 }
 
 /**

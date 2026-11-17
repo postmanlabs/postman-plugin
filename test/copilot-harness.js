@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {
-    ENTRY_SKILL, assertMandate, assertMcpHeaders, assertSkillsListed, chatCompletion, copyCheckout, mandatedSkill,
+    ENTRY_SKILL, addPostmanDir, assertMandate, assertMcpHeaders, assertRepoParagraph, assertSkillsListed, chatCompletion, copyCheckout, mandatedSkill,
     pointMcpAt, readJson, repoRoot, run, runAgent, skillExcerpt, skills, startStandIn, workspace
 } from './lib/harness.js';
 
@@ -54,6 +54,7 @@ let standIn;
 try {
     standIn = await startStandIn(answer);
     copyCheckout(marketplace);
+    addPostmanDir(project);
     if (legacy) {
         fs.rmSync(path.join(marketplace, COPILOT_MARKETPLACE));
     }
@@ -92,6 +93,7 @@ try {
     assertSkillsListed('Copilot CLI', skillList, (skill) => new RegExp(`<name>${skill}</name>`));
     try {
         assertMandate('Copilot CLI', first, { namespaced: false });
+        assertRepoParagraph('Copilot CLI', first);
     }
     catch (error) {
         error.message += `\nhook events:\n${hookEvents() || 'none'}`;

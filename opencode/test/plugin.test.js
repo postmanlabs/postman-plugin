@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import PostmanPluginDefinition, {
-    applyPostmanConfig, assetRoot, mcpConfigFile, PostmanPlugin, sessionContextFile,
-    skillsDirectory, toOpenCodeSessionContext
+    applyPostmanConfig, assetRoot, mcpConfigFile, PostmanPlugin, postmanDirContextFile, sessionContextFile,
+    sessionContextFor, skillsDirectory, toOpenCodeSessionContext
 } from '../dist/index.js';
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'),
@@ -29,7 +30,7 @@ test('the repo root is installable with `opencode plugin add github:...` and ver
     assert.equal(root.scripts, undefined, 'npm runs prepare/install scripts of a Git dependency in every user\'s install');
     assert.equal(root.dependencies, undefined);
 
-    for (const file of [path.posix.normalize(root.main), 'opencode/package.json', 'skills', 'hooks/session-start-context.md', 'manifest.json', 'mcp.opencode.json']) {
+    for (const file of [path.posix.normalize(root.main), 'opencode/package.json', 'skills', 'hooks/session-start-context.md', 'hooks/session-start-postman-dir.md', 'manifest.json', 'mcp.opencode.json']) {
         assert.ok(fs.existsSync(path.join(assetRoot, file)), `${file} does not exist`);
         assert.ok(root.files.some((entry) => file === entry.replace(/\/$/, '') || file.startsWith(entry)), `the installed package leaves out ${file}, which the entrypoint reads`);
     }
@@ -69,9 +70,22 @@ test('adapts the shared session mandate to native OpenCode skill ids', () => {
 
     assert.match(canonical, /postman:api-engineer/);
     assert.doesNotMatch(adapted, /postman:/);
-    assert.match(adapted, /`api-engineer` skill/);
-    assert.match(adapted, /`api-testing`/);
-    assert.match(adapted, /User instructions .* take precedence/s);
+    assert.match(adapted, /`api-engineer` is the default entry point/);
+});
+
+test('picks the postman/ mandate where the directory or worktree has postman/, and the light note elsewhere', () => {
+    const [none, repo, upper] = ['none', 'repo', 'upper'].map((name) => fs.mkdtempSync(path.join(os.tmpdir(), `postman-opencode-${name}-`))),
+        light = toOpenCodeSessionContext(fs.readFileSync(sessionContextFile, 'utf8')),
+        postmanDir = toOpenCodeSessionContext(fs.readFileSync(postmanDirContextFile, 'utf8'));
+
+    fs.mkdirSync(path.join(repo, 'postman'));
+    fs.mkdirSync(path.join(upper, 'Postman'));
+
+    assert.equal(sessionContextFor([none, undefined]), light);
+    assert.equal(sessionContextFor([repo, undefined]), postmanDir);
+    assert.equal(sessionContextFor([none, repo]), postmanDir);
+    assert.equal(sessionContextFor([upper, undefined]), light);
+    assert.match(postmanDir, /`api-engineer` is the default entry point/);
 });
 
 test('rewrites only backticked skill references', () => {
@@ -91,7 +105,7 @@ test('exposes config and system hooks through the public plugin export', async (
     assert.deepEqual(config.skills.paths, [skillsDirectory]);
     assert.equal(output.system[0], 'existing system instruction');
     assert.equal(output.system.length, 2);
-    assert.match(output.system[1], /`api-engineer` skill/);
+    assert.match(output.system[1], /`api-engineer` is the default entry point/);
 });
 
 test('exposes a default v2 definition while retaining the v1 server entrypoint', async () => {
@@ -150,7 +164,7 @@ test('exposes a default v2 definition while retaining the v1 server entrypoint',
 
     assert.equal(event.system.length, 1);
     assert.equal(event.system[0].type, 'text');
-    assert.match(event.system[0].text, /`api-engineer` skill/);
+    assert.match(event.system[0].text, /`api-engineer` is the default entry point/);
 });
 
 test('manifest.json lists api-engineer first, the skill postman init names in AGENTS.md', () => {

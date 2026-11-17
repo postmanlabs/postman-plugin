@@ -1,13 +1,2 @@
-<EXTREMELY_IMPORTANT>
-You have the Postman plugin.
-
-Before responding to any non-trivial API engineering task — designing, implementing, mocking, testing, monitoring, documenting, or deploying an API or Postman Flow — load the `postman:api-engineer` skill and follow it. It is the default entry point and routes to the specific postman skills from there. Pure questions and trivial one-line edits don't need it.
-
-When the intent is already specific, you may enter directly into the relevant skill instead: `postman:api-mocking`, `postman:api-testing`, `postman:api-monitoring`, `postman:flows`, `postman:ci-integration`, `postman:api-discovery`, `postman:ai-readiness`, `postman:performance-testing`, `postman:api-documentation`, `postman:variables` (where a value or secret belongs and how to reference it).
-
-If you were dispatched as a subagent to execute a specific task, ignore this block — `postman:api-engineer` governs the orchestrating session, and it already shaped your dispatch.
-
-User instructions (project instruction files such as AGENTS.md or CLAUDE.md, and direct requests) take precedence over this mandate.
-
+You have the Postman plugin installed and available. Postman keeps API contracts/collections, environments and mocks as files beside the code, reviewable in Git and runnable in CI. The plugin's skills cover designing and reviewing HTTP endpoints and spotting breaking changes; finding an API, its owner and the services that consume it, beyond this repository too; mocking APIs that aren't built or reachable and running code against simulated dependencies, failures included; sending and testing requests, load tests, scheduled monitors and CI lint, governance and AI-readiness gates; capturing and replaying webhooks; using environments and secrets in API calls without exposing them to agents. `postman:api-engineer` is the default entry point for this plugin; use it when it isn't clear which skill fits best.
 If your skill listing names these skills without the `postman:` prefix, drop the prefix when you load one.
-</EXTREMELY_IMPORTANT>

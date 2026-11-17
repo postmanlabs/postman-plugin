@@ -8,7 +8,7 @@ on:
   push:
     branches: ['main']
     # release.mjs's SHIPPED list.
-    paths: ['installer/**', 'skills/**', 'hooks/session-start-context.md', 'mcp.pi.json', 'README.md', 'LICENSE']
+    paths: ['installer/**', 'skills/**', 'hooks/session-start-context.md', 'hooks/session-start-postman-dir.md', 'mcp.pi.json', 'README.md', 'LICENSE']
 
 permissions:
   contents: write

@@ -80,7 +80,7 @@ try {
     assert.equal(turns.length, 1, `codex called the model ${turns.length} times, not once\n${output}`);
     assert.deepEqual(hookRuns, [], `the Codex route must declare no hooks, but Codex ran ${hookRuns.join('; ')}`);
     assertSkillsListed('Codex', first, (skill) => new RegExp(`^- postman:${skill}: `, 'm'));
-    assert.doesNotMatch(first, /<EXTREMELY_IMPORTANT>/, 'the session-start mandate reached Codex, so a hook ran');
+    assert.doesNotMatch(first, /You have (the )?Postman plugin/, 'the session-start mandate reached Codex, so a hook ran');
     assertMcpHeaders('Codex', standIn.mcpRequests, headers);
 
     console.log(`${run(codex, ['--version'], { env }).trim()} loaded ${skills.length} skills, no hook and the postman MCP server from ${PLUGIN_ID}`);

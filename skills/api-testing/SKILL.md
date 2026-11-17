@@ -1,6 +1,6 @@
 ---
 name: api-testing
-description: Use when testing an endpoint, running collection assertions, or checking real application traffic against an API contract. Reuses saved requests and reports what live, mocked, or captured-traffic results actually establish. Use for requests such as "test this endpoint".
+description: Use when testing an endpoint with real HTTP requests, running collection assertions, or checking real application traffic against an API contract. Not for unit tests of internal functions. Reuses saved requests and reports what live, mocked, or captured-traffic results actually establish. Use for requests such as "test this endpoint".
 ---
 
 # API Testing
