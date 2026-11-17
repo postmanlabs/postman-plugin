@@ -68,13 +68,13 @@
     {
       "name": "api-mocking",
       "plugin": "postman",
-      "description": "Use when something needs an API that isn't built or reachable yet (a frontend, client or demo), when other teams should build against your API before it ships, or when asked to mock an API or fake a backend. Finds, builds, runs and publishes a stand-in for one API: a published mock when its owner or a verified publisher has one, otherwise one built from its spec or collection that behaves like the real API, stateful when callers write then read. To run and test your own code against the services it calls, use api-simulation. Covers `postman mock` and `postman dependency add mock`.",
+      "description": "Use when something needs an API that isn't built or reachable yet (a frontend, client or demo), when other teams should build against your API before it ships, or when asked to mock an API or fake a backend. Finds, builds, runs and publishes a stand-in for one API — a published mock when its owner or a verified publisher has one, otherwise one built from its spec or collection that behaves like the real API, stateful when callers write then read. To run and test your own code against the services it calls, use api-simulation. Covers `postman mock` and `postman dependency add mock`.",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/api-mocking/SKILL.md",
-          "bytes": 7940,
-          "sha256": "2ba6d12d2bcc02239a223ddd4fc04268ad9c1de15ef415c4bdf9ccecfc4a231a"
+          "bytes": 7943,
+          "sha256": "be30e96e7b22eb860a19a629f8f1377ed51a9882adbc64ee6163b4080f61ed48"
         }
       ]
     },
@@ -132,13 +132,13 @@
     {
       "name": "application-testing",
       "plugin": "postman",
-      "description": "Use when connecting Playwright end-to-end tests to Postman: capturing their network traffic, generating a collection from that traffic, matching it against a collection contract, measuring which APIs the tests cover, setting it up in CI, or debugging why capture shows nothing. Runs `postman application test`, which wraps Playwright, runs pm.test assertions on captured traffic and publishes results to Application Inventory. Covers the Postman side only, not Playwright test authoring or Playwright failures unrelated to capture. Use for requests such as \"connect my Playwright tests to Postman\" or \"which APIs are my e2e tests not hitting\".",
+      "description": "Use when connecting Playwright end-to-end tests to Postman — capturing their network traffic, generating a collection from that traffic, matching it against a collection contract, measuring which APIs the tests cover, setting it up in CI, or debugging why capture shows nothing. Runs `postman application test`, which wraps Playwright, runs pm.test assertions on captured traffic and publishes results to Application Inventory. Covers the Postman side only, not Playwright test authoring or Playwright failures unrelated to capture. Use for requests such as \"connect my Playwright tests to Postman\" or \"which APIs are my e2e tests not hitting\".",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/application-testing/SKILL.md",
-          "bytes": 11312,
-          "sha256": "ede2b0dd7a4d088ad1b69b8a51ab78148739d4f41f21fe5b2c62d838292230a7"
+          "bytes": 11315,
+          "sha256": "b56071fa141a749339494cbb272f45b6861bed1025bc9a19f6ab026d751258d6"
         }
       ]
     },

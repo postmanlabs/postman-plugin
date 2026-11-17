@@ -1,6 +1,6 @@
 ---
 name: application-testing
-description: Use when connecting Playwright end-to-end tests to Postman: capturing their network traffic, generating a collection from that traffic, matching it against a collection contract, measuring which APIs the tests cover, setting it up in CI, or debugging why capture shows nothing. Runs `postman application test`, which wraps Playwright, runs pm.test assertions on captured traffic and publishes results to Application Inventory. Covers the Postman side only, not Playwright test authoring or Playwright failures unrelated to capture. Use for requests such as "connect my Playwright tests to Postman" or "which APIs are my e2e tests not hitting".
+description: Use when connecting Playwright end-to-end tests to Postman — capturing their network traffic, generating a collection from that traffic, matching it against a collection contract, measuring which APIs the tests cover, setting it up in CI, or debugging why capture shows nothing. Runs `postman application test`, which wraps Playwright, runs pm.test assertions on captured traffic and publishes results to Application Inventory. Covers the Postman side only, not Playwright test authoring or Playwright failures unrelated to capture. Use for requests such as "connect my Playwright tests to Postman" or "which APIs are my e2e tests not hitting".
 ---
 
 # Application Test
