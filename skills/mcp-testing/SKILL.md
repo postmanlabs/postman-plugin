@@ -21,18 +21,17 @@ the output the tool just returned only proves the server agrees with itself.
 
 ## Results that mislead
 
-- **Exit 2 from `tools call`**: the CLI rejected the arguments and sent
-  nothing. It checks only required properties, `enum` and `const` values and
-  nulls, so an argument that breaks another rule, such as `minLength`, is sent.
-  To test how the server handles bad input, save the call as a request
-  message, which is sent as written.
+- **`tools call` checks some schema rules before sending**: it blocks a call
+  that breaks one of them (exit 2) and sends one that breaks another. To test
+  how the server handles bad input, save the call as a request message, which
+  is sent as written.
 - **Exit 4 from `inspect`**: one list method failed, often an optional one such
   as `resources/templates/list`. The rest of the server may be fine.
 - **Sampling and elicitation** are declined, because a one-shot client cannot
   answer them. A tool that needs them fails here, not in an agent's client.
-- **The stdio command is split at every space**, so no argument can contain
-  one, and a script given by absolute path cannot take arguments; use a
-  relative path.
+- **The stdio command is split at every space** (CLI 1.90.0), so no
+  argument can contain one, and a script given by absolute path cannot take
+  arguments; use a relative path.
 
 ## Script hooks
 
@@ -56,7 +55,9 @@ job belongs:
 A collection or folder definition holds the same hooks as `mcp:<event>`, and
 they run for every MCP request under it. That suits auth in
 `mcp:beforeConnect`. A server check or cleanup placed there repeats on every
-request, so give those their own request.
+request, so give those their own request. A run that stops early, as with
+`--bail`, skips a cleanup request; when leftover data matters, clean up from
+the CI script after the run.
 
 ## Chain requests into workflows
 
@@ -68,13 +69,15 @@ An `afterResponse` script stores a value with
 `{{todoId}}`. The values a run captures replace hard-coded fixtures. CI then
 repeats the whole flow unattended, and nobody has to rebuild it in test code.
 
-- A variable is substituted as a string, even inside the message JSON. An
+- A variable is substituted as a string, even inside the message JSON (CLI
+  1.90.0). An
   unquoted `{{id}}` fails the JSON check, so a numeric argument cannot be
   chained yet.
 - Each MCP request opens a new session, so the server has to keep the state the
-  flow builds between sessions, as a long-running HTTP server does. A stdio
-  request also starts a new server process, which loses that state; run the
-  flow against an HTTP instance, or test it in the server's own tests.
+  flow builds between sessions. A stdio request also starts a new server
+  process, which loses anything held in memory. For such a server, run the
+  flow against a long-running HTTP instance, or test it in the server's own
+  tests.
 
 ## Credentials
 
@@ -86,5 +89,7 @@ the CI secret store, set as the request's auth through a variable
 ## Verification
 
 Keep three results apart: the server answered, the tool succeeded (no
-`isError`), and the assertions passed. Exit 1 covers both an `isError` result
-and a failed test.
+`isError`), and the assertions passed. `postman mcp` exits 1 for an `isError`
+result, but `collection run` does not: a tool error there fails the run only
+when a test checks `isError`, so every success check in a saved request
+asserts it.
