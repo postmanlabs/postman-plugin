@@ -47,8 +47,14 @@ checks, without regenerating a single large collection export.
 Run `postman collection lint <collection-path>` for collection changes and
 `postman environment lint <path>` for environment changes. Review warnings as
 well as errors: an ignored field can change behavior even when parsing succeeds.
+From Postman CLI 1.87.0, `collection lint` reports an unrecognised field as a
+warning (`FMT206` in a request, `FMT208` in `definition.yaml`); older versions
+drop it without a message.
 Use `postman workspace lint` when checking relationships across entities or
-workspace manifest mappings.
+workspace manifest mappings. It lints every entity in the workspace and
+`.postman/resources.yaml`, so an error in any one of them fails the whole run,
+and it needs that manifest; `--fix` can rewrite files outside the one you are
+editing, so review its diff.
 
 Inspect the diff for unintended scope changes. When execution is appropriate,
 run the changed request through its collection to check inherited context.

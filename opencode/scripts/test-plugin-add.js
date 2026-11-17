@@ -13,7 +13,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
     ENTRY_SKILL, assertMandate, assertMcpHeaders, chatCompletion, commit, copyCheckout,
     mandatedSkill, pointMcpAt, readJson, run, runAgent, skillExcerpt, skills, startStandIn, workspace
-} from '../../scripts/lib/harness.js';
+} from '../../test/lib/harness.js';
 import { resolveOpenCodeExecutable } from './lib/opencode-executable.js';
 
 const PUBLISHED = { github: 'github:postmanlabs/postman-plugin' },

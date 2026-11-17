@@ -14,8 +14,8 @@ const kimi = process.env.KIMI_BIN || 'kimi',
     { root, home, project, remove } = workspace('kimi'),
     marketplace = path.join(root, 'postman-plugin'),
     kimiHome = path.join(home, '.kimi-code'),
-    // The `plugins` release the installer pins, so this installs the way `npx @postman/postman-plugin` does.
-    [, pluginsCli] = fs.readFileSync(path.join(repoRoot, 'installer', 'src', 'source.ts'), 'utf8').match(/PLUGINS_CLI = '([^']+)'/),
+    installation = readJson(path.join(repoRoot, 'installer', 'src', 'agent-commands.json'))
+        .find((agent) => agent.id === 'kimi'),
     { headers } = readJson(path.join(repoRoot, '.kimi-plugin', 'plugin.json')).mcpServers.postman,
     env = Object.fromEntries(Object.entries(process.env).filter(([name]) => !/^KIMI_/.test(name))),
     slashes = (text) => text.replace(/\\/g, '/');
@@ -60,7 +60,12 @@ try {
         DO_NOT_TRACK: '1'
     });
 
-    run('npx', ['-y', `--package=${pluginsCli}`, 'plugins', 'add', marketplace, '--target', 'kimi', '--yes'], { env, cwd: project });
+    const installArguments = [...installation.commands.install],
+        sourceIndex = installArguments.indexOf('add') + 1;
+
+    assert.ok(sourceIndex > 0, 'Kimi installation must use a plugins add command');
+    installArguments[sourceIndex] = marketplace;
+    run(installation.installExecutable, installArguments, { env, cwd: project });
 
     const record = readJson(path.join(kimiHome, 'plugins', 'installed.json')).plugins.find(({ id }) => id === 'postman');
 

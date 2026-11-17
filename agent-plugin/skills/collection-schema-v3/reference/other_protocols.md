@@ -29,6 +29,9 @@ There is **no `queryParams`** — put query-string parameters in the `url`.
 
 `settings`: `disabledSystemHeaders`.
 
+`scripts` entries have `type` `beforeQuery` or `afterResponse` on a GraphQL
+request.
+
 `schema` is one shape chosen by `source`:
 
 ```yaml
@@ -62,6 +65,9 @@ proto definition), `message` (`{content}`), `metadata` (per-call headers as
 
 `settings`: `secureConnection`, `strictSSL`, `serverNameOverride`,
 `maxResponseMessageSize`, `includeDefaultFields`, `connectionTimeout`.
+
+`scripts` entries have `type` `beforeInvoke`, `onIncomingMessage` (runs for each
+message the server sends) or `afterResponse` on a gRPC request.
 
 ### `websocket-request`
 

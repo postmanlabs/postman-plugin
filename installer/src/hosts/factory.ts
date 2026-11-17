@@ -1,7 +1,10 @@
-import { GIT_URL, REPO, isSameRepo, redact } from '../source.js';
+import { commandsFor } from '../agent-commands.js';
+import { REPO, isSameRepo, redact } from '../source.js';
 import type { System } from '../system.js';
 import { blocked, guard, mustProbeText, mustRun } from './shared.js';
 import { type Host, result } from './types.js';
+
+const COMMANDS = commandsFor('factory');
 
 const MARKETPLACE = 'postman-plugin',
     PLUGIN_ID = `postman@${MARKETPLACE}`,
@@ -82,10 +85,10 @@ async function listPlugins (system: System): Promise<string> {
 }
 
 async function refreshMarketplace (system: System): Promise<void> {
-    const source = marketplaceSource(await mustProbeText(system, 'droid', ['plugin', 'marketplace', 'list']));
+    const source = marketplaceSource(await mustProbeText(system, 'droid', COMMANDS.listMarketplaces));
 
     if (!source) {
-        await mustRun(system, 'droid', ['plugin', 'marketplace', 'add', GIT_URL]);
+        await mustRun(system, 'droid', COMMANDS.addMarketplace);
 
         return;
     }
@@ -94,7 +97,7 @@ async function refreshMarketplace (system: System): Promise<void> {
         blocked(`marketplace ${MARKETPLACE} is registered from ${redact(source)}, not ${REPO}`);
     }
 
-    await mustRun(system, 'droid', ['plugin', 'marketplace', 'update', MARKETPLACE]);
+    await mustRun(system, 'droid', COMMANDS.updateMarketplace);
 }
 
 /**
@@ -102,7 +105,7 @@ async function refreshMarketplace (system: System): Promise<void> {
  * while its plugins are installed, leaving them with nothing to update from, so this checks first.
  */
 async function removeMarketplace (system: System, wasInstalled: boolean): Promise<boolean> {
-    const source = marketplaceSource(await mustProbeText(system, 'droid', ['plugin', 'marketplace', 'list']));
+    const source = marketplaceSource(await mustProbeText(system, 'droid', COMMANDS.listMarketplaces));
 
     if (!source) {
         return false;
@@ -160,7 +163,7 @@ export const factory: Host = {
             const wasInstalled = hasInstalledPlugin(await listPlugins(system)),
                 verb = wasInstalled ? 'update' : 'install';
 
-            await mustRun(system, 'droid', ['plugin', verb, PLUGIN_ID, '--scope', SCOPE]);
+            await mustRun(system, 'droid', COMMANDS[verb]);
 
             return result('done', `${wasInstalled ? 'updated' : 'installed'} ${PLUGIN_ID}`, NEXT);
         });
@@ -171,7 +174,7 @@ export const factory: Host = {
             const wasInstalled = hasInstalledPlugin(await listPlugins(system));
 
             if (wasInstalled) {
-                await mustRun(system, 'droid', ['plugin', 'uninstall', PLUGIN_ID, '--scope', SCOPE]);
+                await mustRun(system, 'droid', COMMANDS.remove);
             }
 
             const removals = [

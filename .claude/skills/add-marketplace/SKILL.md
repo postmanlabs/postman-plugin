@@ -133,11 +133,11 @@ and the MCP server but nothing routes a session into them, so the plugin reads
 as if it were not installed.
 
 One shared file, same rule as `skills/`. There is no portable plugin-root
-variable and no portable shell, so the command names a script by path and
-passes Droid's root as an argument:
+variable and no portable shell, so the command names a script by path; the
+scripts tell Droid apart by its `DROID_PLUGIN_ROOT` environment variable:
 
 ```
-"${CLAUDE_PLUGIN_ROOT}/hooks/session-start" "${DROID_PLUGIN_ROOT}"
+"${CLAUDE_PLUGIN_ROOT}/hooks/session-start"
 ```
 
 `hooks/session-start` (POSIX `sh`) and `hooks/session-start.cmd` (cmd.exe, which

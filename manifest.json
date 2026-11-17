@@ -68,13 +68,13 @@
     {
       "name": "api-mocking",
       "plugin": "postman",
-      "description": "Finds, builds, runs and publishes a stand-in for one API — the owning team's published mock when there is one, otherwise one built from its spec or collection that behaves like the real API, stateful when callers write then read. Use when something needs an API that isn't built or reachable yet (a frontend, client or demo), when other teams should build against your API before it ships, or when asked to mock an API or fake a backend. To run and test your own code against the services it calls, use api-simulation. Covers `postman mock` and `postman dependency add mock`.",
+      "description": "Finds, builds, runs and publishes a stand-in for one API — a published mock when its owner or a verified publisher has one, otherwise one built from its spec or collection that behaves like the real API, stateful when callers write then read. Use when something needs an API that isn't built or reachable yet (a frontend, client or demo), when other teams should build against your API before it ships, or when asked to mock an API or fake a backend. To run and test your own code against the services it calls, use api-simulation. Covers `postman mock` and `postman dependency add mock`.",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/api-mocking/SKILL.md",
-          "bytes": 7318,
-          "sha256": "9a567c14a964b4122d98f728ada8bce169cdcab8be9e96d2cee905ecfa8e713c"
+          "bytes": 7943,
+          "sha256": "c1180d6db28e6010df78f32ae2ffabd972320944a356830440da35c9b8f75ba2"
         }
       ]
     },
@@ -176,8 +176,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/collection-schema-v3/SKILL.md",
-          "bytes": 3676,
-          "sha256": "0a9c241db87b59d43c9674c920d69b4e9530f61d39ee73ada84d44b48a5f6201"
+          "bytes": 4089,
+          "sha256": "0e4ae2c862c7f525404c35239008ccccea98e19bd07be4ac5939793f8769b540"
         },
         {
           "target": "reference/environment.md",
@@ -194,14 +194,14 @@
         {
           "target": "reference/http.md",
           "source": "skills/collection-schema-v3/reference/http.md",
-          "bytes": 9193,
-          "sha256": "8079ddfdb443d90bbed094e4d1719f3c5badd9bb5f8219fa5d7d1b4f8fea34c2"
+          "bytes": 9881,
+          "sha256": "d7225d2c6230e54085393c2d26cbc8e61c9552380562f0137f33f72b99ad7f2a"
         },
         {
           "target": "reference/other_protocols.md",
           "source": "skills/collection-schema-v3/reference/other_protocols.md",
-          "bytes": 7236,
-          "sha256": "9f9d6e8e3c5a5bdf0efcdbd6b5cca8c55e1fa637e89d42cf9e579276da5a0e9f"
+          "bytes": 7468,
+          "sha256": "a831ddd5ffd517dd2b29da2fb7f151d4dff7e26e42154537e762b8f2fad948df"
         }
       ]
     },
@@ -257,8 +257,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/performance-testing/SKILL.md",
-          "bytes": 4325,
-          "sha256": "3d80d9a6097e449be988951ac37b297c30b02c0bb98f69cd9edda01202dd1fc2"
+          "bytes": 5146,
+          "sha256": "9bb544fab3a1ceba9ff725b98b05ce90023b924a1e3323cbcd4ace674394d68b"
         },
         {
           "target": "references/gatling-import/README.md",
@@ -319,6 +319,42 @@
           "source": "skills/performance-testing/references/jmeter-import/script-translation.md",
           "bytes": 5709,
           "sha256": "0d3e4a91aabb136808c01d94fe8919d28286a3683d4a0b16ec5f2e1c413c81fc"
+        },
+        {
+          "target": "references/readyapi-import/README.md",
+          "source": "skills/performance-testing/references/readyapi-import/README.md",
+          "bytes": 8240,
+          "sha256": "2ba0f7fc3ed63cc359a29587c233125ce3f69120703a2715ad4a8aaed886ff56"
+        },
+        {
+          "target": "references/readyapi-import/import-report.md",
+          "source": "skills/performance-testing/references/readyapi-import/import-report.md",
+          "bytes": 1616,
+          "sha256": "b15dca0f05aa4e93a41e2c25eed72700eea9d7946493a1a27d2cc122b32752a0"
+        },
+        {
+          "target": "references/readyapi-import/loadtest-to-perf.md",
+          "source": "skills/performance-testing/references/readyapi-import/loadtest-to-perf.md",
+          "bytes": 5226,
+          "sha256": "60053ca80f1027d5920262928419666efa73f137202bf1b23814cc933b814160"
+        },
+        {
+          "target": "references/readyapi-import/mapping-table.md",
+          "source": "skills/performance-testing/references/readyapi-import/mapping-table.md",
+          "bytes": 8849,
+          "sha256": "c66c31533cd34b3ac3f45d38b01485ba482dfab87ded9a79a837cf188b733a7b"
+        },
+        {
+          "target": "references/readyapi-import/postman-perf-capabilities.md",
+          "source": "skills/performance-testing/references/readyapi-import/postman-perf-capabilities.md",
+          "bytes": 4179,
+          "sha256": "da9d7d05fe7dcf5df257fef2da430210b2386997b21267471c9449a5dd6a9442"
+        },
+        {
+          "target": "references/readyapi-import/script-translation.md",
+          "source": "skills/performance-testing/references/readyapi-import/script-translation.md",
+          "bytes": 6111,
+          "sha256": "1fb584828f4cdc6fdefc1aab2ad147cfb4a4de0e873bad0b921a0a412aec80c5"
         }
       ]
     },

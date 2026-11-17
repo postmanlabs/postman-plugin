@@ -43,7 +43,7 @@ jobs:
         env:
           EVENT: ${{ github.event_name }}
           # What a Windows leg runs or reads, short of skill content and the manifest of it.
-          CODE: '^(installer|opencode|scripts|hooks|\.github/workflows|\.[a-z]+-plugin)/|^mcp[^/]*\.json$|^\.gitattributes$'
+          CODE: '^(installer|opencode|scripts|test|hooks|\.github/workflows|\.[a-z]+-plugin)/|^mcp[^/]*\.json$|^\.gitattributes$'
         run: |
           linux='{"os":"ubuntu-latest","label":"Linux"}'
           windows='{"os":"windows-latest","label":"Windows"}'
@@ -162,7 +162,7 @@ jobs:
         run: npm install --no-save --prefix "$RUNNER_TEMP/postman" postman-cli@latest
 
       - name: The CLI installs and keeps current the skills this checkout serves
-        run: node scripts/postman-cli-harness.js
+        run: node test/postman-cli-harness.js
         env:
           POSTMAN_BIN: ${{ runner.temp }}/postman/node_modules/.bin/postman
 
@@ -317,7 +317,7 @@ jobs:
         run: npm install --no-save --prefix "$RUNNER_TEMP/droid" droid@0.231.0
 
       - name: Droid loads the skills, the mandate and the MCP server from the marketplace
-        run: node scripts/factory-harness.js
+        run: node test/factory-harness.js
         env:
           DROID_BIN: ${{ runner.temp }}/droid/node_modules/.bin/droid${{ runner.os == 'Windows' && '.cmd' || '' }}
 
@@ -347,7 +347,7 @@ jobs:
         run: npm install --no-save --prefix "$RUNNER_TEMP/claude" @anthropic-ai/claude-code@2.1.285
 
       - name: Claude Code loads the skills, the mandate and the MCP server from the marketplace
-        run: node scripts/claude-code-harness.js
+        run: node test/claude-code-harness.js
         env:
           CLAUDE_BIN: ${{ runner.temp }}/claude/node_modules/.bin/claude${{ runner.os == 'Windows' && '.cmd' || '' }}
 
@@ -377,7 +377,7 @@ jobs:
         run: npm install --no-save --prefix "$RUNNER_TEMP/codex" @openai/codex@0.159.0
 
       - name: Codex loads the skills, the mandate and the MCP server from the marketplace
-        run: node scripts/codex-harness.js
+        run: node test/codex-harness.js
         env:
           CODEX_BIN: ${{ runner.temp }}/codex/node_modules/.bin/codex${{ runner.os == 'Windows' && '.cmd' || '' }}
 
@@ -407,7 +407,7 @@ jobs:
         run: npm install --no-save --prefix "$RUNNER_TEMP/copilot" @github/copilot@1.0.98
 
       - name: Copilot CLI loads the skills, the mandate and the MCP server from agent-plugin/
-        run: node scripts/copilot-harness.js
+        run: node test/copilot-harness.js
         env:
           COPILOT_BIN: ${{ runner.temp }}/copilot/node_modules/.bin/copilot${{ runner.os == 'Windows' && '.cmd' || '' }}
 
@@ -463,7 +463,7 @@ jobs:
           "$HOME\.kimi-code\bin" >> $env:GITHUB_PATH
 
       - name: Kimi Code loads the skills, the mandate and the MCP server from the plugin
-        run: node scripts/kimi-harness.js
+        run: node test/kimi-harness.js
 
   # Antigravity's installer takes no version and agy updates itself, so this runs the latest. The
   # harness checks what agy registers from this checkout, not what reaches its model: signed out,
@@ -486,7 +486,7 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Antigravity registers the skills, the mandate rule and the MCP server from the plugin
-        run: node scripts/antigravity-harness.js
+        run: node test/antigravity-harness.js
 
   # The Cursor CLI talks only to Cursor's backend, so this harness runs on Cursor's model with a
   # Cursor API key, which a fork's pull request doesn't get. Cursor's installer takes no version.
@@ -529,7 +529,7 @@ jobs:
   #     #     "$env:LOCALAPPDATA\cursor-agent" >> $env:GITHUB_PATH
 
   #     - name: Cursor delivers the mandate, loads the skill it names and connects to the MCP server
-  #       run: node scripts/cursor-harness.js
+  #       run: node test/cursor-harness.js
   #       env:
   #         CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
 

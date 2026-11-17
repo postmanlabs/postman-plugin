@@ -50,7 +50,7 @@ for var in ${1+"$@"}; do
   check_resolves "$var"
 done
 
-# Droid fills in ${DROID_PLUGIN_ROOT} too, and its Skill tool rejects `postman:<skill>`.
+# Droid exports DROID_PLUGIN_ROOT to hooks, and its Skill tool rejects `postman:<skill>`.
 out=$(cd "$(mktemp -d)" && "${clear_env[@]}" CLAUDE_PLUGIN_ROOT="$repo" DROID_PLUGIN_ROOT="$repo" bash -c "$cmd" 2>&1) && rc=0 || rc=$?
 if [ "$rc" -eq 0 ] && [ -n "$out" ] && ! grep -q 'postman:' <<<"$out"; then
   echo "ok   \$DROID_PLUGIN_ROOT -> the mandate with bare skill names"

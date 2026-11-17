@@ -15,7 +15,9 @@
 // unverified and counted as 'version'. A route owns its directory, its MCP config
 // and every other file its manifest names outside skills/ and hooks/.
 const MANIFEST_ROUTES = {
-        '.claude-plugin': { updatesBy: 'version' },
+        // The directory validator flags X-Source, and the server records X-Plugin-Version only beside it,
+        // so this route sends the User-Agent alone: `postman-claude-code-plugin/<version>`.
+        '.claude-plugin': { updatesBy: 'version', userAgentOnly: true },
         '.codex-plugin': { headerKey: 'http_headers', updatesBy: 'version' },
         '.cursor-plugin': { defaultMcpConfig: 'mcp.json', updatesBy: 'version' },
         '.factory-plugin': { mcpConfig: 'mcp.json', updatesBy: 'commit' },

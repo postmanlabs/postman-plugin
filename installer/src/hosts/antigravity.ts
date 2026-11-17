@@ -1,11 +1,12 @@
-import { REPO } from '../source.js';
+import { commandsFor } from '../agent-commands.js';
 import { guard, mustProbeJson, mustRun, parseJson } from './shared.js';
 import { type Host, result } from './types.js';
+
+const COMMANDS = commandsFor('antigravity');
 
 // `agy plugin install` clones a git URL into ~/.gemini/config/plugins/<name>. It has no update
 // command; installing again replaces the copy in place, so a re-run is the update.
 const PLUGIN_NAME = 'postman',
-    SOURCE = `https://github.com/${REPO}`,
     NEXT = 'Restart Antigravity for the change to take effect.';
 
 // `agy plugin list --json` rows, as agy 1.3.5 prints them.
@@ -48,7 +49,7 @@ export const antigravity: Host = {
             const plugins = await mustProbeJson<InstalledPlugin[]>(system, 'agy', ['plugin', 'list', '--json']),
                 current = plugins.some(isOurs);
 
-            await mustRun(system, 'agy', ['plugin', 'install', SOURCE]);
+            await mustRun(system, 'agy', COMMANDS.install);
 
             return result('done', `${current ? 'updated' : 'installed'} ${PLUGIN_NAME}`, NEXT);
         });
@@ -62,7 +63,7 @@ export const antigravity: Host = {
                 return result('skipped', 'not installed');
             }
 
-            await mustRun(system, 'agy', ['plugin', 'uninstall', PLUGIN_NAME]);
+            await mustRun(system, 'agy', COMMANDS.remove);
 
             return result('done', `uninstalled ${PLUGIN_NAME}`, NEXT);
         });

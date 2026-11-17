@@ -119,6 +119,7 @@ skills/<name>/SKILL.md            one skill per directory — see skills/ for th
 manifest.json                     generated index of the skill files
 scripts/build-manifest.js         regenerates it, Kimi's and Antigravity's copies of the mandate, and agent-plugin/'s copies of skills/ and the hooks
 scripts/routes.js                 every route, read by the pre-commit guard and the installer's tests
+test/                             one harness per route, checking what the agent delivers, and the stand-in in test/lib/
 ```
 
 ## The MCP server config
@@ -143,6 +144,11 @@ Maintained by hand, and they are not interchangeable copies. Four things
 differ per route on purpose, and copying one file over another breaks them
 all:
 
+- **Claude Code sends only `User-Agent`.** The directory validator flags `X-Source`, and
+  the server records `X-Plugin-Version` only beside a recognized `X-Source`, so
+  `mcp.claude-code.json` carries `postman-claude-code-plugin/<version>` alone
+  (`userAgentOnly` in `scripts/routes.js`). Route attribution for it needs the server
+  to read `User-Agent`.
 - **`X-Source` must be unique per route.** It is the dimension route
   attribution keys on, so two routes sharing a value collapse into one bucket
   — which reads
@@ -276,7 +282,7 @@ it, so the mandate names them as 2.3.0 does and the line covers older releases.
 `node scripts/build-manifest.js` writes it, so don't edit it by hand: `--check`
 fails CI and the pre-commit guard when it is stale.
 
-`scripts/kimi-harness.js` loads the entry skill by the name the mandate gives,
+`test/kimi-harness.js` loads the entry skill by the name the mandate gives,
 without the prefix when Kimi lists skills bare. CI's `kimi` job runs it against
 a pinned Kimi from before 2.3.0, and the `Installer smoke` workflow against the
 latest, so both forms are checked.
@@ -314,13 +320,13 @@ filename is also Cursor's default, which `.cursor-plugin/plugin.json`'s
 `.claude/hooks/validate-manifests.js` fails on that removal, in CI's Manifest job
 and as the pre-commit guard.
 
-Droid runs the shared `hooks/hooks.json`, filling in both `${CLAUDE_PLUGIN_ROOT}`
-and `${DROID_PLUGIN_ROOT}`, through cmd.exe on Windows. Its skill names are
+Droid runs the shared `hooks/hooks.json`, filling in `${CLAUDE_PLUGIN_ROOT}`
+and exporting `DROID_PLUGIN_ROOT`, through cmd.exe on Windows. Its skill names are
 un-namespaced and its Skill tool rejects `postman:api-engineer`, so when the
-hook gets Droid's root as its argument it rewrites `` `postman:<skill>` `` to
+hook's environment has `DROID_PLUGIN_ROOT` set it rewrites `` `postman:<skill>` `` to
 `` `<skill>` ``, as the OpenCode plugin does.
 
-`scripts/factory-harness.js` installs this checkout into Droid as a local
+`test/factory-harness.js` installs this checkout into Droid as a local
 marketplace under a throwaway home and runs one `droid exec` against a local
 stand-in for both the model and the MCP server. It checks that the session
 lists every skill and carries the mandate, that the mandated skill loads, and
@@ -329,7 +335,7 @@ against a pinned Droid; the `Installer smoke` workflow runs it against the
 latest one nightly:
 
 ```
-DROID_BIN=<path to droid> node scripts/factory-harness.js
+DROID_BIN=<path to droid> node test/factory-harness.js
 ```
 
 ## Checking what each route delivers
@@ -339,19 +345,19 @@ under a throwaway home, and checks what the agent sends its model and the MCP
 server: every skill in `manifest.json` listed, the session-start mandate in the
 form that agent resolves (`postman:` names for Claude Code and Kimi Code, bare
 names elsewhere; Codex gets none), the skill the mandate names loaded, and the route's MCP headers.
-`scripts/lib/harness.js` holds the stand-in they share. CI's job per route runs
+`test/lib/harness.js` holds the stand-in they share. CI's job per route runs
 each harness against a pinned agent; the `Installer smoke` workflow runs it
 against the latest one nightly.
 
 ```
-CLAUDE_BIN=<path to claude> node scripts/claude-code-harness.js
-CODEX_BIN=<path to codex> node scripts/codex-harness.js
-COPILOT_BIN=<path to copilot> node scripts/copilot-harness.js
-COPILOT_ROUTE=legacy COPILOT_BIN=<path to copilot> node scripts/copilot-harness.js
-KIMI_BIN=<path to kimi> node scripts/kimi-harness.js
-AGY_BIN=<path to agy> node scripts/antigravity-harness.js
-CURSOR_API_KEY=<key> CURSOR_BIN=<path to cursor-agent> node scripts/cursor-harness.js
-DROID_BIN=<path to droid> node scripts/factory-harness.js
+CLAUDE_BIN=<path to claude> node test/claude-code-harness.js
+CODEX_BIN=<path to codex> node test/codex-harness.js
+COPILOT_BIN=<path to copilot> node test/copilot-harness.js
+COPILOT_ROUTE=legacy COPILOT_BIN=<path to copilot> node test/copilot-harness.js
+KIMI_BIN=<path to kimi> node test/kimi-harness.js
+AGY_BIN=<path to agy> node test/antigravity-harness.js
+CURSOR_API_KEY=<key> CURSOR_BIN=<path to cursor-agent> node test/cursor-harness.js
+DROID_BIN=<path to droid> node test/factory-harness.js
 (cd opencode && npm run test:harness)
 (cd installer && PI_BIN=<path to pi> npm run test:pi-harness)
 ```
@@ -515,7 +521,7 @@ Codex the two headers sit under `http_headers`, not `headers`; for OpenCode
 the manifest is `opencode/package.json`, and the root `package.json` repeats its
 version as a fourth string; for Pi it is
 `installer/package.json`, so Pi's bump is an installer release; for Factory
-Droid the MCP config is the root `mcp.json`). `--write` moves all of them; by
+Droid the MCP config is the root `mcp.json`; Claude Code has no `X-Plugin-Version`, only `User-Agent`). `--write` moves all of them; by
 hand, check the route's strings against each other before you commit. Don't
 skip the release's bump either: `claude plugin update` compares only that
 string against a version-keyed cache, so a release that changes files

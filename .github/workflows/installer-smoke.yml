@@ -15,9 +15,9 @@ run-name: ${{ inputs.ref && format('Installer smoke on {0}', inputs.ref) || '' }
 on:
   push:
     branches: ['main']
-    paths: ['package.json', 'installer/**', 'opencode/**', 'scripts/lib/**', 'scripts/*-harness.js', '!scripts/postman-cli-harness.js', '.github/workflows/installer-smoke.yml']
+    paths: ['package.json', 'installer/**', 'opencode/**', 'test/lib/**', 'test/*-harness.js', '!test/postman-cli-harness.js', '.github/workflows/installer-smoke.yml']
   pull_request:
-    paths: ['package.json', 'installer/**', 'opencode/**', 'scripts/lib/**', 'scripts/*-harness.js', '!scripts/postman-cli-harness.js', '.github/workflows/installer-smoke.yml']
+    paths: ['package.json', 'installer/**', 'opencode/**', 'test/lib/**', 'test/*-harness.js', '!test/postman-cli-harness.js', '.github/workflows/installer-smoke.yml']
   schedule:
     - cron: '23 4 * * *'
   # The release-installer skill passes the exact commit it is about to tag.
@@ -142,7 +142,7 @@ jobs:
         if: github.event_name != 'schedule'
         run: |
           copy="$RUNNER_TEMP/postman-plugin"
-          node -e 'import(require("url").pathToFileURL("../scripts/lib/harness.js").href).then((h) => { h.copyCheckout(process.argv[1]); h.commit(process.argv[1]); })' "$copy"
+          node -e 'import(require("url").pathToFileURL("../test/lib/harness.js").href).then((h) => { h.copyCheckout(process.argv[1]); h.commit(process.argv[1]); })' "$copy"
           echo "POSTMAN_PLUGIN_OPENCODE_SPEC=git+$(node -p 'require("url").pathToFileURL(process.argv[1]).href' "$copy")" >> "$GITHUB_ENV"
 
       - name: Install, then re-run to take the update path
@@ -175,16 +175,16 @@ jobs:
       # The pinned harness in validate.yml, against the Droid release installed above.
       - name: The latest Droid loads this checkout
         if: ${{ !cancelled() }}
-        run: node ../scripts/factory-harness.js
+        run: node ../test/factory-harness.js
 
       # The pinned harnesses in validate.yml, against the releases installed above.
       - name: The latest Claude Code loads this checkout
         if: ${{ !cancelled() }}
-        run: node ../scripts/claude-code-harness.js
+        run: node ../test/claude-code-harness.js
 
       - name: The latest Codex loads this checkout
         if: ${{ !cancelled() }}
-        run: node ../scripts/codex-harness.js
+        run: node ../test/codex-harness.js
 
       - name: The latest Codex installs and trusts no Postman hook
         if: ${{ !cancelled() }}
@@ -192,11 +192,11 @@ jobs:
 
       - name: The latest Kimi Code loads this checkout
         if: ${{ !cancelled() }}
-        run: node ../scripts/kimi-harness.js
+        run: node ../test/kimi-harness.js
 
       - name: The latest Copilot CLI loads this checkout
         if: ${{ !cancelled() }}
-        run: node ../scripts/copilot-harness.js
+        run: node ../test/copilot-harness.js
 
       - name: The latest Copilot CLI loads this checkout's legacy .github/plugin/ manifest
         if: ${{ !cancelled() }}
@@ -230,7 +230,7 @@ jobs:
       # # A fork's pull request gets no secrets, and the Cursor CLI runs only on Cursor's model.
       # - name: The latest Cursor CLI loads this checkout
       #   if: ${{ !cancelled() && runner.os != 'Windows' && github.event.pull_request.head.repo.fork != true }}
-      #   run: node ../scripts/cursor-harness.js
+      #   run: node ../test/cursor-harness.js
       #   env:
       #     CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
 

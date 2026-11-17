@@ -1,8 +1,11 @@
+import { commandsFor } from '../agent-commands.js';
 import path from 'node:path';
 import { PI_SOURCE, REPO, isSameRepo, redact } from '../source.js';
 import type { System } from '../system.js';
 import { failed, guard, mustRun, parseJson } from './shared.js';
 import { type Host, result } from './types.js';
+
+const COMMANDS = commandsFor('pi');
 
 const NEXT = 'Restart Pi, or run `/reload` in an open session, for the change to take effect.',
     GIT_PREFIX = /^git:/,
@@ -92,7 +95,7 @@ export const pi: Host = {
                 installed = sources.some(isOurPackage);
 
             // Replacement first: if it fails, a git copy of this repo is still a working one.
-            await mustRun(system, 'pi', [installed ? 'update' : 'install', PI_SOURCE]);
+            await mustRun(system, 'pi', installed ? COMMANDS.update : COMMANDS.install);
 
             for (const source of sources.filter(isRepoClone)) {
                 await mustRun(system, 'pi', ['remove', source]);
@@ -112,7 +115,7 @@ export const pi: Host = {
             }
 
             for (const source of targets) {
-                await mustRun(system, 'pi', ['remove', source]);
+                await mustRun(system, 'pi', source === PI_SOURCE ? COMMANDS.remove : ['remove', source]);
             }
 
             return result('done', `removed ${targets.map(redact).join(', ')}`, NEXT);
