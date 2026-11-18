@@ -116,17 +116,32 @@ export async function withJsonRpc<T> (
     finally {
         fail(new Error('app-server session ended'));
         lines.close();
-        child.stdin.end();
 
         if (child.exitCode === null && child.signalCode === null) {
-            if (shell && process.platform === 'win32' && child.pid) {
-                // Killing cmd.exe alone leaves its Codex child holding the pipes open.
-                spawn('taskkill', ['/pid', String(child.pid), '/t', '/f'], { stdio: 'ignore', windowsHide: true }).on('error', () => child.kill());
+            if (process.platform === 'win32' && child.pid) {
+                // Keep stdin open until taskkill has walked the tree. EOF can make the
+                // launcher exit first, orphaning Git children that still hold files open.
+                // Wait for taskkill itself, not just the launcher's `close` event.
+                await new Promise<void>((resolve) => {
+                    const killer = spawn('taskkill', ['/pid', String(child.pid), '/t', '/f'], {
+                        stdio: 'ignore', windowsHide: true, timeout: 5000
+                    });
+
+                    killer.once('error', () => { child.kill(); resolve(); });
+                    killer.once('close', (code) => {
+                        if (code !== 0) {
+                            child.kill();
+                        }
+                        resolve();
+                    });
+                });
             }
             else {
                 child.kill();
             }
         }
+
+        child.stdin.end();
 
         let force: NodeJS.Timeout | undefined;
         const forced = new Promise<void>((resolve) => {

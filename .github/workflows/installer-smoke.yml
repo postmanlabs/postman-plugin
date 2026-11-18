@@ -15,9 +15,9 @@ run-name: ${{ inputs.ref && format('Installer smoke on {0}', inputs.ref) || '' }
 on:
   push:
     branches: ['main']
-    paths: ['package.json', 'installer/**', 'opencode/**', 'test/lib/**', 'test/*-harness.js', '!test/postman-cli-harness.js', '.github/workflows/installer-smoke.yml']
+    paths: ['package.json', 'installer/**', 'opencode/**', 'test/lib/**', 'test/*-harness.js', '!test/postman-cli-harness.js', '.github/workflows/installer-smoke.yml', 'scripts/smoke-plan.mjs']
   pull_request:
-    paths: ['package.json', 'installer/**', 'opencode/**', 'test/lib/**', 'test/*-harness.js', '!test/postman-cli-harness.js', '.github/workflows/installer-smoke.yml']
+    paths: ['package.json', 'installer/**', 'opencode/**', 'test/lib/**', 'test/*-harness.js', '!test/postman-cli-harness.js', '.github/workflows/installer-smoke.yml', 'scripts/smoke-plan.mjs']
   schedule:
     - cron: '23 4 * * *'
   # The release-installer skill passes the exact commit it is about to tag.
@@ -38,7 +38,29 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  plan:
+    name: Smoke coverage
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      run: ${{ steps.plan.outputs.run }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+      # The candidate run dispatches this workflow on the versioned commit and waits
+      # for it before publishing. Dispatches always run; only a redundant main push skips.
+      - id: plan
+        run: node scripts/smoke-plan.mjs
+        env:
+          GH_TOKEN: ${{ github.token }}
+
   codex-install:
+    needs: plan
+    if: needs.plan.outputs.run == 'true'
     name: Codex install / ${{ matrix.version }} / ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
@@ -71,6 +93,8 @@ jobs:
           CODEX_BIN: ${{ runner.temp }}/codex/node_modules/.bin/codex${{ runner.os == 'Windows' && '.cmd' || '' }}
 
   smoke:
+    needs: plan
+    if: needs.plan.outputs.run == 'true'
     name: Installer against real CLIs / ${{ matrix.label }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20

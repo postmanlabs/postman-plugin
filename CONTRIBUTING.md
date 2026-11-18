@@ -449,6 +449,15 @@ latest release of every agent it supports, on Linux and Windows, on every
 installer change, nightly, and before every release, so a change to an agent's
 commands or output fails CI even when nothing here changed.
 
+On a push to `main`, the smoke workflow checks whether `rc.yml` already has an
+active or successful run for that exact commit. If so, it skips its duplicate
+matrix: the candidate workflow dispatches smoke on the versioned release commit
+and must pass before tagging or publishing. PRs, nightly runs and explicit
+dispatches always run. Pushes without candidate coverage, including plain release
+commits, still run; an API error or a candidate that has already failed falls
+back to the full matrix. If the candidate run has not appeared yet, the matrix
+also runs, favoring coverage over deduplication.
+
 To release it, run `/release-installer rc`, `/release-installer latest` or
 `/release-installer <version>` in Claude Code. The skill in
 `.claude/skills/release-installer/` walks these steps, and resumes a release
