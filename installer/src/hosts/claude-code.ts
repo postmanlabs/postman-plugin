@@ -37,7 +37,7 @@ function assertTracksMain (source: MarketplaceSource, location: string): void {
     }
 }
 
-function describeSource (marketplace: Marketplace): string {
+function describeSource (marketplace: { repo?: string; url?: string; path?: string }): string {
     const source = marketplace.repo ?? marketplace.url ?? marketplace.path;
 
     return source ? redact(source) : 'an unknown source';
@@ -75,7 +75,11 @@ async function refreshMarketplace (system: System): Promise<void> {
         text = await system.readFile(file),
         source = text === null ? undefined : parseJson<ClaudeSettings>(text)?.extraKnownMarketplaces?.[MARKETPLACE.name]?.source;
 
-    if (source && isOurSource(source)) {
+    if (source) {
+        if (!isOurSource(source)) {
+            blocked(`marketplace ${MARKETPLACE.name} is declared in ${file} from ${describeSource(source)}, not ${MARKETPLACE.repo}`);
+        }
+
         assertTracksMain(source, file);
     }
 

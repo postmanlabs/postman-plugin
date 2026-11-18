@@ -172,6 +172,31 @@ test('main refs keep receiving updates', async () => {
     }
 });
 
+test('conflicting declared sources block migration before changing either installed copy', async () => {
+    for (const marketplaces of [[], [ours]]) {
+        for (const source of [
+            { source: 'github', repo: 'someone/fork', ref: 'frozen' },
+            { source: 'git', url: 'https://x-access-token:ghp_secret@github.com/someone/fork.git' },
+            { source: 'url', url: 'https://github.com/postmanlabs/postman-plugin' }
+        ]) {
+            const system = claude({
+                    marketplaces,
+                    plugins: [plugin('postman@postman'), plugin('postman@claude-plugins-official')],
+                    files: { [SETTINGS]: declared({ source }) }
+                }),
+                before = system.files[SETTINGS],
+                outcome = await claudeCode.install(system);
+
+            assert.equal(outcome.outcome, 'blocked');
+            assert.ok(outcome.message.includes(`declared in ${SETTINGS}`));
+            assert.match(outcome.message, /not postmanlabs\/postman-plugin/);
+            assert.doesNotMatch(outcome.message, /ghp_secret/);
+            assert.deepEqual(system.commands, []);
+            assert.equal(system.files[SETTINGS], before);
+        }
+    }
+});
+
 test('moves an install from Anthropic\'s marketplace: installs ours, then uninstalls the official copy at user scope', async () => {
     const system = claude({ marketplaces: [official], plugins: [plugin('postman@claude-plugins-official')], files: {} });
 
