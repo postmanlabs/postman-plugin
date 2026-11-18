@@ -386,7 +386,7 @@ wherever one exists:
 
 | Agent | What it runs |
 | --- | --- |
-| Claude Code | `claude plugin` against this repo as the `postman` marketplace, then uninstalls a user-scope `postman@claude-plugins-official` so skills don't load twice (a failed install leaves that copy in place), and sets `autoUpdate: true` on the marketplace's `extraKnownMarketplaces` entry in `settings.json` (under `CLAUDE_CONFIG_DIR` when set), the key the `/plugin` toggle writes, unless the user already set it |
+| Claude Code | `claude plugin` against this repo as the `postman` marketplace; stops before changes if its registered source or user settings pin it away from `main`. After installing, uninstalls a user-scope `postman@claude-plugins-official` so skills don't load twice (a failed install leaves that copy in place), and sets `autoUpdate: true` on the marketplace's `extraKnownMarketplaces` entry in `settings.json` (under `CLAUDE_CONFIG_DIR` when set), the key the `/plugin` toggle writes, unless the user already set it |
 | Codex | `codex plugin` against this repo as the `postman` marketplace |
 | GitHub Copilot CLI | `copilot plugin` against this repo as the `postman` marketplace (Copilot reads `.claude-plugin/marketplace.json`), replacing a direct install, which Copilot is deprecating |
 | Cursor | a clone at `~/.cursor/plugins/local/postman`. A fresh install is skipped when the Cursor Marketplace copy is present, but an existing clone is kept and updated: Cursor keeps a disabled Marketplace copy on disk too, so the installer can't tell whether that copy is enabled |

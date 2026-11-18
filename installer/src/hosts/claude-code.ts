@@ -1,13 +1,13 @@
 import path from 'node:path';
 import { commandsFor } from '../agent-commands.js';
-import { REPO, isSameRepo, redact } from '../source.js';
+import { BRANCH, REPO, isSameRepo, redact } from '../source.js';
 import type { System } from '../system.js';
 import { blocked, failed, guard, mustProbeJson, mustRun, parseJson } from './shared.js';
 import { type Host, result } from './types.js';
 
 const COMMANDS = commandsFor('claude-code');
 
-// This repo's own marketplace, so a merge to main reaches users without waiting on a bump in Anthropic's catalog.
+// This repo's own marketplace, so a route release reaches users without waiting on a bump in Anthropic's catalog.
 const MARKETPLACE = { name: 'postman', repo: REPO },
     PLUGIN_ID = `postman@${MARKETPLACE.name}`,
     // Anthropic's catalog entry, installed by earlier releases. Two enabled copies load every skill twice and drop one copy's hooks.
@@ -15,17 +15,26 @@ const MARKETPLACE = { name: 'postman', repo: REPO },
     SCOPE = 'user',
     NEXT = 'Restart Claude Code for the change to take effect.';
 
-type Marketplace = { name: string; source?: string; repo?: string; url?: string; path?: string };
+type MarketplaceSource = { source?: string; repo?: string; url?: string; ref?: string };
+type Marketplace = MarketplaceSource & { name: string; path?: string };
 type InstalledPlugin = { id: string; scope: string; version?: string; projectPath?: string };
-type MarketplaceEntry = { source?: { source?: string; repo?: string; url?: string }; autoUpdate?: boolean };
+type MarketplaceEntry = { source?: MarketplaceSource; autoUpdate?: boolean };
 type ClaudeSettings = { extraKnownMarketplaces?: Record<string, MarketplaceEntry> };
 
 const isOurs = (plugin: InstalledPlugin) => plugin.id === PLUGIN_ID || SHADOW_IDS.includes(plugin.id);
 
 // A `url` source fetches one marketplace.json instead of cloning, so a URL names the repo only in a `git` source.
-function isOurSource (marketplace: { source?: string; repo?: string; url?: string }): boolean {
+function isOurSource (marketplace: MarketplaceSource): boolean {
     return isSameRepo(marketplace.repo, MARKETPLACE.repo) ||
         (marketplace.source === 'git' && isSameRepo(marketplace.url, MARKETPLACE.repo));
+}
+
+function assertTracksMain (source: MarketplaceSource, location: string): void {
+    if (source.ref && source.ref !== BRANCH && source.ref !== `refs/heads/${BRANCH}`) {
+        blocked(`marketplace ${MARKETPLACE.name} is pinned to ${JSON.stringify(redact(source.ref))} in ${location}, not ${BRANCH}; ` +
+            `set extraKnownMarketplaces.${MARKETPLACE.name}.source.ref to ${BRANCH} (or remove the ref) in the settings that declare it, ` +
+            'start a Claude Code session to refresh the marketplace, then re-run');
+    }
 }
 
 function describeSource (marketplace: Marketplace): string {
@@ -53,17 +62,24 @@ async function refreshMarketplace (system: System): Promise<void> {
     const marketplaces = await mustProbeJson<Marketplace[]>(system, 'claude', COMMANDS.listMarketplaces),
         registered = marketplaces.find((marketplace) => marketplace.name === MARKETPLACE.name);
 
-    if (!registered) {
-        await mustRun(system, 'claude', COMMANDS.addMarketplace);
+    if (registered) {
+        if (!isOurSource(registered)) {
+            blocked(`marketplace ${MARKETPLACE.name} is registered from ${describeSource(registered)}, not ${MARKETPLACE.repo}`);
+        }
 
-        return;
+        assertTracksMain(registered, 'the registered source');
     }
 
-    if (!isOurSource(registered)) {
-        blocked(`marketplace ${MARKETPLACE.name} is registered from ${describeSource(registered)}, not ${MARKETPLACE.repo}`);
+    // Settings can declare a different ref before Claude's next session reconciles the cached registration.
+    const file = settingsFile(system),
+        text = await system.readFile(file),
+        source = text === null ? undefined : parseJson<ClaudeSettings>(text)?.extraKnownMarketplaces?.[MARKETPLACE.name]?.source;
+
+    if (source && isOurSource(source)) {
+        assertTracksMain(source, file);
     }
 
-    await mustRun(system, 'claude', COMMANDS.updateMarketplace);
+    await mustRun(system, 'claude', registered ? COMMANDS.updateMarketplace : COMMANDS.addMarketplace);
 }
 
 function settingsFile (system: System): string {
@@ -90,7 +106,7 @@ async function enableAutoUpdate (system: System): Promise<boolean> {
 
     if (entry.autoUpdate !== undefined) {
         if (!entry.autoUpdate) {
-            system.log(`  note: auto-update for ${MARKETPLACE.name} is off in ${file}, as set there; ${toggle} to get main's changes at session start`);
+            system.log(`  note: auto-update for ${MARKETPLACE.name} is off in ${file}, as set there; ${toggle} to get new releases at session start`);
         }
 
         return entry.autoUpdate;

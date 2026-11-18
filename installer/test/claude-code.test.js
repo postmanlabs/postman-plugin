@@ -121,6 +121,57 @@ test('re-run refreshes the marketplace and updates instead of installing', async
     ]);
 });
 
+test('a marketplace pinned away from main blocks migration before updating or removing either copy', async () => {
+    for (const source of [ours, byUrl('https://github.com/postmanlabs/postman-plugin.git')]) {
+        for (const ref of ['v2.0.1', 'release/old', '4d61631ddff58de8a3239522f5cde40c23662207']) {
+            const system = claude({
+                    marketplaces: [{ ...source, ref }],
+                    plugins: [plugin('postman@postman'), plugin('postman@claude-plugins-official')]
+                }),
+                before = system.files[SETTINGS],
+                outcome = await claudeCode.install(system);
+
+            assert.equal(outcome.outcome, 'blocked');
+            assert.ok(outcome.message.includes(`pinned to "${ref}"`));
+            assert.match(outcome.message, /set extraKnownMarketplaces\.postman\.source\.ref to main/);
+            assert.deepEqual(system.commands, []);
+            assert.equal(system.files[SETTINGS], before);
+        }
+    }
+});
+
+test('a pending pin in settings blocks an absent or unpinned registration, including CLAUDE_CONFIG_DIR', async () => {
+    for (const marketplaces of [[], [ours]]) {
+        for (const config of [undefined, '/cfg']) {
+            const file = config ? path.join(config, 'settings.json') : SETTINGS,
+                system = claude({
+                    marketplaces,
+                    env: config ? { CLAUDE_CONFIG_DIR: config } : {},
+                    files: { [file]: declared({ source: { source: 'github', repo: ours.repo, ref: 'frozen' } }) }
+                }),
+                outcome = await claudeCode.install(system);
+
+            assert.equal(outcome.outcome, 'blocked');
+            assert.ok(outcome.message.includes(file));
+            assert.deepEqual(system.commands, []);
+        }
+    }
+});
+
+test('main refs keep receiving updates', async () => {
+    for (const ref of [undefined, 'main', 'refs/heads/main']) {
+        const system = claude({
+            marketplaces: [{ ...ours, ref }],
+            plugins: [plugin('postman@postman')],
+            files: { [SETTINGS]: declared({ source: { source: 'github', repo: ours.repo, ref } }) }
+        });
+
+        assert.equal((await claudeCode.install(system)).message, 'updated postman@postman, auto-update on');
+        assert.equal(system.commands[0], 'claude plugin marketplace update postman');
+        assert.equal(autoUpdate(system), true);
+    }
+});
+
 test('moves an install from Anthropic\'s marketplace: installs ours, then uninstalls the official copy at user scope', async () => {
     const system = claude({ marketplaces: [official], plugins: [plugin('postman@claude-plugins-official')], files: {} });
 

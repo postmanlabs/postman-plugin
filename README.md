@@ -68,17 +68,25 @@ claude plugin marketplace add postmanlabs/postman-plugin
 claude plugin install postman@postman
 ```
 
-This marketplace follows `main`, so changes reach you without waiting for
-Anthropic's catalog. Claude Code doesn't auto-update third-party marketplaces
+This marketplace follows `main`, so versioned plugin releases reach you without
+waiting for Anthropic's catalog. Changes between version bumps do not update an
+already installed copy. Claude Code doesn't auto-update third-party marketplaces
 by default: turn it on under **/plugin → Marketplaces → postman → Enable
 auto-update**, and new versions install in the background once a session
-starts. The installer turns it on for you.
+starts. The installer turns it on unless you already turned it off. If an
+existing `postman` marketplace is pinned to a tag, commit or another branch,
+the installer stops with instructions to switch it to `main` before proceeding.
 
 Postman is also listed in Anthropic's marketplace as
 `postman@claude-plugins-official`, which updates only when Anthropic merges a
 bump. Install one or the other: with both enabled, Claude Code loads every
 skill twice and runs only one copy's hooks. The installer uninstalls the
 official copy when it installs this one.
+
+Existing users need to rerun the installer above after the installer release
+containing this migration is published. Plugin auto-update alone does not switch
+marketplaces. Project and local installs stay in place; migrate those in their
+own projects to avoid continuing to load the official copy alongside this one.
 
 ### Codex
 
