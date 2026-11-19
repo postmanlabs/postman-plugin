@@ -5,7 +5,8 @@ import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
 export function planSmoke (eventName, event, listCandidates) {
-    if (eventName !== 'push' || event.ref !== 'refs/heads/main' || event.head_commit?.message?.startsWith('release:')) {
+    // Match rc.yml: GitHub Actions' startsWith is case-insensitive.
+    if (eventName !== 'push' || event.ref !== 'refs/heads/main' || /^release:/i.test(event.head_commit?.message ?? '')) {
         return { run: true, reason: 'PR, scheduled, manual and release-commit smoke coverage is unchanged.' };
     }
 

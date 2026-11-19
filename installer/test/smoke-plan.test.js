@@ -34,6 +34,19 @@ test('PR, nightly and exact-release dispatches always run without consulting the
     for (const event of ['pull_request', 'schedule', 'workflow_dispatch']) {
         assert.equal(planSmoke(event, push, () => assert.fail('must not look up a candidate')).run, true);
     }
-    // rc.yml intentionally skips release commits, even if GitHub lists that run as successful.
-    assert.equal(planSmoke('push', { ...push, head_commit: { message: 'release: 1.0.0' } }, () => assert.fail('release skipped')).run, true);
+});
+
+test('release prefixes match Actions case-insensitively even when the skipped candidate run looks successful', () => {
+    for (const prefix of ['release:', 'Release:', 'RELEASE:', 'rElEaSe:']) {
+        for (const status of ['in_progress', 'completed']) {
+            let lookups = 0;
+            const plan = planSmoke('push', { ...push, head_commit: { message: `${prefix} 1.0.0` } }, () => {
+                lookups++;
+                return [{ ...candidate, status, conclusion: status === 'completed' ? 'success' : null }];
+            });
+
+            assert.equal(plan.run, true, `${prefix} must retain push smoke when rc.yml skips its job`);
+            assert.equal(lookups, 0, 'a skipped candidate must never be used as coverage');
+        }
+    }
 });
