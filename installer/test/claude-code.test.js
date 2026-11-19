@@ -1,220 +1,65 @@
 import assert from 'node:assert/strict';
-import path from 'node:path';
 import test from 'node:test';
 import { claudeCode } from '../dist/hosts/claude-code.js';
 import { fakeSystem } from './fake-system.js';
 
 const MARKETPLACES = 'claude plugin marketplace list --json',
     PLUGINS = 'claude plugin list --json',
-    ADD = 'claude plugin marketplace add postmanlabs/postman-plugin --scope user',
-    SETTINGS = path.join('/home/user', '.claude', 'settings.json'),
-    ours = { name: 'postman', source: 'github', repo: 'postmanlabs/postman-plugin' },
     official = { name: 'claude-plugins-official', source: 'github', repo: 'anthropics/claude-plugins-official' },
-    byUrl = (url, source = 'git') => ({ name: 'postman', source, url }),
-    plugin = (id, scope = 'user', extra = {}) => ({ id, scope, version: '2.0.1', ...extra }),
-    declared = (entry = {}) => JSON.stringify({
-        enabledPlugins: { 'postman@postman': true },
-        extraKnownMarketplaces: { postman: { source: { source: 'github', repo: 'postmanlabs/postman-plugin' }, ...entry } }
-    }, null, 2);
+    byUrl = (url, source = 'git') => ({ name: 'claude-plugins-official', source, url }),
+    plugin = (id, scope = 'user', extra = {}) => ({ id, scope, version: '2.0.1', ...extra });
 
-function claude ({ marketplaces = [ours], plugins = [], runs = {}, files = { [SETTINGS]: declared() }, env, dryRun } = {}) {
+function claude ({ marketplaces = [official], plugins = [], runs = {} } = {}) {
     return fakeSystem({
         bins: ['claude'],
-        env,
-        dryRun,
-        files,
         probes: { [MARKETPLACES]: JSON.stringify(marketplaces), [PLUGINS]: JSON.stringify(plugins) },
-        // `marketplace add` records the marketplace in user settings, as the real CLI does.
-        runs: { [ADD]: (fake) => { fake.files[SETTINGS] = declared(); return ''; }, ...runs }
+        runs
     });
 }
-
-const autoUpdate = (system, file = SETTINGS) => JSON.parse(system.files[file]).extraKnownMarketplaces.postman.autoUpdate;
 
 test('detects Claude Code by its CLI on PATH', async () => {
     assert.equal(await claudeCode.detect(claude()), true);
     assert.equal(await claudeCode.detect(fakeSystem()), false);
 });
 
-test('fresh install adds this repo\'s marketplace, installs from it at user scope and turns on its auto-update', async () => {
-    const system = claude({ marketplaces: [official], files: {} }),
+test('fresh install adds Anthropic\'s marketplace, then installs from it at user scope', async () => {
+    const system = claude({ marketplaces: [] }),
         outcome = await claudeCode.install(system);
 
     assert.equal(outcome.outcome, 'done');
-    assert.equal(outcome.message, 'installed postman@postman, auto-update on');
     assert.deepEqual(system.commands, [
-        ADD,
-        'claude plugin install postman@postman --scope user --json',
-        `write ${SETTINGS}`
+        'claude plugin marketplace add anthropics/claude-plugins-official --scope user',
+        'claude plugin install postman@claude-plugins-official --scope user --json'
     ]);
-    assert.equal(autoUpdate(system), true);
-});
-
-test('turning on auto-update keeps every other setting', async () => {
-    const settings = JSON.parse(declared());
-
-    settings.theme = 'dark';
-    settings.enabledPlugins['other@elsewhere'] = false;
-
-    const system = claude({ files: { [SETTINGS]: JSON.stringify(settings) } });
-
-    await claudeCode.install(system);
-
-    const written = JSON.parse(system.files[SETTINGS]);
-
-    assert.equal(written.theme, 'dark');
-    assert.equal(written.enabledPlugins['other@elsewhere'], false);
-    assert.deepEqual(written.extraKnownMarketplaces.postman.source, { source: 'github', repo: 'postmanlabs/postman-plugin' });
-});
-
-test('writes auto-update to CLAUDE_CONFIG_DIR when it is set', async () => {
-    const file = path.join('/cfg', 'settings.json'),
-        system = claude({ env: { CLAUDE_CONFIG_DIR: '/cfg' }, files: { [file]: declared() } });
-
-    await claudeCode.install(system);
-
-    assert.equal(autoUpdate(system, file), true);
-    assert.ok(!(SETTINGS in system.files));
-});
-
-test('keeps an auto-update choice the user already made, and says how to turn it back on', async () => {
-    const off = claude({ files: { [SETTINGS]: declared({ autoUpdate: false }) } }),
-        on = claude({ files: { [SETTINGS]: declared({ autoUpdate: true }) } });
-
-    assert.equal((await claudeCode.install(off)).message, 'installed postman@postman');
-    assert.equal(autoUpdate(off), false);
-    assert.match(off.lines.join('\n'), /auto-update for postman is off .*\/plugin → Marketplaces/);
-    assert.equal((await claudeCode.install(on)).message, 'installed postman@postman, auto-update on');
-    for (const system of [off, on]) {
-        assert.ok(!system.commands.some((command) => command.startsWith('write ')));
-    }
-});
-
-test('a settings file it can\'t read as JSON is left alone, and the install still succeeds', async () => {
-    const system = claude({ files: { [SETTINGS]: '{ "theme": "dark", // a comment\n}' } }),
-        outcome = await claudeCode.install(system);
-
-    assert.equal(outcome.outcome, 'done');
-    assert.equal(outcome.message, 'installed postman@postman');
-    assert.match(system.lines.join('\n'), /could not turn on auto-update in .*settings\.json; turn it on under \/plugin/);
-    assert.ok(!system.commands.some((command) => command.startsWith('write ')));
-});
-
-test('a dry run prints the settings write without making it', async () => {
-    const system = claude({ dryRun: true }),
-        before = system.files[SETTINGS];
-
-    await claudeCode.install(system);
-
-    assert.ok(system.commands.includes(`write ${SETTINGS}`));
-    assert.equal(system.files[SETTINGS], before);
 });
 
 test('re-run refreshes the marketplace and updates instead of installing', async () => {
-    const system = claude({ plugins: [plugin('postman@postman')], files: { [SETTINGS]: declared({ autoUpdate: true }) } }),
+    const system = claude({ plugins: [plugin('postman@claude-plugins-official')] }),
         outcome = await claudeCode.install(system);
 
-    assert.equal(outcome.message, 'updated postman@postman, auto-update on');
+    assert.equal(outcome.message, 'updated postman@claude-plugins-official');
     assert.deepEqual(system.commands, [
-        'claude plugin marketplace update postman',
-        'claude plugin update postman@postman --scope user --json'
+        'claude plugin marketplace update claude-plugins-official',
+        'claude plugin update postman@claude-plugins-official --scope user --json'
     ]);
 });
 
-test('a marketplace pinned away from main blocks migration before updating or removing either copy', async () => {
-    for (const source of [ours, byUrl('https://github.com/postmanlabs/postman-plugin.git')]) {
-        for (const ref of ['v2.0.1', 'release/old', '4d61631ddff58de8a3239522f5cde40c23662207']) {
-            const system = claude({
-                    marketplaces: [{ ...source, ref }],
-                    plugins: [plugin('postman@postman'), plugin('postman@claude-plugins-official')]
-                }),
-                before = system.files[SETTINGS],
-                outcome = await claudeCode.install(system);
-
-            assert.equal(outcome.outcome, 'blocked');
-            assert.ok(outcome.message.includes(`pinned to "${ref}"`));
-            assert.match(outcome.message, /set extraKnownMarketplaces\.postman\.source\.ref to main/);
-            assert.deepEqual(system.commands, []);
-            assert.equal(system.files[SETTINGS], before);
-        }
-    }
-});
-
-test('a pending pin in settings blocks an absent or unpinned registration, including CLAUDE_CONFIG_DIR', async () => {
-    for (const marketplaces of [[], [ours]]) {
-        for (const config of [undefined, '/cfg']) {
-            const file = config ? path.join(config, 'settings.json') : SETTINGS,
-                system = claude({
-                    marketplaces,
-                    env: config ? { CLAUDE_CONFIG_DIR: config } : {},
-                    files: { [file]: declared({ source: { source: 'github', repo: ours.repo, ref: 'frozen' } }) }
-                }),
-                outcome = await claudeCode.install(system);
-
-            assert.equal(outcome.outcome, 'blocked');
-            assert.ok(outcome.message.includes(file));
-            assert.deepEqual(system.commands, []);
-        }
-    }
-});
-
-test('main refs keep receiving updates', async () => {
-    for (const ref of [undefined, 'main', 'refs/heads/main']) {
-        const system = claude({
-            marketplaces: [{ ...ours, ref }],
-            plugins: [plugin('postman@postman')],
-            files: { [SETTINGS]: declared({ source: { source: 'github', repo: ours.repo, ref } }) }
-        });
-
-        assert.equal((await claudeCode.install(system)).message, 'updated postman@postman, auto-update on');
-        assert.equal(system.commands[0], 'claude plugin marketplace update postman');
-        assert.equal(autoUpdate(system), true);
-    }
-});
-
-test('conflicting declared sources block migration before changing either installed copy', async () => {
-    for (const marketplaces of [[], [ours]]) {
-        for (const source of [
-            { source: 'github', repo: 'someone/fork', ref: 'frozen' },
-            { source: 'git', url: 'https://x-access-token:ghp_secret@github.com/someone/fork.git' },
-            { source: 'url', url: 'https://github.com/postmanlabs/postman-plugin' }
-        ]) {
-            const system = claude({
-                    marketplaces,
-                    plugins: [plugin('postman@postman'), plugin('postman@claude-plugins-official')],
-                    files: { [SETTINGS]: declared({ source }) }
-                }),
-                before = system.files[SETTINGS],
-                outcome = await claudeCode.install(system);
-
-            assert.equal(outcome.outcome, 'blocked');
-            assert.ok(outcome.message.includes(`declared in ${SETTINGS}`));
-            assert.match(outcome.message, /not postmanlabs\/postman-plugin/);
-            assert.doesNotMatch(outcome.message, /ghp_secret/);
-            assert.deepEqual(system.commands, []);
-            assert.equal(system.files[SETTINGS], before);
-        }
-    }
-});
-
-test('moves an install from Anthropic\'s marketplace: installs ours, then uninstalls the official copy at user scope', async () => {
-    const system = claude({ marketplaces: [official], plugins: [plugin('postman@claude-plugins-official')], files: {} });
+test('installs the official copy, then uninstalls our own marketplace copy at user scope', async () => {
+    const system = claude({ plugins: [plugin('postman@postman')] });
 
     await claudeCode.install(system);
 
     assert.deepEqual(system.commands, [
-        ADD,
-        'claude plugin install postman@postman --scope user --json',
-        'claude plugin uninstall postman@claude-plugins-official --scope user --json',
-        `write ${SETTINGS}`
+        'claude plugin marketplace update claude-plugins-official',
+        'claude plugin install postman@claude-plugins-official --scope user --json',
+        'claude plugin uninstall postman@postman --scope user --json'
     ]);
-    assert.ok(!system.commands.some((command) => command.includes('marketplace remove')));
 });
 
-test('a failed install leaves the official copy in place, so Postman still works', async () => {
+test('a failed install leaves our own marketplace copy in place, so Postman still works', async () => {
     const system = claude({
-            plugins: [plugin('postman@claude-plugins-official')],
-            runs: { 'claude plugin install postman@postman --scope user --json': { code: 1, stderr: 'network down' } }
+            plugins: [plugin('postman@postman')],
+            runs: { 'claude plugin install postman@claude-plugins-official --scope user --json': { code: 1, stderr: 'network down' } }
         }),
         outcome = await claudeCode.install(system);
 
@@ -224,9 +69,9 @@ test('a failed install leaves the official copy in place, so Postman still works
 
 test('leaves project and local scope copies alone and says so', async () => {
     const plugins = [
-            plugin('postman@claude-plugins-official', 'local', { projectPath: '/work/a' }),
-            plugin('postman@postman', 'project', { projectPath: '/work/b' }),
-            plugin('postman@postman', 'local', { projectPath: '/work/b' })
+            plugin('postman@postman', 'local', { projectPath: '/work/a' }),
+            plugin('postman@claude-plugins-official', 'project', { projectPath: '/work/b' }),
+            plugin('postman@claude-plugins-official', 'local', { projectPath: '/work/b' })
         ],
         system = claude({ plugins }),
         status = await claudeCode.status(system);
@@ -235,22 +80,14 @@ test('leaves project and local scope copies alone and says so', async () => {
 
     assert.equal(status.installed, false);
     assert.deepEqual(status.notes, [
-        'postman@claude-plugins-official is also installed at project or local scope in 1 project; left alone',
-        'postman@postman is also installed at project or local scope in 1 project; left alone'
+        'postman@postman is also installed at project or local scope in 1 project; left alone',
+        'postman@claude-plugins-official is also installed at project or local scope in 1 project; left alone'
     ]);
     assert.ok(!system.commands.some((command) => command.includes('uninstall')));
 });
 
-test('status reports our copy as installed and the official copy as the duplicate it will uninstall', async () => {
-    const status = await claudeCode.status(claude({ plugins: [plugin('postman@postman'), plugin('postman@claude-plugins-official')] }));
-
-    assert.equal(status.installed, true);
-    assert.equal(status.detail, 'postman@postman 2.0.1');
-    assert.deepEqual(status.notes, ['postman@claude-plugins-official (user scope) duplicates it and will be uninstalled']);
-});
-
-test('refuses to use a postman marketplace registered from somewhere else', async () => {
-    const system = claude({ marketplaces: [{ ...ours, repo: 'someone/fork' }] }),
+test('refuses to use a claude-plugins-official marketplace registered from somewhere else', async () => {
+    const system = claude({ marketplaces: [{ ...official, repo: 'someone/fork' }] }),
         outcome = await claudeCode.install(system);
 
     assert.equal(outcome.outcome, 'blocked');
@@ -258,17 +95,17 @@ test('refuses to use a postman marketplace registered from somewhere else', asyn
     assert.deepEqual(system.commands, []);
 });
 
-test('accepts our marketplace registered by repo, HTTPS URL with or without .git, or SSH', async () => {
+test('accepts the official marketplace registered by repo, HTTPS URL with or without .git, or SSH', async () => {
     for (const marketplace of [
-        ours,
-        byUrl('https://github.com/postmanlabs/postman-plugin.git'),
-        byUrl('https://github.com/postmanlabs/postman-plugin'),
-        byUrl('git@github.com:postmanlabs/postman-plugin.git')
+        official,
+        byUrl('https://github.com/anthropics/claude-plugins-official.git'),
+        byUrl('https://github.com/anthropics/claude-plugins-official'),
+        byUrl('git@github.com:anthropics/claude-plugins-official.git')
     ]) {
         const system = claude({ marketplaces: [marketplace] });
 
         assert.equal((await claudeCode.install(system)).outcome, 'done', JSON.stringify(marketplace));
-        assert.equal(system.commands[0], 'claude plugin marketplace update postman');
+        assert.equal(system.commands[0], 'claude plugin marketplace update claude-plugins-official');
     }
 });
 
@@ -282,8 +119,8 @@ test('refuses a git URL to another repo, without printing its credentials', asyn
     assert.deepEqual(system.commands, []);
 });
 
-test('refuses a url source, which fetches one marketplace.json, even at this repo\'s URL', async () => {
-    const system = claude({ marketplaces: [byUrl('https://github.com/postmanlabs/postman-plugin', 'url')] });
+test('refuses a url source, which fetches one marketplace.json, even at the official repo\'s URL', async () => {
+    const system = claude({ marketplaces: [byUrl('https://github.com/anthropics/claude-plugins-official', 'url')] });
 
     assert.equal((await claudeCode.install(system)).outcome, 'blocked');
     assert.deepEqual(system.commands, []);
@@ -291,7 +128,7 @@ test('refuses a url source, which fetches one marketplace.json, even at this rep
 
 test('a failed command reports its output and stops', async () => {
     const system = claude({
-            runs: { 'claude plugin marketplace update postman': { code: 1, stderr: 'network down' } }
+            runs: { 'claude plugin marketplace update claude-plugins-official': { code: 1, stderr: 'network down' } }
         }),
         outcome = await claudeCode.install(system);
 
@@ -320,49 +157,61 @@ function uninstalls (system, ids) {
     return system;
 }
 
-const REMOVE_OURS = 'claude plugin marketplace remove postman --scope user --json';
-
-test('remove uninstalls every user-scope copy, then removes our marketplace', async () => {
-    const system = uninstalls(claude({ plugins: [plugin('postman@postman'), plugin('postman@claude-plugins-official')] }),
-            ['postman@postman', 'postman@claude-plugins-official']),
+test('remove uninstalls every user-scope copy', async () => {
+    const system = uninstalls(claude({ plugins: [plugin('postman@claude-plugins-official'), plugin('postman@postman')] }),
+            ['postman@claude-plugins-official', 'postman@postman']),
         outcome = await claudeCode.remove(system);
 
     assert.equal(outcome.outcome, 'done');
-    assert.equal(outcome.message, 'uninstalled postman@postman, postman@claude-plugins-official and removed marketplace postman');
     assert.deepEqual(system.commands, [
-        'claude plugin uninstall postman@postman --scope user --json',
         'claude plugin uninstall postman@claude-plugins-official --scope user --json',
-        REMOVE_OURS
+        'claude plugin uninstall postman@postman --scope user --json'
     ]);
 });
 
-test('remove fails when an uninstall exits 0 but leaves the official copy installed', async () => {
-    const system = uninstalls(claude({ plugins: [plugin('postman@postman'), plugin('postman@claude-plugins-official')] }),
-            ['postman@postman']),
+test('remove fails when an uninstall exits 0 but leaves the duplicate installed', async () => {
+    const system = uninstalls(claude({ plugins: [plugin('postman@claude-plugins-official'), plugin('postman@postman')] }),
+            ['postman@claude-plugins-official']),
         outcome = await claudeCode.remove(system);
 
     assert.equal(outcome.outcome, 'failed');
-    assert.match(outcome.message, /postman@claude-plugins-official is still installed/);
+    assert.match(outcome.message, /postman@postman is still installed/);
 });
 
 test('remove skips when nothing is installed at user scope', async () => {
-    const system = claude({ marketplaces: [official], plugins: [plugin('postman@postman', 'local')] });
+    const system = claude({ plugins: [plugin('postman@claude-plugins-official', 'local')] });
 
     assert.equal((await claudeCode.remove(system)).outcome, 'skipped');
     assert.deepEqual(system.commands, []);
 });
 
-test('remove after an earlier remove still takes out our marketplace, at user scope only', async () => {
-    const system = claude({ marketplaces: [official, ours] }),
+const OWN = { name: 'postman', source: 'github', repo: 'postmanlabs/postman-plugin' },
+    REMOVE_OWN = 'claude plugin marketplace remove postman --scope user --json';
+
+test('remove after an older remove still takes out this repo\'s own marketplace, at user scope only', async () => {
+    const system = claude({ marketplaces: [official, OWN] }),
         outcome = await claudeCode.remove(system);
 
     assert.equal(outcome.outcome, 'done');
     assert.equal(outcome.message, 'removed marketplace postman');
-    assert.deepEqual(system.commands, [REMOVE_OURS]);
+    assert.deepEqual(system.commands, [REMOVE_OWN]);
 });
 
-test('remove keeps our marketplace while a project still installs from it, or when it comes from elsewhere', async () => {
-    const project = claude({ plugins: [plugin('postman@postman', 'project', { projectPath: '/work/api' })] }),
+test('remove uninstalls the duplicate before removing the marketplace it came from', async () => {
+    const system = claude({ marketplaces: [official, OWN], plugins: [plugin('postman@postman')] });
+
+    system.runs['claude plugin uninstall postman@postman --scope user --json'] = (fake) => {
+        fake.probes[PLUGINS] = '[]';
+
+        return '';
+    };
+
+    assert.equal((await claudeCode.remove(system)).message, 'uninstalled postman@postman and removed marketplace postman');
+    assert.deepEqual(system.commands, ['claude plugin uninstall postman@postman --scope user --json', REMOVE_OWN]);
+});
+
+test('remove keeps the own marketplace while a project still installs from it, or when it comes from elsewhere', async () => {
+    const project = claude({ marketplaces: [OWN], plugins: [plugin('postman@postman', 'project', { projectPath: '/work/api' })] }),
         foreign = claude({ marketplaces: [{ name: 'postman', source: 'github', repo: 'someone/postman' }] });
 
     assert.equal((await claudeCode.remove(project)).outcome, 'skipped');
@@ -373,16 +222,15 @@ test('remove keeps our marketplace while a project still installs from it, or wh
 });
 
 test('never removes Anthropic\'s marketplace, which other plugins come from', async () => {
-    const system = uninstalls(claude({ marketplaces: [official, ours], plugins: [plugin('postman@claude-plugins-official')] }),
-        ['postman@claude-plugins-official']);
+    const system = claude({ plugins: [plugin('postman@claude-plugins-official')] });
 
     await claudeCode.remove(system);
 
-    assert.ok(!system.commands.some((line) => line.includes('marketplace remove claude-plugins-official')));
+    assert.ok(!system.commands.some((line) => line.includes('marketplace remove')));
 });
 
-test('a marketplace declared only in a project is reported, not a failed remove', async () => {
-    const system = claude({ runs: { [REMOVE_OURS]: { code: 1, stderr: 'not found in user settings' } } }),
+test('an own marketplace declared only in a project is reported, not a failed remove', async () => {
+    const system = claude({ marketplaces: [OWN], runs: { [REMOVE_OWN]: { code: 1, stderr: 'not found in user settings' } } }),
         outcome = await claudeCode.remove(system);
 
     assert.equal(outcome.outcome, 'skipped');

@@ -51,7 +51,7 @@ const lines = (text, needle) => text.split(/\r?\n/).filter((line) => line.includ
 // checks what a remove takes out besides the plugin.
 const AGENTS = {
     'claude-code': {
-        expected: ['postman@postman [user]'],
+        expected: ['postman@claude-plugins-official [user]'],
         found: () => JSON.parse(output('claude', ['plugin', 'list', '--json']))
             .filter(({ id }) => id.startsWith('postman@')).map(({ id, scope }) => `${id} [${scope}]`),
         alsoRemoved: () => assert.ok(!JSON.parse(output('claude', ['plugin', 'marketplace', 'list', '--json'])).some(({ name }) => name === 'postman'),

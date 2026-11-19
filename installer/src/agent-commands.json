@@ -38,7 +38,7 @@
         "plugin",
         "marketplace",
         "add",
-        "postmanlabs/postman-plugin",
+        "anthropics/claude-plugins-official",
         "--scope",
         "user"
       ],
@@ -46,12 +46,12 @@
         "plugin",
         "marketplace",
         "update",
-        "postman"
+        "claude-plugins-official"
       ],
       "install": [
         "plugin",
         "install",
-        "postman@postman",
+        "postman@claude-plugins-official",
         "--scope",
         "user",
         "--json"
@@ -59,7 +59,7 @@
       "update": [
         "plugin",
         "update",
-        "postman@postman",
+        "postman@claude-plugins-official",
         "--scope",
         "user",
         "--json"
@@ -67,15 +67,15 @@
       "remove": [
         "plugin",
         "uninstall",
-        "postman@postman",
+        "postman@claude-plugins-official",
         "--scope",
         "user",
         "--json"
       ]
     },
     "marketplace": {
-      "name": "postman",
-      "repo": "postmanlabs/postman-plugin"
+      "name": "claude-plugins-official",
+      "repo": "anthropics/claude-plugins-official"
     },
     "limitations": {
       "remove": "Review Postman plugins in Claude Code to finish removing older installations."

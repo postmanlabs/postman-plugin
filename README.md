@@ -40,8 +40,7 @@ Postman marketplace in Claude Code, Codex, Copilot CLI and Factory Droid, once n
 plugin still installs from it; the approval of Postman's Codex session-start hook that
 releases before 0.7.2 wrote; and
 OpenCode's cached copy. Running it again cleans up what an earlier `remove` left
-behind. In Claude Code it also uninstalls a `postman@claude-plugins-official`
-copy, but never Anthropic's `claude-plugins-official` marketplace itself, nor
+behind. It never touches Anthropic's `claude-plugins-official` marketplace or
 another agent's settings, and it leaves project-scoped installs in place. Factory
 Droid lists project installs only for the current directory, so one elsewhere keeps
 working but stops getting updates once the marketplace is gone. Cursor Marketplace
@@ -64,29 +63,13 @@ the same URL.
 [View Postman on Claude Plugins](https://claude.com/plugins/postman)
 
 ```bash
-claude plugin marketplace add postmanlabs/postman-plugin
-claude plugin install postman@postman
+claude plugin marketplace add anthropics/claude-plugins-official
+claude plugin install postman@claude-plugins-official
 ```
 
-This marketplace follows `main`, so versioned plugin releases reach you without
-waiting for Anthropic's catalog. Changes between version bumps do not update an
-already installed copy. Claude Code doesn't auto-update third-party marketplaces
-by default: turn it on under **/plugin → Marketplaces → postman → Enable
-auto-update**, and new versions install in the background once a session
-starts. The installer turns it on unless you already turned it off. If an
-existing `postman` marketplace is pinned to a tag, commit or another branch,
-the installer stops with instructions to switch it to `main` before proceeding.
-
-Postman is also listed in Anthropic's marketplace as
-`postman@claude-plugins-official`, which updates only when Anthropic merges a
-bump. Install one or the other: with both enabled, Claude Code loads every
-skill twice and runs only one copy's hooks. The installer uninstalls the
-official copy when it installs this one.
-
-Existing users need to rerun the installer above after the installer release
-containing this migration is published. Plugin auto-update alone does not switch
-marketplaces. Project and local installs stay in place; migrate those in their
-own projects to avoid continuing to load the official copy alongside this one.
+The first command registers Anthropic's official marketplace, which a fresh
+Claude Code doesn't have until an interactive session gets past sign-in. It
+does nothing where the marketplace is already registered.
 
 ### Codex
 
