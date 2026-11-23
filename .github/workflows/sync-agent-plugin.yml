@@ -8,6 +8,10 @@
 # GitHub App token or a fine-grained PAT with `contents: write`, stored as the AGENT_PLUGIN_SYNC_TOKEN
 # secret. Without that secret the job does nothing and `Manifest` fails as it always did.
 #
+# `regenerate` works on the merge with `main`, as `Manifest` does, so the patch fixes what that job would
+# fail on. It applies cleanly only when the branch already has what `main` added; otherwise `push` fails
+# and asks for a merge of `main`.
+#
 # `regenerate` runs the pull request's own code and never sees that token. `push` holds the token and
 # runs none of the pull request's code: it applies the patch only if it touches nothing but generated paths.
 name: Sync generated files
@@ -41,9 +45,9 @@ jobs:
     outputs:
       changed: ${{ steps.diff.outputs.changed }}
     steps:
+      # The default ref is the merge with `main`, the tree Validate's `Manifest` job checks.
       - uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
 
       - uses: actions/setup-node@v7
@@ -96,7 +100,10 @@ jobs:
       - name: Apply and push the generated files
         if: env.SYNC_TOKEN != ''
         run: |
-          git apply --index "$RUNNER_TEMP/generated.patch"
+          git apply --index "$RUNNER_TEMP/generated.patch" || {
+            echo "::error::The patch was made against the merge with main and does not apply to this branch. Merge main into it, or run \`node scripts/build-manifest.js\` and commit the result."
+            exit 1
+          }
           git diff --cached --name-only --no-renames -z | while IFS= read -r -d '' file; do
             case " $GENERATED " in
               *" ${file%%/*} "*) ;;
