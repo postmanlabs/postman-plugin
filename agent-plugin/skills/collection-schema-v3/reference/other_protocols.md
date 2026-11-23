@@ -7,13 +7,14 @@ that the configured service or provider is available.
 Shared [auth](http.md#auth), [body](http.md#request-body), and
 [script](http.md#scripts) shapes are documented with HTTP where they apply.
 
-- [Request kinds](#request-kinds): GraphQL, gRPC, WebSocket, Socket.IO, MQTT, MCP, LLM
+- [Request kinds](#request-kinds): GraphQL, gRPC, WebSocket, Socket.IO, MQTT, MCP, Kafka, LLM
 - [Messages](#messages) and [examples](#examples)
 
 ## Request kinds
 
 `$kind` is required on these request kinds, and it is the *only* required field except on
-`mcp-request`, which also requires `transport`. So for every other kind a half-written
+`mcp-request`, which also requires `transport`, and `kafka-request`, which also requires `mode`
+(a consumer also requires `topics` and `startPosition`). So for every other kind a half-written
 request can pass structural checks without being executable. Only `*.request.yaml`
 files are discovered as requests; the right fields in a differently named file
 do not make it runnable. Each kind has its own settings; HTTP settings do not
@@ -132,11 +133,22 @@ Requires `$kind` **and** `transport`, which selects the legal keys. Common to bo
 
 | `transport` | Its keys | `settings` |
 |---|---|---|
-| `stdio` | `command`, `env` (`{key, value}` array entries) | `version`, `requestTimeout` |
+| `stdio` | `command`, `env` (a map, or `{key, value}` array entries) | `version`, `requestTimeout` |
 | `sse` | `url`, `headers` | `version`, `requestTimeout`, `strictSSL`, `sessionTimeout` |
 
 There are no other transports. `message` is a JSON-RPC envelope as a **string**;
 `{{variables}}` interpolate inside it.
+
+Script behaviour, verified on CLI 1.93.1 (the `mcp-testing` skill covers writing the tests):
+
+- `afterResponse` runs for `tools/call`, `prompts/get` and `resources/read` only. It does **not** run
+  for `tools/list`, `prompts/list` or `resources/list`; assert on those in `afterConnect`.
+- A tool failure is `pm.response.result.isError: true`. An unknown prompt or resource is a protocol
+  failure instead: `pm.response.error` is `{kind: "protocol", code, message}` and there is no `result`.
+- `afterConnect` also sees the resolved `env` in `pm.request`, credentials included. Do not log it.
+- Lint does not check a script's `type` and reports no unknown field on an `mcp-request`.
+- `postman collection run` refuses a stdio request unless given `--allow-stdio`, and cannot read
+  Postman Vault references; supply real values through an environment file kept out of git.
 
 ```yaml
 $kind: mcp-request
@@ -160,6 +172,63 @@ headers:
 message: |-
   {"method": "tools/list"}
 ```
+
+### `kafka-request`
+
+Requires `$kind` **and** `mode`, `producer` or `consumer`, which selects the legal keys. Common to
+both: `url`, `auth`, `settings`, `schema`, `messages`, `scripts`.
+
+- `url` is an **array** of bootstrap servers, not a string.
+- `settings`: `secureConnection`, `strictSSL`, `compression` (`gzip`, `lz4`, `none`, `snappy`, `zstd`).
+- `messages` is a path to a directory of `kafka-message` files (see [Messages](#messages)).
+- `schema` binds records to an API specification or a Schema Registry.
+
+| `mode` | Its keys |
+|---|---|
+| `producer` | `acknowledgements`: `all`, `leader` or `none` |
+| `consumer` | `topics` (**required**): `[{name, disabled, description, schema, partitions, startOffset, endOffset}]`, where a leading `^` in `name` makes it a regex; `startPosition` (**required**): `{type: beginning}`, `{type: end}` or `{type: timestamp, timestamp}`; `stopAfter`: `maxRecords`, `maxDurationMs`, `idleMs`, `endPosition` |
+
+Offsets are decimal **strings**. `scripts` entries have `type` `beforeProduce` or `afterProduce` on a
+producer, and `beforeConsume`, `onIncomingMessage` or `afterConsume` on a consumer.
+
+```yaml
+$kind: kafka-request
+mode: consumer
+url:
+  - 127.0.0.1:9092
+topics:
+  - name: orders
+startPosition:
+  type: beginning
+stopAfter:
+  maxRecords: 1
+  idleMs: 8000
+scripts:
+  - type: onIncomingMessage
+    code: |-
+      pm.test('has an id', () => pm.expect(pm.message.value.id).to.exist);
+order: 1000
+```
+
+Lint (CLI 1.93.1) reports a missing `mode`, a consumer without `topics` or `startPosition`, and a
+non-array `url` (`FMT015`). It reports no unknown field and does not check a script's `type`.
+
+Behaviour of `postman collection run` against a local broker (CLI 1.93.1):
+
+- `afterProduce`: `pm.response` is `{topic, partition, offset, key, value, error}`; `offset` is a string.
+- `onIncomingMessage`: read `pm.message` (`{topic, partition, offset, timestamp, key, value, headers}`);
+  `pm.response` is undefined there.
+- `afterConsume`: `pm.response.reason` says why the consume ended (for example `maxRecords`) and
+  `pm.response.messages.members` lists the records received.
+- A producer request sends **one** message per run, even when its `messages` directory holds several
+  files: use one producer request per message.
+- With `acknowledgements: none` the reported `offset` is `"-1001"`. An explicit message `timestamp`
+  is not applied. A tombstone (no `value`) reaches scripts with `value` undefined.
+- Give a consumer `idleMs` of 8000 or more, or it can end before the first record. Use `127.0.0.1`
+  for a local broker, because the CLI tries IPv6 first. A fresh topic per run stops a run reading
+  older records.
+
+Not verified: `schema` bindings, `auth`, `secureConnection`, and how lint treats `kafka-message` files.
 
 ### `llm-request`
 
@@ -231,6 +300,17 @@ content: '21.5'
 contentType: text             # text | json | hex | base64
 qos: 1
 retain: false
+```
+
+```yaml
+$kind: kafka-message          # requires topic
+topic: orders
+key:
+  contentType: text           # text | json | hex | base64
+  content: order-1
+value:                        # omit value for a tombstone
+  contentType: json
+  content: '{"id": 1}'
 ```
 
 ## Examples
