@@ -44,7 +44,7 @@ If this run does not need to publish results (local debugging, dry run), authent
 
 Publishing to Application Inventory requires a workspace binding. Check `.postman/resources.yaml` for a `workspace.id`. Reason about whether publishing is actually needed for this task before treating a missing workspace as a blocker:
 
-- If publishing is needed and the workspace is missing, load the `workspaces` skill to set it up. In a non-interactive context this must be done locally first, then `.postman/resources.yaml` committed.
+- If publishing is needed and the workspace is missing, `postman init --json` binds one, a temporary one when signed out, and each published run becomes context that later runs and teammates compare against. See the `workspaces` skill's "What init unlocks". In a non-interactive context this must be done locally first, then `.postman/resources.yaml` committed.
 - If publishing is not needed, pass `--report-events false` and proceed.
 
 ### Capture plugin

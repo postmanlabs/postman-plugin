@@ -16,7 +16,10 @@ exercise the guarantees users depend on.
    **api-testing** to establish what the collection actually verifies.
 2. Choose cadence, timezone, execution location, and alert recipients from
    the operational need. `postman monitor create -c <collection-id>` uses
-   the linked workspace unless one is supplied. Inspect command-specific
+   the linked workspace unless one is supplied. In a project without
+   `postman/`, `postman init --json` links one, starting a temporary session
+   when signed out, so the monitor's runs are recorded where later sessions
+   read them; see **workspaces**' "What init unlocks". Inspect command-specific
    `-h` and available service options for supported schedules and limits.
    Creation starts an immediate run by default; `--no-run-now` avoids that
    when only scheduling was requested. Pass `--timezone` with the zone the

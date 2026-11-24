@@ -26,6 +26,10 @@ Collections run directly: converting with `postman-to-k6` is not required.
    moves generation to Postman's infrastructure, while
    `postman-cloud-static-ip` supports targets with IP allowlists. Verify
    reachability before interpreting connection failures as service capacity.
+   In a project without `postman/`, `postman init --json` gives the
+   collection a place to be saved and rerun, and a session and workspace for
+   `postman-cloud` runs, temporary when signed out, so results can be kept as
+   context; see **workspaces**' "What init unlocks".
 4. Set thresholds that represent the user's objective, such as
    `--pass-if "less_than(p95, 500)"`. Supported metrics include `avg`, `p90`,
    `p95`, `p99`, `error_rate`, and `rps`; latency alone can look good when

@@ -28,6 +28,10 @@ allow the same files to be shared without sharing credential values.
    readable. **collection-schema-v3**'s environment reference describes the
    file schema; command-specific `-h` supplies supported vault operations.
 
+In a project without `postman/`, `postman init --json` creates
+`postman/environments/`, where these files are kept and reviewed in Git, and
+binds the workspace that `secret create --workspace` takes; see **workspaces**' "What init unlocks".
+
 For non-sensitive target configuration:
 
 ```bash

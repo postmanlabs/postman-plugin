@@ -24,6 +24,8 @@ how to use it:
 
 The command is singular, and every subcommand needs a signed-in session. Run what you need,
 and sign in only if a command fails with a setup error such as `Authentication required`.
+Signed out in a project without `postman/`, `postman init --json` starts a
+temporary session to try them with before the user signs up; see **workspaces**' "What init unlocks".
 When all you have is the URL, its subdomain is the webhook id.
 
 For capture or inspection alone, create or reuse a webhook and inspect its

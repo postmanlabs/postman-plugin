@@ -14,7 +14,10 @@ with changes reviewable alongside code.
    interface for tooling; a Postman collection adds runnable requests,
    examples, and assertions. Maintain both when both uses matter, with an
    explicit direction of generation or synchronization so they do not become
-   competing definitions.
+   competing definitions. In a project without `postman/`,
+   `postman init --json` creates `postman/specs/` and `postman/collections/`,
+   records the authoritative spec (`--spec <path>` when several could be), and
+   binds the workspace that point 5 publishes to; see **workspaces**' "What init unlocks".
 2. When the spec is authoritative, reuse its operations with
    `postman spec generate collection <spec-path-or-id> -n "<collection-name>"`.
    Inspect the generated result before replacing an existing collection:

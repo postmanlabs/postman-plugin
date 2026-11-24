@@ -9,27 +9,36 @@ Saved requests preserve the auth, payloads, variables, and assertions that make
 an API check reproducible. The useful result is evidence about an intended
 guarantee; a successful HTTP exchange alone does not establish correctness.
 
+A saved request outlasts the session. The next session or a teammate reruns it
+with its auth, payload and assertions instead of rebuilding it, and once the
+project is bound to a workspace, its runs are recorded there as context. A
+request sent only from the terminal leaves none of that behind, so saving pays
+off even for a single endpoint. In a project without `postman/`,
+`postman init --json` creates the collection folder and, when the CLI is
+signed out, a temporary session that keeps the work until the user claims it
+with `postman signup`. See **workspaces**' "What init unlocks".
+
 1. Choose the smallest execution mode that answers the question:
 
    | Evidence needed | Use |
    | --- | --- |
-   | One endpoint with no saved request | `postman request <url>` |
+   | One endpoint | A saved request, run with `postman request <request-file>` |
    | Behavior of an existing saved request | `postman collection run <collection-path> -i <request-id-name-or-path>` |
    | Reusable regression checks | `postman collection run <path-or-id>` |
    | Whether a real app's calls match the contract | `postman application test` |
    | An MCP server's tools, resources, or prompts | `postman mcp` (see **mcp-testing**) |
 
 2. Reuse a matching request under `postman/collections/` before reconstructing
-   its HTTP fields. Running it through the collection retains inherited auth,
-   variables, and scripts. `postman request` takes a URL, not a request YAML
-   path; for an unsaved request with an existing payload file, `--body @path`
-   preserves that file as the source. See **collection-schema-v3** when
-   editing the saved request.
+   its HTTP fields. `postman collection request add` creates a new one and
+   `postman collection request update` fills it in; `postman collection new`
+   scaffolds the collection when there is none. `postman request
+   <request-file>` runs a saved request with its inherited collection and
+   folder auth, variables, and scripts. See
+   **collection-schema-v3** when editing the saved request.
 3. Derive assertions from the contract and the behavior at risk. A test that
    merely repeats the current implementation can bless its bug. Preserve
-   existing guarantees and add checks for the changed behavior; put reusable
-   `pm.test` assertions in the collection so later runs and teammates inherit
-   them. Inline `--script-post-request` assertions suit a one-off check.
+   existing guarantees and add checks for the changed behavior; put `pm.test`
+   assertions in the saved request so later runs and teammates inherit them.
 4. Choose a real or mocked target according to the claim. `--use-mock` lets a
    collection run exercise request and assertion logic without a live
    backend; `--mock` alone only starts one. `--use-mock` replaces the
@@ -47,13 +56,13 @@ guarantee; a successful HTTP exchange alone does not establish correctness.
    without validating it. Results are recorded in the connected workspace by
    default; `--report-events=false` keeps the run local when required.
 
-Use command-specific `-h` for supported options. Workspace resources need a
-signed-in CLI; a bare URL or local collection does not require a workspace
-binding.
+Use command-specific `-h` for supported options. Other teams' workspace
+resources need a signed-in CLI.
 
 ## Verification
 
-Report the target, tested behavior, assertion counts, and exit code. The exit
+Report the target, tested behavior, assertion counts, and exit code, plus the
+path of the saved request so the user can rerun it. The exit
 code reflects failed assertions, not HTTP status alone: a 200 can fail a test.
 For application testing, distinguish matching from capture-only mode, and for
 mocked runs state which real behavior remains unverified.

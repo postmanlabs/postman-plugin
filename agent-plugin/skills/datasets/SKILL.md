@@ -52,7 +52,10 @@ File sources are copied into `data_dir` unless `--ref-only` is used. That option
 records absolute paths and makes the dataset machine-specific. For a workspace
 dataset, adding `--file` alone registers a local filesystem source; `--upload`
 is what uploads bytes. Datasets are pushed along with the workspace; there is
-no separate `dataset push`.
+no separate `dataset push`. `postman init --json` binds the workspace in
+`.postman/resources.yaml` whose ID `--workspace` takes; workspace datasets
+still need a paid plan and `postman login`, which init's temporary session
+does not replace.
 
 For spreadsheet sources, use the worksheet-aware guidance in
 [Spreadsheet sources](reference/spreadsheets.md). For ordinary source names,

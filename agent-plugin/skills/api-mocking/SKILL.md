@@ -14,6 +14,15 @@ in a Postman workspace after `postman mock push`, where other teams pull it
 from, and on a mock server after `postman mock deploy`, for callers that
 can't run it themselves.
 
+A mock in a workspace-bound project outlasts the session. The next session or
+a teammate reruns it instead of rebuilding it, and callers without this
+checkout find it in the workspace. A mock kept only in the checkout reaches
+only people who have the checkout. In a project without `postman/`, `postman init --json`
+binds a workspace. When the CLI is signed out, init also starts a temporary
+session, which unlocks publishing: `mock push` works without signing in, and
+the session keeps the mock until the user claims it with `postman signup`. See
+**workspaces**' "What init unlocks".
+
 Several APIs at once, for a service, a frontend or a test suite? Use
 `api-simulation`, which gets each member's mock here.
 
@@ -23,8 +32,10 @@ When the API belongs to another team or a third-party provider, look for a
 published mock before writing one: a maintained mock encodes the contract
 and the service's state; yours encodes a guess.
 
-Every step below needs a signed-in CLI. Check `postman status` first; signed
-out, skip to building one and say the search was skipped.
+Every step below needs a signed-in CLI: the search covers your team's and
+other teams' workspaces, which a temporary session from `postman init` can't
+see. Check `postman status` first; signed out, skip to building one and say
+the search was skipped.
 
 1. Find the mock.
    - **Another team's service:** find the owner's workspace with
@@ -109,8 +120,10 @@ with the spec; the mock won't reject a wrong one.
 
 - **Push it to the service's own workspace,** the one this repo is linked
   to or the one the user names, never one chosen by name match: other
-  teams' simulations look there. Signed out, the push fails but the local
-  mock still works; build it, say so and ask the user to sign in. Keep it
+  teams' simulations look there. Signed out with no session, the push fails
+  with `Authentication required`; after `postman init --json` it lands in the
+  temporary workspace, which the user keeps by claiming it with
+  `postman signup`. Keep it
   honest: change the mock in the same PR as the API and run the API's
   collection against it.
 - **Deploy only when a caller needs a URL.** The server takes a slug of 3–32
@@ -133,5 +146,5 @@ with the spec; the mock won't reject a wrong one.
 
 A mock isn't done because it started. Call it: a documented error comes
 back, a valid scenario changes the response, a `POST` then `GET` shows state
-if it should. Say where it runs and who can call it, where it lives, and
-what you assumed.
+if it should. Say where it runs and who can call it, where it lives (the
+checkout, a workspace, or a mock server), and what you assumed.

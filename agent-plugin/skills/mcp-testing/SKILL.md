@@ -14,6 +14,8 @@ One `postman mcp tools call` answers whether a tool works. Save the call as an
 MCP request (`postman collection request add --type mcp`) when the check should
 outlive the session: `collection run` repeats it locally and in CI with the same
 transport, auth and scripts, so what you proved by hand is what CI checks.
+In a project without `postman/`, `postman init --json` creates the collection
+folder to save it in; see **workspaces**' "What init unlocks".
 
 Take expectations from the tool's contract: its `inputSchema`, `outputSchema`
 and description, which are what a calling agent relies on. A test copied from

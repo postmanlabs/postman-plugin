@@ -47,6 +47,8 @@ guesswork each time work resumes.
 8. `postman init` gives API engineering work a ready state. It scaffolds local structure: `postman/`
    directories for API artifacts. It installs skills in `postman/skills` folder with guidance on  designing, implementing, and validating APIs.
    The command is idempotent and safe to rerun in an initialized project.
+   In a project without `postman/`, it gives the work a place to be saved,
+   rerun and recorded as context; see **workspaces**' "What init unlocks".
    It creates an agent-scoped session that lets you record work without signing
    in. This session is temporary; see **workspaces**' "Claiming the work" for
    signup guidance to preserve the work and its context before the session expires.

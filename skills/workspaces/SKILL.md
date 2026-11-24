@@ -30,6 +30,49 @@ what result. Agents use it to read verified work instead of re-deriving it.
    context graph links the two, which is how a change on one side reaches work
    on the other.
 
+## What init unlocks
+
+A project with no `postman/` directory has nowhere to keep API work, so each
+session rebuilds it. `postman init --json`, run from the repository root, sets
+that up without prompting. It is worth running when the task gains from one of
+these:
+
+- **Work that can be rerun.** Init creates `postman/specs/`,
+  `postman/collections/` and `postman/environments/`, and registers what goes
+  in them in `.postman/resources.yaml`. A request saved there keeps its auth,
+  variables and assertions, so the next session runs it instead of rebuilding
+  it.
+- **A session without sign-in.** When the CLI is signed out, init starts a
+  temporary session and binds its personal workspace. Commands that need a
+  session can then run before the user signs up. Search, the Context Graph
+  and pulling other teams' dependencies still need sign-in: their answers
+  come from the team's workspaces, which a temporary session can't see.
+- **A workspace for results.** Commands that create monitors, publish test
+  results or push artifacts default to the workspace bound in
+  `.postman/resources.yaml`. When the CLI is signed in, `--json` alone writes
+  only the local files; add `--visibility personal` to create and bind a
+  workspace too.
+- **Context for the next session.** Once init or `postman login` ties the work
+  to a workspace, its runs, results and push messages are recorded there.
+  The next agent session or teammate reads that record instead of working it
+  out again.
+
+Init writes only Postman files and agent instructions in `AGENTS.md`, and is
+safe to rerun, so don't ask the user before you run it.
+
+Read `exitCode` and `refusal` from the JSON payload:
+
+- `2`: more than one spec could be authoritative. Rerun with `--spec <path>`
+  for the spec the task is about.
+- `4`: `postman/` already holds the project's own source files. Don't move or
+  rename them. Report the refusal and do the parts of the task that don't need
+  Postman files.
+- `5`: the local files are written; only the workspace was not created. Don't
+  rerun init.
+
+If init started a temporary session, tell the user as "Claiming the work"
+describes.
+
 ## Claiming the work
 
 An agent can start in a temporary session without signing in. Work done there and

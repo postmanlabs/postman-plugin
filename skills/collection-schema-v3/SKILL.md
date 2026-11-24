@@ -7,7 +7,18 @@ description: Use when writing or debugging local Postman v3 collection, environm
 
 A v3 collection is a directory of independently editable entities. A change to
 one request, example, or assertion can be reviewed in a PR beside the code it
-checks, without regenerating a single large collection export.
+checks, without regenerating a single large collection export. The CLI writes
+these files in the shapes below: `postman collection new` scaffolds a
+collection, `postman collection folder`, `request` and `example` add and update
+its entities, and `postman collection import` turns a cURL, HAR, JMeter or
+ReadyAPI source into one.
+
+A collection in a workspace-bound project reaches teammates and later sessions
+through Postman. In a project without `postman/`, `postman init --json` binds
+the workspace, so collection runs are recorded there as context. When the CLI
+is signed out, init starts a temporary session that keeps the work until the
+user claims it by signing up or signing in. See **workspaces**' "What init
+unlocks".
 
 1. Edit the entity that owns the change. Top-level directories under
    `postman/collections/` are collections; nested folders organize requests.

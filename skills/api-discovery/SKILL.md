@@ -11,9 +11,11 @@ passing this service's own tests does not establish that its consumers can
 still use a changed interface.
 
 Postman search, the Context Graph and dependency downloads work only for a
-signed-in CLI. Check `postman status` before the first of them and sign in if
-it reports signed out. If signing in isn't possible, don't run them; say which
-sources were skipped.
+signed-in CLI. Their answers come from your team's and other teams'
+workspaces, which a temporary session from `postman init` can't see. Check
+`postman status` before the first of them and sign in if it reports signed
+out. If signing in isn't possible, don't run them; say which sources were
+skipped.
 
 1. Choose the source by the question:
 
