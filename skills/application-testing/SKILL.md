@@ -32,7 +32,7 @@ The two commands are separate routes; a request such as "connect my Playwright t
 | Where tests run | This machine or CI, against your running app | The Postman cloud |
 | What it adds to the repo | `postman-playwright`, the `withPostman()` config wrapper, `postman.config.cjs` | The folder synced to the workspace, mapped in `.postman/resources.yaml` |
 | Result | Captured API calls matched against a collection; contract and coverage in Application Inventory | Playwright results with HTML and JSON reports per cloud run; a monitor can run the test on a schedule |
-| Needs | A collection; the app reachable where the tests run | The app reachable from the Postman cloud; a push before each run |
+| Needs | A collection; the app reachable where the tests run | The app reachable from the Postman cloud; a push before a cloud run (a local run uses the files as they are) |
 
 1. **Check the repository first.**
    - `postman.config.cjs`, `withPostman(` or `attachNetworkCapture(` → the inventory route is set up.
