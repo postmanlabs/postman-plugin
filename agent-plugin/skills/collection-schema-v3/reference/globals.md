@@ -12,7 +12,9 @@ It has no `$kind` discriminator.
   - `value` — string for a plain variable; omit it on a secret. Quote
     numeric- or boolean-looking strings and `{{variables}}` so YAML preserves
     their type.
-  - `enabled` — boolean.
+  - `enabled` — boolean, written on every value. Globals still use `enabled`,
+    not the environment's `disabled`. The app reads `disabled: true` in a
+    globals file as enabled, and a pull rewrites it to `enabled: false`.
   - `secret` — optional boolean. `secret: true` is the only way the app
     treats a variable as secret, and a secret carries no `value`.
   - `type` — the app does not write it. Omit it; `type: secret` without

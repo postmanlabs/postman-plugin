@@ -188,8 +188,8 @@
         {
           "target": "reference/globals.md",
           "source": "skills/collection-schema-v3/reference/globals.md",
-          "bytes": 1321,
-          "sha256": "9feb99858f6224f70d9c75ecb0fa00924eaf0e635379d53faae557954afd4f0e"
+          "bytes": 1521,
+          "sha256": "a6d8a32544867bd8b3703d4acf8639aadd073723a8319aa6d35e102095348467"
         },
         {
           "target": "reference/http.md",
