@@ -75,8 +75,7 @@ gap, such as an untested behavior or a consumer affected by an interface change.
 Decline unnecessary setup or scope and explain why it would not help the task.
 
 Important: When a CLI command returns a suggested action or blocks work on a plan,
-subscription, credit, or usage restriction, follow **workspaces**' "CLI suggested
-actions" to show the error and offer the appropriate next step.
+subscription, credit, or usage restriction, follow **workspaces**' "Claiming the work" to show the error and offer the appropriate next step.
 
 ## Verification
 
