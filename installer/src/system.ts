@@ -27,6 +27,8 @@ export interface System {
     exists (file: string): Promise<boolean>;
     /** `null` only when the file does not exist; any other read error is thrown, not read as "absent". */
     readFile (file: string): Promise<string | null>;
+    /** The first `bytes` bytes of a file as UTF-8, following symlinks; `null` only when it does not exist, like `readFile`. */
+    readHead (file: string, bytes: number): Promise<string | null>;
     /** The names in a directory; empty when it is missing or not a directory, and any other error is thrown, like `readFile`. */
     readDir (dir: string): Promise<string[]>;
     probe (command: string, args: string[]): Promise<ExecResult>;
@@ -151,6 +153,27 @@ export function createSystem ({
                 }
 
                 throw error;
+            }
+        },
+        async readHead (file, bytes) {
+            let handle: fs.FileHandle | undefined;
+
+            try {
+                handle = await fs.open(file, 'r');
+                const buffer = Buffer.alloc(bytes),
+                    { bytesRead } = await handle.read(buffer, 0, bytes, 0);
+
+                return buffer.subarray(0, bytesRead).toString('utf8');
+            }
+            catch (error) {
+                if (ABSENT.includes((error as NodeJS.ErrnoException).code ?? '')) {
+                    return null;
+                }
+
+                throw error;
+            }
+            finally {
+                await handle?.close();
             }
         },
         async readDir (dir) {

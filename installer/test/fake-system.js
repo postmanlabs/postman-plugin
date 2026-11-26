@@ -56,6 +56,19 @@ export function fakeSystem ({
             return file in system.files ? system.files[file] : null;
         },
 
+        // A bin that `which` finds reads as empty unless `files` gives its content.
+        async readHead (file, bytes) {
+            if (system.files[file] instanceof Error) {
+                throw system.files[file];
+            }
+
+            if (file in system.files) {
+                return system.files[file].slice(0, bytes);
+            }
+
+            return [...system.bins].some((bin) => file === `/usr/bin/${bin}`) ? '' : null;
+        },
+
         async readDir (dir) {
             const prefix = dir + path.sep,
                 names = new Set();

@@ -144,6 +144,24 @@ test('an npm-style .cmd shim on PATH runs through cmd.exe with its arguments int
     }
 });
 
+test('readHead reads only the start of a file, through a symlink, and is null only for a missing file', async (t) => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'postman-plugin-system-'));
+
+    t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+    fs.writeFileSync(path.join(dir, 'a-file'), 'head-and-the-rest');
+
+    assert.equal(await system.readHead(path.join(dir, 'a-file'), 4), 'head');
+    assert.equal(await system.readHead(path.join(dir, 'a-file'), 4096), 'head-and-the-rest');
+    assert.equal(await system.readHead(path.join(dir, 'missing'), 4), null);
+    assert.equal(await system.readHead(path.join(dir, 'a-file', 'below-it'), 4), null);
+
+    if (!windows) {
+        fs.symlinkSync(path.join(dir, 'a-file'), path.join(dir, 'a-link'));
+        assert.equal(await system.readHead(path.join(dir, 'a-link'), 4), 'head');
+    }
+});
+
 test('readDir lists a directory, and is empty for a path that is missing or not a directory', async (t) => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'postman-plugin-system-'));
 
