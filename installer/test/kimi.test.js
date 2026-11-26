@@ -23,6 +23,27 @@ test('detects Kimi Code on PATH or in the places the plugins CLI looks', async (
     assert.equal(await kimi.detect(fakeSystem()), false);
 });
 
+// The first lines of the shim `uv tool install kimi-cli` and `pip install kimi-cli` put on PATH.
+const LEGACY_SHIM = '#!/home/user/.local/share/uv/tools/kimi-cli/bin/python\nimport sys\nfrom kimi_cli.cli import main\n';
+
+test('does not take the archived Python kimi-cli for Kimi Code', async () => {
+    assert.equal(await kimi.detect(fakeSystem({ bins: ['kimi'], files: { '/usr/bin/kimi': LEGACY_SHIM } })), false);
+    assert.equal(await kimi.detect(fakeSystem({ files: { [path.join(home, '.local', 'bin', 'kimi')]: LEGACY_SHIM } })), false);
+    assert.equal(await kimi.detect(fakeSystem({ files: { [path.join(home, '.kimi', 'bin', 'kimi')]: LEGACY_SHIM } })), false);
+});
+
+test('detects Kimi Code installed beside the archived kimi-cli', async () => {
+    assert.equal(await kimi.detect(fakeSystem({
+        bins: ['kimi'], files: { '/usr/bin/kimi': LEGACY_SHIM, [path.join(defaultHome, 'bin', 'kimi')]: '' }
+    })), true);
+});
+
+test('looks for the kimi-cli marker only where Kimi Code\'s installer does', async () => {
+    // Its installer never counts its own home as kimi-cli, and reads only a shim's first 4096 bytes.
+    assert.equal(await kimi.detect(fakeSystem({ files: { [path.join(defaultHome, 'bin', 'kimi')]: LEGACY_SHIM } })), true);
+    assert.equal(await kimi.detect(fakeSystem({ bins: ['kimi'], files: { '/usr/bin/kimi': `${'x'.repeat(4096)}kimi_cli` } })), true);
+});
+
 test('reads installed state from Kimi\'s plugin store, honouring KIMI_CODE_HOME', async () => {
     assert.equal((await kimi.status(fakeSystem({ files: installedJson(defaultHome, ['postman']) }))).installed, true);
     assert.equal((await kimi.status(fakeSystem({ files: installedJson(defaultHome, ['other']) }))).installed, false);
