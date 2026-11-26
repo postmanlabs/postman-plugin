@@ -10,13 +10,15 @@
 # its model and the MCP server: `claude-code`, `codex`, `copilot`, `cursor`, `factory`, `kimi`,
 # `opencode` and `pi`; `antigravity` checks only what agy registers (see that job). Every job but
 # `skills`, `manifest`, `route-versions`, `postman-cli`, `schema`, `cursor` and `antigravity` runs on Linux, and on Windows too
-# unless a pull request changes only skills or docs (see `os`).
+# unless a pull request or its merge queue entry changes only skills or docs (see `os`).
 name: Validate
 
 on:
   push:
     branches: ['main']
   pull_request:
+  # main's ruleset requires `Manifest`, so the merge queue waits for this workflow to report on its ref.
+  merge_group:
 
 # A new push to a pull request cancels the run it supersedes. Every other run gets a
 # group of its own: a group holds one pending run, so sharing one would drop pushes to main.
@@ -26,7 +28,7 @@ concurrency:
 
 jobs:
   # The Windows legs take two to three times as long, so a pull request that changes
-  # only skills or docs skips them; Linux still loads every skill. A push runs both.
+  # only skills or docs skips them, and so does its merge queue entry; Linux still loads every skill. A push runs both.
   os:
     name: Runners
     runs-on: ubuntu-latest
@@ -38,7 +40,7 @@ jobs:
           persist-credentials: false
           fetch-depth: 2
 
-      - name: Windows too, unless a pull request changes only skills or docs
+      - name: Windows too, unless a pull request or queue entry changes only skills or docs
         id: pick
         env:
           EVENT: ${{ github.event_name }}
@@ -48,8 +50,8 @@ jobs:
           linux='{"os":"ubuntu-latest","label":"Linux"}'
           windows='{"os":"windows-latest","label":"Windows"}'
           windows_too=true
-          if [ "$EVENT" = pull_request ]; then
-            # A pull request checks out its merge commit, whose first parent is the base.
+          if [ "$EVENT" = pull_request ] || [ "$EVENT" = merge_group ]; then
+            # A pull request's merge commit and a queue entry's commit each differ from their first parent by at least their own changes.
             changed=$(git diff --name-only HEAD^1 HEAD)
             grep -qE "$CODE" <<< "$changed" || windows_too=false
           fi
