@@ -24,9 +24,10 @@ allow the same files to be shared without sharing credential values.
    value for the current run. For transient sensitive values, avoid persisting
    them to an environment or logging them.
 4. Store durable credentials in the shared vault and commit references.
-   `type: secret` alone masks the UI but still leaves a literal YAML value
-   readable. **collection-schema-v3**'s environment reference describes the
-   file schema; command-specific `-h` supplies supported vault operations.
+   The app marks a variable secret only by `secret: true`; `type: secret`
+   alone is read as a plain variable and leaves a literal YAML value readable.
+   **collection-schema-v3**'s environment reference describes the file schema;
+   command-specific `-h` supplies supported vault operations.
 
 For non-sensitive target configuration:
 

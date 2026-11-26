@@ -136,8 +136,10 @@ Requires `$kind` **and** `transport`, which selects the legal keys. Common to bo
 | `stdio` | `command`, `env` (a map, or `{key, value}` array entries) | `version`, `requestTimeout` |
 | `sse` | `url`, `headers` | `version`, `requestTimeout`, `strictSSL`, `sessionTimeout` |
 
-There are no other transports. `message` is a JSON-RPC envelope as a **string**;
-`{{variables}}` interpolate inside it.
+There are no other transports. A key from the other transport, such as `url` on a
+`stdio` request, is dropped on read. `settings.version` is `auto`, `legacy` or
+`2026-07-28`. `message` is a JSON-RPC envelope as a **string**; `{{variables}}`
+interpolate inside it.
 
 Script behaviour, verified on CLI 1.93.1 (the `mcp-testing` skill covers writing the tests):
 
@@ -228,18 +230,20 @@ Behaviour of `postman collection run` against a local broker (CLI 1.93.1):
   for a local broker, because the CLI tries IPv6 first. A fresh topic per run stops a run reading
   older records.
 
-Not verified: `schema` bindings, `auth`, `secureConnection`, and how lint treats `kafka-message` files.
+Not verified: `schema` bindings, `auth` and `secureConnection`.
 
 ### `llm-request`
 
 `url`, `config`, `userPrompts`, `systemPrompts`, `mcpConfig`, `enabledTools`,
 `clientTools`, `auth`, `settings`.
 
-`config` takes `model` and `provider`, both free-form strings. Schema validation
-does not establish that the configured provider or model is available at run time.
+`config` takes `model` and `provider`, both required free-form strings. Schema
+validation does not establish that the configured provider or model is available at
+run time.
 
 Prompt entries are `{id, value, timestamp, active, contentType}`. The content
-format is expressed by `contentType`; `type` is not a prompt-entry field.
+format is expressed by `contentType` (`text`, `image`, `audio`, `video`, `postman_json`,
+`json`, `xml`, `html`, `binary` or `hexdump`); `type` is not a prompt-entry field.
 `timestamp` is numeric, and `active` is boolean.
 
 `mcpConfig` is a **string containing a JSON array**, not nested YAML and not
@@ -273,6 +277,13 @@ mcpConfig: |-
 distinguish a step limit from a tool or provider failure before changing `maxSteps`;
 the limit also bounds execution cost and duration.
 
+### `data-request`
+
+`url` (a connection string), `query`, `type`, `settings`, `auth`, `visualizations`.
+`type` is `postgres`, `mysql`, `redis`, `csv`, `json` or `xlsx` and selects the
+`settings` shape; a draft without `type` is valid but has no `settings`. There is no
+`scripts`.
+
 ## Messages
 
 A `messages` directory holds `*.message.yaml` files. Each kind has different required
@@ -285,7 +296,8 @@ contentType: json             # text | json | xml | html | hex | base64
 ```
 
 ```yaml
-$kind: socket.io-message      # requires eventName + args
+$kind: socket.io-message      # requires eventName + at least one args entry
+                              # arg contentType: text | json | hex | base64
 eventName: chat:message
 acknowledgement: true
 args:
@@ -313,10 +325,17 @@ value:                        # omit value for a tombstone
   content: '{"id": 1}'
 ```
 
+Lint reports a missing `topic` as `FMT016`, and a `key` or `value` that has no `content`
+or a `contentType` outside that list. Unlike a `kafka-request`, a `kafka-message` gets
+`FMT207` for an unknown field. A message has no `description` field, so a `description`
+gets `FMT207` too.
+
 ## Examples
 
 Examples live in `.resources/<request-name>.resources/examples/*.example.yaml`, with
 `$kind` matching the request's protocol — `graphql-example`,
-`grpc-example`, `websocket-example`, `socket.io-example`, `mqtt-example`. An
-`*-example` kind is rejected in a `*.request.yaml`, and a `*-request` kind is rejected
-in a `*.example.yaml`.
+`grpc-example`, `websocket-example`, `socket.io-example`, `mqtt-example`. Every example
+kind requires `response`. A `graphql-example` response requires `events`, and a
+`grpc-example` response requires `code` and `messages`. Kafka, MCP, LLM and data
+requests have no example kind. An `*-example` kind is rejected in a `*.request.yaml`,
+and a `*-request` kind is rejected in a `*.example.yaml`.

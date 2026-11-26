@@ -11,17 +11,23 @@ Optional metadata for a collection or folder:
 - `$kind: "collection"` — required, even for a folder's definition.
 - `name` — optional, defaults to the filesystem folder name.
 - `description` — optional.
-- `variables` — array of `{key, value, description?, disabled?}`. `value`
-  must be a string; `disabled` a boolean. A map of name to value is also
-  accepted when no entry needs `description` or `disabled`.
+- `variables` — collection root definition only; a folder definition's
+  `variables` is dropped on read. An array of `{key, value, disabled?}`, or a
+  map of name to value when no entry needs `disabled`. Quote `value` to keep it
+  a string. A secret is `{key, secret: true, source?, disabled?}` with no
+  `value`; `source` points at a vault (see **variables**). There is no
+  `description` on a variable: it is dropped on read without a lint warning.
 - `auth` — a single auth object `{type, credentials: [{key, value}, ...]}`
   or an array for multiAuth: `[{id, name, type, credentials, rules?}, ...]`.
-  `credentials` may also be a map of key to value.
+  `credentials` may also be a map of key to value. A multiAuth entry's `type`
+  cannot be `inherit`.
 - `scripts` — array of `{type, code, language: "text/javascript"}`. `type`
   is one of `http:beforeRequest`, `http:afterResponse`,
   `graphql:beforeQuery`, `graphql:afterResponse`, `grpc:beforeInvoke`,
   `grpc:onIncomingMessage`, `grpc:afterResponse`.
-- `order` — number, used for folder ordering.
+- `order` — number, read from a folder's definition and dropped from the
+  collection root's. Requests, examples and messages take `order` in their own
+  files.
 
 ## HTTP request (`*.request.yaml`)
 
@@ -31,22 +37,35 @@ Optional metadata for a collection or folder:
   (e.g. multiples of 1000) rather than packing them tight — a later
   insertion between two requests shouldn't force renumbering every sibling.
 - `url` — string, with `{{varName}}` variable syntax.
-- `method` — `GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS`.
+- `method` — an HTTP method string, usually
+  `GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS`; custom methods are accepted.
 - `headers` — array of `{key, value, description?, disabled?}`, or a map of
   header name to value when no entry needs `description` or `disabled`.
-- `queryParams` — array of `{key, value, description?, disabled?}`.
-- `pathVariables` — array of `{key, value, description?}`.
+- `queryParams` — array of `{key, value, description?, disabled?}`, or a map of
+  name to value.
+- `pathVariables` — array of `{key, value, description?, disabled?}`.
 - `body` — `{type, content}`; `type` required whenever `body` is present.
   - Types: `json`, `formdata`, `urlencoded`, `text`, `xml`, `html`,
-    `javascript`, `file`, `none`.
+    `javascript`, `graphql`, `file`, `none`.
   - `json`/`text`/`xml`/`html`/`javascript`: `content` is a string.
   - `formdata`: `content` is an array of
-    `{key, type: "text"|"file", value or src, contentType?, description?}`.
-  - `urlencoded`: `content` is an array of `{key, value, description?}`, or a
-    map of key to value.
+    `{key, type: "text"|"file", value or src, contentType?, description?, disabled?}`;
+    a file entry's `src` is a path or an array of paths.
+  - `urlencoded`: `content` is an array of `{key, value, description?, disabled?}`,
+    or a map of key to value.
+  - `graphql`: `content` is `{query, variables?, operationName?}`, with
+    `variables` a JSON string.
 - `auth` — `{type, credentials}`.
-- `settings` —
-  `{protocolVersion?, strictSSL?, followRedirects?, maxRedirects?, disabledSystemHeaders?}`.
+- `settings` — `protocolVersion` (`auto|http1|http2`), `strictSSL`,
+  `followRedirects`, `maxRedirects`, `followOriginalHttpMethod`,
+  `followAuthorizationHeader`, `removeRefererHeaderOnRedirect`,
+  `insecureHTTPParser`, `disableUrlEncoding`, `disableCookies`,
+  `maxResponseSize`, `maxHeaderSize`, `tlsPreferServerCiphers`,
+  `tlsDisabledProtocols` (`TLSv1|TLSv1_1|TLSv1_2|TLSv1_3`),
+  `tlsCipherSelection`, and `disabledSystemHeaders`, an array drawn from
+  `cache-control`, `postman-token`, `content-type`, `content-length`,
+  `accept-encoding`, `user-agent`, `connection`, `accept`, `host`,
+  `x-amz-date`, `x-amz-security-token`, `x-amz-content-sha256`.
 - `scripts` — array of `{type: "beforeRequest"|"afterResponse", code, language: "text/javascript"}`.
 - `examples` — optional, a relative path to the examples directory, e.g.
   `./.resources/<request-name>.resources/examples/`.
@@ -55,9 +74,9 @@ When editing query parameters, update both places they are recorded: the
 query string in `url` and the entries in `queryParams`. Their names, values and
 order must match; lint reports a difference as `FMT209`: a different value or
 order, an entry in only one of the two, or `queryParams: []` next to a query
-string. Disabled `queryParams` entries are ignored by the check, and a query
-string in `url` with no `queryParams` key at all is not reported, but write both
-so they stay in step. For example, `q=shoes&page=2` is represented as:
+string. A query string in `url` with no `queryParams` key at all is reported
+too. Disabled `queryParams` entries are ignored by the check. For example,
+`q=shoes&page=2` is represented as:
 
 ```yaml
 url: '{{base_url}}/search?q=shoes&page=2'
@@ -70,7 +89,8 @@ queryParams:
 
 ## HTTP example (`*.example.yaml`)
 
-`http-example` requires `$kind` and `response`, and `response` requires `body`:
+`http-example` requires `$kind` and `response`, and `response` requires
+`statusCode` (a number), `statusText` and `body`:
 
 ```yaml
 $kind: http-example
@@ -144,7 +164,8 @@ does the same thing.
 `username`/`password` for `basic`, `token` for `bearer`, `key`/`value`/`in` for
 `apikey`, `accessKey`/`secretKey`/`region`/`service` for `awsv4`. A structurally
 valid credential entry does not establish that the server will authenticate it.
-`credentials` is an array of `{key, value}` entries.
+`credentials` is an array of `{key, value}` entries or a map of key to value.
+A multiAuth entry cannot use `inherit`.
 
 ## Request body
 

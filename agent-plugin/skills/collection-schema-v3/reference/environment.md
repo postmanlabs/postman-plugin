@@ -30,14 +30,20 @@ An environment is one YAML file named `<name>.environment.yaml` under
 - `values` — required array; an empty environment uses `values: []`.
 - Each value has:
   - `key` — required variable name.
-  - `value` — required string. Quote booleans, numbers, empty values, and
-    values containing YAML punctuation or `{{variables}}` so YAML does not
-    coerce them.
-  - `enabled` — boolean. The CLI writes `true` for a newly set variable.
-  - `type` — optional string. Use `default` for ordinary values and `secret`
-    for sensitive values.
-  - `secret` — optional boolean; `secret: true` alongside `type: default` is
-    also a recognised way to mark a secret.
+  - `value` — string for a plain variable; omit it on a secret (see `secret`).
+    Quote booleans, numbers, empty values, and values containing YAML
+    punctuation or `{{variables}}` so YAML does not coerce them.
+  - `disabled` — optional boolean. Write `disabled: true` only for a turned-off
+    variable and omit the key for an enabled one. The app reads a legacy
+    `enabled: true|false` too, but `disabled` wins when both are present, and
+    the app never writes `enabled` back. Do not write `enabled`.
+  - `secret` — optional boolean. `secret: true` is the only way the app treats
+    a variable as secret. A secret carries no `value`; its content comes from a
+    vault via an optional `source` object, which `postman environment var set
+    --secret-id <id>` writes.
+  - `type` — the app does not write it and ignores it on read. Omit it.
+    `type: secret` without `secret: true` is read as a plain variable and its
+    `value` stays in the file as plaintext, even though lint accepts it.
   - `description` — optional string.
 
 Do not add collection-only fields such as `$kind`, `scripts`, `auth`, or
@@ -51,13 +57,10 @@ name: Staging EU
 values:
   - key: baseUrl
     value: 'https://staging.example.com'
-    enabled: true
-    type: default
     description: API base URL
   - key: apiToken
-    value: ''
-    enabled: false
-    type: secret
+    secret: true
+    disabled: true
 ```
 
 After any hand edit, run `postman environment lint <file-or-directory>`. Use

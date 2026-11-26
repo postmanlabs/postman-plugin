@@ -9,12 +9,16 @@ It has no `$kind` discriminator.
 - `values` — required array; `values: []` represents no globals.
 - Each value has:
   - `key` — required variable name.
-  - `value` — required string. Quote numeric- or boolean-looking strings
-    and `{{variables}}` so YAML preserves their type.
-  - `enabled` — boolean.
-  - `type` — optional string: `default` or `secret`.
-  - `secret` — optional boolean; `secret: true` alongside `type: default`
-    also marks a secret.
+  - `value` — string for a plain variable; omit it on a secret. Quote
+    numeric- or boolean-looking strings and `{{variables}}` so YAML preserves
+    their type.
+  - `enabled` — boolean, written on every value. Globals still use `enabled`,
+    not the environment's `disabled`. The app reads `disabled: true` in a
+    globals file as enabled, and a pull rewrites it to `enabled: false`.
+  - `secret` — optional boolean. `secret: true` is the only way the app
+    treats a variable as secret, and a secret carries no `value`.
+  - `type` — the app does not write it. Omit it; `type: secret` without
+    `secret: true` is not treated as secret.
   - `description` — optional string.
 
 ## Example
@@ -25,11 +29,9 @@ values:
   - key: base_url
     value: 'https://api.example.com'
     enabled: true
-    type: default
   - key: api_token
-    value: ''
+    secret: true
     enabled: false
-    type: secret
 ```
 
 Marking a value as secret does not make a literal credential safe to commit.

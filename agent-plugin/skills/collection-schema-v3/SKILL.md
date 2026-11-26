@@ -48,8 +48,10 @@ Run `postman collection lint <collection-path>` for collection changes and
 `postman environment lint <path>` for environment changes. Review warnings as
 well as errors: an ignored field can change behavior even when parsing succeeds.
 From Postman CLI 1.87.0, `collection lint` reports an unrecognised field as a
-warning (`FMT206` in a request, `FMT208` in `definition.yaml`); older versions
-drop it without a message.
+warning (`FMT206` in a request, `FMT207` in an example or message, `FMT208` in
+`definition.yaml`); older versions drop it without a message. Lint gives no such
+warning for `mcp-request` or `kafka-request`, or for a field nested in a
+collection variable, so check those against the reference by hand.
 Use `postman workspace lint` when checking relationships across entities or
 workspace manifest mappings. It lints every entity in the workspace and
 `.postman/resources.yaml`, so an error in any one of them fails the whole run,
