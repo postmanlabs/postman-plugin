@@ -72,6 +72,13 @@ real service.
   routes start after the base-URL variable. `--update` regenerates the
   handler and overwrites your edits. With no contract, write it from how
   your code calls the API and say what you assumed.
+- **Seed it from a dataset when records matter.** `postman mock generate
+  --dataset <path-or-id>` makes each table a stateful resource seeded with
+  its first 20 rows (local CSV/JSON sources). Postman generates it, so the
+  rows leave the machine: use fixture data, not production rows. The rows are
+  copied into the handler, so rerun with `--update` after the data changes;
+  for handlers that query rows at run time, `mock run --dataset <path>`
+  exposes `pm.datasets()`. See **datasets**.
 - **Set `interceptRequests: true` in `config.yaml`.** Without it `req.body`
   and `req.query` are undefined, `x-mock-session` is ignored, and a throw in
   an async handler kills the mock instead of returning a `500`.

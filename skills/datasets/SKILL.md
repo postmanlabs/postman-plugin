@@ -1,6 +1,6 @@
 ---
 name: datasets
-description: Use when creating or repairing dataset manifests, or when a collection needs queried or joined test inputs, a reusable named view, spreadsheet worksheet data, live database rows, or script access through pm.datasets(). Chooses between a simple iteration file and a dataset while preserving query semantics, portability, and credential boundaries. Use for requests such as "run this collection over database rows".
+description: Use when API tests, mocks, simulations, flows, monitors or load tests need test data, such as rows from CSV, JSON or spreadsheet files, or live rows queried from Postgres, MySQL, SQL Server or a JDBC database. Also use when creating or repairing `.dataset.yaml` manifests, joining or filtering inputs into a reusable view, seeding a mock with realistic records, or reading data in scripts through pm.datasets(). Chooses between a plain iteration file and a dataset while preserving query semantics, portability, and credential boundaries. Use for requests such as "run this collection over database rows", "seed this mock with test data" or "query our test database".
 ---
 
 # Datasets
@@ -9,6 +9,21 @@ A dataset gives files and database sources a queryable interface; a saved view
 turns the query into reusable test input. That is useful when filtering,
 joining, or refreshing rows is part of the test. A one-off CSV/JSON run can
 stay with `collection run -d`; a dataset should earn its extra configuration.
+
+## Where a dataset plugs in
+
+| Need | Command |
+| --- | --- |
+| One collection iteration per row | `collection run --iteration-data-dataset <path-or-id> --iteration-data-view <name-or-id>` |
+| Lookups or expected values in scripts | `collection run --dataset <path-or-dir>`, then `pm.datasets(<datasetId>)` |
+| A stateful mock seeded with rows | `mock generate --dataset <path-or-id>` (see **api-mocking**) |
+| Mock or simulation handlers that query rows | `mock run` / `simulation run --dataset <path-or-dir>` |
+| One flow run per row | `flows run --iteration-data-dataset … --iteration-data-view …` (see **flows**) |
+| Scheduled iterations | `monitor create --dataset-id <id> --dataset-view-id <id>` (see **api-monitoring**) |
+| Per-VU rows under load | `performance run --dataset-id <id> --dataset-view-id <id>` (see **performance-testing**) |
+| Ad-hoc SQL over files or a database | `dataset query <path-or-id> -q "<sql>"` |
+
+Monitors and performance runs take workspace dataset IDs, not local paths.
 
 ## Choose the data and execution path
 
@@ -22,27 +37,31 @@ stay with `collection run -d`; a dataset should earn its extra configuration.
    Switching modes to silence a SQL error changes query semantics. JDBC
    requires the native path and cannot join in the federated layer; native
    database connectors can support federation.
-3. Choose credentials before choosing a database connector. JDBC variables
-   and properties accept shared-vault references such as
-   `vault:<vaultId>/<secretId>`, resolved at query time. Native database
-   credentials are stored literally in dataset configuration on the documented
-   CLI surface; inspect current support before use, and keep secret-bearing
-   configuration out of Git. Literal values passed through stdin avoid argv
-   exposure but can still be persisted in YAML. See **variables** for vault
-   handling. A connector that enables a join may have a worse credential
-   boundary than JDBC; do not hide that tradeoff.
+3. Choose credentials before adding a database source. Credential flags,
+   JDBC `--var`/`--prop` values and `--vars-file` entries accept
+   `vault:<KEY>` (a Shared Vault secret, preferred), `vault:<vaultId>/<secretId>`,
+   or `env:<NAME>`, which reads `POSTMAN_VAULT_<NAME>` when the dataset runs
+   (local manifests only; the CI idiom). A literal works with a warning but
+   lands in shell history and in the stored YAML; `--vars-file -` keeps it
+   out of argv, not out of the file. A secret typed into a JDBC
+   `--url-template` is rejected: use a `{{placeholder}}` and `--var`. The
+   "Secrets" section of `dataset source add -h` is authoritative for the
+   installed CLI; see **variables** for vault handling.
 4. Choose iteration or script access deliberately. The paired
    `--iteration-data-dataset <path-or-id>` and
    `--iteration-data-view <name-or-id>` flags feed one row per collection
    iteration, with columns exposed as variables. They exclude `-d` and require
    a parameter-free view because the runner has no query-parameter input.
    Repeatable `--dataset <path-or-dir>` instead exposes `pm.datasets()` to
-   scripts; it does not itself create row-driven iterations.
+   scripts; it does not itself create row-driven iterations. Without it, a
+   run auto-discovers `.dataset.yaml` files in the collection's repo; passing
+   it turns that discovery off.
 
 ## Build a portable, queryable artifact
 
 Create a local manifest with `postman dataset create <path.dataset.yaml>
---name <name>`, then attach sources with `dataset source add`. Source commands
+--name <name>`, then attach sources with `dataset source add -n <source>`
+(spreadsheets name theirs per worksheet). Source commands
 supply IDs and validation that hand-written entries can miss. When inspecting
 or repairing manifest fields, consult [Dataset YAML](reference/schema.md).
 Existing-dataset commands accept a local path or workspace ID; `list` needs a local path for
@@ -85,7 +104,19 @@ SQL errors; file/URL sources have no connection to test. Engine startup failures
 may need `data_dir`'s daemon log rather than a different query.
 
 Script dataset access is lazy, and invalid YAML can be skipped with a warning
-rather than failing the run. On a hosted collection, `--dataset` is not an
+rather than failing the run. `pm.datasets()` takes the manifest's dataset
+`id`, not its path or name; `executeView()` takes a view `id`. A rejected call
+that nothing catches is silent, so assert on the rows:
+
+```js
+const { rows } = await pm.datasets('<datasetId>')
+  .executeQuery('SELECT id, name FROM users WHERE id = $1', ['2']);
+const users = [];
+for await (const row of rows) users.push(row);
+pm.test('fixture rows loaded', () => pm.expect(users).to.not.be.empty);
+```
+
+On a hosted collection, `--dataset` is not an
 access-control boundary: scripts can access other datasets readable by the
 session. Inspect the collection's data access before running untrusted scripts
 with that session.

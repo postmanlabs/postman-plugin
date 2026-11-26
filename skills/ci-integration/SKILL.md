@@ -38,7 +38,11 @@ the author's own passing tests do not establish cross-service compatibility.
    use them. Choose the target deliberately: a mock checks behavior under a
    model, while a live run sends real requests and can write data. PR gates
    should use a suitable isolated target and credentials; being a test does
-   not make the command read-only.
+   not make the command read-only. A data-driven gate runs a dataset view
+   with `--iteration-data-dataset`/`--iteration-data-view`: commit the
+   manifest and its file sources, prefer file fixtures to a live database in
+   PR gates, and give a database source `env:<NAME>` credentials, read from
+   `POSTMAN_VAULT_<NAME>` in the CI secret store. See **datasets**.
 4. Authenticate only jobs that need workspace resources. Use the CI secret
    store to supply `POSTMAN_API_KEY`, then
    `postman login --with-api-key "$POSTMAN_API_KEY"`. A local-only gate can

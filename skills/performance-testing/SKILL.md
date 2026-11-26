@@ -31,8 +31,9 @@ Collections run directly: converting with `postman-to-k6` is not required.
    `p95`, `p99`, `error_rate`, and `rps`; latency alone can look good when
    requests fail quickly. Use `postman performance run -h` for current syntax,
    units, and runner-specific options.
-5. Isolate test data where concurrent writes would collide. **datasets**
-   supports controlled row distribution across VUs; setup/teardown collections
+5. Isolate test data where concurrent writes would collide. A **datasets**
+   view distributes rows across VUs (`--dataset-id`, `--dataset-view-id`,
+   `--dataset-distribution`); setup/teardown collections
    on hosted runners execute once around the test, not once per iteration.
    `--use-mock` can baseline collection/script overhead, but its numbers
    cannot establish the real backend's capacity.

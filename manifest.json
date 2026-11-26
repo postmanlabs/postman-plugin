@@ -9,8 +9,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-engineer/SKILL.md",
-          "bytes": 6291,
-          "sha256": "c6c249c302718dc57088e4cfd9b77c6176cb3c2f8d796caf98fe66f1d0d18205"
+          "bytes": 6521,
+          "sha256": "b5e3cfd9f6a9dba13ad7cc38546605d8d5fbb9518f3cc2e7fd08f82afcb3fcf5"
         }
       ]
     },
@@ -35,8 +35,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-discovery/SKILL.md",
-          "bytes": 4582,
-          "sha256": "539c705809c5dbdf5d6e747415e40adf21f85b15ef2519dade849a92d195f57e"
+          "bytes": 4591,
+          "sha256": "1226ea3ee1b4f51e90d3a7169321296ab303d3ab78ecc9c7fee26849ad195637"
         },
         {
           "target": "reference/orbit.md",
@@ -73,8 +73,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-mocking/SKILL.md",
-          "bytes": 7943,
-          "sha256": "be30e96e7b22eb860a19a629f8f1377ed51a9882adbc64ee6163b4080f61ed48"
+          "bytes": 8437,
+          "sha256": "a0424e31baffb679a617512669ea6a64d08d32f7734248f2f722637c87f871e1"
         }
       ]
     },
@@ -86,8 +86,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-monitoring/SKILL.md",
-          "bytes": 4582,
-          "sha256": "17d55bdbac883272e0f6f3c84d237788a16d375a44912b7ffda3b3225b38a05d"
+          "bytes": 4798,
+          "sha256": "b6562cb5383a9332da8fbcb224bdc2b3acc3c3432514af74589b603df204f81a"
         }
       ]
     },
@@ -99,8 +99,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-simulation/SKILL.md",
-          "bytes": 12782,
-          "sha256": "a731b0933c66659deba5551e2c4bb495008a3593e4b1facf9e3bc970b29d904a"
+          "bytes": 13061,
+          "sha256": "42b990e0bbc003b054c23b1f140297d9fb745db21040cd70b70380f09977be4e"
         },
         {
           "target": "reference/context_file.md",
@@ -124,8 +124,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-testing/SKILL.md",
-          "bytes": 3592,
-          "sha256": "da517234afc63959bd7fc83b89f329573c7ad61abc88c0d6bda166ef1905a46e"
+          "bytes": 3676,
+          "sha256": "3f153e2d06446f55bdfdfb4935d0ef29d1ddbf106912734b93852cfd1262c1ae"
         }
       ]
     },
@@ -150,8 +150,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/ci-integration/SKILL.md",
-          "bytes": 4393,
-          "sha256": "5005e76f31ac0b76bfdeca9518700d62711a100cfe3a2d7b627d313ecc34ac2b"
+          "bytes": 4724,
+          "sha256": "71577bc311fd04c07f5e7506edd461af73117de1698220c10669b2553172bb23"
         }
       ]
     },
@@ -208,13 +208,13 @@
     {
       "name": "datasets",
       "plugin": "postman",
-      "description": "Use when creating or repairing dataset manifests, or when a collection needs queried or joined test inputs, a reusable named view, spreadsheet worksheet data, live database rows, or script access through pm.datasets(). Chooses between a simple iteration file and a dataset while preserving query semantics, portability, and credential boundaries. Use for requests such as \"run this collection over database rows\".",
+      "description": "Use when API tests, mocks, simulations, flows, monitors or load tests need test data, such as rows from CSV, JSON or spreadsheet files, or live rows queried from Postgres, MySQL, SQL Server or a JDBC database. Also use when creating or repairing `.dataset.yaml` manifests, joining or filtering inputs into a reusable view, seeding a mock with realistic records, or reading data in scripts through pm.datasets(). Chooses between a plain iteration file and a dataset while preserving query semantics, portability, and credential boundaries. Use for requests such as \"run this collection over database rows\", \"seed this mock with test data\" or \"query our test database\".",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/datasets/SKILL.md",
-          "bytes": 5975,
-          "sha256": "01284a2267e06d6dfb7f51367f766dc14122b9b190fb048563d5ed28476b7a17"
+          "bytes": 7943,
+          "sha256": "50a8dfad89dacb24151e368bdeb3873e883b842d147469ac3d7621211bda0104"
         },
         {
           "target": "reference/schema.md",
@@ -270,8 +270,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/performance-testing/SKILL.md",
-          "bytes": 5146,
-          "sha256": "9bb544fab3a1ceba9ff725b98b05ce90023b924a1e3323cbcd4ace674394d68b"
+          "bytes": 5200,
+          "sha256": "8a8bce31ce490e277b9d89964b70e74fe6001bf73e83dadd1ca3f8285bada5a2"
         },
         {
           "target": "references/gatling-import/README.md",

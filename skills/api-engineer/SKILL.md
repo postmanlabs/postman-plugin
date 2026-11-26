@@ -23,6 +23,9 @@ guesswork each time work resumes.
    variables, payloads, and assertions without reconstructing requests; a one-off
    endpoint check can be smaller. Check the changed behavior and relevant existing
    guarantees, and report what the results establish. See **api-testing**.
+   When tests, mocks, simulations or runs need realistic test data (rows from
+   files, spreadsheets or a database, filtered, joined or saved as a reusable
+   view), use **datasets**; a one-off CSV/JSON iteration file needs none.
 4. When you need an API, its owner, or the impact of a change, use **api-discovery**.
    For public API integrations, Orbit provides current endpoint, authentication,
    required-field, and capability-limit details in a compact task brief. Use it

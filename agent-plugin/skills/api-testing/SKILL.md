@@ -37,7 +37,8 @@ guarantee; a successful HTTP exchange alone does not establish correctness.
    against that mock does not verify the service the mock stands in for.
 5. Reuse environment resolution with `-e` and **variables**. Use a CSV/JSON
    file through `-d` for simple iteration; use **datasets** when the inputs
-   need queries, joins, or reusable views. Export a report when
+   need queries, joins, reusable views or live database rows, or when scripts
+   look up expected values with `pm.datasets()`. Export a report when
    **ci-integration** needs evidence beyond terminal output; it says which
    report formats a collection supports.
 6. Use `application test` when the application's actual traffic is the subject.

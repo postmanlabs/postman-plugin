@@ -67,6 +67,10 @@ CLI answers `postman simulation -h` with its general help).
   it in `.postman/resources.yaml` and materialises it under
   `postman/.dependencies/`, and the member's `path:` points there; `-w
   <workspace>` resolves a name from the workspace that owns it.
+- **Seed members with realistic records from a dataset** instead of
+  hand-written JSON: generate the member with `mock generate --dataset` (see
+  **api-mocking**), or pass `simulation run --dataset <path>` so its handlers
+  query rows through `pm.datasets()`. See **datasets**.
 - **Prefix each mock's `pm.state` keys with its name.** As of CLI 1.73.0,
   members of a local run read each other's keys, so two mocks storing
   `orders` overwrite each other.
