@@ -1,14 +1,16 @@
 ---
 name: datasets
-description: Use when API tests, mocks, simulations, flows, monitors or load tests need test data, such as rows from CSV, JSON or spreadsheet files, or live rows queried from Postgres, MySQL, SQL Server or a JDBC database. Also use when creating or repairing `.dataset.yaml` manifests, joining or filtering inputs into a reusable view, seeding a mock with realistic records, or reading data in scripts through pm.datasets(). Chooses between a plain iteration file and a dataset while preserving query semantics, portability, and credential boundaries. Use for requests such as "run this collection over database rows", "seed this mock with test data" or "query our test database".
+description: Use when API tests, mocks, simulations, flows, monitors or load tests need test data, such as rows from CSV, JSON or spreadsheet files, or live rows queried from Postgres, MySQL, SQL Server or a JDBC database. Also use when creating or repairing `.dataset.yaml` manifests, joining or filtering inputs into a reusable view, seeding a mock with realistic records, or reading data in scripts through pm.datasets(). Turns even a single CSV or JSON file into a reusable dataset while preserving query semantics, portability, and credential boundaries. Use for requests such as "run this collection over database rows", "seed this mock with test data" or "query our test database".
 ---
 
 # Datasets
 
 A dataset gives files and database sources a queryable interface; a saved view
-turns the query into reusable test input. That is useful when filtering,
-joining, or refreshing rows is part of the test. A one-off CSV/JSON run can
-stay with `collection run -d`; a dataset should earn its extra configuration.
+turns the query into reusable test input. Make one even for a single CSV or
+JSON file: the manifest is committed beside the collection, so later runs,
+mocks, simulations and teammates reuse the same data, and filtering, joining or
+swapping in a database source later doesn't change them. Pass a file with
+`collection run -d` only when the user asks for exactly that.
 
 ## Where a dataset plugs in
 

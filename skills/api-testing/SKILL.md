@@ -35,10 +35,11 @@ guarantee; a successful HTTP exchange alone does not establish correctness.
    backend; `--mock` alone only starts one. `--use-mock` replaces the
    variable's whole value, base path included (see **api-mocking**). Passing
    against that mock does not verify the service the mock stands in for.
-5. Reuse environment resolution with `-e` and **variables**. Use a CSV/JSON
-   file through `-d` for simple iteration; use **datasets** when the inputs
-   need queries, joins, reusable views or live database rows, or when scripts
-   look up expected values with `pm.datasets()`. Export a report when
+5. Reuse environment resolution with `-e` and **variables**. Put iteration
+   data in a **datasets** view, even a single CSV/JSON file, so later runs,
+   mocks and teammates reuse it; the same dataset covers queries, joins, live
+   database rows and `pm.datasets()` lookups in scripts. Pass a raw file with
+   `-d` only when the user asks for that. Export a report when
    **ci-integration** needs evidence beyond terminal output; it says which
    report formats a collection supports.
 6. Use `application test` when the application's actual traffic is the subject.

@@ -9,8 +9,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-engineer/SKILL.md",
-          "bytes": 6521,
-          "sha256": "b5e3cfd9f6a9dba13ad7cc38546605d8d5fbb9518f3cc2e7fd08f82afcb3fcf5"
+          "bytes": 6502,
+          "sha256": "bdb35c88865bdae2eef6ad317af7899f80d4ba6f021a49cd3e39323dba4b87b0"
         }
       ]
     },
@@ -124,8 +124,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-testing/SKILL.md",
-          "bytes": 3676,
-          "sha256": "3f153e2d06446f55bdfdfb4935d0ef29d1ddbf106912734b93852cfd1262c1ae"
+          "bytes": 3746,
+          "sha256": "97ccfb68cd2ba2d3541858f08b1fe1f3b2fa8a06c27f0be215ecece225063880"
         }
       ]
     },
@@ -208,13 +208,13 @@
     {
       "name": "datasets",
       "plugin": "postman",
-      "description": "Use when API tests, mocks, simulations, flows, monitors or load tests need test data, such as rows from CSV, JSON or spreadsheet files, or live rows queried from Postgres, MySQL, SQL Server or a JDBC database. Also use when creating or repairing `.dataset.yaml` manifests, joining or filtering inputs into a reusable view, seeding a mock with realistic records, or reading data in scripts through pm.datasets(). Chooses between a plain iteration file and a dataset while preserving query semantics, portability, and credential boundaries. Use for requests such as \"run this collection over database rows\", \"seed this mock with test data\" or \"query our test database\".",
+      "description": "Use when API tests, mocks, simulations, flows, monitors or load tests need test data, such as rows from CSV, JSON or spreadsheet files, or live rows queried from Postgres, MySQL, SQL Server or a JDBC database. Also use when creating or repairing `.dataset.yaml` manifests, joining or filtering inputs into a reusable view, seeding a mock with realistic records, or reading data in scripts through pm.datasets(). Turns even a single CSV or JSON file into a reusable dataset while preserving query semantics, portability, and credential boundaries. Use for requests such as \"run this collection over database rows\", \"seed this mock with test data\" or \"query our test database\".",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/datasets/SKILL.md",
-          "bytes": 7943,
-          "sha256": "50a8dfad89dacb24151e368bdeb3873e883b842d147469ac3d7621211bda0104"
+          "bytes": 8091,
+          "sha256": "a6ac3c7431c9d0da3a9cc5d5d0aa88778702f99eab532288449453e3f36e88e1"
         },
         {
           "target": "reference/schema.md",
