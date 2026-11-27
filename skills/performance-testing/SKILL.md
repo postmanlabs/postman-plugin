@@ -1,6 +1,6 @@
 ---
 name: performance-testing
-description: Use when load-testing or benchmarking an API with concurrent virtual users and latency or error thresholds, or when importing or migrating a JMeter `.jmx` plan or a Gatling simulation (Java/Kotlin/Scala/JS/TS) into a Postman collection plus a `postman performance run` configuration. Reuses a collection to probe a chosen failure mode and distinguishes target limits from load-generator limits. Use for requests such as "load test this API", "import my JMeter plan", or "convert my Gatling project to Postman".
+description: Use when load-testing or benchmarking an API with concurrent virtual users, optionally one account or data row each, and latency or error thresholds, or when importing a JMeter `.jmx` plan or a Gatling simulation into a Postman collection plus a `postman performance run` configuration. Reuses a collection to probe a chosen failure mode and distinguishes target limits from load-generator limits. Use for requests such as "load test this API", "import my JMeter plan", or "convert my Gatling project to Postman".
 ---
 
 # Performance Testing
@@ -31,9 +31,18 @@ Collections run directly: converting with `postman-to-k6` is not required.
    `p95`, `p99`, `error_rate`, and `rps`; latency alone can look good when
    requests fail quickly. Use `postman performance run -h` for current syntax,
    units, and runner-specific options.
-5. Isolate test data where concurrent writes would collide. **datasets**
-   supports controlled row distribution across VUs; setup/teardown collections
-   on hosted runners execute once around the test, not once per iteration.
+5. Isolate test data where concurrent writes would collide. `--data-file`
+   picks rows at random, so VUs share rows. To give each VU its own row, pass
+   `--dataset-distribution fixed` with `--dataset-id`/`--dataset-view-id`:
+   each VU keeps one row, so rows beyond the VU count go unused; the default
+   `round-robin` cycles every row through the run. These flags take only a
+   workspace dataset whose sources were added with `--upload` (CSV/JSON;
+   sign-in and a paid plan; see **datasets**). A local `.dataset.yaml` fails "Not
+   authorized to access this dataset or view.", and a source added without
+   `--upload` fails "This view uses a source that is not synced to Postman
+   cloud." Uploading sends the file to Postman: ask before uploading keys or
+   credentials. Setup/teardown collections on hosted runners execute once
+   around the test, not once per iteration.
    `--use-mock` can baseline collection/script overhead, but its numbers
    cannot establish the real backend's capacity.
 

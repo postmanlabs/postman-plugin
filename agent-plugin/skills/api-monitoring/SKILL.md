@@ -23,7 +23,11 @@ exercise the guarantees users depend on.
    user means (for example `America/New_York`); without it the schedule uses
    the zone of the machine running the CLI. Leave the month field as `*`; to
    limit a schedule to certain months, write them as three-letter names such
-   as `jan`, not numbers.
+   as `jan`, not numbers. To vary inputs across runs, `--dataset-id` with
+   `--dataset-view-id` iterates a workspace dataset view, and
+   `--iteration-strategy` (with `--iteration-count`) sets how its rows are
+   consumed. Its sources must be added with `--upload`, which sends the file
+   to Postman: ask before uploading keys or credentials. See **datasets**.
 3. Choose a Postman region for a reachable public API. Use a self-hosted
    runner when the target is reachable only inside the user's network;
    running one adds infrastructure to maintain. `postman runner regions`

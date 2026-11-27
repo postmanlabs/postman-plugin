@@ -20,7 +20,7 @@ sources were skipped.
    | Need | Use |
    | --- | --- |
    | Public provider endpoints and integration details | Orbit search, then integrate |
-   | A concrete Postman collection, request, spec, mock, or workspace | `postman search <type> <query>` |
+   | A concrete Postman collection, request, spec, mock, dataset, or workspace | `postman search <type> <query>` |
    | Consumers, ownership, dependencies, or likely change impact | `postman context-graph ask` |
 
    These sources answer different questions. A miss in one does not establish

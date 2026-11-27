@@ -1,6 +1,6 @@
 ---
 name: api-simulation
-description: Use when you add or change code that calls other services and need to run it, test it, prove a fix or reproduce an upstream failure (timeouts, 5xx, 409, 429) end to end, locally or in CI, without the real services because they're unreachable, need credentials, cost money, have side effects or don't exist yet. Also use it to answer what happens to a request, or to the data it writes, when a service it calls goes down, is slow or returns errors ("what happens to a booking if the email service is down?"). Runs services, frontends, tests or demos against stand-ins for their HTTP dependencies, served as one environment locally or at a deployed URL. Applies even when nobody says mock or simulation; a `postman/simulations/` directory is itself a reason to load it. To give a frontend or another team a stand-in for an API, use api-mocking. Covers `postman simulation`.
+description: Use when you add or change code that calls other services and need to run it, test it, prove a fix or reproduce an upstream failure (timeouts, 5xx, 409, 429) end to end, locally or in CI, without the real services because they're unreachable, need credentials, cost money, have side effects or don't exist yet. Also use it to answer what happens to a request, or the data it writes, when a service it calls is down, slow or erroring ("what happens to a booking if the email service is down?"). Runs services, frontends, tests or demos against stand-ins for their HTTP dependencies, optionally backed by file or database records, served locally or at a deployed URL. A `postman/simulations/` directory is itself a reason to load it, even if nobody says mock or simulation. To give a frontend or another team a stand-in for an API, use api-mocking. Covers `postman simulation`.
 ---
 
 # API Simulation
@@ -67,6 +67,10 @@ CLI answers `postman simulation -h` with its general help).
   it in `.postman/resources.yaml` and materialises it under
   `postman/.dependencies/`, and the member's `path:` points there; `-w
   <workspace>` resolves a name from the workspace that owns it.
+- **Seed members with realistic records from a dataset** instead of
+  hand-written JSON: generate the member with `mock generate --dataset` (see
+  **api-mocking**), or pass `simulation run --dataset <path>` so its handlers
+  query rows through `pm.datasets()`. See **datasets**.
 - **Prefix each mock's `pm.state` keys with its name.** As of CLI 1.73.0,
   members of a local run read each other's keys, so two mocks storing
   `orders` overwrite each other.
