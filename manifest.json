@@ -270,8 +270,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/performance-testing/SKILL.md",
-          "bytes": 5258,
-          "sha256": "aef6dc6cdb81026af8f9fbf1a96de697f0b3eeffb7fcfe09e4978621e715984e"
+          "bytes": 5856,
+          "sha256": "5b692a85a6690022653ca4761e94564d67d12090d9171d3ab5b8ff58d3836e21"
         },
         {
           "target": "references/gatling-import/README.md",

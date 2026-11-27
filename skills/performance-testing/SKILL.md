@@ -31,10 +31,18 @@ Collections run directly: converting with `postman-to-k6` is not required.
    `p95`, `p99`, `error_rate`, and `rps`; latency alone can look good when
    requests fail quickly. Use `postman performance run -h` for current syntax,
    units, and runner-specific options.
-5. Isolate test data where concurrent writes would collide. A **datasets**
-   view distributes rows across VUs (`--dataset-id`, `--dataset-view-id`,
-   `--dataset-distribution`); setup/teardown collections
-   on hosted runners execute once around the test, not once per iteration.
+5. Isolate test data where concurrent writes would collide. `--data-file`
+   picks rows at random, so VUs share rows. To give each VU its own row, pass
+   `--dataset-distribution fixed` with `--dataset-id`/`--dataset-view-id`:
+   each VU keeps one row, so rows beyond the VU count go unused; the default
+   `round-robin` cycles every row through the run. These flags take only a
+   workspace dataset whose sources were added with `--upload` (CSV/JSON;
+   sign-in and a paid plan; see **datasets**). A local `.dataset.yaml` fails "Not
+   authorized to access this dataset or view.", and a source added without
+   `--upload` fails "This view uses a source that is not synced to Postman
+   cloud." Uploading sends the file to Postman: ask before uploading keys or
+   credentials. Setup/teardown collections on hosted runners execute once
+   around the test, not once per iteration.
    `--use-mock` can baseline collection/script overhead, but its numbers
    cannot establish the real backend's capacity.
 
