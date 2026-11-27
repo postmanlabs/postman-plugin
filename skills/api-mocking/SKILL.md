@@ -72,13 +72,27 @@ real service.
   routes start after the base-URL variable. `--update` regenerates the
   handler and overwrites your edits. With no contract, write it from how
   your code calls the API and say what you assumed.
-- **Seed it from a dataset when records matter.** `postman mock generate
-  --dataset <path-or-id>` makes each table a stateful resource seeded with
-  its first 20 rows (local CSV/JSON sources). Postman generates it, so the
-  rows leave the machine: use fixture data, not production rows. The rows are
-  copied into the handler, so rerun with `--update` after the data changes;
-  for handlers that query rows at run time, `mock run --dataset <path>`
-  exposes `pm.datasets()`. See **datasets**.
+- **Serve real records from a dataset.** For records that already exist in
+  a file people update, or rows that must not leave the machine, query them
+  per request: `mock run --dataset <path>` exposes `pm.datasets('<datasetId>')`
+  to the handler, and file sources need no sign-in. A `--ref-only` source
+  serves edits to the file without a restart.
+
+  ```js
+  const { rows } = await pm.datasets('<datasetId>')
+    .executeQuery('SELECT * FROM products WHERE sku = $1', [sku]);
+  const found = [];
+  for await (const r of rows) found.push(r);
+  if (!found.length) { res.writeHead(404); return res.end(); }
+  ```
+
+  With `interceptRequests: true` (next bullet), a rejected call returns a
+  `500` instead of killing the mock. Writes followed by reads still belong in
+  `pm.state`. `mock generate --dataset <path-or-id>` instead copies each
+  table's first 20 rows (local CSV/JSON sources) into a stateful handler: it
+  needs a sign-in and sends the rows to Postman, so use fixture data, not
+  production rows, and rerun with `--update` after the data changes. See
+  **datasets**.
 - **Set `interceptRequests: true` in `config.yaml`.** Without it `req.body`
   and `req.query` are undefined, `x-mock-session` is ignored, and a throw in
   an async handler kills the mock instead of returning a `500`.
