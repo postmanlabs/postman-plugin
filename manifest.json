@@ -124,8 +124,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-testing/SKILL.md",
-          "bytes": 3916,
-          "sha256": "059f099852560be39223d172e7342045906459b7314cb22c45a04e5edd14cfb3"
+          "bytes": 3963,
+          "sha256": "251fd32664c2345edfd19bcfb3c0f8ee8a521c13d596cb0c82e3ebce3cdc3590"
         }
       ]
     },
@@ -150,8 +150,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/ci-integration/SKILL.md",
-          "bytes": 4804,
-          "sha256": "383ac99a26f34f92fc6d0b597dfc05ef37cb1b945789d29a599820f0b280a04d"
+          "bytes": 4935,
+          "sha256": "6bbaa5b68aed0bf257e7a753ce7b76923c8eb9dc30f4cd10335e746983e89886"
         }
       ]
     },
@@ -213,8 +213,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/datasets/SKILL.md",
-          "bytes": 10158,
-          "sha256": "172e39333b1b8063fa7a8a8196906d79fdfe4f691379f9f264cea1830a034532"
+          "bytes": 11337,
+          "sha256": "b45bd0f9797e127b9ed6f177ccbf70d482967b66ce10693d6434af0426222882"
         },
         {
           "target": "reference/schema.md",

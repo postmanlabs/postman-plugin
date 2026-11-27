@@ -42,7 +42,9 @@ the author's own passing tests do not establish cross-service compatibility.
    with `--iteration-data-dataset`/`--iteration-data-view`: commit the
    manifest and its file sources, prefer file fixtures to a live database in
    PR gates, and give a database source `env:<NAME>` credentials, read from
-   `POSTMAN_VAULT_<NAME>` in the CI secret store. See **datasets**.
+   `POSTMAN_VAULT_<NAME>` in the CI secret store. See **datasets**: the
+   last line of its "Quickstart" is the gate's command, and "What needs a
+   sign-in" says which gates need `POSTMAN_API_KEY`.
 4. Authenticate only jobs that need workspace resources. Use the CI secret
    store to supply `POSTMAN_API_KEY`, then
    `postman login --with-api-key "$POSTMAN_API_KEY"`. A local-only gate can

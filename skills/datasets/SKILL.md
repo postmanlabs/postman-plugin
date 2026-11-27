@@ -45,6 +45,24 @@ performance run also needs sources added with `--upload` (see
   --dataset`, monitors and performance runs that take a dataset need a
   sign-in.
 
+## Quickstart: rows from a file people edit
+
+```sh
+Y=postman/datasets/catalog.dataset.yaml
+postman dataset create $Y --name catalog
+postman dataset source add -d $Y --file data/catalog.xlsx --ref-only --json
+# One source per worksheet: read sources[].table (here source_Products).
+# Change each value: to a path relative to the manifest: ../../data/catalog.xlsx
+postman dataset query $Y -q "SELECT sku, price FROM source_Products WHERE active = 1"
+postman dataset view create -d $Y -n active_products -q "SELECT sku, price FROM source_Products WHERE active = 1"
+postman collection run <collection> --iteration-data-dataset $Y --iteration-data-view active_products
+```
+
+A test then compares each row with the response:
+`pm.expect(pm.response.json().price).to.eql(Number(pm.iterationData.get('price')))`.
+A CSV or JSON file also needs `source add -n <name>`; the name is its table.
+None of this needs a sign-in.
+
 ## Choose the data and execution path
 
 | Rows come from | Use |
@@ -135,6 +153,11 @@ A generic server-error wrapper can hide SQL or connection errors. Use structured
 the layer before retrying. `source test` separates database connectivity from
 SQL errors; file/URL sources have no connection to test. Engine startup failures
 may need `data_dir`'s daemon log rather than a different query.
+
+CSV columns load as TEXT, so `CAST` them before numeric comparisons;
+spreadsheet columns are typed, with booleans as `1`/`0`. A view that returns
+no rows still runs one iteration with its `{{variables}}` unresolved, so check
+the row count with `dataset query` first.
 
 Script dataset access is lazy, and invalid YAML can be skipped with a warning
 rather than failing the run. `pm.datasets()` takes the manifest's dataset
