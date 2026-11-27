@@ -26,7 +26,8 @@ exercise the guarantees users depend on.
    as `jan`, not numbers. To vary inputs across runs, `--dataset-id` with
    `--dataset-view-id` iterates a workspace dataset view, and
    `--iteration-strategy` (with `--iteration-count`) sets how its rows are
-   consumed. See **datasets**.
+   consumed. Its sources must be added with `--upload`, which sends the file
+   to Postman: ask before uploading keys or credentials. See **datasets**.
 3. Choose a Postman region for a reachable public API. Use a self-hosted
    runner when the target is reachable only inside the user's network;
    running one adds infrastructure to maintain. `postman runner regions`

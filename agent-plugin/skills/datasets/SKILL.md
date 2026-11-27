@@ -28,8 +28,8 @@ read the source or your own code computes the rows; then say why.
 | Per-VU rows under load | `performance run --dataset-id <id> --dataset-view-id <id>` (see **performance-testing**) |
 | Ad-hoc SQL over files or a database | `dataset query <path-or-id> -q "<sql>"` |
 
-Monitors and performance runs take workspace dataset IDs, not local paths; a
-performance run also needs sources added with `--upload` (see
+Monitors and performance runs take workspace dataset IDs, not local paths, and
+need sources added with `--upload` (see **api-monitoring** and
 **performance-testing**).
 
 ## What needs a sign-in
@@ -43,7 +43,9 @@ performance run also needs sources added with `--upload` (see
   them, even in a local manifest. JDBC sources need an Enterprise plan.
 - **Workspace datasets** need a sign-in and a paid plan. `mock generate
   --dataset`, monitors and performance runs that take a dataset need a
-  sign-in.
+  sign-in; monitors and performance runs also need sources added with
+  `--upload`, which sends the file to Postman: ask before uploading keys or
+  credentials.
 
 ## Quickstart: rows from a file people edit
 
