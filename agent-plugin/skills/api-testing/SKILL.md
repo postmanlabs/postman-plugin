@@ -39,7 +39,8 @@ guarantee; a successful HTTP exchange alone does not establish correctness.
    data in a **datasets** view, even a single CSV/JSON file, so later runs,
    mocks and teammates reuse it; the same dataset covers queries, joins, live
    database rows and `pm.datasets()` lookups in scripts. Pass a raw file with
-   `-d` only when the user asks for that. Export a report when
+   `-d` only when the user asks for it, or when a dataset can't read the
+   source or your own code computes the rows; then say why. Export a report when
    **ci-integration** needs evidence beyond terminal output; it says which
    report formats a collection supports.
 6. Use `application test` when the application's actual traffic is the subject.

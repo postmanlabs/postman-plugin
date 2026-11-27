@@ -9,8 +9,11 @@ A dataset gives files and database sources a queryable interface; a saved view
 turns the query into reusable test input. Make one even for a single CSV or
 JSON file: the manifest is committed beside the collection, so later runs,
 mocks, simulations and teammates reuse the same data, and filtering, joining or
-swapping in a database source later doesn't change them. Pass a file with
-`collection run -d` only when the user asks for exactly that.
+swapping in a database source later doesn't change them. When the rows live
+in a file people edit or replace, add it with `--ref-only` so every run reads
+the current file, with no export or generator step. Pass a file with
+`collection run -d` only when the user asks for it, or when a dataset can't
+read the source or your own code computes the rows; then say why.
 
 ## Where a dataset plugs in
 
@@ -29,8 +32,16 @@ Monitors and performance runs take workspace dataset IDs, not local paths.
 
 ## Choose the data and execution path
 
-1. Prefer local file sources for reproducible fixtures. A live database is
-   useful when current data is the point, but adds authentication, entitlement,
+| Rows come from | Use |
+| --- | --- |
+| A file people edit or replace (CSV, JSON, a spreadsheet) | A source added with `--ref-only`: every query, run and mock request reads the current file |
+| A fixture you write once | A copied source (the default): a snapshot committed with the manifest |
+| Postgres, MySQL, SQL Server or a JDBC database | A database source; needs a sign-in and a plan (see "What needs a sign-in") |
+| Something a dataset can't read (Markdown, SQLite without JDBC), or rows your own code computes | Keep the script and pass its output with `collection run -d`; say why |
+
+1. Use the source the rows really come from: a file people edit
+   (`--ref-only`), a fixture you write once (copied), or a database when
+   current rows are the point. A database adds authentication, entitlement,
    network, and credential requirements even in a local `.dataset.yaml`.
    Check `postman dataset <action> -h` and the actual source capability before
    promising a workflow; source support can vary with the installed CLI.
@@ -69,8 +80,11 @@ or repairing manifest fields, consult [Dataset YAML](reference/schema.md).
 Existing-dataset commands accept a local path or workspace ID; `list` needs a local path for
 local discovery, while workspace create/list use `--workspace`.
 
-File sources are copied into `data_dir` unless `--ref-only` is used. That option
-records absolute paths and makes the dataset machine-specific. For a workspace
+A file source is copied into `data_dir` by default: a snapshot that misses
+later edits to the original. `--ref-only` reads the file in place on every
+query, run and mock request, but records an absolute path: change each
+`value:` to a path relative to the manifest (not `data_dir`) before
+committing. For a workspace
 dataset, adding `--file` alone registers a local filesystem source; `--upload`
 is what uploads bytes. Datasets are pushed along with the workspace; there is
 no separate `dataset push`.

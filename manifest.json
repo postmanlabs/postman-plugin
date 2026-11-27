@@ -124,8 +124,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/api-testing/SKILL.md",
-          "bytes": 3825,
-          "sha256": "02248ecbf41af3fe6bd636aef3ee0c48ffc4b0f7423062f47e7aec4dfd6686b0"
+          "bytes": 3916,
+          "sha256": "059f099852560be39223d172e7342045906459b7314cb22c45a04e5edd14cfb3"
         }
       ]
     },
@@ -213,8 +213,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/datasets/SKILL.md",
-          "bytes": 8242,
-          "sha256": "08e3ffab0292e2f8373a1362d0291f6b4284ed77b047541d7603f746521c0cd5"
+          "bytes": 9280,
+          "sha256": "3d9e9c4ce16489d00e2ff5f53890fe3e7f68f2b2e230c76e903ed17c03b95c21"
         },
         {
           "target": "reference/schema.md",
