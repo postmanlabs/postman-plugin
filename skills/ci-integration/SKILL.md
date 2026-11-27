@@ -1,6 +1,6 @@
 ---
 name: ci-integration
-description: Use when adding API tests, structural or governance lint, or AI-readiness gates to CI, or publishing reviewed API artifacts to a Postman workspace after merge. Makes contract checks repeatable and separates validation from shared workspace changes. Use for requests such as "run this collection on every PR".
+description: Use when adding API tests, including data-driven ones over many rows from a file, spreadsheet or database, structural or governance lint, or AI-readiness gates to CI, or publishing reviewed API artifacts to a Postman workspace after merge. Makes contract checks repeatable and separates validation from shared workspace changes. Use for requests such as "run this collection on every PR".
 ---
 
 # CI Integration

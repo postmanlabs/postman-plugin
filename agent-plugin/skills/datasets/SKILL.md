@@ -1,6 +1,6 @@
 ---
 name: datasets
-description: Use when API tests, mocks, simulations, flows, monitors or load tests need test data, such as rows from CSV, JSON or spreadsheet files, or live rows queried from Postgres, MySQL, SQL Server or a JDBC database. Also use when creating or repairing `.dataset.yaml` manifests, joining or filtering inputs into a reusable view, seeding a mock with realistic records, or reading data in scripts through pm.datasets(). Turns even a single CSV or JSON file into a reusable dataset while preserving query semantics, portability, and credential boundaries. Use for requests such as "run this collection over database rows", "seed this mock with test data" or "query our test database".
+description: Use when a collection run, mock, simulation, flow, monitor or load test needs many rows (test cases, accounts, records) from CSV, JSON or spreadsheet files people edit, or live rows from Postgres, MySQL, SQL Server or a JDBC database, including checking an API's records against a spreadsheet or database. Also use when creating or repairing `.dataset.yaml` manifests, joining or filtering inputs into a reusable view, seeding a mock with realistic records, or reading data in scripts through pm.datasets(). Turns even a single CSV or JSON file into a reusable dataset while preserving query semantics, portability, and credential boundaries. Use for requests such as "run this collection over database rows", "check every row of this spreadsheet against the API", "seed this mock with test data" or "query our test database".
 ---
 
 # Datasets
