@@ -68,13 +68,13 @@
     {
       "name": "api-mocking",
       "plugin": "postman",
-      "description": "Use when something needs an API that isn't built or reachable yet (a frontend, client or demo), when other teams should build against your API before it ships, or when asked to mock an API or fake a backend. Finds, builds, runs and publishes a stand-in for one API — a published mock when its owner or a verified publisher has one, otherwise one built from its spec or collection that behaves like the real API, stateful when callers write then read, and answering from real records in a file, spreadsheet or database when they matter. To run and test your own code against the services it calls, use api-simulation. Covers `postman mock` and `postman dependency add mock`.",
+      "description": "Use when something needs an API that isn't built or reachable yet (a frontend, client or demo), when other teams should build against your API before it ships, or when asked to mock an API or fake a backend. Finds, builds, runs and publishes a stand-in for one API — a published mock when its owner or a verified publisher has one, otherwise one built from its spec or collection, stateful when callers write then read, optionally answering from file, spreadsheet or database records. To run your own code against the services it calls, use api-simulation. Covers `postman mock` and `postman dependency add mock`.",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/api-mocking/SKILL.md",
-          "bytes": 9107,
-          "sha256": "14b54d5f42f2d76ea117ad261f4af1e3bb61fba503e706d7610285b357ab90d6"
+          "bytes": 9047,
+          "sha256": "c4ff6cd975040a95f242ebc5c41974d27157a2b4ea62f0b7cb02188d8b212450"
         }
       ]
     },
@@ -94,13 +94,13 @@
     {
       "name": "api-simulation",
       "plugin": "postman",
-      "description": "Use when you add or change code that calls other services and need to run it, test it, prove a fix or reproduce an upstream failure (timeouts, 5xx, 409, 429) end to end, locally or in CI, without the real services because they're unreachable, need credentials, cost money, have side effects or don't exist yet. Also use it to answer what happens to a request, or to the data it writes, when a service it calls goes down, is slow or returns errors (\"what happens to a booking if the email service is down?\"). Runs services, frontends, tests or demos against stand-ins for their HTTP dependencies, which can answer from records in a file or database, served as one environment locally or at a deployed URL. Applies even when nobody says mock or simulation; a `postman/simulations/` directory is itself a reason to load it. To give a frontend or another team a stand-in for an API, use api-mocking. Covers `postman simulation`.",
+      "description": "Use when you add or change code that calls other services and need to run it, test it, prove a fix or reproduce an upstream failure (timeouts, 5xx, 409, 429) end to end, locally or in CI, without the real services because they're unreachable, need credentials, cost money, have side effects or don't exist yet. Also use it to answer what happens to a request, or the data it writes, when a service it calls is down, slow or erroring (\"what happens to a booking if the email service is down?\"). Runs services, frontends, tests or demos against stand-ins for their HTTP dependencies, optionally backed by file or database records, served locally or at a deployed URL. A `postman/simulations/` directory is itself a reason to load it, even if nobody says mock or simulation. To give a frontend or another team a stand-in for an API, use api-mocking. Covers `postman simulation`.",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/api-simulation/SKILL.md",
-          "bytes": 13114,
-          "sha256": "54ba8fe34321aa84c71fa0a41220e83a76314f175c9d3ef3199ec4c1cd6f8bfd"
+          "bytes": 13065,
+          "sha256": "ca73be4213195c2a9bbda034c42d4389e8eed57044ad95e6b17e5fb32392f093"
         },
         {
           "target": "reference/context_file.md",
@@ -119,13 +119,13 @@
     {
       "name": "api-testing",
       "plugin": "postman",
-      "description": "Use when testing an endpoint with real HTTP requests, running collection assertions, including the same checks over many rows from a file, spreadsheet or database, or checking real application traffic against an API contract. Not for unit tests of internal functions. Reuses saved requests and reports what live, mocked, or captured-traffic results actually establish. Use for requests such as \"test this endpoint\".",
+      "description": "Use when testing an endpoint with real HTTP requests, running collection assertions, also over rows from a file, spreadsheet or database, or checking real application traffic against an API contract. Not for unit tests of internal functions. Reuses saved requests and reports what live, mocked, or captured-traffic results establish. Use for requests such as \"test this endpoint\".",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/api-testing/SKILL.md",
-          "bytes": 3963,
-          "sha256": "251fd32664c2345edfd19bcfb3c0f8ee8a521c13d596cb0c82e3ebce3cdc3590"
+          "bytes": 3928,
+          "sha256": "b16972d5c5ecf3ee1314ebe094daad085198b2583dc0c3b84aecbd58fe2ad452"
         }
       ]
     },
@@ -145,13 +145,13 @@
     {
       "name": "ci-integration",
       "plugin": "postman",
-      "description": "Use when adding API tests, including data-driven ones over many rows from a file, spreadsheet or database, structural or governance lint, or AI-readiness gates to CI, or publishing reviewed API artifacts to a Postman workspace after merge. Makes contract checks repeatable and separates validation from shared workspace changes. Use for requests such as \"run this collection on every PR\".",
+      "description": "Use when adding API tests (also over file, spreadsheet or database rows), structural or governance lint, or AI-readiness gates to CI, or publishing reviewed API artifacts to a Postman workspace after merge. Makes contract checks repeatable and separates validation from shared workspace changes. Use for requests such as \"run this collection on every PR\".",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/ci-integration/SKILL.md",
-          "bytes": 4935,
-          "sha256": "6bbaa5b68aed0bf257e7a753ce7b76923c8eb9dc30f4cd10335e746983e89886"
+          "bytes": 4902,
+          "sha256": "e2ace2f6e48083135ad39b2fb301d480ce8a5728872bc30d498dab0279ac2859"
         }
       ]
     },
@@ -208,13 +208,13 @@
     {
       "name": "datasets",
       "plugin": "postman",
-      "description": "Use when a collection run, mock, simulation, flow, monitor or load test needs many rows (test cases, accounts, records) from CSV, JSON or spreadsheet files people edit, or live rows from Postgres, MySQL, SQL Server or a JDBC database, including checking an API's records against a spreadsheet or database. Also use when creating or repairing `.dataset.yaml` manifests, joining or filtering inputs into a reusable view, seeding a mock with realistic records, or reading data in scripts through pm.datasets(). Turns even a single CSV or JSON file into a reusable dataset while preserving query semantics, portability, and credential boundaries. Use for requests such as \"run this collection over database rows\", \"check every row of this spreadsheet against the API\", \"seed this mock with test data\" or \"query our test database\".",
+      "description": "Use when a collection run, mock, simulation, flow, monitor or load test needs many rows from CSV, JSON or spreadsheet files or a Postgres, MySQL, SQL Server or JDBC database, or for `.dataset.yaml` manifests, joined or filtered views, or pm.datasets() in scripts. Turns even one CSV or JSON file into a reusable, portable dataset that keeps credentials out of it. Use for requests such as \"run this collection over database rows\" or \"check this spreadsheet against the API\".",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/datasets/SKILL.md",
-          "bytes": 11490,
-          "sha256": "4d7ee70b837fe5a518dc076b3fd9703299a4c90f0a570bcdb45dd0b465a0a962"
+          "bytes": 11138,
+          "sha256": "fcaa012523222579d8e25acf862ad78ca7baf4698521ce94a488ac88c4d9b18c"
         },
         {
           "target": "reference/schema.md",
@@ -265,13 +265,13 @@
     {
       "name": "performance-testing",
       "plugin": "postman",
-      "description": "Use when load-testing or benchmarking an API with concurrent virtual users, each with its own test account or data row where needed, and latency or error thresholds, or when importing or migrating a JMeter `.jmx` plan or a Gatling simulation (Java/Kotlin/Scala/JS/TS) into a Postman collection plus a `postman performance run` configuration. Reuses a collection to probe a chosen failure mode and distinguishes target limits from load-generator limits. Use for requests such as \"load test this API\", \"import my JMeter plan\", or \"convert my Gatling project to Postman\".",
+      "description": "Use when load-testing or benchmarking an API with concurrent virtual users, optionally one account or data row each, and latency or error thresholds, or when importing a JMeter `.jmx` plan or a Gatling simulation into a Postman collection plus a `postman performance run` configuration. Reuses a collection to probe a chosen failure mode and distinguishes target limits from load-generator limits. Use for requests such as \"load test this API\", \"import my JMeter plan\", or \"convert my Gatling project to Postman\".",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/performance-testing/SKILL.md",
-          "bytes": 5856,
-          "sha256": "5b692a85a6690022653ca4761e94564d67d12090d9171d3ab5b8ff58d3836e21"
+          "bytes": 5801,
+          "sha256": "dad722fa4fecef718c5c648e6da4c0cc5f08e88b80236c27079c7f7afa7cbcc1"
         },
         {
           "target": "references/gatling-import/README.md",

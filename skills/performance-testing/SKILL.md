@@ -1,6 +1,6 @@
 ---
 name: performance-testing
-description: Use when load-testing or benchmarking an API with concurrent virtual users, each with its own test account or data row where needed, and latency or error thresholds, or when importing or migrating a JMeter `.jmx` plan or a Gatling simulation (Java/Kotlin/Scala/JS/TS) into a Postman collection plus a `postman performance run` configuration. Reuses a collection to probe a chosen failure mode and distinguishes target limits from load-generator limits. Use for requests such as "load test this API", "import my JMeter plan", or "convert my Gatling project to Postman".
+description: Use when load-testing or benchmarking an API with concurrent virtual users, optionally one account or data row each, and latency or error thresholds, or when importing a JMeter `.jmx` plan or a Gatling simulation into a Postman collection plus a `postman performance run` configuration. Reuses a collection to probe a chosen failure mode and distinguishes target limits from load-generator limits. Use for requests such as "load test this API", "import my JMeter plan", or "convert my Gatling project to Postman".
 ---
 
 # Performance Testing
