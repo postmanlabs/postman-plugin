@@ -213,8 +213,8 @@
         {
           "target": "SKILL.md",
           "source": "skills/datasets/SKILL.md",
-          "bytes": 9280,
-          "sha256": "3d9e9c4ce16489d00e2ff5f53890fe3e7f68f2b2e230c76e903ed17c03b95c21"
+          "bytes": 10158,
+          "sha256": "172e39333b1b8063fa7a8a8196906d79fdfe4f691379f9f264cea1830a034532"
         },
         {
           "target": "reference/schema.md",

@@ -28,7 +28,22 @@ read the source or your own code computes the rows; then say why.
 | Per-VU rows under load | `performance run --dataset-id <id> --dataset-view-id <id>` (see **performance-testing**) |
 | Ad-hoc SQL over files or a database | `dataset query <path-or-id> -q "<sql>"` |
 
-Monitors and performance runs take workspace dataset IDs, not local paths.
+Monitors and performance runs take workspace dataset IDs, not local paths; a
+performance run also needs sources added with `--upload` (see
+**performance-testing**).
+
+## What needs a sign-in
+
+- **Local file datasets: nothing.** A local manifest with CSV, JSON or
+  spreadsheet sources needs no sign-in or plan for `dataset create`,
+  `source add`, `query`, `view create`, `collection run` and
+  `mock run --dataset`.
+- **Database sources: a sign-in and a plan.** Postgres, MySQL and SQL Server
+  sources need `postman login` (or `--api-key`) and a plan that includes
+  them, even in a local manifest. JDBC sources need an Enterprise plan.
+- **Workspace datasets** need a sign-in and a paid plan. `mock generate
+  --dataset`, monitors and performance runs that take a dataset need a
+  sign-in.
 
 ## Choose the data and execution path
 
@@ -96,9 +111,11 @@ underscores, and strip edge underscores. A source called `users` is queried
 as `users`, not `source_users`. Verify actual tables before interpreting an
 unknown-table error as missing data.
 
-For JDBC, `dataset jdbc inspect <driver.jar>` supplies driver class, URL
-template, variables, and properties for `source add`; `--from-source` can reuse
-a connection. JDBC addition tests connectivity unless disabled; native source
+JDBC sources need a sign-in and an Enterprise plan; check both before
+starting. `dataset jdbc inspect <driver.jar>` works signed out but needs Java
+and a driver JAR on disk; the CLI doesn't download one. It supplies driver
+class, URL template, variables, and properties for `source add`;
+`--from-source` can reuse a connection. JDBC addition tests connectivity unless disabled; native source
 addition needs a separate `dataset source test`. This distinction prevents
 mistaking a saved source for a working connection.
 
