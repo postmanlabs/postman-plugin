@@ -126,13 +126,13 @@
     {
       "name": "application-cloud-testing",
       "plugin": "postman",
-      "description": "Creates, connects, runs, and reads results from application tests with `postman application project` (alias `postman app project`), which syncs a Playwright project to a Postman workspace and runs it in the Postman cloud, as a local run of the files on disk or a cloud run of the pushed version, with HTML and JSON reports. Keeps each test's plain-language intent in `intents/` and uses it to fix or explain failures. Covers the Postman side only, not Playwright test authoring. Use when the user asks to \"run my Playwright tests in the Postman cloud,\" \"run my local changes in the cloud,\" \"will my test pass in the cloud,\" \"why does my test pass locally but fail in the cloud,\" \"create an application test,\" \"connect this Playwright folder to Postman,\" \"why did my cloud application test fail,\" \"fix my failing application test,\" \"get the report for my test run,\" \"show my local runs,\" \"stop syncing this test.\" Checking captured traffic against a collection is the `postman:application-testing` skill.",
+      "description": "Creates, runs, and reads results from application tests with `postman application project` (alias `postman app project`), which syncs a Playwright project to a Postman workspace and runs it in the Postman cloud, as a local run of the files on disk or a cloud run of the pushed version, with HTML and JSON reports. Keeps each test's plain-language intent in `intents/` and uses it to fix or explain failures. Covers the Postman side only, not Playwright test authoring. Use when the user asks to \"run my Playwright tests in the Postman cloud,\" \"run my local changes in the cloud,\" \"will my test pass in the cloud,\" \"why does my test pass locally but fail in the cloud,\" \"create an application test,\" \"sync this Playwright folder to Postman,\" \"why did my cloud application test fail,\" \"fix my failing application test,\" \"get the report for my test run,\" \"show my local runs,\" \"stop syncing this test.\" Checking captured traffic against a collection is the `postman:application-testing` skill.",
       "files": [
         {
           "target": "SKILL.md",
           "source": "skills/application-cloud-testing/SKILL.md",
-          "bytes": 21945,
-          "sha256": "413ffe8a5ced9ad128ea53f9667d4e120f46d78f6775d143563623480c3b0750"
+          "bytes": 22305,
+          "sha256": "1efdd65295dcbbf7d3b2df802f9908a148123d7a621358777d18a32595e671ff"
         }
       ]
     },

@@ -1,6 +1,6 @@
 ---
 name: application-cloud-testing
-description: Creates, connects, runs, and reads results from application tests with `postman application project` (alias `postman app project`), which syncs a Playwright project to a Postman workspace and runs it in the Postman cloud, as a local run of the files on disk or a cloud run of the pushed version, with HTML and JSON reports. Keeps each test's plain-language intent in `intents/` and uses it to fix or explain failures. Covers the Postman side only, not Playwright test authoring. Use when the user asks to "run my Playwright tests in the Postman cloud," "run my local changes in the cloud," "will my test pass in the cloud," "why does my test pass locally but fail in the cloud," "create an application test," "connect this Playwright folder to Postman," "why did my cloud application test fail," "fix my failing application test," "get the report for my test run," "show my local runs," "stop syncing this test." Checking captured traffic against a collection is the `postman:application-testing` skill.
+description: Creates, runs, and reads results from application tests with `postman application project` (alias `postman app project`), which syncs a Playwright project to a Postman workspace and runs it in the Postman cloud, as a local run of the files on disk or a cloud run of the pushed version, with HTML and JSON reports. Keeps each test's plain-language intent in `intents/` and uses it to fix or explain failures. Covers the Postman side only, not Playwright test authoring. Use when the user asks to "run my Playwright tests in the Postman cloud," "run my local changes in the cloud," "will my test pass in the cloud," "why does my test pass locally but fail in the cloud," "create an application test," "sync this Playwright folder to Postman," "why did my cloud application test fail," "fix my failing application test," "get the report for my test run," "show my local runs," "stop syncing this test." Checking captured traffic against a collection is the `postman:application-testing` skill.
 ---
 
 # Cloud Application Tests
@@ -55,7 +55,7 @@ Check `postman app project list --json` first. It lists this repository's test f
 `postman app project list --workspace --json` lists the tests in the cloud instead, each with its folder here or `null` when it is not pulled into this repository. Act only on what is missing:
 
 - **New project** — `postman app project create <name> --json` scaffolds a Playwright project in `postman/appTests/<name>/`, creates the test in the workspace and connects it. It also writes `intents/tests/example.spec.yaml` for the example spec (`intentsFile` in the output); replace its entries when the example tests are replaced. `--local-only` scaffolds without creating it in the cloud; the next `postman workspace push` creates it.
-- **Existing Playwright folder** (has a `playwright.config.*`) — under `postman/appTests/`, `postman workspace push` finds and creates it. Elsewhere, push only finds it once its path is in `localResources.appTests`. Either add the path there (relative to `.postman/`, for example `../packages/github-e2e`), and the next push creates the test; or run `postman app project connect <path> --json`, which adds it and creates the test now. Add `--test <id>` to connect to a test that already exists in the workspace instead; nothing is uploaded until `postman workspace push`, or `postman workspace pull` takes the cloud's copy.
+- **Existing Playwright folder** (has a `playwright.config.*`) — under `postman/appTests/`, `postman workspace push` finds and creates it. Elsewhere, push only finds it once its path is in `localResources.appTests`: add the path there (relative to `.postman/`, for example `../packages/github-e2e`), with the user's agreement, and the next `postman workspace push` creates the test and records its mapping. Then run `postman app project intent <folder> --json` so its tests get intents entries.
 - **Test made in the Postman app** — `postman workspace pull` brings it down with a `package.json`; run `npm install` in that folder to run it locally with Playwright.
 
 ### When a folder and its cloud test are not connected
@@ -65,13 +65,17 @@ A folder is connected when `cloudResources.appTests` in `.postman/resources.yaml
 - A pull puts a test it cannot map into a new folder, `postman/appTests/<name>/`, a second copy.
 - A push of the unmapped folder creates a second cloud test.
 
-Connect the folder to the test that exists:
+Connect the folder to the test that exists by writing its mapping, with the user's agreement. Take the `id` and `version` from that test's entry in `postman app project list --workspace --json`, exactly as shown: a wrong or missing version makes the next push fail as a conflict.
 
-```bash
-postman app project connect <folder> --test <app test id> --json
+```yaml
+cloudResources:
+  appTests:
+    ../packages/github-e2e:                       # the folder's path from .postman/
+      id: 1f1e802b-31da-4880-8298-95277e284a43    # `id` from list --workspace
+      version: 1f1e802b-3937-44c0-af01-f5dda479d3f8   # `version` from list --workspace
 ```
 
-It reads the test's current version from the cloud, refuses an id already connected elsewhere, writes the mapping, and moves the folder's local runs under the id. The mapping can be written by hand instead — `../<folder>: { id: <id>, version: <the cloud's current version> }` under `cloudResources.appTests` — but the version must be exact, or the next push is refused as a conflict; prefer `connect`.
+A folder outside `postman/appTests/` also needs its path in `localResources.appTests`. Check with `postman app project list --json`: the folder should show its id and `in_sync` or `local_changes`, not `not_pushed`. The folder's earlier local runs move under the id the next time an `app project` command reads them.
 
 If a duplicate was already made, keep one pair, delete the other cloud test in the Postman app, and with the user's agreement delete the duplicate folder, its `cloudResources.appTests` entry and its `.postman/appTests/<id>.json` record.
 
@@ -195,7 +199,7 @@ tests:
 - **`description`** — what the test checks, as a person would see it on screen. Fixes must still satisfy it.
 - **`history`** — one entry per creation, change request or fix: `date`, `type` (`created`, `change`, `fix`), the user's `request` word for word (not for a fix), and a one- or two-line `summary` of what changed in the code, in terms of behaviour. A fix also records `run` (the failing run) and `verifiedBy` (the run that passed with it). An entry that changed the description says `description: changed`.
 
-**Structure comes from the CLI.** `postman app project intent <folder> --json` creates any missing intents file and an empty entry for every test, at the right path and under the exact title; `create` and `connect` run it too. Run it after adding, renaming or moving tests, before filling anything in: it never changes or removes what is there, and lists in `stale` the entries that match no test any more (a renamed test — move its content to the new key, then delete the old one with the user's agreement). The agent's job is the content: descriptions, history entries and the user's confirmation.
+**Structure comes from the CLI.** `postman app project intent <folder> --json` creates any missing intents file and an empty entry for every test, at the right path and under the exact title; `create` runs it too. Run it after adding, renaming or moving tests, before filling anything in: it never changes or removes what is there, and lists in `stale` the entries that match no test any more (a renamed test — move its content to the new key, then delete the old one with the user's agreement). The agent's job is the content: descriptions, history entries and the user's confirmation.
 
 Every file the command creates starts with the whole format as a comment, with an example of each field; read it there rather than guessing a field.
 
@@ -259,7 +263,7 @@ A fix may change how a test checks, never what it checks: removing or loosening 
 
 - **Do not open the HTML report from an agent** — `postman app project report` without `--json` or `--no-open`, and `npx playwright show-report`, start a server that runs until stopped. Read `report.json` instead.
 - **Do not delete a test folder by hand to stop syncing it** — set `sync: false` on its entry instead.
-- **Do not edit the sync records** — `cloudResources.appTests` (folder → test id and version) and the `.postman/appTests/<id>.json` files; push, pull and `connect` write them. Two parts of `resources.yaml` are for the user, or an agent with the user's agreement: the top-level `appTests` block (`include`, `sync`), and `localResources.appTests`, a plain list of folder paths.
+- **Do not edit the sync records** — `cloudResources.appTests` (folder → test id and version) and the `.postman/appTests/<id>.json` files; push and pull write them, apart from repairing a folder that is not connected (see [When a folder and its cloud test are not connected](#when-a-folder-and-its-cloud-test-are-not-connected)). Two parts of `resources.yaml` are for the user, or an agent with the user's agreement: the top-level `appTests` block (`include`, `sync`), and `localResources.appTests`, a plain list of folder paths.
 - **Do not delete or move anything under `.postman/appTests/<id>/` or `.postman/appTests/local/`** — it is run history, and the only copy of local runs.
 - **Do not weaken a test to make it pass** — a failure the description says should not happen is an app bug to report.
 - **Do not use `postman app test` to run an application test** — it runs Playwright locally and captures traffic; it has nothing to do with the cloud test.
